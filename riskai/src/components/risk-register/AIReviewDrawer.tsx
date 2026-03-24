@@ -262,7 +262,7 @@ function ClusterBlock({
 
   const sourceRisks = cluster.riskIds
   .map((id: string) => risksById.get(id))
-    .filter((r): r is Risk => r != null);
+  .filter((r: Risk | undefined): r is Risk => r != null);
 
   return (
     <section className="border border-neutral-200 dark:border-neutral-600 rounded-xl p-5 bg-[var(--background)]">
