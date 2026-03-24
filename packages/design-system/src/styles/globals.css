@@ -1,0 +1,164 @@
+:root {
+  --ds-background: #f7f8fa;
+  --ds-foreground: #0f172a;
+
+  --ds-card: rgba(255, 255, 255, 0.78);
+  --ds-card-foreground: #0f172a;
+
+  --ds-muted: #eef2f7;
+  --ds-muted-foreground: #6b7280;
+
+  --ds-border: rgba(15, 23, 42, 0.08);
+  --ds-primary: #3f5bd6;
+  --ds-primary-foreground: #ffffff;
+
+  --ds-success: #1f9d55;
+  --ds-warning: #d97706;
+  --ds-danger: #dc2626;
+
+  --ds-radius-sm: 10px;
+  --ds-radius-md: 16px;
+  --ds-radius-lg: 24px;
+  --ds-radius-xl: 32px;
+
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ds-shadow-md: 0 12px 40px rgba(15, 23, 42, 0.08);
+  --ds-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
+
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-5: 20px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-space-10: 40px;
+  --ds-space-12: 48px;
+
+  --ds-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --ds-text-xs: 12px;
+  --ds-text-sm: 14px;
+  --ds-text-base: 16px;
+  --ds-text-lg: 18px;
+  --ds-text-xl: 20px;
+  --ds-text-2xl: 24px;
+  --ds-text-3xl: 32px;
+
+  --ds-transition-fast: 160ms ease;
+  --ds-transition-base: 220ms ease;
+
+  --ds-chart-series-1: var(--ds-primary);
+  --ds-chart-series-2: #1d4ed8;
+  --ds-chart-series-3: #0f766e;
+  --ds-chart-series-4: #334155;
+  --ds-chart-series-5: #16a34a;
+  --ds-chart-series-6: #7c3aed;
+  --ds-chart-grid: color-mix(in oklab, var(--ds-border) 56%, transparent);
+  --ds-chart-axis: color-mix(in oklab, var(--ds-muted-foreground) 72%, var(--ds-foreground));
+  --ds-chart-surface: color-mix(in oklab, var(--ds-muted) 52%, var(--ds-card));
+  --ds-chart-panel: color-mix(in oklab, var(--ds-card) 72%, var(--ds-muted));
+  --ds-chart-panel-border: color-mix(in oklab, var(--ds-border) 46%, transparent);
+  --ds-chart-annotation: color-mix(in oklab, var(--ds-muted-foreground) 76%, var(--ds-foreground));
+  --ds-chart-insight-positive: color-mix(in oklab, var(--ds-success) 78%, var(--ds-foreground));
+  --ds-chart-insight-negative: color-mix(in oklab, var(--ds-danger) 76%, var(--ds-foreground));
+  --ds-chart-emphasis: var(--ds-primary);
+  --ds-chart-muted-series: color-mix(in oklab, var(--ds-muted-foreground) 34%, var(--ds-muted));
+  --ds-chart-line-width: 2px;
+  --ds-chart-point-radius: 3px;
+  --ds-chart-bar-radius: var(--ds-radius-sm);
+  --ds-chart-opacity-default: 0.88;
+  --ds-chart-opacity-highlight: 1;
+  --ds-chart-opacity-muted: 0.36;
+  --ds-chart-grid-opacity: 0.7;
+  --ds-chart-stroke-width-default: 0.6;
+  --ds-chart-stroke-width-highlight: 1.3;
+  --ds-chart-point-size-default: 1.7;
+  --ds-chart-point-size-highlight: 2.35;
+  --ds-chart-scatter-size-default: 4;
+  --ds-chart-scatter-size-highlight: 4.8;
+  --ds-chart-area-opacity-top: 0.34;
+  --ds-chart-area-opacity-bottom: 0.03;
+  --ds-chart-panel-padding: 1rem;
+  --ds-chart-header-gap: 0.625rem;
+  --ds-chart-grid-gap: 0.75rem;
+  --ds-chart-stack-gap: 0.875rem;
+  --ds-chart-label-size: 0.6875rem;
+  --ds-chart-annotation-size: 0.625rem;
+  --ds-chart-kpi-size: 1.75rem;
+}
+
+[data-theme="dark"] {
+  --ds-background: #0b1220;
+  --ds-foreground: #e5e7eb;
+
+  --ds-card: rgba(15, 23, 42, 0.7);
+  --ds-card-foreground: #e5e7eb;
+
+  --ds-muted: #111827;
+  --ds-muted-foreground: #9ca3af;
+
+  --ds-border: rgba(255, 255, 255, 0.08);
+  --ds-primary: #5b74e8;
+  --ds-primary-foreground: #ffffff;
+
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ds-shadow-md: 0 12px 40px rgba(0, 0, 0, 0.28);
+  --ds-shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.36);
+
+  --ds-chart-series-1: var(--ds-primary);
+  --ds-chart-series-2: #60a5fa;
+  --ds-chart-series-3: #2dd4bf;
+  --ds-chart-series-4: #64748b;
+  --ds-chart-series-5: #4ade80;
+  --ds-chart-series-6: #a78bfa;
+  --ds-chart-grid: color-mix(in oklab, var(--ds-border) 66%, transparent);
+  --ds-chart-axis: color-mix(in oklab, var(--ds-muted-foreground) 84%, var(--ds-foreground));
+  --ds-chart-surface: color-mix(in oklab, var(--ds-muted) 76%, var(--ds-card));
+  --ds-chart-panel: color-mix(in oklab, var(--ds-card) 74%, var(--ds-muted));
+  --ds-chart-panel-border: color-mix(in oklab, var(--ds-border) 58%, transparent);
+  --ds-chart-annotation: color-mix(in oklab, var(--ds-muted-foreground) 82%, var(--ds-foreground));
+  --ds-chart-insight-positive: color-mix(in oklab, var(--ds-success) 82%, var(--ds-foreground));
+  --ds-chart-insight-negative: color-mix(in oklab, var(--ds-danger) 82%, var(--ds-foreground));
+  --ds-chart-emphasis: #60a5fa;
+  --ds-chart-muted-series: color-mix(in oklab, var(--ds-muted-foreground) 30%, var(--ds-muted));
+  --ds-chart-line-width: 2px;
+  --ds-chart-point-radius: 3px;
+  --ds-chart-bar-radius: var(--ds-radius-sm);
+  --ds-chart-opacity-default: 0.9;
+  --ds-chart-opacity-highlight: 1;
+  --ds-chart-opacity-muted: 0.34;
+  --ds-chart-grid-opacity: 0.74;
+  --ds-chart-stroke-width-default: 0.6;
+  --ds-chart-stroke-width-highlight: 1.3;
+  --ds-chart-point-size-default: 1.7;
+  --ds-chart-point-size-highlight: 2.35;
+  --ds-chart-scatter-size-default: 4;
+  --ds-chart-scatter-size-highlight: 4.8;
+  --ds-chart-area-opacity-top: 0.38;
+  --ds-chart-area-opacity-bottom: 0.03;
+  --ds-chart-panel-padding: 1rem;
+  --ds-chart-header-gap: 0.625rem;
+  --ds-chart-grid-gap: 0.75rem;
+  --ds-chart-stack-gap: 0.875rem;
+  --ds-chart-label-size: 0.6875rem;
+  --ds-chart-annotation-size: 0.625rem;
+  --ds-chart-kpi-size: 1.75rem;
+}
+
+html {
+  font-family: var(--ds-font-sans);
+}
+
+body {
+  margin: 0;
+  background: var(--ds-background);
+  color: var(--ds-foreground);
+  font-family: var(--ds-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
