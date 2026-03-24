@@ -261,7 +261,7 @@ function ClusterBlock({
   }, [cluster, draft, ownerSelectValue, ownerNewDraft, createProjectOwner, onAccept]);
 
   const sourceRisks = cluster.riskIds
-    .map((id) => risksById.get(id))
+  .map((id: string) => risksById.get(id))
     .filter((r): r is Risk => r != null);
 
   return (
