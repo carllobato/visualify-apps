@@ -346,8 +346,10 @@ ${buildUserPayload(risks)}`;
       );
     }
 
+    type Cluster = (typeof parseResult.data.clusters)[number];
+
     const filtered = parseResult.data.clusters.filter(
-      (c): c is typeof c & { mergedDraft: NonNullable<typeof c.mergedDraft> } =>
+      (c: Cluster): c is Cluster & { mergedDraft: NonNullable<Cluster["mergedDraft"]> } =>
         c.mergeType !== "do_not_merge" &&
         c.confidence >= MIN_MERGE_CONFIDENCE &&
         c.mergedDraft != null
