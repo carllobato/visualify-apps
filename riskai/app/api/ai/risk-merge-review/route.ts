@@ -329,7 +329,7 @@ ${buildUserPayload(risks)}`;
 
     const parseResult = RiskMergeReviewResponseSchema.safeParse(parsedJson);
     if (!parseResult.success) {
-      const issues = parseResult.error.issues.map((i) => ({
+      const issues = parseResult.error.issues.map((i: { path: (string | number | symbol)[]; message: string }) => ({
         path: i.path.map((part) => (typeof part === "symbol" ? part.toString() : String(part))).join("."),
         message: i.message,
       }));
