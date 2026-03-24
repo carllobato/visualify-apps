@@ -333,7 +333,7 @@ function ClusterBlock({
                         setOwnerSelectValue(v);
                         if (v !== NEW_RISK_OWNER_SENTINEL) {
                           setOwnerNewDraft("");
-                          setEditingDraft((d) => (d ? setDraftValue(d, "owner", v) : d));
+                          setEditingDraft((d: Risk | null) => (d ? setDraftValue(d, "owner", v) : d));
                         }
                       }}
                       onNewNameDraftChange={(t) => {
