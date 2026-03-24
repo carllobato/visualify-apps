@@ -234,7 +234,7 @@ export function AddRiskModal({
 
   useEffect(() => {
     if (!open || appliesToOptionsLoading) return;
-    setAppliesTo((prev) => (prev === "" ? defaultAppliesToName : prev));
+    setAppliesTo((prev: string) => (prev === "" ? defaultAppliesToName : prev));
   }, [open, appliesToOptionsLoading, defaultAppliesToName]);
 
   useEffect(() => {
