@@ -582,10 +582,14 @@ export function RiskDetailModal({
         return;
       }
       const currentSnapshot = toComparableSnapshot(updated as Record<string, unknown>);
+      const last = lastSavedSnapshotRef.current;
+
       if (
-        lastSavedSnapshotRef.current?.id === currentRisk.id &&
-        lastSavedSnapshotRef.current.snapshot === currentSnapshot
+        last &&
+        last.id === currentRisk.id &&
+        last.snapshot === currentSnapshot
       ) {
+        
         setIsDirtyState(false);
         return;
       }
