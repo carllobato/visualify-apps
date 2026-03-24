@@ -279,7 +279,7 @@ function ClusterBlock({
               <th className="text-left py-2 px-3 font-medium text-neutral-600 dark:text-neutral-300 w-[140px] border-b border-r border-neutral-200 dark:border-neutral-600">
                 Parameter
               </th>
-              {sourceRisks.map((r) => (
+              {sourceRisks.map((r: Risk) => (
                 <th
                   key={r.id}
                   className="text-left py-2 px-3 font-medium text-neutral-700 dark:text-neutral-200 border-b border-r border-neutral-200 dark:border-neutral-600 last:border-r-0 max-w-[220px]"
@@ -306,7 +306,7 @@ function ClusterBlock({
                 <td className="py-2 px-3 text-neutral-600 dark:text-neutral-400 font-medium border-r border-neutral-200 dark:border-neutral-600 align-top">
                   {label}
                 </td>
-                {sourceRisks.map((r) => (
+                {sourceRisks.map((r: Risk) => (
                   <td
                     key={r.id}
                     className="py-2 px-3 text-[var(--foreground)] border-r border-neutral-200 dark:border-neutral-600 last:border-r-0 align-top max-w-[220px] break-words"
