@@ -1,0 +1,105 @@
+export type SimulationRiskSnapshot = {
+  id: string;
+  title: string;
+  category?: string;
+  /** Risk status at run time (same text as `risks.status`; lookup names or legacy values). */
+  status?: string;
+  expectedCost: number;
+  expectedDays: number;
+  simMeanCost: number;
+  simMeanDays: number;
+  /** Day 5 intelligence (backend-only) */
+  simStdDev?: number;
+  triggerRate?: number;
+  velocity?: number;
+  volatility?: number;
+  stability?: number;
+};
+
+export type SimulationSnapshot = {
+  id: string;
+  timestampIso: string;
+  iterations: number;
+  p20Cost: number;
+  p50Cost: number;
+  p80Cost: number;
+  p90Cost: number;
+  totalExpectedCost: number;
+  totalExpectedDays: number;
+  risks: SimulationRiskSnapshot[];
+  /** Wall-clock duration of the simulation run in milliseconds (for Run Data display). */
+  runDurationMs?: number;
+  /** Day 5 intelligence (backend-only) */
+  simStdDev?: number;
+  triggerRate?: number;
+  velocity?: number;
+  volatility?: number;
+  stability?: number;
+};
+
+export type SimulationRiskDelta = {
+  id: string;
+  title: string;
+  category?: string;
+  prevExpectedCost: number;
+  currExpectedCost: number;
+  deltaCost: number;
+  deltaCostPct: number;
+  prevExpectedDays: number;
+  currExpectedDays: number;
+  deltaDays: number;
+  deltaDaysPct: number;
+  direction: "up" | "down" | "flat";
+};
+
+export type SimulationDelta = {
+  portfolioDeltaCost: number;
+  portfolioDeltaCostPct: number;
+  portfolioDeltaDays: number;
+  portfolioDeltaDaysPct: number;
+  riskDeltas: SimulationRiskDelta[];
+};
+
+/** Portfolio summary metrics by scenario (same shape as snapshot totals; used for Outputs tiles). */
+export type PortfolioSummaryByScenario = {
+  p50Cost: number;
+  p80Cost: number;
+  p90Cost: number;
+  totalExpectedCost: number;
+  totalExpectedDays: number;
+};
+
+/** Result of Monte Carlo run stored as neutral snapshot (cost/time samples + summary + report). */
+export type MonteCarloNeutralSnapshot = {
+  costSamples: number[];
+  timeSamples: number[];
+  summary: {
+    meanCost: number;
+    p20Cost: number;
+    p50Cost: number;
+    p80Cost: number;
+    p90Cost: number;
+    minCost: number;
+    maxCost: number;
+    meanTime: number;
+    p20Time: number;
+    p50Time: number;
+    p80Time: number;
+    p90Time: number;
+    minTime: number;
+    maxTime: number;
+  };
+  summaryReport: {
+    iterationCount: number;
+    averageCost: number;
+    averageTime: number;
+    costVolatility?: number;
+    p50Cost: number;
+    p80Cost: number;
+    p90Cost: number;
+    minCost: number;
+    maxCost: number;
+  };
+  lastRunAt: number;
+  iterationCount: number;
+};

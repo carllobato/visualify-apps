@@ -1,0 +1,114 @@
+@import "tailwindcss";
+@source "../../packages/design-system/src";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --muted: #737373;
+  --border: rgba(0, 0, 0, 0.08);
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+}
+
+/* Use html.dark so tokens win over :root when React manages <html class> */
+html.dark {
+  color-scheme: dark;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --muted: #a3a3a3;
+  --border: rgba(255, 255, 255, 0.08);
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --font-sans: var(--font-inter);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease;
+}
+
+/* Animate token-driven colors when light/dark mode changes */
+:where(body *) {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, outline-color,
+    text-decoration-color, box-shadow;
+  transition-duration: 0.5s;
+  transition-timing-function: ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body,
+  body * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+:where(a, button):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Early access modal — fluid “liquid” entrance */
+@keyframes liquid-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes liquid-panel-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(1.125rem);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(1.012) translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.liquid-modal-backdrop {
+  animation: liquid-backdrop-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.liquid-modal-panel {
+  animation: liquid-panel-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .liquid-modal-backdrop,
+  .liquid-modal-panel {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
