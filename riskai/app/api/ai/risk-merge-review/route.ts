@@ -330,7 +330,7 @@ ${buildUserPayload(risks)}`;
     const parseResult = RiskMergeReviewResponseSchema.safeParse(parsedJson);
     if (!parseResult.success) {
       const issues = parseResult.error.issues.map((i) => ({
-        path: i.path.join("."),
+        path: i.path.map((part) => (typeof part === "symbol" ? part.toString() : String(part))).join("."),
         message: i.message,
       }));
       if (process.env.NODE_ENV === "development") {
