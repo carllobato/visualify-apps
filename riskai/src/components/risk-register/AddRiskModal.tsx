@@ -224,7 +224,7 @@ export function AddRiskModal({
 
   useEffect(() => {
     if (!open || statusesLoading) return;
-    setStatus((prev) => {
+    setStatus((prev: string) => {
       if (prev !== "") return prev;
       const draftName = getDefaultNewRiskStatusName(statuses);
       dlog("[add risk] default status after options load", draftName || "(none)");
