@@ -333,12 +333,12 @@ function ClusterBlock({
                         setOwnerSelectValue(v);
                         if (v !== NEW_RISK_OWNER_SENTINEL) {
                           setOwnerNewDraft("");
-                          setEditingDraft((d: Risk | null) => (d ? setDraftValue(d, "owner", v) : d));
+                          setEditingDraft((d: MergeRiskDraft | null) => (d ? setDraftValue(d, "owner", v) : d));
                         }
                       }}
                       onNewNameDraftChange={(t) => {
                         setOwnerNewDraft(t);
-                        setEditingDraft((d) => {
+                        setEditingDraft((d: MergeRiskDraft | null) => {
                           if (!d) return d;
                           const resolved = getResolvedOwnerPickerValue(NEW_RISK_OWNER_SENTINEL, t);
                           return setDraftValue(d, "owner", resolved);
