@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { APP_ORIGIN } from "@/lib/host";
 import { DASHBOARD_PATH } from "@/lib/routes";
 
 /** Public marketing home for the website host (visualify.com.au). */
 export function WelcomePage() {
-  const signInHref = `${APP_ORIGIN}/?next=${encodeURIComponent(DASHBOARD_PATH)}`;
+  const signInHref = `/?next=${encodeURIComponent(DASHBOARD_PATH)}`;
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-2xl flex-col justify-center gap-8 px-6 py-16">
       <div>
