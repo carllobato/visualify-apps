@@ -1,3 +1,4 @@
+import { DEFAULT_PROJECT_ID } from "@/lib/db/risks";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 /** Full JSON persisted with each snapshot (reporting / audit). */
@@ -43,8 +44,6 @@ export type SimulationSnapshotPersistInput = {
   run_duration_ms: number;
   payload: SimulationSnapshotPayload;
 };
-
-const DEFAULT_PROJECT_ID = "a8995152-7065-4f79-ab8a-015b6ab0a3ec";
 
 /** Coerce to number; null if not finite (NaN, ±Infinity). */
 function asFiniteNumber(value: unknown): number | null {

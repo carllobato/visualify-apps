@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import {
   getLatestSnapshot,
@@ -16,7 +16,7 @@ import { fetchPublicProfile, formatTriggeredByLabel } from "@/lib/profiles/profi
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
-import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import { DASHBOARD_PATH, projectIdFromAppPathname, riskaiPath } from "@/lib/routes";
 import {
   getNeutralSummary,
   getNeutralSamples,
@@ -123,6 +123,7 @@ type SnapshotState = { projectId: string; hasSnapshot: boolean } | null;
 
 export default function SimulationPage({ projectId: urlProjectId }: SimulationPageProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const { risks, simulation, runSimulation, clearSimulationHistory, hasDraftRisks, invalidRunnableCount, setRisks, hydrateSimulationFromDbSnapshot } = useRiskRegister();
   const [lastRun, setLastRun] = useState<string | null>(null);
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
@@ -141,8 +142,13 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   simulationRef.current = simulation;
 
   const [activeProjectIdFromStorage, setActiveProjectIdFromStorage] = useState<string | null>(null);
+  const projectIdFromPath = useMemo(() => projectIdFromAppPathname(pathname), [pathname]);
   /** UUID for DB/API: URL or storage when in project routes; in legacy mode use DEFAULT_PROJECT_ID (projectContext.projectName is a display name, not a UUID). */
-  const effectiveProjectId = urlProjectId ?? activeProjectIdFromStorage ?? (projectContext ? DEFAULT_PROJECT_ID : undefined);
+  const effectiveProjectId =
+    urlProjectId ??
+    projectIdFromPath ??
+    activeProjectIdFromStorage ??
+    (projectContext ? DEFAULT_PROJECT_ID : undefined);
   effectiveProjectIdRef.current = effectiveProjectId;
 
   const projectPerms = useProjectPermissions();

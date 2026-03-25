@@ -42,6 +42,7 @@ import {
 import { DEBUG_FORWARD_PROJECTION } from "@/config/debug";
 import { runForwardProjectionGuards } from "@/lib/forwardProjectionGuards";
 import { dlog, dwarn } from "@/lib/debug";
+import { projectIdFromAppPathname } from "@/lib/routes";
 import { binSamplesIntoHistogram, binSamplesIntoTimeHistogram } from "@/lib/simulationDisplayUtils";
 import {
   createSnapshot,
@@ -825,11 +826,19 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
         };
 
         const s = mcResult.summary;
-        let snapshotProjectId: string | undefined = projectIdFromCaller ?? undefined;
-        if (snapshotProjectId == null && typeof window !== "undefined") {
+        let snapshotProjectId: string | undefined =
+          typeof projectIdFromCaller === "string" && projectIdFromCaller.trim().length > 0
+            ? projectIdFromCaller.trim()
+            : undefined;
+        if (!snapshotProjectId && typeof window !== "undefined") {
+          snapshotProjectId = projectIdFromAppPathname(window.location.pathname) ?? undefined;
+        }
+        if (!snapshotProjectId && typeof window !== "undefined") {
           try {
-            const fromStorage = window.localStorage.getItem(ACTIVE_PROJECT_KEY);
-            snapshotProjectId = fromStorage ?? undefined;
+            const raw = window.localStorage.getItem(ACTIVE_PROJECT_KEY);
+            const trimmed = raw?.trim();
+            snapshotProjectId =
+              trimmed && trimmed !== "undefined" ? trimmed : undefined;
           } catch {
             // localStorage unavailable (e.g. private browsing)
           }
