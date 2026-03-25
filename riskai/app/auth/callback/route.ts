@@ -15,15 +15,9 @@ function authErrorRedirect(request: NextRequest, message: string): NextResponse 
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
   const base = getLoginPathForHost(host);
   const url = new URL(request.url);
-  if (base === "/") {
-    url.pathname = "/";
-    url.search = `?error=${encodeURIComponent(message)}`;
-    url.hash = "";
-  } else {
-    url.pathname = "/login";
-    url.search = `?error=${encodeURIComponent(message)}`;
-    url.hash = "";
-  }
+  url.pathname = base;
+  url.search = `?error=${encodeURIComponent(message)}`;
+  url.hash = "";
   return NextResponse.redirect(url);
 }
 

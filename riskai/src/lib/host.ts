@@ -37,7 +37,7 @@ export function isAppAreaPath(pathname: string): boolean {
   return false;
 }
 
-/** Login entry path for a request host: `/` on app, `/login` on website. */
-export function getLoginPathForHost(host: string): "/" | "/login" {
-  return isAppHost(host) ? "/" : "/login";
+/** Login entry path for a request host: always `/login`. */
+export function getLoginPathForHost(host: string): "/login" {
+  return "/login";
 }

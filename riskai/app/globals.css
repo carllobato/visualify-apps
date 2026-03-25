@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "../../packages/design-system/src/styles/globals.css";
+@source "../../packages/design-system/src";
 
 /* Class-based dark mode for manual toggle; .dark / .light set by ThemeProvider + inline script */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -6,6 +8,18 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* DS token bridge */
+  --ds-background: var(--background);
+  --ds-foreground: var(--foreground);
+  --ds-card: var(--background);
+  --ds-card-foreground: var(--foreground);
+  --ds-border: rgba(0, 0, 0, 0.1);
+  --ds-muted: rgba(0, 0, 0, 0.05);
+  --ds-muted-foreground: var(--foreground);
+  --ds-primary: #D96C32;
+  --ds-primary-foreground: #ffffff;
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 :root.dark {

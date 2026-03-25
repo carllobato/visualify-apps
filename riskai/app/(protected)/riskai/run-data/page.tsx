@@ -37,6 +37,8 @@ import {
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { appliesToExcludesCost, appliesToExcludesTime } from "@/domain/risk/riskFieldSemantics";
+import { Button } from "@visualify/design-system";
+
 
 type ForwardExposurePayload = {
   horizonMonths: number;
@@ -885,7 +887,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       <h1 className="text-2xl font-semibold m-0">Run Data</h1>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button
+        <Button
           type="button"
           onClick={async () => {
             setSnapshotPersistWarning(null);
@@ -900,21 +902,21 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
             }
           }}
           disabled={hasDraftRisks || invalidRunnableCount > 0}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-        >
-          Run Simulation
-        </button>
-        <Button
-          type="button"
-          onClick={() => {
-            setLockedRunPinned(false);
-            clearSimulationHistory();
-          }}
           variant="secondary"
         >
-          Clear History
+          Run Simulation
         </Button>
-        <button
+        <Button
+  type="button"
+  onClick={() => {
+    setLockedRunPinned(false);
+    clearSimulationHistory();
+  }}
+  variant="secondary"
+>
+  Clear History
+</Button>
+        <Button
           type="button"
           onClick={async () => {
             setLockedRunLoadWarning(null);
@@ -939,10 +941,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
             }
           }}
           disabled={loadingLockedRun}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          variant="secondary"
         >
           {loadingLockedRun ? "Loading locked run..." : "Load Last Locked Run"}
-        </button>
+        </Button>
         {hasDraftRisks && (
           <p className="text-sm text-amber-600 dark:text-amber-400" role="status">
             Review and save all draft risks in the Risk Register before running simulation.
