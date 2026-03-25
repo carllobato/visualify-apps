@@ -16,14 +16,18 @@ export function ThemePreviewShell({
     <div className="visualify-ds-root min-h-dvh">
       <div
         data-theme={isDark ? "dark" : undefined}
-        className={isDark ? "min-h-dvh bg-[var(--ds-background)]" : "min-h-dvh bg-[#e4e6ea]"}
+        className={
+          isDark
+            ? "min-h-dvh bg-[var(--ds-background)]"
+            : "min-h-dvh bg-[color-mix(in_oklab,var(--ds-muted)_48%,var(--ds-background))]"
+        }
       >
         <div className="flex min-h-dvh w-full flex-col px-5 py-9 sm:px-7 sm:py-11 lg:px-10">
           <div
             className={
               isDark
                 ? "sticky top-4 z-20 mb-7 flex items-center justify-between rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_72%,transparent)] bg-[color-mix(in_oklab,var(--ds-background)_82%,transparent)] px-4 py-3 shadow-[var(--ds-shadow-sm)] backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--ds-background)_88%,transparent)] sm:px-5"
-                : "sticky top-4 z-20 mb-7 flex items-center justify-between rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_72%,transparent)] bg-[color-mix(in_oklab,var(--ds-background)_78%,white)] px-4 py-3 shadow-[var(--ds-shadow-sm)] backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--ds-background)_82%,white)] sm:px-5"
+                : "sticky top-4 z-20 mb-7 flex items-center justify-between rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_100%,var(--ds-foreground)_4%)] bg-[color-mix(in_oklab,var(--ds-background)_76%,white)] px-4 py-3 shadow-[var(--ds-shadow-sm)] backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklab,var(--ds-background)_82%,white)] sm:px-5"
             }
           >
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-[var(--ds-muted-foreground)] opacity-[0.8]">
