@@ -1132,13 +1132,13 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       <div>
                         <dt className={META_DT}>Status</dt>
                         <dd className="mt-0.5">
-                          <Badge variant={runStatus === "Complete" ? "success" : "warning"}>{runStatus}</Badge>
+                          <Badge status={runStatus === "Complete" ? "success" : "warning"}>{runStatus}</Badge>
                         </dd>
                       </div>
                       <div>
                         <dt className={META_DT}>Run Data Completeness</dt>
                         <dd className="mt-0.5">
-                          <Badge variant={runDataCompleteness === "Complete" ? "success" : "neutral"}>
+                          <Badge status={runDataCompleteness === "Complete" ? "success" : "neutral"}>
                             {runDataCompleteness}
                           </Badge>
                         </dd>
@@ -1147,7 +1147,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         <dt className={META_DT}>Reporting version</dt>
                         <dd className="mt-0.5">
                           {reportingDbRow?.locked_for_reporting ? (
-                            <Badge variant="success">Yes</Badge>
+                            <Badge status="success">Yes</Badge>
                           ) : (
                             <span className="text-neutral-500 dark:text-neutral-400">No</span>
                           )}
