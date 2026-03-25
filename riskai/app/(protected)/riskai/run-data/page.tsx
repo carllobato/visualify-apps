@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
+import { Button } from "@visualify/design-system";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { listRisks } from "@/lib/db/risks";
 import { portfolioMomentumSummary } from "@/domain/risk/risk.logic";
