@@ -36,6 +36,8 @@ import {
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { appliesToExcludesCost, appliesToExcludesTime } from "@/domain/risk/riskFieldSemantics";
+import { Button } from "@visualify/design-system";
+
 
 type ForwardExposurePayload = {
   horizonMonths: number;
@@ -903,16 +905,16 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         >
           Run Simulation
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setLockedRunPinned(false);
-            clearSimulationHistory();
-          }}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
-        >
-          Clear History
-        </button>
+        <Button
+  type="button"
+  onClick={() => {
+    setLockedRunPinned(false);
+    clearSimulationHistory();
+  }}
+  variant="secondary"
+>
+  Clear History
+</Button>
         <button
           type="button"
           onClick={async () => {
