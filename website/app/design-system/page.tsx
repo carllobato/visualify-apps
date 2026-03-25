@@ -45,6 +45,42 @@ const spaceScale = ["--ds-space-1", "--ds-space-2", "--ds-space-3", "--ds-space-
 const radiusScale = ["--ds-radius-sm", "--ds-radius-md", "--ds-radius-lg", "--ds-radius-xl"] as const;
 const shadowScale = ["--ds-shadow-sm", "--ds-shadow-md", "--ds-shadow-lg"] as const;
 const typeScale = ["--ds-text-xs", "--ds-text-sm", "--ds-text-base", "--ds-text-lg", "--ds-text-xl", "--ds-text-2xl"] as const;
+const statusUseCases: Record<(typeof semanticStatuses)[number], string> = {
+  success: "Confirmed or complete state",
+  warning: "Requires attention, still recoverable",
+  danger: "Failure or destructive outcome",
+  info: "Informational/supporting context",
+  neutral: "Background or non-critical state",
+};
+const surfaceTextPatterns = [
+  {
+    title: "Primary panel content",
+    surfaceToken: "--ds-surface-default",
+    textToken: "--ds-text-primary",
+    surfaceClass: "bg-[var(--ds-surface-default)]",
+    textClass: "text-[var(--ds-text-primary)]",
+    helperClass: "text-[var(--ds-text-secondary)]",
+    helper: "Use for default cards and key body copy.",
+  },
+  {
+    title: "Secondary grouped context",
+    surfaceToken: "--ds-surface-muted",
+    textToken: "--ds-text-secondary",
+    surfaceClass: "bg-[var(--ds-surface-muted)]",
+    textClass: "text-[var(--ds-text-secondary)]",
+    helperClass: "text-[var(--ds-text-muted)]",
+    helper: "Use for side context, filters, and labels.",
+  },
+  {
+    title: "Inset background layer",
+    surfaceToken: "--ds-surface-inset",
+    textToken: "--ds-text-muted",
+    surfaceClass: "bg-[var(--ds-surface-inset)]",
+    textClass: "text-[var(--ds-text-muted)]",
+    helperClass: "text-[var(--ds-text-muted)]",
+    helper: "Use for low-priority regions and boundaries.",
+  },
+] as const;
 
 function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
@@ -71,10 +107,124 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
 
       <Section title="Foundations" description="Semantic status, text, surface, spacing, radius, shadow, and typography scales.">
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card variant="elevated"><CardHeader><CardTitle>Core tokens</CardTitle></CardHeader><CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3">{colorSwatches.map((item) => (<div key={item.token} className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-2"><div className="h-10 rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-default)]" style={item.style} /><p className="mt-2 text-[length:var(--ds-text-sm)] font-medium">{item.label}</p><p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{item.token}</p></div>))}</CardContent></Card>
-          <Card variant="elevated"><CardHeader><CardTitle>Status tokens</CardTitle></CardHeader><CardContent className="space-y-2">{semanticStatuses.map((status) => (<div key={status} className="flex items-center justify-between rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-3"><p className="text-[length:var(--ds-text-sm)] font-medium capitalize">{status}</p><div className="flex items-center gap-2"><div className="h-5 w-5 rounded-full" style={{ backgroundColor: `var(--ds-status-${status})` }} /><Badge status={status}>{status}</Badge></div></div>))}</CardContent></Card>
-          <Card variant="elevated"><CardHeader><CardTitle>Surface + text tokens</CardTitle></CardHeader><CardContent className="grid gap-2"><div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-3 text-[var(--ds-text-primary)]">`--ds-surface-default` + `--ds-text-primary`</div><div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3 text-[var(--ds-text-secondary)]">`--ds-surface-muted` + `--ds-text-secondary`</div><div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)] p-3 text-[var(--ds-text-muted)]">`--ds-surface-inset` + `--ds-text-muted`</div></CardContent></Card>
-          <Card variant="elevated"><CardHeader><CardTitle>Scales</CardTitle></CardHeader><CardContent className="space-y-4"><div className="space-y-2"><p className="text-[length:var(--ds-text-sm)] font-medium">Spacing</p>{spaceScale.map((token) => (<div key={token} className="flex items-center gap-3"><div className="h-2 rounded-full bg-[var(--ds-primary)]" style={{ width: `var(${token})` }} /><p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</p></div>))}</div><div className="flex flex-wrap gap-3">{radiusScale.map((token) => (<div key={token} className="text-center"><div className="h-10 w-10 border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]" style={{ borderRadius: `var(${token})` }} /><p className="mt-1 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</p></div>))}</div><div className="grid gap-2">{shadowScale.map((token) => (<div key={token} className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-3" style={{ boxShadow: `var(${token})` }}><p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</p></div>))}</div><div className="space-y-1">{typeScale.map((token) => (<p key={token} style={{ fontSize: `var(${token})` }} className="text-[var(--ds-text-primary)]">{token} - The quick brown fox</p>))}</div></CardContent></Card>
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle>Core tokens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {colorSwatches.map((item) => (
+                <div
+                  key={item.token}
+                  className="grid grid-cols-[auto_1fr] items-center gap-3 rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_86%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-default)_95%,var(--ds-surface-elevated))] px-3 py-2"
+                >
+                  <div className="h-8 w-8 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]" style={item.style} />
+                  <div>
+                    <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">{item.label}</p>
+                    <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{item.token}</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle>Status tokens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {semanticStatuses.map((status) => (
+                <div key={status} className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-4 w-4 rounded-full border border-[var(--ds-border)]" style={{ backgroundColor: `var(--ds-status-${status})` }} />
+                      <p className="text-[length:var(--ds-text-sm)] font-medium capitalize text-[var(--ds-text-primary)]">{status}</p>
+                    </div>
+                    <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{`--ds-status-${status}`}</p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ds-border)] pt-2">
+                    <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">{statusUseCases[status]}</p>
+                    <Badge status={status}>{status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle>Surface + text tokens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {surfaceTextPatterns.map((pattern) => (
+                <div key={pattern.surfaceToken} className={`rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-3 ${pattern.surfaceClass}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className={`text-[length:var(--ds-text-sm)] font-medium ${pattern.textClass}`}>{pattern.title}</p>
+                      <p className={`mt-1 text-[length:var(--ds-text-xs)] ${pattern.helperClass}`}>{pattern.helper}</p>
+                    </div>
+                    <Button size="sm" variant="secondary">Action</Button>
+                  </div>
+                  <div className="mt-3 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-2">
+                    <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">Sample line item with supporting detail.</p>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                    <span>{pattern.surfaceToken}</span>
+                    <span>+</span>
+                    <span>{pattern.textToken}</span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle>Scales</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Spacing</p>
+                {spaceScale.map((token) => (
+                  <div key={token} className="grid grid-cols-[120px_1fr] items-center gap-3">
+                    <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</p>
+                    <div className="h-2 rounded-full bg-[var(--ds-surface-muted)]">
+                      <div className="h-2 rounded-full bg-[var(--ds-primary)]" style={{ width: `var(${token})` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Radius</p>
+                  <div className="flex flex-wrap gap-2">
+                    {radiusScale.map((token) => (
+                      <div key={token} className="space-y-1 text-center">
+                        <div className="h-9 w-9 border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]" style={{ borderRadius: `var(${token})` }} />
+                        <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token.replace("--ds-radius-", "")}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Shadows</p>
+                  <div className="grid gap-2">
+                    {shadowScale.map((token) => (
+                      <div key={token} className="flex items-center justify-between rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2" style={{ boxShadow: `var(${token})` }}>
+                        <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">Elevation sample</p>
+                        <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Typography</p>
+                {typeScale.map((token) => (
+                  <p key={token} style={{ fontSize: `var(${token})` }} className="flex items-baseline justify-between gap-2 text-[var(--ds-text-primary)]">
+                    <span>Decision-ready reference text</span>
+                    <span className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</span>
+                  </p>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </Section>
 
