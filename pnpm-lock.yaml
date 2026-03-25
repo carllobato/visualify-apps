@@ -31,6 +31,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.36.4
         version: 1.37.0
+      '@visualify/design-system':
+        specifier: workspace:^
+        version: link:../packages/design-system
       framer-motion:
         specifier: ^12.38.0
         version: 12.38.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
