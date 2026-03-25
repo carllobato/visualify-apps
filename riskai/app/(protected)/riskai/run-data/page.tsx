@@ -880,11 +880,95 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
     };
   }, [consistencyChecks, simulationAssumptionCounts]);
 
-  return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold m-0">Run Data</h1>
+  const SECTION_SHELL_BASE =
+    "rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden";
+  const SECTION_SHELL_MT6 = `mt-6 ${SECTION_SHELL_BASE}`;
+  const SECTION_SHELL_MT8 = `mt-8 ${SECTION_SHELL_BASE}`;
+  const SECTION_HEADER =
+    "text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0";
+  const SECTION_BODY = "p-4";
+  const PAGE_CONTAINER = "p-6";
+  const PAGE_TITLE = "text-2xl font-semibold m-0";
+  const PAGE_ACTION_ROW = "mt-6 flex flex-wrap items-center gap-3";
+  const STATUS_TEXT_MUTED = "text-sm text-amber-600 dark:text-amber-400";
+  const STATUS_TEXT_WARN_ALERT = "text-sm text-amber-700 dark:text-amber-300 font-medium";
+  const STATUS_TEXT_FAIL_ALERT_WIDE = "text-sm text-red-700 dark:text-red-300 font-medium max-w-2xl";
+  const STATUS_TEXT_WARN_ALERT_WIDE = "text-sm text-amber-700 dark:text-amber-300 font-medium max-w-2xl";
+  const EMPTY_STATE_TEXT = "mt-8 text-neutral-600 dark:text-neutral-400";
+  const STATUS_PILL_BASE = "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium";
+  const STATUS_PILL_SUCCESS = "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200";
+  const STATUS_PILL_WARN = "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200";
+  const STATUS_PILL_NEUTRAL = "bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-200";
+  const STATUS_TEXT_SUCCESS = "text-emerald-700 dark:text-emerald-400 font-medium";
+  const STATUS_TEXT_WARN = "text-amber-700 dark:text-amber-400 font-medium";
+  const STATUS_TEXT_FAIL = "text-red-700 dark:text-red-400 font-medium";
+  const META_GRID_4 = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm";
+  const META_GROUP = "space-y-3";
+  const META_GROUP_TITLE = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
+  const META_DL = "space-y-2 m-0";
+  const META_DT = "text-neutral-500 dark:text-neutral-400 font-normal";
+  const META_DD = "mt-0.5 text-neutral-800 dark:text-neutral-200";
+  const META_DD_MONO_BREAKALL = "mt-0.5 font-mono text-neutral-800 dark:text-neutral-200 break-all";
+  const META_DD_TRUNCATE = "mt-0.5 text-neutral-800 dark:text-neutral-200 truncate";
+  const META_INLINE_NOTE = "text-neutral-500 dark:text-neutral-400 font-normal ml-1";
+  const DIST_META_ROW = "flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400 mb-3";
+  const DIST_PERCENTILES_GRID = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm m-0";
+  const DIST_STATS_GRID = "grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs m-0 border-t border-neutral-200 dark:border-neutral-700 pt-3";
+  const DIST_DT = "text-neutral-500 dark:text-neutral-400 font-normal";
+  const DIST_DD = "mt-0.5 text-neutral-800 dark:text-neutral-200 m-0";
+  const DIST_HELPER_TEXT = "text-xs text-neutral-500 dark:text-neutral-400 mt-2 mb-3";
+  const DIAG_TABLE = "w-full text-sm border-collapse";
+  const DIAG_THEAD_ROW = "border-b border-neutral-200 dark:border-neutral-700";
+  const DIAG_TBODY_ROW = "border-b border-neutral-100 dark:border-neutral-700/50";
+  const DIAG_TBODY_ROW_LAST = `${DIAG_TBODY_ROW} last:border-b-0`;
+  const DIAG_TH_LEFT_PR2 = "text-left py-1.5 pr-2 font-medium text-neutral-500 dark:text-neutral-400";
+  const DIAG_TH_LEFT_PX2 = "text-left py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400";
+  const DIAG_TH_LEFT_PL2 = "text-left py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400";
+  const DIAG_TH_RIGHT_PX2 = "text-right py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400";
+  const DIAG_TH_RIGHT_PL2_W20 = "text-right py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400 w-20";
+  const DIAG_TD_LEFT_PR2 = "py-1.5 pr-2 text-neutral-700 dark:text-neutral-300";
+  const DIAG_TD_LEFT_PX2_MUTED = "py-1.5 px-2 text-neutral-600 dark:text-neutral-400 tabular-nums";
+  const DIAG_TD_LEFT_PL2_MUTED = "py-1.5 pl-2 text-neutral-500 dark:text-neutral-400";
+  const DIAG_TD_RIGHT_PX2_NUM = "text-right py-1.5 px-2 tabular-nums";
+  const DIAG_TD_ALIGN_TOP = "py-1.5 pr-2 align-top";
+  const DIAG_WARN_TH_SEVERITY = "text-left py-1 pr-2 font-medium text-neutral-500 dark:text-neutral-400 w-20";
+  const DIAG_WARN_TH_MESSAGE = "text-left py-1 pl-2 font-medium text-neutral-500 dark:text-neutral-400";
+  const DRIVER_TABLE_WRAP = "overflow-x-auto rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)]";
+  const DRIVER_TABLE = "w-full text-sm border-collapse";
+  const DRIVER_HEAD_ROW = "border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50";
+  const DRIVER_TH_LEFT = "text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
+  const DRIVER_TH_RIGHT = "text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
+  const DRIVER_ROW = "border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0";
+  const DRIVER_CELL_RANK = "py-1.5 px-3 text-neutral-600 dark:text-neutral-400 tabular-nums";
+  const DRIVER_CELL_NAME = "py-1.5 px-3 text-neutral-800 dark:text-neutral-200 max-w-[200px] truncate";
+  const DRIVER_CELL_MUTED = "py-1.5 px-3 text-neutral-500 dark:text-neutral-400";
+  const DRIVER_CELL_VALUE = "py-1.5 px-3 text-right text-neutral-800 dark:text-neutral-200 font-medium tabular-nums";
+  const DRIVER_CELL_NUMERIC_MUTED = "py-1.5 px-3 text-right text-neutral-500 dark:text-neutral-400 tabular-nums";
+  const DRIVER_CELL_NUMERIC = "py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums";
+  const DRIVER_EMPTY = "py-3 px-3 text-sm text-neutral-500 dark:text-neutral-400";
+  const H_TILE_WRAP = "rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3";
+  const H_TILE_LABEL = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
+  const H_TILE_VALUE = "mt-0.5 text-base font-semibold tabular-nums";
+  const H_SUBSECTION_TITLE = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2";
+  const H_COMPACT_LIST = "space-y-2 text-sm m-0";
+  const H_COMPACT_LIST_ROW = "flex justify-between items-baseline gap-2";
+  const H_COMPACT_LIST_NAME = "text-neutral-800 dark:text-neutral-200 truncate";
+  const H_COMPACT_LIST_VALUE = "font-medium text-neutral-700 dark:text-neutral-300 shrink-0 tabular-nums";
+  const H_EMPTY_MUTED = "text-sm text-neutral-500 dark:text-neutral-400 m-0";
+  const H_EMPTY_LIST_MUTED = "text-neutral-500 dark:text-neutral-400";
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+  // Small sub-panel / card pattern reused in a few sections.
+  const SUB_PANEL_SHELL_BASE =
+    "border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden";
+  const SUB_PANEL_HEADER_BASE =
+    "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide px-3 py-2 border-b border-neutral-200 dark:border-neutral-700";
+  const SUB_PANEL_BODY = "p-3";
+
+  return (
+    <main className={PAGE_CONTAINER}>
+      <h1 className={PAGE_TITLE}>Run Data</h1>
+
+      <div className={PAGE_ACTION_ROW}>
         <Button
           type="button"
           onClick={async () => {
@@ -905,15 +989,15 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           Run Simulation
         </Button>
         <Button
-  type="button"
-  onClick={() => {
-    setLockedRunPinned(false);
-    clearSimulationHistory();
-  }}
-  variant="secondary"
->
-  Clear History
-</Button>
+          type="button"
+          onClick={() => {
+            setLockedRunPinned(false);
+            clearSimulationHistory();
+          }}
+          variant="secondary"
+        >
+          Clear History
+        </Button>
         <Button
           type="button"
           onClick={async () => {
@@ -944,27 +1028,27 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {loadingLockedRun ? "Loading locked run..." : "Load Last Locked Run"}
         </Button>
         {hasDraftRisks && (
-          <p className="text-sm text-amber-600 dark:text-amber-400" role="status">
+          <p className={STATUS_TEXT_MUTED} role="status">
             Review and save all draft risks in the Risk Register before running simulation.
           </p>
         )}
         {invalidRunnableCount > 0 && (
-          <p className="text-sm text-amber-600 dark:text-amber-400" role="status">
+          <p className={STATUS_TEXT_MUTED} role="status">
             Fix {invalidRunnableCount} risk{invalidRunnableCount !== 1 ? "s" : ""} to run simulation.
           </p>
         )}
         {runBlockedInvalidCount != null && runBlockedInvalidCount > 0 && (
-          <p className="text-sm text-amber-700 dark:text-amber-300 font-medium" role="alert">
+          <p className={STATUS_TEXT_WARN_ALERT} role="alert">
             Simulation blocked: fix {runBlockedInvalidCount} risk{runBlockedInvalidCount !== 1 ? "s" : ""} to run simulation.
           </p>
         )}
         {snapshotPersistWarning && (
-          <p className="text-sm text-red-700 dark:text-red-300 font-medium max-w-2xl" role="alert">
+          <p className={STATUS_TEXT_FAIL_ALERT_WIDE} role="alert">
             Could not save run to the database: {snapshotPersistWarning}
           </p>
         )}
         {lockedRunLoadWarning && (
-          <p className="text-sm text-amber-700 dark:text-amber-300 font-medium max-w-2xl" role="alert">
+          <p className={STATUS_TEXT_WARN_ALERT_WIDE} role="alert">
             {lockedRunLoadWarning}
           </p>
         )}
@@ -972,7 +1056,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
 
       {!current ? (
-        <p className="mt-8 text-neutral-600 dark:text-neutral-400">
+        <p className={EMPTY_STATE_TEXT}>
           No simulation run yet. Add risks in the Risk Register, then run a simulation.
         </p>
       ) : (
@@ -980,86 +1064,86 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {/* ——— BASELINE: inputs that were run ——— */}
           {/* Run Metadata: run identity, config, status. Source: current (simulation run snapshot). */}
           <section
-            className="mt-8 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden"
+            className={SECTION_SHELL_MT8}
             aria-label="Run metadata"
           >
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+            <h2 className={SECTION_HEADER}>
               Run Metadata
             </h2>
-            <div className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
+            <div className={SECTION_BODY}>
+              <div className={META_GRID_4}>
                 {/* Group A — Identity */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Identity
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Run ID</dt>
-                      <dd className="mt-0.5 font-mono text-neutral-800 dark:text-neutral-200 break-all" title={current.id?.startsWith("sim_") ? "Legacy run; re-run for canonical ID" : current.id || "Not yet persisted"}>
+                      <dt className={META_DT}>Run ID</dt>
+                      <dd className={META_DD_MONO_BREAKALL} title={current.id?.startsWith("sim_") ? "Legacy run; re-run for canonical ID" : current.id || "Not yet persisted"}>
                         {current.id && !current.id.startsWith("sim_") ? current.id : "Pending save"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Project ID</dt>
-                      <dd className="mt-0.5 font-mono text-neutral-800 dark:text-neutral-200 break-all">
+                      <dt className={META_DT}>Project ID</dt>
+                      <dd className={META_DD_MONO_BREAKALL}>
                         {projectId ?? "Not available"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Project name</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 truncate" title={projectName ?? undefined}>
+                      <dt className={META_DT}>Project name</dt>
+                      <dd className={META_DD_TRUNCATE} title={projectName ?? undefined}>
                         {projectName?.trim() || "Not available"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Run timestamp</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Run timestamp</dt>
+                      <dd className={META_DD}>
                         {current.timestampIso ? formatRunTimestamp(current.timestampIso) : "Not available"}
                       </dd>
                     </div>
                   </dl>
                 </div>
                 {/* Group B — Configuration */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Configuration
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Iterations</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Iterations</dt>
+                      <dd className={META_DD}>
                         {current.iterations != null ? current.iterations.toLocaleString() : neutralMc?.iterationCount != null ? neutralMc.iterationCount.toLocaleString() : "Not available"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Run duration</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Run duration</dt>
+                      <dd className={META_DD}>
                         {typeof current.runDurationMs === "number"
                           ? `${(current.runDurationMs / 1000).toFixed(2)} s`
                           : "Not available"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Simulation Engine Version</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">{SIMULATION_ENGINE_VERSION}</dd>
+                      <dt className={META_DT}>Simulation Engine Version</dt>
+                      <dd className={META_DD}>{SIMULATION_ENGINE_VERSION}</dd>
                     </div>
                   </dl>
                 </div>
                 {/* Group C — Status */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Status
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Status</dt>
+                      <dt className={META_DT}>Status</dt>
                       <dd className="mt-0.5">
                         <span
-                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                          className={`${STATUS_PILL_BASE} ${
                             runStatus === "Complete"
-                              ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200"
-                              : "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200"
+                              ? STATUS_PILL_SUCCESS
+                              : STATUS_PILL_WARN
                           }`}
                         >
                           {runStatus}
@@ -1067,13 +1151,13 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Run Data Completeness</dt>
+                      <dt className={META_DT}>Run Data Completeness</dt>
                       <dd className="mt-0.5">
                         <span
-                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+                          className={`${STATUS_PILL_BASE} ${
                             runDataCompleteness === "Complete"
-                              ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200"
-                              : "bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-200"
+                              ? STATUS_PILL_SUCCESS
+                              : STATUS_PILL_NEUTRAL
                           }`}
                         >
                           {runDataCompleteness}
@@ -1081,10 +1165,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Reporting version</dt>
+                      <dt className={META_DT}>Reporting version</dt>
                       <dd className="mt-0.5">
                         {reportingDbRow?.locked_for_reporting ? (
-                          <span className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200">
+                          <span className={`${STATUS_PILL_BASE} ${STATUS_PILL_SUCCESS}`}>
                             Yes
                           </span>
                         ) : (
@@ -1095,20 +1179,20 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </dl>
                 </div>
                 {/* Group D — Audit */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Audit
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Triggered by</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Triggered by</dt>
+                      <dd className={META_DD}>
                         {triggeredBy ?? "Not available"}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Reporting month / year</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Reporting month / year</dt>
+                      <dd className={META_DD}>
                         {(() => {
                           if (!reportingDbRow?.report_month) {
                             return (
@@ -1125,16 +1209,16 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Locked by</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Locked by</dt>
+                      <dd className={META_DD}>
                         {(reportingLockedByLabel ?? reportingDbRow?.locked_by?.trim()) || (
                           <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
                         )}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Locked on</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Locked on</dt>
+                      <dd className={META_DD}>
                         {reportingDbRow?.locked_at ? (
                           formatRunTimestamp(reportingDbRow.locked_at)
                         ) : (
@@ -1143,8 +1227,8 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Reporting note</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Reporting note</dt>
+                      <dd className={META_DD}>
                         {reportingDbRow?.lock_note?.trim() || (
                           <span className="text-neutral-500 dark:text-neutral-400">Not available</span>
                         )}
@@ -1158,21 +1242,21 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* RUN VERDICT: single summary from Simulation Warnings + Consistency Checks. Internal diagnostic only. */}
           <section
-            className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden"
+            className={SECTION_SHELL_MT6}
             aria-label="Run verdict"
           >
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+            <h2 className={SECTION_HEADER}>
               RUN VERDICT
             </h2>
-            <div className="p-4 space-y-2">
+            <div className={`${SECTION_BODY} space-y-2`}>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span
                   className={
                     runVerdict.status === "Healthy run"
-                      ? "text-emerald-700 dark:text-emerald-400 font-medium"
+                      ? STATUS_TEXT_SUCCESS
                       : runVerdict.status === "Valid with warnings"
-                        ? "text-amber-700 dark:text-amber-400 font-medium"
-                        : "text-red-700 dark:text-red-400 font-medium"
+                        ? STATUS_TEXT_WARN
+                        : STATUS_TEXT_FAIL
                   }
                 >
                   {runVerdict.status}
@@ -1192,40 +1276,40 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* Risk Register Snapshot: risk set that fed the run (current.risks). Counts and mix validate input. */}
           <section
-            className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden"
+            className={SECTION_SHELL_MT6}
             aria-label="Risk register snapshot"
           >
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+            <h2 className={SECTION_HEADER}>
               Risk Register Snapshot
             </h2>
-            <div className="p-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm">
+            <div className={SECTION_BODY}>
+              <div className={META_GRID_4}>
                 {/* Risk Volume */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Risk Volume
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Total risks</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Total risks</dt>
+                      <dd className={META_DD}>
                         {snapshotRiskStats.total.toLocaleString()}
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Risks in run</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                      <dt className={META_DT}>Risks in run</dt>
+                      <dd className={META_DD}>
                         {snapshotRiskStats.totalInRun.toLocaleString()}
                       </dd>
                     </div>
                   </dl>
                 </div>
                 {/* Status (each risk in exactly one status; % of total) */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Status
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     {(
                       [
                         { key: "draft" as const, label: "Draft" },
@@ -1243,12 +1327,12 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           : 0;
                       return (
                         <div key={key}>
-                          <dt className="text-neutral-500 dark:text-neutral-400 font-normal">
+                          <dt className={META_DT}>
                             {label}
                           </dt>
-                          <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                          <dd className={META_DD}>
                             {count.toLocaleString()}
-                            <span className="text-neutral-500 dark:text-neutral-400 font-normal ml-1">
+                            <span className={META_INLINE_NOTE}>
                               ({pct}%)
                             </span>
                           </dd>
@@ -1258,11 +1342,11 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </dl>
                 </div>
                 {/* Risk Mix Pre */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Risk Mix Pre
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     {[
                       { key: "both" as const, label: "Risks with both time & cost" },
                       { key: "costOnly" as const, label: "Risks with cost only" },
@@ -1272,10 +1356,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       const pct = snapshotRiskStats.totalInRun > 0 ? Math.round((count / snapshotRiskStats.totalInRun) * 100) : 0;
                       return (
                         <div key={key}>
-                          <dt className="text-neutral-500 dark:text-neutral-400 font-normal">{label}</dt>
-                          <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                          <dt className={META_DT}>{label}</dt>
+                          <dd className={META_DD}>
                             {count.toLocaleString()}
-                            <span className="text-neutral-500 dark:text-neutral-400 font-normal ml-1">({pct}%)</span>
+                            <span className={META_INLINE_NOTE}>({pct}%)</span>
                           </dd>
                         </div>
                       );
@@ -1283,11 +1367,11 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </dl>
                 </div>
                 {/* Risk Mix Post */}
-                <div className="space-y-3">
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                <div className={META_GROUP}>
+                  <div className={META_GROUP_TITLE}>
                     Risk Mix Post
                   </div>
-                  <dl className="space-y-2 m-0">
+                  <dl className={META_DL}>
                     {[
                       { key: "both" as const, label: "Risks with both time & cost" },
                       { key: "costOnly" as const, label: "Risks with cost only" },
@@ -1297,10 +1381,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       const pct = snapshotRiskStats.totalInRun > 0 ? Math.round((count / snapshotRiskStats.totalInRun) * 100) : 0;
                       return (
                         <div key={key}>
-                          <dt className="text-neutral-500 dark:text-neutral-400 font-normal">{label}</dt>
-                          <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200">
+                          <dt className={META_DT}>{label}</dt>
+                          <dd className={META_DD}>
                             {count.toLocaleString()}
-                            <span className="text-neutral-500 dark:text-neutral-400 font-normal ml-1">({pct}%)</span>
+                            <span className={META_INLINE_NOTE}>({pct}%)</span>
                           </dd>
                         </div>
                       );
@@ -1313,68 +1397,68 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— SIMULATION: Monte Carlo outputs ——— */}
           {/* Cost Distribution: percentiles from neutral run. Source: neutralMc.costSamples or snapshot summary. */}
-          <section className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+          <section className={SECTION_SHELL_MT6}>
+            <h2 className={SECTION_HEADER}>
               Cost Distribution
             </h2>
-            <div className="p-4">
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+            <div className={SECTION_BODY}>
+              <div className={DIST_META_ROW}>
                 <span>Model: {distributionPercentiles.meta.baselineName}</span>
                 <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
                 <span>Sample size: {distributionPercentiles.meta.costSampleSize != null ? distributionPercentiles.meta.costSampleSize.toLocaleString() : "Not available"}</span>
               </div>
-              <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm m-0">
+              <dl className={DIST_PERCENTILES_GRID}>
                 {PERCENTILE_POINTS.map((p) => {
                   const value = distributionPercentiles.cost[p];
                   return (
                     <div key={p}>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P{p}</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                      <dt className={DIST_DT}>P{p}</dt>
+                      <dd className={DIST_DD}>
                         {value != null && Number.isFinite(value) ? formatCost(value) : "—"}
                       </dd>
                     </div>
                   );
                 })}
               </dl>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 mb-3">
+              <p className={DIST_HELPER_TEXT}>
                 P0 = minimum, P100 = maximum simulated outcome.
               </p>
-              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs m-0 border-t border-neutral-200 dark:border-neutral-700 pt-3">
+              <dl className={DIST_STATS_GRID}>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Mean</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>Mean</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.costStats.mean != null && Number.isFinite(distributionPercentiles.costStats.mean)
                       ? formatCost(distributionPercentiles.costStats.mean)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Standard deviation</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>Standard deviation</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.costStats.stdDev != null && Number.isFinite(distributionPercentiles.costStats.stdDev)
                       ? formatCost(distributionPercentiles.costStats.stdDev)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P50–P80 gap</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>P50–P80 gap</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.costStats.p50P80Gap != null && Number.isFinite(distributionPercentiles.costStats.p50P80Gap)
                       ? formatCost(distributionPercentiles.costStats.p50P80Gap)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P90–P50 gap</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>P90–P50 gap</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.costStats.p90P50Gap != null && Number.isFinite(distributionPercentiles.costStats.p90P50Gap)
                       ? formatCost(distributionPercentiles.costStats.p90P50Gap)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P10–P90 range</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>P10–P90 range</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.costStats.p10P90Range != null && Number.isFinite(distributionPercentiles.costStats.p10P90Range)
                       ? formatCost(distributionPercentiles.costStats.p10P90Range)
                       : "Not available"}
@@ -1385,68 +1469,68 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </section>
 
           {/* Schedule Distribution: percentiles from neutral run. Source: neutralMc.timeSamples or snapshot summary. */}
-          <section className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+          <section className={SECTION_SHELL_MT6}>
+            <h2 className={SECTION_HEADER}>
               Schedule Distribution
             </h2>
-            <div className="p-4">
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400 mb-3">
+            <div className={SECTION_BODY}>
+              <div className={DIST_META_ROW}>
                 <span>Model: {distributionPercentiles.meta.baselineName}</span>
                 <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
                 <span>Sample size: {distributionPercentiles.meta.timeSampleSize != null ? distributionPercentiles.meta.timeSampleSize.toLocaleString() : "Not available"}</span>
               </div>
-              <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm m-0">
+              <dl className={DIST_PERCENTILES_GRID}>
                 {PERCENTILE_POINTS.map((p) => {
                   const value = distributionPercentiles.schedule[p];
                   return (
                     <div key={p}>
-                      <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P{p}</dt>
-                      <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                      <dt className={DIST_DT}>P{p}</dt>
+                      <dd className={DIST_DD}>
                         {value != null && Number.isFinite(value) ? formatDurationDays(value) : "—"}
                       </dd>
                     </div>
                   );
                 })}
               </dl>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 mb-3">
+              <p className={DIST_HELPER_TEXT}>
                 P0 = minimum, P100 = maximum simulated outcome.
               </p>
-              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs m-0 border-t border-neutral-200 dark:border-neutral-700 pt-3">
+              <dl className={DIST_STATS_GRID}>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Mean</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>Mean</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.scheduleStats.mean != null && Number.isFinite(distributionPercentiles.scheduleStats.mean)
                       ? formatDurationDays(distributionPercentiles.scheduleStats.mean)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">Standard deviation</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>Standard deviation</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.scheduleStats.stdDev != null && Number.isFinite(distributionPercentiles.scheduleStats.stdDev)
                       ? formatDurationDays(distributionPercentiles.scheduleStats.stdDev)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P50–P80 gap</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>P50–P80 gap</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.scheduleStats.p50P80Gap != null && Number.isFinite(distributionPercentiles.scheduleStats.p50P80Gap)
                       ? formatDurationDays(distributionPercentiles.scheduleStats.p50P80Gap)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P90–P50 gap</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>P90–P50 gap</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.scheduleStats.p90P50Gap != null && Number.isFinite(distributionPercentiles.scheduleStats.p90P50Gap)
                       ? formatDurationDays(distributionPercentiles.scheduleStats.p90P50Gap)
                       : "Not available"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-neutral-500 dark:text-neutral-400 font-normal">P10–P90 range</dt>
-                  <dd className="mt-0.5 text-neutral-800 dark:text-neutral-200 m-0">
+                  <dt className={DIST_DT}>P10–P90 range</dt>
+                  <dd className={DIST_DD}>
                     {distributionPercentiles.scheduleStats.p10P90Range != null && Number.isFinite(distributionPercentiles.scheduleStats.p10P90Range)
                       ? formatDurationDays(distributionPercentiles.scheduleStats.p10P90Range)
                       : "Not available"}
@@ -1458,10 +1542,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— SIMULATION INTEGRITY: Monte Carlo distribution diagnostics ——— */}
           <section
-            className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden"
+            className={SECTION_SHELL_MT6}
             aria-label="Simulation integrity"
           >
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+            <h2 className={SECTION_HEADER}>
               Simulation Integrity
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
@@ -1470,91 +1554,91 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
             <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-0.5 pb-2 m-0">
               Kurtosis is raw (normal ≈ 3), not excess kurtosis. CV = std dev / mean.
             </p>
-            <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className={`${SECTION_BODY} grid grid-cols-1 lg:grid-cols-2 gap-4`}>
               {/* Cost distribution diagnostics */}
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 m-0">
+              <div className={`rounded-lg ${SUB_PANEL_SHELL_BASE}`}>
+                <h3 className={`${SUB_PANEL_HEADER_BASE} m-0`}>
                   Cost distribution diagnostics
                 </h3>
-                <div className="p-3">
+                <div className={SUB_PANEL_BODY}>
                   {simulationIntegrity.cost ? (
-                    <table className="w-full text-sm border-collapse">
+                    <table className={DIAG_TABLE}>
                       <thead>
-                        <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                          <th className="text-left py-1.5 pr-2 font-medium text-neutral-500 dark:text-neutral-400">Metric</th>
-                          <th className="text-right py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400">Value</th>
-                          <th className="text-left py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400">Interpretation</th>
+                        <tr className={DIAG_THEAD_ROW}>
+                          <th className={DIAG_TH_LEFT_PR2}>Metric</th>
+                          <th className={DIAG_TH_RIGHT_PX2}>Value</th>
+                          <th className={DIAG_TH_LEFT_PL2}>Interpretation</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Sample size</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">{simulationIntegrity.cost.n.toLocaleString()}</td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.cost.sampleSizeInterpretation}</td>
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Sample size</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationIntegrity.cost.n.toLocaleString()}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.sampleSizeInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Mean</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Mean</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.mean != null && Number.isFinite(simulationIntegrity.cost.mean) ? formatCost(simulationIntegrity.cost.mean) : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Variance</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Variance</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.variance != null && Number.isFinite(simulationIntegrity.cost.variance)
                               ? simulationIntegrity.cost.variance.toLocaleString(undefined, { maximumFractionDigits: 0 })
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Standard deviation</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Standard deviation</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.stdDev != null && Number.isFinite(simulationIntegrity.cost.stdDev) ? formatCost(simulationIntegrity.cost.stdDev) : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Coefficient of variation (CV)</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Coefficient of variation (CV)</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.cv != null && Number.isFinite(simulationIntegrity.cost.cv)
                               ? simulationIntegrity.cost.cv.toFixed(2)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.cost.cvInterpretation}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.cvInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Skewness</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Skewness</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.skewness != null && Number.isFinite(simulationIntegrity.cost.skewness)
                               ? simulationIntegrity.cost.skewness.toFixed(2)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.cost.skewnessInterpretation}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.skewnessInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Kurtosis (raw, normal ≈ 3)</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Kurtosis (raw, normal ≈ 3)</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.kurtosis != null && Number.isFinite(simulationIntegrity.cost.kurtosis)
                               ? simulationIntegrity.cost.kurtosis.toFixed(2)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.cost.kurtosisInterpretation}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.kurtosisInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Minimum</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Minimum</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.min != null && Number.isFinite(simulationIntegrity.cost.min) ? formatCost(simulationIntegrity.cost.min) : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
                         <tr>
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Maximum</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                          <td className={DIAG_TD_LEFT_PR2}>Maximum</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.max != null && Number.isFinite(simulationIntegrity.cost.max) ? formatCost(simulationIntegrity.cost.max) : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1567,97 +1651,97 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
               </div>
 
               {/* Schedule distribution diagnostics */}
-              <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-                <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide px-3 py-2 border-b border-neutral-200 dark:border-neutral-700 m-0">
+              <div className={`rounded-lg ${SUB_PANEL_SHELL_BASE}`}>
+                <h3 className={`${SUB_PANEL_HEADER_BASE} m-0`}>
                   Schedule distribution diagnostics
                 </h3>
-                <div className="p-3">
+                <div className={SUB_PANEL_BODY}>
                   {simulationIntegrity.schedule ? (
-                    <table className="w-full text-sm border-collapse">
+                    <table className={DIAG_TABLE}>
                       <thead>
-                        <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                          <th className="text-left py-1.5 pr-2 font-medium text-neutral-500 dark:text-neutral-400">Metric</th>
-                          <th className="text-right py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400">Value</th>
-                          <th className="text-left py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400">Interpretation</th>
+                        <tr className={DIAG_THEAD_ROW}>
+                          <th className={DIAG_TH_LEFT_PR2}>Metric</th>
+                          <th className={DIAG_TH_RIGHT_PX2}>Value</th>
+                          <th className={DIAG_TH_LEFT_PL2}>Interpretation</th>
                         </tr>
                       </thead>
                       <tbody>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Sample size</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">{simulationIntegrity.schedule.n.toLocaleString()}</td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.schedule.sampleSizeInterpretation}</td>
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Sample size</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationIntegrity.schedule.n.toLocaleString()}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.sampleSizeInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Mean</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Mean</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.mean != null && Number.isFinite(simulationIntegrity.schedule.mean)
                               ? formatDurationDays(simulationIntegrity.schedule.mean)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Variance</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Variance</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.variance != null && Number.isFinite(simulationIntegrity.schedule.variance)
                               ? simulationIntegrity.schedule.variance.toLocaleString(undefined, { maximumFractionDigits: 1 })
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Standard deviation</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Standard deviation</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.stdDev != null && Number.isFinite(simulationIntegrity.schedule.stdDev)
                               ? formatDurationDays(simulationIntegrity.schedule.stdDev)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Coefficient of variation (CV)</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Coefficient of variation (CV)</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.cv != null && Number.isFinite(simulationIntegrity.schedule.cv)
                               ? simulationIntegrity.schedule.cv.toFixed(2)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.schedule.cvInterpretation}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.cvInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Skewness</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Skewness</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.skewness != null && Number.isFinite(simulationIntegrity.schedule.skewness)
                               ? simulationIntegrity.schedule.skewness.toFixed(2)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.schedule.skewnessInterpretation}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.skewnessInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Kurtosis (raw, normal ≈ 3)</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Kurtosis (raw, normal ≈ 3)</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.kurtosis != null && Number.isFinite(simulationIntegrity.schedule.kurtosis)
                               ? simulationIntegrity.schedule.kurtosis.toFixed(2)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">{simulationIntegrity.schedule.kurtosisInterpretation}</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.kurtosisInterpretation}</td>
                         </tr>
-                        <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Minimum</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                        <tr className={DIAG_TBODY_ROW}>
+                          <td className={DIAG_TD_LEFT_PR2}>Minimum</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.min != null && Number.isFinite(simulationIntegrity.schedule.min)
                               ? formatDurationDays(simulationIntegrity.schedule.min)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
                         <tr>
-                          <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Maximum</td>
-                          <td className="text-right py-1.5 px-2 tabular-nums">
+                          <td className={DIAG_TD_LEFT_PR2}>Maximum</td>
+                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.max != null && Number.isFinite(simulationIntegrity.schedule.max)
                               ? formatDurationDays(simulationIntegrity.schedule.max)
                               : "—"}
                           </td>
-                          <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1673,16 +1757,16 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— SIMULATION ASSUMPTIONS: input quality checks for Monte Carlo readiness ——— */}
           <section
-            className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden"
+            className={SECTION_SHELL_MT6}
             aria-label="Simulation assumptions"
           >
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+            <h2 className={SECTION_HEADER}>
               Simulation Assumptions
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
               Input quality checks for Monte Carlo readiness
             </p>
-            <div className="p-4 space-y-4">
+            <div className={`${SECTION_BODY} space-y-4`}>
               {/* Simulation Warnings: derived only from existing assumption counts. High = no variability > 3 or missing probabilities; Review = unchanged mitigation or min = max. */}
               {(() => {
                 const c = simulationAssumptionCounts;
@@ -1724,38 +1808,38 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   });
                 }
                 return (
-                  <div className="rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-                    <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide px-3 py-2 border-b border-neutral-200 dark:border-neutral-700">
+                  <div className={`rounded ${SUB_PANEL_SHELL_BASE}`}>
+                    <div className={SUB_PANEL_HEADER_BASE}>
                       Simulation Warnings
                     </div>
-                    <div className="p-3">
+                    <div className={SUB_PANEL_BODY}>
                       {warnings.length === 0 ? (
                         <p className="text-sm text-neutral-600 dark:text-neutral-400 m-0">
                           No material input warnings detected
                         </p>
                       ) : (
-                        <table className="w-full text-sm border-collapse">
+                        <table className={DIAG_TABLE}>
                           <thead>
-                            <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                              <th className="text-left py-1 pr-2 font-medium text-neutral-500 dark:text-neutral-400 w-20">Severity</th>
-                              <th className="text-left py-1 pl-2 font-medium text-neutral-500 dark:text-neutral-400">Message</th>
+                            <tr className={DIAG_THEAD_ROW}>
+                              <th className={DIAG_WARN_TH_SEVERITY}>Severity</th>
+                              <th className={DIAG_WARN_TH_MESSAGE}>Message</th>
                             </tr>
                           </thead>
                           <tbody>
                             {warnings.map((w, i) => (
-                              <tr key={i} className="border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0">
-                                <td className="py-1.5 pr-2 align-top">
+                              <tr key={i} className={DIAG_TBODY_ROW_LAST}>
+                                <td className={DIAG_TD_ALIGN_TOP}>
                                   <span
                                     className={
                                       w.severity === "High"
-                                        ? "text-red-700 dark:text-red-400 font-medium"
-                                        : "text-amber-700 dark:text-amber-400 font-medium"
+                                        ? STATUS_TEXT_FAIL
+                                        : STATUS_TEXT_WARN
                                     }
                                   >
                                     {w.severity}
                                   </span>
                                 </td>
-                                <td className="py-1.5 pl-2 text-neutral-700 dark:text-neutral-300">{w.message}</td>
+                                <td className={`${DIAG_TD_LEFT_PR2} pl-2 pr-0`}>{w.message}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1765,39 +1849,39 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </div>
                 );
               })()}
-              <table className="w-full text-sm border-collapse">
+              <table className={DIAG_TABLE}>
                 <thead>
-                  <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                    <th className="text-left py-1.5 pr-2 font-medium text-neutral-500 dark:text-neutral-400">Metric</th>
-                    <th className="text-right py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400">Count</th>
-                    <th className="text-left py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400">Interpretation</th>
+                  <tr className={DIAG_THEAD_ROW}>
+                    <th className={DIAG_TH_LEFT_PR2}>Metric</th>
+                    <th className={DIAG_TH_RIGHT_PX2}>Count</th>
+                    <th className={DIAG_TH_LEFT_PL2}>Interpretation</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Total risks in run</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.totalInRun}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Total risks in run</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.totalInRun}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with cost range</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.withCostRange}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with cost range</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withCostRange}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with schedule range</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.withScheduleRange}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with schedule range</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withScheduleRange}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with both ranges</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.withBothRanges}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">Higher = stronger simulation readiness</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with both ranges</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withBothRanges}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>Higher = stronger simulation readiness</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with no variability</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.withNoVariability}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with no variability</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withNoVariability}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
                       {simulationAssumptionCounts.withNoVariability === 0
                         ? "Good"
                         : simulationAssumptionCounts.withNoVariability <= 3
@@ -1805,51 +1889,51 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           : "High — may reduce Monte Carlo realism"}
                     </td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with min = max cost</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.withMinEqualsMaxCost}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">Zero spread on cost</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with min = max cost</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withMinEqualsMaxCost}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>Zero spread on cost</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with min = max schedule</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.withMinEqualsMaxSchedule}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">Zero spread on schedule</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with min = max schedule</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withMinEqualsMaxSchedule}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>Zero spread on schedule</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with missing pre probability</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.missingPreProbability}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with missing pre probability</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.missingPreProbability}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
                       {simulationAssumptionCounts.missingPreProbability === 0 ? "Good" : "Data gap"}
                     </td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with missing post probability</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.missingPostProbability}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with missing post probability</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.missingPostProbability}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
                       {simulationAssumptionCounts.missingPostProbability === 0 ? "Good" : "Data gap"}
                     </td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with unchanged mitigation</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.unchangedMitigation}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with unchanged mitigation</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.unchangedMitigation}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
                       {simulationAssumptionCounts.unchangedMitigation === 0 ? "Good" : "Review mitigation assumptions"}
                     </td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with cost-only profile</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.costOnlyProfile}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with cost-only profile</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.costOnlyProfile}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                   </tr>
-                  <tr className="border-b border-neutral-100 dark:border-neutral-700/50">
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with schedule-only profile</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.scheduleOnlyProfile}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                  <tr className={DIAG_TBODY_ROW}>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with schedule-only profile</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.scheduleOnlyProfile}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                   </tr>
                   <tr>
-                    <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">Risks with cost + schedule profile</td>
-                    <td className="text-right py-1.5 px-2 tabular-nums">{simulationAssumptionCounts.costAndScheduleProfile}</td>
-                    <td className="py-1.5 pl-2 text-neutral-500 dark:text-neutral-400">—</td>
+                    <td className={DIAG_TD_LEFT_PR2}>Risks with cost + schedule profile</td>
+                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.costAndScheduleProfile}</td>
+                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
                   </tr>
                 </tbody>
               </table>
@@ -1858,37 +1942,37 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— CONSISTENCY CHECKS: cross-section reconciliation ——— */}
           <section
-            className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden"
+            className={SECTION_SHELL_MT6}
             aria-label="Consistency checks"
           >
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+            <h2 className={SECTION_HEADER}>
               Consistency Checks
             </h2>
             <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
               Cross-section reconciliation checks
             </p>
-            <div className="p-4">
-              <table className="w-full text-sm border-collapse">
+            <div className={SECTION_BODY}>
+              <table className={DIAG_TABLE}>
                 <thead>
-                  <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                    <th className="text-left py-1.5 pr-2 font-medium text-neutral-500 dark:text-neutral-400">Check</th>
-                    <th className="text-left py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400">Result</th>
-                    <th className="text-right py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400 w-20">Status</th>
+                  <tr className={DIAG_THEAD_ROW}>
+                    <th className={DIAG_TH_LEFT_PR2}>Check</th>
+                    <th className={DIAG_TH_LEFT_PX2}>Result</th>
+                    <th className={DIAG_TH_RIGHT_PL2_W20}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {consistencyChecks.map((row, i) => (
-                    <tr key={i} className="border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0">
-                      <td className="py-1.5 pr-2 text-neutral-700 dark:text-neutral-300">{row.check}</td>
-                      <td className="py-1.5 px-2 text-neutral-600 dark:text-neutral-400 tabular-nums">{row.result}</td>
+                    <tr key={i} className={DIAG_TBODY_ROW_LAST}>
+                      <td className={DIAG_TD_LEFT_PR2}>{row.check}</td>
+                      <td className={DIAG_TD_LEFT_PX2_MUTED}>{row.result}</td>
                       <td className="py-1.5 pl-2 text-right">
                         <span
                           className={
                             row.status === "PASS"
-                              ? "text-emerald-700 dark:text-emerald-400 font-medium"
+                              ? STATUS_TEXT_SUCCESS
                               : row.status === "WARN"
-                                ? "text-amber-700 dark:text-amber-400 font-medium"
-                                : "text-red-700 dark:text-red-400 font-medium"
+                                ? STATUS_TEXT_WARN
+                                : STATUS_TEXT_FAIL
                           }
                         >
                           {row.status}
@@ -1903,11 +1987,11 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— ANALYSIS: why the results occur ——— */}
           {/* Simulation Drivers: cost from forwardExposure.results.neutral.topDrivers; schedule from current.risks by simMeanDays/expectedDays. */}
-          <section className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+          <section className={SECTION_SHELL_MT6}>
+            <h2 className={SECTION_HEADER}>
               Simulation Drivers
             </h2>
-            <div className="p-4 space-y-6">
+            <div className={`${SECTION_BODY} space-y-6`}>
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
                   <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
@@ -1917,50 +2001,50 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     Contribution % = each row&apos;s share of total portfolio exposure (neutral baseline). Denominator = forward exposure engine neutral total.
                   </p>
                 </div>
-                <div className="overflow-x-auto rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)]">
-                  <table className="w-full text-sm border-collapse">
+                <div className={DRIVER_TABLE_WRAP}>
+                  <table className={DRIVER_TABLE}>
                     <thead>
-                      <tr className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50">
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Rank</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Risk name</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Impact type</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Category</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Total impact</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Contribution %</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Pre-mitigation</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Post-mitigation</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Delta</th>
+                      <tr className={DRIVER_HEAD_ROW}>
+                        <th className={DRIVER_TH_LEFT}>Rank</th>
+                        <th className={DRIVER_TH_LEFT}>Risk name</th>
+                        <th className={DRIVER_TH_LEFT}>Impact type</th>
+                        <th className={DRIVER_TH_LEFT}>Category</th>
+                        <th className={DRIVER_TH_RIGHT}>Total impact</th>
+                        <th className={DRIVER_TH_RIGHT}>Contribution %</th>
+                        <th className={DRIVER_TH_RIGHT}>Pre-mitigation</th>
+                        <th className={DRIVER_TH_RIGHT}>Post-mitigation</th>
+                        <th className={DRIVER_TH_RIGHT}>Delta</th>
                       </tr>
                     </thead>
                     <tbody>
                       {costDrivers.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="py-3 px-3 text-sm text-neutral-500 dark:text-neutral-400">
+                          <td colSpan={9} className={DRIVER_EMPTY}>
                             No cost drivers. Run simulation to populate.
                           </td>
                         </tr>
                       ) : (
                         costDrivers.map((d) => (
-                          <tr key={d.riskId} className="border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0">
-                            <td className="py-1.5 px-3 text-neutral-600 dark:text-neutral-400 tabular-nums">{d.rank}</td>
-                            <td className="py-1.5 px-3 text-neutral-800 dark:text-neutral-200 max-w-[200px] truncate" title={d.riskName}>
+                          <tr key={d.riskId} className={DRIVER_ROW}>
+                            <td className={DRIVER_CELL_RANK}>{d.rank}</td>
+                            <td className={DRIVER_CELL_NAME} title={d.riskName}>
                               {d.riskName}
                             </td>
-                            <td className="py-1.5 px-3 text-neutral-500 dark:text-neutral-400">{d.impactType}</td>
-                            <td className="py-1.5 px-3 text-neutral-500 dark:text-neutral-400">{d.category}</td>
-                            <td className="py-1.5 px-3 text-right text-neutral-800 dark:text-neutral-200 font-medium tabular-nums">
+                            <td className={DRIVER_CELL_MUTED}>{d.impactType}</td>
+                            <td className={DRIVER_CELL_MUTED}>{d.category}</td>
+                            <td className={DRIVER_CELL_VALUE}>
                               {formatCost(d.total)}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-500 dark:text-neutral-400 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC_MUTED}>
                               {d.contributionPct != null ? `${d.contributionPct.toFixed(1)}%` : "—"}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC}>
                               {formatCost(d.preMitigation)}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC}>
                               {formatCost(d.postMitigation)}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC}>
                               {formatCost(d.delta)}
                             </td>
                           </tr>
@@ -1979,50 +2063,50 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     Contribution % = each row&apos;s share of total schedule impact (sum of simMeanDays/expectedDays over risks in run).
                   </p>
                 </div>
-                <div className="overflow-x-auto rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)]">
-                  <table className="w-full text-sm border-collapse">
+                <div className={DRIVER_TABLE_WRAP}>
+                  <table className={DRIVER_TABLE}>
                     <thead>
-                      <tr className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50">
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Rank</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Risk name</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Impact type</th>
-                        <th className="text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Category</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Total impact</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Contribution %</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Pre-mitigation</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Post-mitigation</th>
-                        <th className="text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Delta</th>
+                      <tr className={DRIVER_HEAD_ROW}>
+                        <th className={DRIVER_TH_LEFT}>Rank</th>
+                        <th className={DRIVER_TH_LEFT}>Risk name</th>
+                        <th className={DRIVER_TH_LEFT}>Impact type</th>
+                        <th className={DRIVER_TH_LEFT}>Category</th>
+                        <th className={DRIVER_TH_RIGHT}>Total impact</th>
+                        <th className={DRIVER_TH_RIGHT}>Contribution %</th>
+                        <th className={DRIVER_TH_RIGHT}>Pre-mitigation</th>
+                        <th className={DRIVER_TH_RIGHT}>Post-mitigation</th>
+                        <th className={DRIVER_TH_RIGHT}>Delta</th>
                       </tr>
                     </thead>
                     <tbody>
                       {scheduleDrivers.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="py-3 px-3 text-sm text-neutral-500 dark:text-neutral-400">
+                          <td colSpan={9} className={DRIVER_EMPTY}>
                             No schedule drivers. Run simulation to populate.
                           </td>
                         </tr>
                       ) : (
                         scheduleDrivers.map((d) => (
-                          <tr key={d.riskId} className="border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0">
-                            <td className="py-1.5 px-3 text-neutral-600 dark:text-neutral-400 tabular-nums">{d.rank}</td>
-                            <td className="py-1.5 px-3 text-neutral-800 dark:text-neutral-200 max-w-[200px] truncate" title={d.riskName}>
+                          <tr key={d.riskId} className={DRIVER_ROW}>
+                            <td className={DRIVER_CELL_RANK}>{d.rank}</td>
+                            <td className={DRIVER_CELL_NAME} title={d.riskName}>
                               {d.riskName}
                             </td>
-                            <td className="py-1.5 px-3 text-neutral-500 dark:text-neutral-400">{d.impactType}</td>
-                            <td className="py-1.5 px-3 text-neutral-500 dark:text-neutral-400">{d.category}</td>
-                            <td className="py-1.5 px-3 text-right text-neutral-800 dark:text-neutral-200 font-medium tabular-nums">
+                            <td className={DRIVER_CELL_MUTED}>{d.impactType}</td>
+                            <td className={DRIVER_CELL_MUTED}>{d.category}</td>
+                            <td className={DRIVER_CELL_VALUE}>
                               {formatDurationDays(d.totalDays)}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-500 dark:text-neutral-400 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC_MUTED}>
                               {d.contributionPct != null ? `${d.contributionPct.toFixed(1)}%` : "—"}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC}>
                               {formatDurationDays(d.preMitigation)}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC}>
                               {formatDurationDays(d.postMitigation)}
                             </td>
-                            <td className="py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums">
+                            <td className={DRIVER_CELL_NUMERIC}>
                               {d.delta < 0
                                 ? `−${formatDurationDays(-d.delta)}`
                                 : formatDurationDays(d.delta)}
@@ -2040,21 +2124,21 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {/* ——— EXPOSURE: project-level summary from forward exposure engine ——— */}
           {/* Baseline Exposure: answers "What exposure does the project currently carry?"
               All values from computePortfolioExposure (forward exposure engine); total = sum of risk curves. */}
-          <section className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+          <section className={SECTION_SHELL_MT6}>
+            <h2 className={SECTION_HEADER}>
               Baseline Exposure
             </h2>
-            <div className="p-4">
+            <div className={SECTION_BODY}>
               {/* Core exposure metrics from neutral baseline only. */}
               {(() => {
                 const expectedTotal = forwardExposure.result?.total ?? 0;
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-4">
-                    <div className="rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-                      <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+                    <div className={H_TILE_WRAP}>
+                      <div className={H_TILE_LABEL}>
                         Expected exposure
                       </div>
-                      <div className="mt-0.5 text-base font-semibold tabular-nums">{formatCost(expectedTotal)}</div>
+                      <div className={H_TILE_VALUE}>{formatCost(expectedTotal)}</div>
                       <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 m-0">Neutral baseline total (forward exposure engine)</p>
                     </div>
                   </div>
@@ -2070,7 +2154,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 const hhi = selectedResult?.concentration?.hhi ?? 0;
                 return (
                   <div className="mb-4">
-                    <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-1">
+                    <div className={H_SUBSECTION_TITLE}>
                       Exposure concentration
                     </div>
                     <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm m-0">
@@ -2082,22 +2166,22 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 );
               })()}
               {/* Top risk drivers contributing to exposure: from portfolio.topDrivers. */}
-              <div className="rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+              <div className={H_TILE_WRAP}>
+                <div className={H_SUBSECTION_TITLE}>
                   Top risk drivers (exposure)
                 </div>
-                <ul className="space-y-2 text-sm m-0">
+                <ul className={H_COMPACT_LIST}>
                   {(selectedResult?.topDrivers ?? []).slice(0, 5).map((d) => {
                     const title = risks.find((r) => r.id === d.riskId)?.title ?? d.riskId;
                     return (
-                      <li key={d.riskId} className="flex justify-between items-baseline gap-2">
-                        <span className="text-neutral-800 dark:text-neutral-200 truncate">{title}</span>
-                        <span className="font-medium text-neutral-700 dark:text-neutral-300 shrink-0 tabular-nums">{formatCost(d.total)}</span>
+                      <li key={d.riskId} className={H_COMPACT_LIST_ROW}>
+                        <span className={H_COMPACT_LIST_NAME}>{title}</span>
+                        <span className={H_COMPACT_LIST_VALUE}>{formatCost(d.total)}</span>
                       </li>
                     );
                   })}
                   {(selectedResult?.topDrivers ?? []).length === 0 && (
-                    <li className="text-neutral-500 dark:text-neutral-400">No drivers</li>
+                    <li className={H_EMPTY_LIST_MUTED}>No drivers</li>
                   )}
                 </ul>
               </div>
@@ -2106,15 +2190,15 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— FORWARD LOOKING: how exposure evolves over the project timeline ——— */}
           {/* Forecasting: exposure over time from forward exposure engine; pressure/early-warning from risk forecast. */}
-          <section className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+          <section className={SECTION_SHELL_MT6}>
+            <h2 className={SECTION_HEADER}>
               Forecasting
             </h2>
-            <div className="p-4 space-y-4">
+            <div className={`${SECTION_BODY} space-y-4`}>
               {/* Exposure over time: real data from portfolio.monthlyTotal (forward exposure engine). Cost only. */}
               {selectedResult?.monthlyTotal && selectedResult.monthlyTotal.length > 0 && (
                 <div>
-                  <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                  <div className={H_SUBSECTION_TITLE}>
                     Cost exposure over time
                   </div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 m-0">
@@ -2169,7 +2253,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
               )}
               {/* Placeholders for metrics not yet provided by engine. */}
               <div>
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                <div className={H_SUBSECTION_TITLE}>
                   Planned metrics (engine)
                 </div>
                 <ul className="text-sm text-neutral-500 dark:text-neutral-400 space-y-1 m-0 list-disc list-inside">
@@ -2179,7 +2263,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
               </div>
               {/* Forward pressure and early warning: from risk forecast engine (validates risk trajectory). Separate data layer from exposure engine above. */}
               <div>
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                <div className={H_SUBSECTION_TITLE}>
                   Pressure and trajectory
                 </div>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 m-0">
@@ -2213,11 +2297,11 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— DECISION SUPPORT: effect of mitigations ——— */}
           {/* Mitigation Results: pre/post exposure and reduction from cost drivers (validates mitigation logic). */}
-          <section className="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <h2 className="text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+          <section className={SECTION_SHELL_MT6}>
+            <h2 className={SECTION_HEADER}>
               Mitigation Results
             </h2>
-            <div className="p-4">
+            <div className={SECTION_BODY}>
               {costDrivers.length > 0 ? (
                 (() => {
                   const preTotal = costDrivers.reduce((s, d) => s + d.preMitigation, 0);
@@ -2231,33 +2315,33 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         Cost exposure only (schedule not included). Pre = sum(cost drivers preMitigation), post = sum(cost drivers postMitigation). Validates mitigation impact on cost.
                       </p>
                       <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
-                        <div className="rounded border border-neutral-200 dark:border-neutral-700 p-3">
-                          <dt className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Pre-mitigation cost exposure</dt>
+                        <div className={H_TILE_WRAP}>
+                          <dt className={H_TILE_LABEL}>Pre-mitigation cost exposure</dt>
                           <dd className="mt-0.5 font-semibold tabular-nums">{formatCost(preTotal)}</dd>
                         </div>
-                        <div className="rounded border border-neutral-200 dark:border-neutral-700 p-3">
-                          <dt className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Post-mitigation cost exposure</dt>
+                        <div className={H_TILE_WRAP}>
+                          <dt className={H_TILE_LABEL}>Post-mitigation cost exposure</dt>
                           <dd className="mt-0.5 font-semibold tabular-nums">{formatCost(postTotal)}</dd>
                         </div>
-                        <div className="rounded border border-neutral-200 dark:border-neutral-700 p-3">
-                          <dt className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Cost exposure reduction</dt>
+                        <div className={H_TILE_WRAP}>
+                          <dt className={H_TILE_LABEL}>Cost exposure reduction</dt>
                           <dd className="mt-0.5 font-semibold tabular-nums">{formatCost(reduction)}</dd>
                         </div>
-                        <div className="rounded border border-neutral-200 dark:border-neutral-700 p-3">
-                          <dt className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Reduction %</dt>
+                        <div className={H_TILE_WRAP}>
+                          <dt className={H_TILE_LABEL}>Reduction %</dt>
                           <dd className="mt-0.5 font-semibold tabular-nums">{preTotal > 0 ? `${reductionPct.toFixed(1)}%` : "—"}</dd>
                         </div>
                       </dl>
                       {topByReduction.length > 0 && (
                         <div>
-                          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+                          <div className={H_SUBSECTION_TITLE}>
                             Top mitigations by cost exposure reduction
                           </div>
-                          <ul className="space-y-2 text-sm m-0">
+                          <ul className={H_COMPACT_LIST}>
                             {topByReduction.map((d) => (
-                              <li key={d.riskId} className="flex justify-between items-baseline gap-2">
-                                <span className="text-neutral-800 dark:text-neutral-200 truncate">{d.riskName}</span>
-                                <span className="font-medium text-neutral-700 dark:text-neutral-300 shrink-0 tabular-nums">{formatCost(d.delta)}</span>
+                              <li key={d.riskId} className={H_COMPACT_LIST_ROW}>
+                                <span className={H_COMPACT_LIST_NAME}>{d.riskName}</span>
+                                <span className={H_COMPACT_LIST_VALUE}>{formatCost(d.delta)}</span>
                               </li>
                             ))}
                           </ul>
@@ -2267,7 +2351,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   );
                 })()
               ) : (
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
+                <p className={H_EMPTY_MUTED}>
                   No cost drivers. Run simulation to see mitigation results.
                 </p>
               )}
