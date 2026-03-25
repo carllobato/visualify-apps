@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../../packages/design-system/src/styles/globals.css";
 @source "../../packages/design-system/src";
 
 /* Class-based dark mode for manual toggle; .dark / .light set by ThemeProvider + inline script */
