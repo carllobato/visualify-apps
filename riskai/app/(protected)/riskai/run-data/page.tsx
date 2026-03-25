@@ -1,7 +1,21 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
-import { Button } from "@visualify/design-system";
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  Section,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@visualify/design-system";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { listRisks } from "@/lib/db/risks";
 import { portfolioMomentumSummary } from "@/domain/risk/risk.logic";
@@ -879,14 +893,6 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       counts: { highWarnings, reviewWarnings, passCount, warnCount, failCount },
     };
   }, [consistencyChecks, simulationAssumptionCounts]);
-
-  const SECTION_SHELL_BASE =
-    "rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden";
-  const SECTION_SHELL_MT6 = `mt-6 ${SECTION_SHELL_BASE}`;
-  const SECTION_SHELL_MT8 = `mt-8 ${SECTION_SHELL_BASE}`;
-  const SECTION_HEADER =
-    "text-base font-semibold text-neutral-800 dark:text-neutral-200 px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0";
-  const SECTION_BODY = "p-4";
   const PAGE_CONTAINER = "p-6";
   const PAGE_TITLE = "text-2xl font-semibold m-0";
   const PAGE_ACTION_ROW = "mt-6 flex flex-wrap items-center gap-3";
@@ -895,10 +901,6 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const STATUS_TEXT_FAIL_ALERT_WIDE = "text-sm text-red-700 dark:text-red-300 font-medium max-w-2xl";
   const STATUS_TEXT_WARN_ALERT_WIDE = "text-sm text-amber-700 dark:text-amber-300 font-medium max-w-2xl";
   const EMPTY_STATE_TEXT = "mt-8 text-neutral-600 dark:text-neutral-400";
-  const STATUS_PILL_BASE = "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium";
-  const STATUS_PILL_SUCCESS = "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200";
-  const STATUS_PILL_WARN = "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200";
-  const STATUS_PILL_NEUTRAL = "bg-neutral-200 dark:bg-neutral-600 text-neutral-800 dark:text-neutral-200";
   const STATUS_TEXT_SUCCESS = "text-emerald-700 dark:text-emerald-400 font-medium";
   const STATUS_TEXT_WARN = "text-amber-700 dark:text-amber-400 font-medium";
   const STATUS_TEXT_FAIL = "text-red-700 dark:text-red-400 font-medium";
@@ -956,13 +958,6 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const H_COMPACT_LIST_VALUE = "font-medium text-neutral-700 dark:text-neutral-300 shrink-0 tabular-nums";
   const H_EMPTY_MUTED = "text-sm text-neutral-500 dark:text-neutral-400 m-0";
   const H_EMPTY_LIST_MUTED = "text-neutral-500 dark:text-neutral-400";
-
-  // Small sub-panel / card pattern reused in a few sections.
-  const SUB_PANEL_SHELL_BASE =
-    "border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden";
-  const SUB_PANEL_HEADER_BASE =
-    "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide px-3 py-2 border-b border-neutral-200 dark:border-neutral-700";
-  const SUB_PANEL_BODY = "p-3";
 
   return (
     <main className={PAGE_CONTAINER}>
@@ -1063,227 +1058,209 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         <>
           {/* ——— BASELINE: inputs that were run ——— */}
           {/* Run Metadata: run identity, config, status. Source: current (simulation run snapshot). */}
-          <section
-            className={SECTION_SHELL_MT8}
-            aria-label="Run metadata"
-          >
-            <h2 className={SECTION_HEADER}>
-              Run Metadata
-            </h2>
-            <div className={SECTION_BODY}>
-              <div className={META_GRID_4}>
-                {/* Group A — Identity */}
-                <div className={META_GROUP}>
-                  <div className={META_GROUP_TITLE}>
-                    Identity
+          <Section aria-label="Run metadata">
+            <Card>
+              <CardHeader>
+                <CardTitle>Run Metadata</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className={META_GRID_4}>
+                  {/* Group A — Identity */}
+                  <div className={META_GROUP}>
+                    <div className={META_GROUP_TITLE}>
+                      Identity
+                    </div>
+                    <dl className={META_DL}>
+                      <div>
+                        <dt className={META_DT}>Run ID</dt>
+                        <dd className={META_DD_MONO_BREAKALL} title={current.id?.startsWith("sim_") ? "Legacy run; re-run for canonical ID" : current.id || "Not yet persisted"}>
+                          {current.id && !current.id.startsWith("sim_") ? current.id : "Pending save"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Project ID</dt>
+                        <dd className={META_DD_MONO_BREAKALL}>
+                          {projectId ?? "Not available"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Project name</dt>
+                        <dd className={META_DD_TRUNCATE} title={projectName ?? undefined}>
+                          {projectName?.trim() || "Not available"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Run timestamp</dt>
+                        <dd className={META_DD}>
+                          {current.timestampIso ? formatRunTimestamp(current.timestampIso) : "Not available"}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
-                  <dl className={META_DL}>
-                    <div>
-                      <dt className={META_DT}>Run ID</dt>
-                      <dd className={META_DD_MONO_BREAKALL} title={current.id?.startsWith("sim_") ? "Legacy run; re-run for canonical ID" : current.id || "Not yet persisted"}>
-                        {current.id && !current.id.startsWith("sim_") ? current.id : "Pending save"}
-                      </dd>
+                  {/* Group B — Configuration */}
+                  <div className={META_GROUP}>
+                    <div className={META_GROUP_TITLE}>
+                      Configuration
                     </div>
-                    <div>
-                      <dt className={META_DT}>Project ID</dt>
-                      <dd className={META_DD_MONO_BREAKALL}>
-                        {projectId ?? "Not available"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Project name</dt>
-                      <dd className={META_DD_TRUNCATE} title={projectName ?? undefined}>
-                        {projectName?.trim() || "Not available"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Run timestamp</dt>
-                      <dd className={META_DD}>
-                        {current.timestampIso ? formatRunTimestamp(current.timestampIso) : "Not available"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-                {/* Group B — Configuration */}
-                <div className={META_GROUP}>
-                  <div className={META_GROUP_TITLE}>
-                    Configuration
+                    <dl className={META_DL}>
+                      <div>
+                        <dt className={META_DT}>Iterations</dt>
+                        <dd className={META_DD}>
+                          {current.iterations != null ? current.iterations.toLocaleString() : neutralMc?.iterationCount != null ? neutralMc.iterationCount.toLocaleString() : "Not available"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Run duration</dt>
+                        <dd className={META_DD}>
+                          {typeof current.runDurationMs === "number"
+                            ? `${(current.runDurationMs / 1000).toFixed(2)} s`
+                            : "Not available"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Simulation Engine Version</dt>
+                        <dd className={META_DD}>{SIMULATION_ENGINE_VERSION}</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <dl className={META_DL}>
-                    <div>
-                      <dt className={META_DT}>Iterations</dt>
-                      <dd className={META_DD}>
-                        {current.iterations != null ? current.iterations.toLocaleString() : neutralMc?.iterationCount != null ? neutralMc.iterationCount.toLocaleString() : "Not available"}
-                      </dd>
+                  {/* Group C — Status */}
+                  <div className={META_GROUP}>
+                    <div className={META_GROUP_TITLE}>
+                      Status
                     </div>
-                    <div>
-                      <dt className={META_DT}>Run duration</dt>
-                      <dd className={META_DD}>
-                        {typeof current.runDurationMs === "number"
-                          ? `${(current.runDurationMs / 1000).toFixed(2)} s`
-                          : "Not available"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Simulation Engine Version</dt>
-                      <dd className={META_DD}>{SIMULATION_ENGINE_VERSION}</dd>
-                    </div>
-                  </dl>
-                </div>
-                {/* Group C — Status */}
-                <div className={META_GROUP}>
-                  <div className={META_GROUP_TITLE}>
-                    Status
+                    <dl className={META_DL}>
+                      <div>
+                        <dt className={META_DT}>Status</dt>
+                        <dd className="mt-0.5">
+                          <Badge variant={runStatus === "Complete" ? "success" : "warning"}>{runStatus}</Badge>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Run Data Completeness</dt>
+                        <dd className="mt-0.5">
+                          <Badge variant={runDataCompleteness === "Complete" ? "success" : "neutral"}>
+                            {runDataCompleteness}
+                          </Badge>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Reporting version</dt>
+                        <dd className="mt-0.5">
+                          {reportingDbRow?.locked_for_reporting ? (
+                            <Badge variant="success">Yes</Badge>
+                          ) : (
+                            <span className="text-neutral-500 dark:text-neutral-400">No</span>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
-                  <dl className={META_DL}>
-                    <div>
-                      <dt className={META_DT}>Status</dt>
-                      <dd className="mt-0.5">
-                        <span
-                          className={`${STATUS_PILL_BASE} ${
-                            runStatus === "Complete"
-                              ? STATUS_PILL_SUCCESS
-                              : STATUS_PILL_WARN
-                          }`}
-                        >
-                          {runStatus}
-                        </span>
-                      </dd>
+                  {/* Group D — Audit */}
+                  <div className={META_GROUP}>
+                    <div className={META_GROUP_TITLE}>
+                      Audit
                     </div>
-                    <div>
-                      <dt className={META_DT}>Run Data Completeness</dt>
-                      <dd className="mt-0.5">
-                        <span
-                          className={`${STATUS_PILL_BASE} ${
-                            runDataCompleteness === "Complete"
-                              ? STATUS_PILL_SUCCESS
-                              : STATUS_PILL_NEUTRAL
-                          }`}
-                        >
-                          {runDataCompleteness}
-                        </span>
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Reporting version</dt>
-                      <dd className="mt-0.5">
-                        {reportingDbRow?.locked_for_reporting ? (
-                          <span className={`${STATUS_PILL_BASE} ${STATUS_PILL_SUCCESS}`}>
-                            Yes
-                          </span>
-                        ) : (
-                          <span className="text-neutral-500 dark:text-neutral-400">No</span>
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-                {/* Group D — Audit */}
-                <div className={META_GROUP}>
-                  <div className={META_GROUP_TITLE}>
-                    Audit
-                  </div>
-                  <dl className={META_DL}>
-                    <div>
-                      <dt className={META_DT}>Triggered by</dt>
-                      <dd className={META_DD}>
-                        {triggeredBy ?? "Not available"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Reporting month / year</dt>
-                      <dd className={META_DD}>
-                        {(() => {
-                          if (!reportingDbRow?.report_month) {
-                            return (
+                    <dl className={META_DL}>
+                      <div>
+                        <dt className={META_DT}>Triggered by</dt>
+                        <dd className={META_DD}>
+                          {triggeredBy ?? "Not available"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Reporting month / year</dt>
+                        <dd className={META_DD}>
+                          {(() => {
+                            if (!reportingDbRow?.report_month) {
+                              return (
+                                <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
+                              );
+                            }
+                            const label = formatReportMonthLabel(reportingDbRow.report_month);
+                            return label !== "—" ? (
+                              label
+                            ) : (
                               <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
                             );
-                          }
-                          const label = formatReportMonthLabel(reportingDbRow.report_month);
-                          return label !== "—" ? (
-                            label
+                          })()}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Locked by</dt>
+                        <dd className={META_DD}>
+                          {(reportingLockedByLabel ?? reportingDbRow?.locked_by?.trim()) || (
+                            <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Locked on</dt>
+                        <dd className={META_DD}>
+                          {reportingDbRow?.locked_at ? (
+                            formatRunTimestamp(reportingDbRow.locked_at)
                           ) : (
                             <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
-                          );
-                        })()}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Locked by</dt>
-                      <dd className={META_DD}>
-                        {(reportingLockedByLabel ?? reportingDbRow?.locked_by?.trim()) || (
-                          <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Locked on</dt>
-                      <dd className={META_DD}>
-                        {reportingDbRow?.locked_at ? (
-                          formatRunTimestamp(reportingDbRow.locked_at)
-                        ) : (
-                          <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className={META_DT}>Reporting note</dt>
-                      <dd className={META_DD}>
-                        {reportingDbRow?.lock_note?.trim() || (
-                          <span className="text-neutral-500 dark:text-neutral-400">Not available</span>
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={META_DT}>Reporting note</dt>
+                        <dd className={META_DD}>
+                          {reportingDbRow?.lock_note?.trim() || (
+                            <span className="text-neutral-500 dark:text-neutral-400">Not available</span>
+                          )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </section>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* RUN VERDICT: single summary from Simulation Warnings + Consistency Checks. Internal diagnostic only. */}
-          <section
-            className={SECTION_SHELL_MT6}
-            aria-label="Run verdict"
-          >
-            <h2 className={SECTION_HEADER}>
-              RUN VERDICT
-            </h2>
-            <div className={`${SECTION_BODY} space-y-2`}>
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span
-                  className={
-                    runVerdict.status === "Healthy run"
-                      ? STATUS_TEXT_SUCCESS
-                      : runVerdict.status === "Valid with warnings"
-                        ? STATUS_TEXT_WARN
-                        : STATUS_TEXT_FAIL
-                  }
-                >
-                  {runVerdict.status}
-                </span>
-                <span className="text-neutral-500 dark:text-neutral-400">—</span>
-                <span className="text-sm text-neutral-700 dark:text-neutral-300">{runVerdict.summary}</span>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
-                <span>High warnings: {runVerdict.counts.highWarnings}</span>
-                <span>Review warnings: {runVerdict.counts.reviewWarnings}</span>
-                <span>PASS checks: {runVerdict.counts.passCount}</span>
-                <span>WARN checks: {runVerdict.counts.warnCount}</span>
-                <span>FAIL checks: {runVerdict.counts.failCount}</span>
-              </div>
-            </div>
-          </section>
+          <Section className="mt-6" aria-label="Run verdict">
+            <Card>
+              <CardHeader>
+                <CardTitle>RUN VERDICT</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <span
+                      className={
+                        runVerdict.status === "Healthy run"
+                          ? STATUS_TEXT_SUCCESS
+                          : runVerdict.status === "Valid with warnings"
+                            ? STATUS_TEXT_WARN
+                            : STATUS_TEXT_FAIL
+                      }
+                    >
+                      {runVerdict.status}
+                    </span>
+                    <span className="text-neutral-500 dark:text-neutral-400">—</span>
+                    <span className="text-sm text-neutral-700 dark:text-neutral-300">{runVerdict.summary}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+                    <span>High warnings: {runVerdict.counts.highWarnings}</span>
+                    <span>Review warnings: {runVerdict.counts.reviewWarnings}</span>
+                    <span>PASS checks: {runVerdict.counts.passCount}</span>
+                    <span>WARN checks: {runVerdict.counts.warnCount}</span>
+                    <span>FAIL checks: {runVerdict.counts.failCount}</span>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* Risk Register Snapshot: risk set that fed the run (current.risks). Counts and mix validate input. */}
-          <section
-            className={SECTION_SHELL_MT6}
-            aria-label="Risk register snapshot"
-          >
-            <h2 className={SECTION_HEADER}>
-              Risk Register Snapshot
-            </h2>
-            <div className={SECTION_BODY}>
-              <div className={META_GRID_4}>
+          <Section className="mt-6" aria-label="Risk register snapshot">
+            <Card>
+              <CardHeader>
+                <CardTitle>Risk Register Snapshot</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className={META_GRID_4}>
                 {/* Risk Volume */}
                 <div className={META_GROUP}>
                   <div className={META_GROUP_TITLE}>
@@ -1392,381 +1369,386 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </dl>
                 </div>
               </div>
-            </div>
-          </section>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— SIMULATION: Monte Carlo outputs ——— */}
           {/* Cost Distribution: percentiles from neutral run. Source: neutralMc.costSamples or snapshot summary. */}
-          <section className={SECTION_SHELL_MT6}>
-            <h2 className={SECTION_HEADER}>
-              Cost Distribution
-            </h2>
-            <div className={SECTION_BODY}>
-              <div className={DIST_META_ROW}>
-                <span>Model: {distributionPercentiles.meta.baselineName}</span>
-                <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
-                <span>Sample size: {distributionPercentiles.meta.costSampleSize != null ? distributionPercentiles.meta.costSampleSize.toLocaleString() : "Not available"}</span>
-              </div>
-              <dl className={DIST_PERCENTILES_GRID}>
-                {PERCENTILE_POINTS.map((p) => {
-                  const value = distributionPercentiles.cost[p];
-                  return (
-                    <div key={p}>
-                      <dt className={DIST_DT}>P{p}</dt>
-                      <dd className={DIST_DD}>
-                        {value != null && Number.isFinite(value) ? formatCost(value) : "—"}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-              <p className={DIST_HELPER_TEXT}>
-                P0 = minimum, P100 = maximum simulated outcome.
-              </p>
-              <dl className={DIST_STATS_GRID}>
-                <div>
-                  <dt className={DIST_DT}>Mean</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.costStats.mean != null && Number.isFinite(distributionPercentiles.costStats.mean)
-                      ? formatCost(distributionPercentiles.costStats.mean)
-                      : "Not available"}
-                  </dd>
+          <Section className="mt-6" aria-label="Cost distribution">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost Distribution</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className={DIST_META_ROW}>
+                  <span>Model: {distributionPercentiles.meta.baselineName}</span>
+                  <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
+                  <span>Sample size: {distributionPercentiles.meta.costSampleSize != null ? distributionPercentiles.meta.costSampleSize.toLocaleString() : "Not available"}</span>
                 </div>
-                <div>
-                  <dt className={DIST_DT}>Standard deviation</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.costStats.stdDev != null && Number.isFinite(distributionPercentiles.costStats.stdDev)
-                      ? formatCost(distributionPercentiles.costStats.stdDev)
-                      : "Not available"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DIST_DT}>P50–P80 gap</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.costStats.p50P80Gap != null && Number.isFinite(distributionPercentiles.costStats.p50P80Gap)
-                      ? formatCost(distributionPercentiles.costStats.p50P80Gap)
-                      : "Not available"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DIST_DT}>P90–P50 gap</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.costStats.p90P50Gap != null && Number.isFinite(distributionPercentiles.costStats.p90P50Gap)
-                      ? formatCost(distributionPercentiles.costStats.p90P50Gap)
-                      : "Not available"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DIST_DT}>P10–P90 range</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.costStats.p10P90Range != null && Number.isFinite(distributionPercentiles.costStats.p10P90Range)
-                      ? formatCost(distributionPercentiles.costStats.p10P90Range)
-                      : "Not available"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </section>
+                <dl className={DIST_PERCENTILES_GRID}>
+                  {PERCENTILE_POINTS.map((p) => {
+                    const value = distributionPercentiles.cost[p];
+                    return (
+                      <div key={p}>
+                        <dt className={DIST_DT}>P{p}</dt>
+                        <dd className={DIST_DD}>
+                          {value != null && Number.isFinite(value) ? formatCost(value) : "—"}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+                <p className={DIST_HELPER_TEXT}>
+                  P0 = minimum, P100 = maximum simulated outcome.
+                </p>
+                <dl className={DIST_STATS_GRID}>
+                  <div>
+                    <dt className={DIST_DT}>Mean</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.costStats.mean != null && Number.isFinite(distributionPercentiles.costStats.mean)
+                        ? formatCost(distributionPercentiles.costStats.mean)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>Standard deviation</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.costStats.stdDev != null && Number.isFinite(distributionPercentiles.costStats.stdDev)
+                        ? formatCost(distributionPercentiles.costStats.stdDev)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>P50–P80 gap</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.costStats.p50P80Gap != null && Number.isFinite(distributionPercentiles.costStats.p50P80Gap)
+                        ? formatCost(distributionPercentiles.costStats.p50P80Gap)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>P90–P50 gap</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.costStats.p90P50Gap != null && Number.isFinite(distributionPercentiles.costStats.p90P50Gap)
+                        ? formatCost(distributionPercentiles.costStats.p90P50Gap)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>P10–P90 range</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.costStats.p10P90Range != null && Number.isFinite(distributionPercentiles.costStats.p10P90Range)
+                        ? formatCost(distributionPercentiles.costStats.p10P90Range)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                </dl>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* Schedule Distribution: percentiles from neutral run. Source: neutralMc.timeSamples or snapshot summary. */}
-          <section className={SECTION_SHELL_MT6}>
-            <h2 className={SECTION_HEADER}>
-              Schedule Distribution
-            </h2>
-            <div className={SECTION_BODY}>
-              <div className={DIST_META_ROW}>
-                <span>Model: {distributionPercentiles.meta.baselineName}</span>
-                <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
-                <span>Sample size: {distributionPercentiles.meta.timeSampleSize != null ? distributionPercentiles.meta.timeSampleSize.toLocaleString() : "Not available"}</span>
-              </div>
-              <dl className={DIST_PERCENTILES_GRID}>
-                {PERCENTILE_POINTS.map((p) => {
-                  const value = distributionPercentiles.schedule[p];
-                  return (
-                    <div key={p}>
-                      <dt className={DIST_DT}>P{p}</dt>
-                      <dd className={DIST_DD}>
-                        {value != null && Number.isFinite(value) ? formatDurationDays(value) : "—"}
-                      </dd>
-                    </div>
-                  );
-                })}
-              </dl>
-              <p className={DIST_HELPER_TEXT}>
-                P0 = minimum, P100 = maximum simulated outcome.
-              </p>
-              <dl className={DIST_STATS_GRID}>
-                <div>
-                  <dt className={DIST_DT}>Mean</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.scheduleStats.mean != null && Number.isFinite(distributionPercentiles.scheduleStats.mean)
-                      ? formatDurationDays(distributionPercentiles.scheduleStats.mean)
-                      : "Not available"}
-                  </dd>
+          <Section className="mt-6" aria-label="Schedule distribution">
+            <Card>
+              <CardHeader>
+                <CardTitle>Schedule Distribution</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className={DIST_META_ROW}>
+                  <span>Model: {distributionPercentiles.meta.baselineName}</span>
+                  <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
+                  <span>Sample size: {distributionPercentiles.meta.timeSampleSize != null ? distributionPercentiles.meta.timeSampleSize.toLocaleString() : "Not available"}</span>
                 </div>
-                <div>
-                  <dt className={DIST_DT}>Standard deviation</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.scheduleStats.stdDev != null && Number.isFinite(distributionPercentiles.scheduleStats.stdDev)
-                      ? formatDurationDays(distributionPercentiles.scheduleStats.stdDev)
-                      : "Not available"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DIST_DT}>P50–P80 gap</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.scheduleStats.p50P80Gap != null && Number.isFinite(distributionPercentiles.scheduleStats.p50P80Gap)
-                      ? formatDurationDays(distributionPercentiles.scheduleStats.p50P80Gap)
-                      : "Not available"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DIST_DT}>P90–P50 gap</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.scheduleStats.p90P50Gap != null && Number.isFinite(distributionPercentiles.scheduleStats.p90P50Gap)
-                      ? formatDurationDays(distributionPercentiles.scheduleStats.p90P50Gap)
-                      : "Not available"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className={DIST_DT}>P10–P90 range</dt>
-                  <dd className={DIST_DD}>
-                    {distributionPercentiles.scheduleStats.p10P90Range != null && Number.isFinite(distributionPercentiles.scheduleStats.p10P90Range)
-                      ? formatDurationDays(distributionPercentiles.scheduleStats.p10P90Range)
-                      : "Not available"}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-          </section>
+                <dl className={DIST_PERCENTILES_GRID}>
+                  {PERCENTILE_POINTS.map((p) => {
+                    const value = distributionPercentiles.schedule[p];
+                    return (
+                      <div key={p}>
+                        <dt className={DIST_DT}>P{p}</dt>
+                        <dd className={DIST_DD}>
+                          {value != null && Number.isFinite(value) ? formatDurationDays(value) : "—"}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+                <p className={DIST_HELPER_TEXT}>
+                  P0 = minimum, P100 = maximum simulated outcome.
+                </p>
+                <dl className={DIST_STATS_GRID}>
+                  <div>
+                    <dt className={DIST_DT}>Mean</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.scheduleStats.mean != null && Number.isFinite(distributionPercentiles.scheduleStats.mean)
+                        ? formatDurationDays(distributionPercentiles.scheduleStats.mean)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>Standard deviation</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.scheduleStats.stdDev != null && Number.isFinite(distributionPercentiles.scheduleStats.stdDev)
+                        ? formatDurationDays(distributionPercentiles.scheduleStats.stdDev)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>P50–P80 gap</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.scheduleStats.p50P80Gap != null && Number.isFinite(distributionPercentiles.scheduleStats.p50P80Gap)
+                        ? formatDurationDays(distributionPercentiles.scheduleStats.p50P80Gap)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>P90–P50 gap</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.scheduleStats.p90P50Gap != null && Number.isFinite(distributionPercentiles.scheduleStats.p90P50Gap)
+                        ? formatDurationDays(distributionPercentiles.scheduleStats.p90P50Gap)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={DIST_DT}>P10–P90 range</dt>
+                    <dd className={DIST_DD}>
+                      {distributionPercentiles.scheduleStats.p10P90Range != null && Number.isFinite(distributionPercentiles.scheduleStats.p10P90Range)
+                        ? formatDurationDays(distributionPercentiles.scheduleStats.p10P90Range)
+                        : "Not available"}
+                    </dd>
+                  </div>
+                </dl>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— SIMULATION INTEGRITY: Monte Carlo distribution diagnostics ——— */}
-          <section
-            className={SECTION_SHELL_MT6}
-            aria-label="Simulation integrity"
-          >
-            <h2 className={SECTION_HEADER}>
-              Simulation Integrity
-            </h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
-              Monte Carlo distribution diagnostics
-            </p>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-0.5 pb-2 m-0">
-              Kurtosis is raw (normal ≈ 3), not excess kurtosis. CV = std dev / mean.
-            </p>
-            <div className={`${SECTION_BODY} grid grid-cols-1 lg:grid-cols-2 gap-4`}>
+          <Section className="mt-6" aria-label="Simulation integrity">
+            <Card>
+              <CardHeader>
+                <CardTitle>Simulation Integrity</CardTitle>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
+                  Monte Carlo distribution diagnostics
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-0.5 pb-2 m-0">
+                  Kurtosis is raw (normal ≈ 3), not excess kurtosis. CV = std dev / mean.
+                </p>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Cost distribution diagnostics */}
-              <div className={`rounded-lg ${SUB_PANEL_SHELL_BASE}`}>
-                <h3 className={`${SUB_PANEL_HEADER_BASE} m-0`}>
-                  Cost distribution diagnostics
-                </h3>
-                <div className={SUB_PANEL_BODY}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Cost distribution diagnostics</CardTitle>
+                    </CardHeader>
+                    <CardBody>
                   {simulationIntegrity.cost ? (
-                    <table className={DIAG_TABLE}>
-                      <thead>
-                        <tr className={DIAG_THEAD_ROW}>
-                          <th className={DIAG_TH_LEFT_PR2}>Metric</th>
-                          <th className={DIAG_TH_RIGHT_PX2}>Value</th>
-                          <th className={DIAG_TH_LEFT_PL2}>Interpretation</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Sample size</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationIntegrity.cost.n.toLocaleString()}</td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.sampleSizeInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Mean</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                    <Table className={DIAG_TABLE}>
+                      <TableHead>
+                        <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                          <TableHeaderCell className={`${DIAG_TH_LEFT_PR2} pl-0`}>Metric</TableHeaderCell>
+                          <TableHeaderCell className={DIAG_TH_RIGHT_PX2}>Value</TableHeaderCell>
+                          <TableHeaderCell className={`${DIAG_TH_LEFT_PL2} pr-0`}>Interpretation</TableHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Sample size</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationIntegrity.cost.n.toLocaleString()}</TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.cost.sampleSizeInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Mean</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.mean != null && Number.isFinite(simulationIntegrity.cost.mean) ? formatCost(simulationIntegrity.cost.mean) : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Variance</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Variance</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.variance != null && Number.isFinite(simulationIntegrity.cost.variance)
                               ? simulationIntegrity.cost.variance.toLocaleString(undefined, { maximumFractionDigits: 0 })
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Standard deviation</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Standard deviation</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.stdDev != null && Number.isFinite(simulationIntegrity.cost.stdDev) ? formatCost(simulationIntegrity.cost.stdDev) : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Coefficient of variation (CV)</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Coefficient of variation (CV)</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.cv != null && Number.isFinite(simulationIntegrity.cost.cv)
                               ? simulationIntegrity.cost.cv.toFixed(2)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.cvInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Skewness</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.cost.cvInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Skewness</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.skewness != null && Number.isFinite(simulationIntegrity.cost.skewness)
                               ? simulationIntegrity.cost.skewness.toFixed(2)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.skewnessInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Kurtosis (raw, normal ≈ 3)</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.cost.skewnessInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Kurtosis (raw, normal ≈ 3)</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.kurtosis != null && Number.isFinite(simulationIntegrity.cost.kurtosis)
                               ? simulationIntegrity.cost.kurtosis.toFixed(2)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.cost.kurtosisInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Minimum</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.cost.kurtosisInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Minimum</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.min != null && Number.isFinite(simulationIntegrity.cost.min) ? formatCost(simulationIntegrity.cost.min) : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr>
-                          <td className={DIAG_TD_LEFT_PR2}>Maximum</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className="border-b-0">
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Maximum</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.max != null && Number.isFinite(simulationIntegrity.cost.max) ? formatCost(simulationIntegrity.cost.max) : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   ) : (
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
                       Diagnostics unavailable — sample data not stored for this run.
                     </p>
                   )}
-                </div>
-              </div>
+                    </CardBody>
+                  </Card>
 
               {/* Schedule distribution diagnostics */}
-              <div className={`rounded-lg ${SUB_PANEL_SHELL_BASE}`}>
-                <h3 className={`${SUB_PANEL_HEADER_BASE} m-0`}>
-                  Schedule distribution diagnostics
-                </h3>
-                <div className={SUB_PANEL_BODY}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Schedule distribution diagnostics</CardTitle>
+                    </CardHeader>
+                    <CardBody>
                   {simulationIntegrity.schedule ? (
-                    <table className={DIAG_TABLE}>
-                      <thead>
-                        <tr className={DIAG_THEAD_ROW}>
-                          <th className={DIAG_TH_LEFT_PR2}>Metric</th>
-                          <th className={DIAG_TH_RIGHT_PX2}>Value</th>
-                          <th className={DIAG_TH_LEFT_PL2}>Interpretation</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Sample size</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationIntegrity.schedule.n.toLocaleString()}</td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.sampleSizeInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Mean</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                    <Table className={DIAG_TABLE}>
+                      <TableHead>
+                        <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                          <TableHeaderCell className={`${DIAG_TH_LEFT_PR2} pl-0`}>Metric</TableHeaderCell>
+                          <TableHeaderCell className={DIAG_TH_RIGHT_PX2}>Value</TableHeaderCell>
+                          <TableHeaderCell className={`${DIAG_TH_LEFT_PL2} pr-0`}>Interpretation</TableHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Sample size</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationIntegrity.schedule.n.toLocaleString()}</TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.schedule.sampleSizeInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Mean</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.mean != null && Number.isFinite(simulationIntegrity.schedule.mean)
                               ? formatDurationDays(simulationIntegrity.schedule.mean)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Variance</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Variance</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.variance != null && Number.isFinite(simulationIntegrity.schedule.variance)
                               ? simulationIntegrity.schedule.variance.toLocaleString(undefined, { maximumFractionDigits: 1 })
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Standard deviation</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Standard deviation</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.stdDev != null && Number.isFinite(simulationIntegrity.schedule.stdDev)
                               ? formatDurationDays(simulationIntegrity.schedule.stdDev)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Coefficient of variation (CV)</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Coefficient of variation (CV)</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.cv != null && Number.isFinite(simulationIntegrity.schedule.cv)
                               ? simulationIntegrity.schedule.cv.toFixed(2)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.cvInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Skewness</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.schedule.cvInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Skewness</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.skewness != null && Number.isFinite(simulationIntegrity.schedule.skewness)
                               ? simulationIntegrity.schedule.skewness.toFixed(2)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.skewnessInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Kurtosis (raw, normal ≈ 3)</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.schedule.skewnessInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Kurtosis (raw, normal ≈ 3)</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.kurtosis != null && Number.isFinite(simulationIntegrity.schedule.kurtosis)
                               ? simulationIntegrity.schedule.kurtosis.toFixed(2)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>{simulationIntegrity.schedule.kurtosisInterpretation}</td>
-                        </tr>
-                        <tr className={DIAG_TBODY_ROW}>
-                          <td className={DIAG_TD_LEFT_PR2}>Minimum</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>{simulationIntegrity.schedule.kurtosisInterpretation}</TableCell>
+                        </TableRow>
+                        <TableRow className={DIAG_TBODY_ROW}>
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Minimum</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.min != null && Number.isFinite(simulationIntegrity.schedule.min)
                               ? formatDurationDays(simulationIntegrity.schedule.min)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                        <tr>
-                          <td className={DIAG_TD_LEFT_PR2}>Maximum</td>
-                          <td className={DIAG_TD_RIGHT_PX2_NUM}>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                        <TableRow className="border-b-0">
+                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Maximum</TableCell>
+                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.max != null && Number.isFinite(simulationIntegrity.schedule.max)
                               ? formatDurationDays(simulationIntegrity.schedule.max)
                               : "—"}
-                          </td>
-                          <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                        </tr>
-                      </tbody>
-                    </table>
+                          </TableCell>
+                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   ) : (
                     <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
                       Diagnostics unavailable — sample data not stored for this run.
                     </p>
                   )}
+                    </CardBody>
+                  </Card>
                 </div>
-              </div>
-            </div>
-          </section>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— SIMULATION ASSUMPTIONS: input quality checks for Monte Carlo readiness ——— */}
-          <section
-            className={SECTION_SHELL_MT6}
-            aria-label="Simulation assumptions"
-          >
-            <h2 className={SECTION_HEADER}>
-              Simulation Assumptions
-            </h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
-              Input quality checks for Monte Carlo readiness
-            </p>
-            <div className={`${SECTION_BODY} space-y-4`}>
+          <Section className="mt-6" aria-label="Simulation assumptions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Simulation Assumptions</CardTitle>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
+                  Input quality checks for Monte Carlo readiness
+                </p>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-4">
               {/* Simulation Warnings: derived only from existing assumption counts. High = no variability > 3 or missing probabilities; Review = unchanged mitigation or min = max. */}
               {(() => {
                 const c = simulationAssumptionCounts;
@@ -1808,27 +1790,27 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   });
                 }
                 return (
-                  <div className={`rounded ${SUB_PANEL_SHELL_BASE}`}>
-                    <div className={SUB_PANEL_HEADER_BASE}>
-                      Simulation Warnings
-                    </div>
-                    <div className={SUB_PANEL_BODY}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Simulation Warnings</CardTitle>
+                    </CardHeader>
+                    <CardBody>
                       {warnings.length === 0 ? (
                         <p className="text-sm text-neutral-600 dark:text-neutral-400 m-0">
                           No material input warnings detected
                         </p>
                       ) : (
-                        <table className={DIAG_TABLE}>
-                          <thead>
-                            <tr className={DIAG_THEAD_ROW}>
-                              <th className={DIAG_WARN_TH_SEVERITY}>Severity</th>
-                              <th className={DIAG_WARN_TH_MESSAGE}>Message</th>
-                            </tr>
-                          </thead>
-                          <tbody>
+                        <Table className={DIAG_TABLE}>
+                          <TableHead>
+                            <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                              <TableHeaderCell className={`${DIAG_WARN_TH_SEVERITY} pl-0`}>Severity</TableHeaderCell>
+                              <TableHeaderCell className={`${DIAG_WARN_TH_MESSAGE} pr-0`}>Message</TableHeaderCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
                             {warnings.map((w, i) => (
-                              <tr key={i} className={DIAG_TBODY_ROW_LAST}>
-                                <td className={DIAG_TD_ALIGN_TOP}>
+                              <TableRow key={i} className={DIAG_TBODY_ROW_LAST}>
+                                <TableCell className={`${DIAG_TD_ALIGN_TOP} pl-0`}>
                                   <span
                                     className={
                                       w.severity === "High"
@@ -1838,160 +1820,163 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                                   >
                                     {w.severity}
                                   </span>
-                                </td>
-                                <td className={`${DIAG_TD_LEFT_PR2} pl-2 pr-0`}>{w.message}</td>
-                              </tr>
+                                </TableCell>
+                                <TableCell className={`${DIAG_TD_LEFT_PR2} pl-2 pr-0`}>{w.message}</TableCell>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </Table>
                       )}
-                    </div>
-                  </div>
+                    </CardBody>
+                  </Card>
                 );
               })()}
-              <table className={DIAG_TABLE}>
-                <thead>
-                  <tr className={DIAG_THEAD_ROW}>
-                    <th className={DIAG_TH_LEFT_PR2}>Metric</th>
-                    <th className={DIAG_TH_RIGHT_PX2}>Count</th>
-                    <th className={DIAG_TH_LEFT_PL2}>Interpretation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Total risks in run</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.totalInRun}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with cost range</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withCostRange}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with schedule range</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withScheduleRange}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with both ranges</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withBothRanges}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>Higher = stronger simulation readiness</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with no variability</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withNoVariability}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
+              <Table className={DIAG_TABLE}>
+                <TableHead>
+                  <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                    <TableHeaderCell className={`${DIAG_TH_LEFT_PR2} pl-0`}>Metric</TableHeaderCell>
+                    <TableHeaderCell className={DIAG_TH_RIGHT_PX2}>Count</TableHeaderCell>
+                    <TableHeaderCell className={`${DIAG_TH_LEFT_PL2} pr-0`}>Interpretation</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Total risks in run</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.totalInRun}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with cost range</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withCostRange}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with schedule range</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withScheduleRange}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with both ranges</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withBothRanges}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>Higher = stronger simulation readiness</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with no variability</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withNoVariability}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>
                       {simulationAssumptionCounts.withNoVariability === 0
                         ? "Good"
                         : simulationAssumptionCounts.withNoVariability <= 3
                           ? "Review"
                           : "High — may reduce Monte Carlo realism"}
-                    </td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with min = max cost</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withMinEqualsMaxCost}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>Zero spread on cost</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with min = max schedule</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withMinEqualsMaxSchedule}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>Zero spread on schedule</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with missing pre probability</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.missingPreProbability}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with min = max cost</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withMinEqualsMaxCost}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>Zero spread on cost</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with min = max schedule</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.withMinEqualsMaxSchedule}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>Zero spread on schedule</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with missing pre probability</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.missingPreProbability}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>
                       {simulationAssumptionCounts.missingPreProbability === 0 ? "Good" : "Data gap"}
-                    </td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with missing post probability</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.missingPostProbability}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with missing post probability</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.missingPostProbability}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>
                       {simulationAssumptionCounts.missingPostProbability === 0 ? "Good" : "Data gap"}
-                    </td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with unchanged mitigation</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.unchangedMitigation}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with unchanged mitigation</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.unchangedMitigation}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>
                       {simulationAssumptionCounts.unchangedMitigation === 0 ? "Good" : "Review mitigation assumptions"}
-                    </td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with cost-only profile</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.costOnlyProfile}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                  </tr>
-                  <tr className={DIAG_TBODY_ROW}>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with schedule-only profile</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.scheduleOnlyProfile}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                  </tr>
-                  <tr>
-                    <td className={DIAG_TD_LEFT_PR2}>Risks with cost + schedule profile</td>
-                    <td className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.costAndScheduleProfile}</td>
-                    <td className={DIAG_TD_LEFT_PL2_MUTED}>—</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </section>
+                    </TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with cost-only profile</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.costOnlyProfile}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                  </TableRow>
+                  <TableRow className={DIAG_TBODY_ROW}>
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with schedule-only profile</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.scheduleOnlyProfile}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                  </TableRow>
+                  <TableRow className="border-b-0">
+                    <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Risks with cost + schedule profile</TableCell>
+                    <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>{simulationAssumptionCounts.costAndScheduleProfile}</TableCell>
+                    <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+                </div>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— CONSISTENCY CHECKS: cross-section reconciliation ——— */}
-          <section
-            className={SECTION_SHELL_MT6}
-            aria-label="Consistency checks"
-          >
-            <h2 className={SECTION_HEADER}>
-              Consistency Checks
-            </h2>
-            <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
-              Cross-section reconciliation checks
-            </p>
-            <div className={SECTION_BODY}>
-              <table className={DIAG_TABLE}>
-                <thead>
-                  <tr className={DIAG_THEAD_ROW}>
-                    <th className={DIAG_TH_LEFT_PR2}>Check</th>
-                    <th className={DIAG_TH_LEFT_PX2}>Result</th>
-                    <th className={DIAG_TH_RIGHT_PL2_W20}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {consistencyChecks.map((row, i) => (
-                    <tr key={i} className={DIAG_TBODY_ROW_LAST}>
-                      <td className={DIAG_TD_LEFT_PR2}>{row.check}</td>
-                      <td className={DIAG_TD_LEFT_PX2_MUTED}>{row.result}</td>
-                      <td className="py-1.5 pl-2 text-right">
-                        <span
-                          className={
-                            row.status === "PASS"
-                              ? STATUS_TEXT_SUCCESS
-                              : row.status === "WARN"
-                                ? STATUS_TEXT_WARN
-                                : STATUS_TEXT_FAIL
-                          }
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+          <Section className="mt-6" aria-label="Consistency checks">
+            <Card>
+              <CardHeader>
+                <CardTitle>Consistency Checks</CardTitle>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
+                  Cross-section reconciliation checks
+                </p>
+              </CardHeader>
+              <CardBody>
+                <Table className={DIAG_TABLE}>
+                  <TableHead>
+                    <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                      <TableHeaderCell className={DIAG_TH_LEFT_PR2}>Check</TableHeaderCell>
+                      <TableHeaderCell className={DIAG_TH_LEFT_PX2}>Result</TableHeaderCell>
+                      <TableHeaderCell className={DIAG_TH_RIGHT_PL2_W20}>Status</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {consistencyChecks.map((row, i) => (
+                      <TableRow key={i} className={DIAG_TBODY_ROW_LAST}>
+                        <TableCell className={DIAG_TD_LEFT_PR2}>{row.check}</TableCell>
+                        <TableCell className={DIAG_TD_LEFT_PX2_MUTED}>{row.result}</TableCell>
+                        <TableCell className="py-1.5 pl-2 text-right">
+                          <span
+                            className={
+                              row.status === "PASS"
+                                ? STATUS_TEXT_SUCCESS
+                                : row.status === "WARN"
+                                  ? STATUS_TEXT_WARN
+                                  : STATUS_TEXT_FAIL
+                            }
+                          >
+                            {row.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— ANALYSIS: why the results occur ——— */}
           {/* Simulation Drivers: cost from forwardExposure.results.neutral.topDrivers; schedule from current.risks by simMeanDays/expectedDays. */}
-          <section className={SECTION_SHELL_MT6}>
-            <h2 className={SECTION_HEADER}>
-              Simulation Drivers
-            </h2>
-            <div className={`${SECTION_BODY} space-y-6`}>
+          <Section className="mt-6" aria-label="Simulation drivers">
+            <Card>
+              <CardHeader>
+                <CardTitle>Simulation Drivers</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-6">
               <div>
                 <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
                   <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
@@ -2002,56 +1987,56 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </p>
                 </div>
                 <div className={DRIVER_TABLE_WRAP}>
-                  <table className={DRIVER_TABLE}>
-                    <thead>
-                      <tr className={DRIVER_HEAD_ROW}>
-                        <th className={DRIVER_TH_LEFT}>Rank</th>
-                        <th className={DRIVER_TH_LEFT}>Risk name</th>
-                        <th className={DRIVER_TH_LEFT}>Impact type</th>
-                        <th className={DRIVER_TH_LEFT}>Category</th>
-                        <th className={DRIVER_TH_RIGHT}>Total impact</th>
-                        <th className={DRIVER_TH_RIGHT}>Contribution %</th>
-                        <th className={DRIVER_TH_RIGHT}>Pre-mitigation</th>
-                        <th className={DRIVER_TH_RIGHT}>Post-mitigation</th>
-                        <th className={DRIVER_TH_RIGHT}>Delta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table className={DRIVER_TABLE}>
+                    <TableHead>
+                      <TableRow className={DRIVER_HEAD_ROW}>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Rank</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Risk name</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Impact type</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Category</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Total impact</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Contribution %</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Pre-mitigation</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Post-mitigation</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Delta</TableHeaderCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
                       {costDrivers.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className={DRIVER_EMPTY}>
+                        <TableRow className="border-b-0">
+                          <TableCell colSpan={9} className={DRIVER_EMPTY}>
                             No cost drivers. Run simulation to populate.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ) : (
                         costDrivers.map((d) => (
-                          <tr key={d.riskId} className={DRIVER_ROW}>
-                            <td className={DRIVER_CELL_RANK}>{d.rank}</td>
-                            <td className={DRIVER_CELL_NAME} title={d.riskName}>
+                          <TableRow key={d.riskId} className={DRIVER_ROW}>
+                            <TableCell className={DRIVER_CELL_RANK}>{d.rank}</TableCell>
+                            <TableCell className={DRIVER_CELL_NAME} title={d.riskName}>
                               {d.riskName}
-                            </td>
-                            <td className={DRIVER_CELL_MUTED}>{d.impactType}</td>
-                            <td className={DRIVER_CELL_MUTED}>{d.category}</td>
-                            <td className={DRIVER_CELL_VALUE}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{d.impactType}</TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{d.category}</TableCell>
+                            <TableCell className={DRIVER_CELL_VALUE}>
                               {formatCost(d.total)}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC_MUTED}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC_MUTED}>
                               {d.contributionPct != null ? `${d.contributionPct.toFixed(1)}%` : "—"}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
                               {formatCost(d.preMitigation)}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
                               {formatCost(d.postMitigation)}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
                               {formatCost(d.delta)}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))
                       )}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
               <div>
@@ -2064,71 +2049,74 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </p>
                 </div>
                 <div className={DRIVER_TABLE_WRAP}>
-                  <table className={DRIVER_TABLE}>
-                    <thead>
-                      <tr className={DRIVER_HEAD_ROW}>
-                        <th className={DRIVER_TH_LEFT}>Rank</th>
-                        <th className={DRIVER_TH_LEFT}>Risk name</th>
-                        <th className={DRIVER_TH_LEFT}>Impact type</th>
-                        <th className={DRIVER_TH_LEFT}>Category</th>
-                        <th className={DRIVER_TH_RIGHT}>Total impact</th>
-                        <th className={DRIVER_TH_RIGHT}>Contribution %</th>
-                        <th className={DRIVER_TH_RIGHT}>Pre-mitigation</th>
-                        <th className={DRIVER_TH_RIGHT}>Post-mitigation</th>
-                        <th className={DRIVER_TH_RIGHT}>Delta</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table className={DRIVER_TABLE}>
+                    <TableHead>
+                      <TableRow className={DRIVER_HEAD_ROW}>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Rank</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Risk name</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Impact type</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_LEFT}>Category</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Total impact</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Contribution %</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Pre-mitigation</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Post-mitigation</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Delta</TableHeaderCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
                       {scheduleDrivers.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} className={DRIVER_EMPTY}>
+                        <TableRow className="border-b-0">
+                          <TableCell colSpan={9} className={DRIVER_EMPTY}>
                             No schedule drivers. Run simulation to populate.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ) : (
                         scheduleDrivers.map((d) => (
-                          <tr key={d.riskId} className={DRIVER_ROW}>
-                            <td className={DRIVER_CELL_RANK}>{d.rank}</td>
-                            <td className={DRIVER_CELL_NAME} title={d.riskName}>
+                          <TableRow key={d.riskId} className={DRIVER_ROW}>
+                            <TableCell className={DRIVER_CELL_RANK}>{d.rank}</TableCell>
+                            <TableCell className={DRIVER_CELL_NAME} title={d.riskName}>
                               {d.riskName}
-                            </td>
-                            <td className={DRIVER_CELL_MUTED}>{d.impactType}</td>
-                            <td className={DRIVER_CELL_MUTED}>{d.category}</td>
-                            <td className={DRIVER_CELL_VALUE}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{d.impactType}</TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{d.category}</TableCell>
+                            <TableCell className={DRIVER_CELL_VALUE}>
                               {formatDurationDays(d.totalDays)}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC_MUTED}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC_MUTED}>
                               {d.contributionPct != null ? `${d.contributionPct.toFixed(1)}%` : "—"}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
                               {formatDurationDays(d.preMitigation)}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
                               {formatDurationDays(d.postMitigation)}
-                            </td>
-                            <td className={DRIVER_CELL_NUMERIC}>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
                               {d.delta < 0
                                 ? `−${formatDurationDays(-d.delta)}`
                                 : formatDurationDays(d.delta)}
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))
                       )}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
-            </div>
-          </section>
+                </div>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— EXPOSURE: project-level summary from forward exposure engine ——— */}
           {/* Baseline Exposure: answers "What exposure does the project currently carry?"
               All values from computePortfolioExposure (forward exposure engine); total = sum of risk curves. */}
-          <section className={SECTION_SHELL_MT6}>
-            <h2 className={SECTION_HEADER}>
-              Baseline Exposure
-            </h2>
-            <div className={SECTION_BODY}>
+          <Section className="mt-6" aria-label="Baseline exposure">
+            <Card>
+              <CardHeader>
+                <CardTitle>Baseline Exposure</CardTitle>
+              </CardHeader>
+              <CardBody>
               {/* Core exposure metrics from neutral baseline only. */}
               {(() => {
                 const expectedTotal = forwardExposure.result?.total ?? 0;
@@ -2185,16 +2173,19 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   )}
                 </ul>
               </div>
-            </div>
-          </section>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— FORWARD LOOKING: how exposure evolves over the project timeline ——— */}
           {/* Forecasting: exposure over time from forward exposure engine; pressure/early-warning from risk forecast. */}
-          <section className={SECTION_SHELL_MT6}>
-            <h2 className={SECTION_HEADER}>
-              Forecasting
-            </h2>
-            <div className={`${SECTION_BODY} space-y-4`}>
+          <Section className="mt-6" aria-label="Forecasting">
+            <Card>
+              <CardHeader>
+                <CardTitle>Forecasting</CardTitle>
+              </CardHeader>
+              <CardBody>
+                <div className="space-y-4">
               {/* Exposure over time: real data from portfolio.monthlyTotal (forward exposure engine). Cost only. */}
               {selectedResult?.monthlyTotal && selectedResult.monthlyTotal.length > 0 && (
                 <div>
@@ -2205,24 +2196,30 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     Source: forward exposure engine portfolio.monthlyTotal (sum of risk curves per month). Units: cost only.
                   </p>
                   <div className="overflow-x-auto rounded border border-neutral-200 dark:border-neutral-700">
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50">
-                          <th className="text-left py-1.5 px-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">Month</th>
+                    <Table className="w-full text-sm border-collapse">
+                      <TableHead>
+                        <TableRow className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50 border-[var(--ds-border)]">
+                          <TableHeaderCell className="text-left py-1.5 px-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                            Month
+                          </TableHeaderCell>
                           {selectedResult.monthlyTotal.slice(0, forwardExposure.horizonMonths).map((_, i) => (
-                            <th key={i} className="text-right py-1.5 px-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 tabular-nums">{i + 1}</th>
+                            <TableHeaderCell key={i} className="text-right py-1.5 px-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 tabular-nums">
+                              {i + 1}
+                            </TableHeaderCell>
                           ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="py-1.5 px-2 text-neutral-600 dark:text-neutral-400">Exposure</td>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow className="border-b-0">
+                          <TableCell className="py-1.5 px-2 text-neutral-600 dark:text-neutral-400">Exposure</TableCell>
                           {selectedResult.monthlyTotal.slice(0, forwardExposure.horizonMonths).map((v, i) => (
-                            <td key={i} className="text-right py-1.5 px-2 tabular-nums">{formatCost(v)}</td>
+                            <TableCell key={i} className="text-right py-1.5 px-2 tabular-nums">
+                              {formatCost(v)}
+                            </TableCell>
                           ))}
-                        </tr>
-                      </tbody>
-                    </table>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   </div>
                   {/* Peak exposure period: month index where monthly total is highest (1-based). */}
                   {(() => {
@@ -2292,16 +2289,19 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </div>
                 </dl>
               </div>
-            </div>
-          </section>
+                </div>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* ——— DECISION SUPPORT: effect of mitigations ——— */}
           {/* Mitigation Results: pre/post exposure and reduction from cost drivers (validates mitigation logic). */}
-          <section className={SECTION_SHELL_MT6}>
-            <h2 className={SECTION_HEADER}>
-              Mitigation Results
-            </h2>
-            <div className={SECTION_BODY}>
+          <Section className="mt-6" aria-label="Mitigation results">
+            <Card>
+              <CardHeader>
+                <CardTitle>Mitigation Results</CardTitle>
+              </CardHeader>
+              <CardBody>
               {costDrivers.length > 0 ? (
                 (() => {
                   const preTotal = costDrivers.reduce((s, d) => s + d.preMitigation, 0);
@@ -2355,8 +2355,9 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   No cost drivers. Run simulation to see mitigation results.
                 </p>
               )}
-            </div>
-          </section>
+              </CardBody>
+            </Card>
+          </Section>
 
           {/* Mitigation leverage (ROI): API; requires simulation snapshot. */}
           {snapshotNeutral ? (
