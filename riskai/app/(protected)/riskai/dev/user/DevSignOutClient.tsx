@@ -16,7 +16,7 @@ export default function DevSignOutClient() {
     <Button
       type="button"
       onClick={handleSignOut}
-      className="px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-700 text-sm font-medium"
+      className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm font-medium hover:bg-[var(--ds-surface-hover)]"
     >
       Sign Out
     </Button>

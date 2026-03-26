@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { intelligentDraftToRisk } from "@/domain/risk/risk.mapper";
 import { useRiskRegister } from "@/store/risk-register.store";
+import { Callout } from "@visualify/design-system";
 
 type Status = "idle" | "loading" | "error";
 
@@ -53,18 +54,18 @@ export function RiskExtractPanel({ hideTitle, showStatus = false }: RiskExtractP
 
   return (
     <div
-      className={hideTitle ? "" : "rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 mb-4"}
+      className={hideTitle ? "" : "rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 mb-4"}
       style={hideTitle ? undefined : { marginBottom: 16 }}
     >
       {!hideTitle && (
       <div className="flex flex-wrap items-center gap-2 mb-0">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+        <h2 className="text-lg font-semibold text-[var(--ds-text-primary)]">
           Generate Risks from text entry
         </h2>
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="ml-auto px-2 py-1 text-xs rounded border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-neutral-800 dark:hover:text-neutral-200 flex items-center gap-1"
+          className="ml-auto px-2 py-1 text-xs rounded border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] dark:hover:text-[var(--ds-text-secondary)] flex items-center gap-1"
           aria-expanded={expanded}
         >
           {expanded ? (
@@ -89,24 +90,33 @@ export function RiskExtractPanel({ hideTitle, showStatus = false }: RiskExtractP
             onChange={(e) => setDocumentText(e.target.value)}
             placeholder="Describe your risk including any mitigation, cost and time data."
             rows={6}
-            className="w-full box-border px-3 py-2.5 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent"
+            className="w-full box-border px-3 py-2.5 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent"
           />
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={handleExtract}
               disabled={status === "loading"}
-              className="w-full px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none"
+              className="w-full px-3 py-1.5 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
             >
               Extract
             </button>
             {showStatus && (
-              <span
-                className={`text-sm ${status === "error" ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400"}`}
-              >
-                {status === "idle" && "Idle"}
-                {status === "loading" && "Loading…"}
-                {status === "error" && errorMessage}
+              <span className="inline-flex flex-col gap-2">
+                {status === "idle" && (
+                  <span className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">Idle</span>
+                )}
+                {status === "loading" && (
+                  <span className="inline-flex items-center gap-2" aria-busy="true">
+                    <span className="inline-block h-3 w-20 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                    <span className="sr-only">Loading</span>
+                  </span>
+                )}
+                {status === "error" && errorMessage && (
+                  <Callout status="danger" role="alert" className="!m-0 max-w-md text-[length:var(--ds-text-sm)]">
+                    {errorMessage}
+                  </Callout>
+                )}
               </span>
             )}
           </div>

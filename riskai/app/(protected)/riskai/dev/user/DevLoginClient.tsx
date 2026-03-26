@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { Callout } from "@visualify/design-system";
 
 export default function DevLoginClient() {
   const [email, setEmail] = useState("");
@@ -52,7 +53,7 @@ export default function DevLoginClient() {
   return (
     <form className="space-y-3 max-w-sm">
       <div>
-        <label htmlFor="dev-email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+        <label htmlFor="dev-email" className="mb-1 block text-sm font-medium text-[var(--ds-text-secondary)]">
           Email
         </label>
         <input
@@ -60,13 +61,13 @@ export default function DevLoginClient() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-neutral-900 dark:text-neutral-100"
+          className="w-full rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-[var(--ds-text-primary)]"
           placeholder="you@example.com"
           required
         />
       </div>
       <div>
-        <label htmlFor="dev-password" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+        <label htmlFor="dev-password" className="mb-1 block text-sm font-medium text-[var(--ds-text-secondary)]">
           Password
         </label>
         <input
@@ -74,7 +75,7 @@ export default function DevLoginClient() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-neutral-900 dark:text-neutral-100"
+          className="w-full rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-[var(--ds-text-primary)]"
           required
         />
       </div>
@@ -82,23 +83,27 @@ export default function DevLoginClient() {
         <button
           type="button"
           onClick={handleSignUp}
-          className="px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-700 text-sm font-medium"
+          className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm font-medium hover:bg-[var(--ds-surface-hover)]"
         >
           Sign Up
         </button>
         <button
           type="button"
           onClick={handleSignIn}
-          className="px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-700 text-sm font-medium"
+          className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm font-medium hover:bg-[var(--ds-surface-hover)]"
         >
           Sign In
         </button>
       </div>
       {status && (
-        <p className="text-sm text-green-700 dark:text-green-400">{status}</p>
+        <Callout status="success" role="status" className="text-[length:var(--ds-text-sm)]">
+          {status}
+        </Callout>
       )}
       {error && (
-        <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+        <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+          {error}
+        </Callout>
       )}
     </form>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Button } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { riskaiPath } from "@/lib/routes";
 import { useTheme } from "@/context/ThemeContext";
@@ -23,7 +24,7 @@ const MenuIcon = () => (
 );
 
 const ChevronIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none opacity-60" aria-hidden>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none text-[var(--ds-text-muted)]" aria-hidden>
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
@@ -95,22 +96,22 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
 
   const headerSurface =
     variant === "glass"
-      ? "border-b border-white/25 bg-white/70 transition-[background-color,border-color] duration-[250ms] ease-in-out dark:border-neutral-700/50 dark:bg-neutral-950/70"
-      : "border-b border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950";
+      ? "border-b border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-elevated)_92%,var(--ds-background))] shadow-[var(--ds-shadow-sm)] transition-[background-color,border-color] duration-[250ms] ease-in-out"
+      : "border-b border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-[var(--ds-shadow-sm)]";
 
-  /** Glass: light bar uses a dark wash on hover; dark bar uses a light wash (same idea, theme-appropriate). */
-  const iconButtonSurface =
-    variant === "glass"
-      ? "cursor-pointer text-neutral-700 hover:bg-black/[0.08] active:bg-black/[0.14] dark:text-neutral-200 dark:hover:bg-white/[0.16] dark:active:bg-white/[0.26]"
-      : "cursor-pointer text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200/90 dark:text-neutral-200 dark:hover:bg-neutral-800 dark:active:bg-neutral-700";
+  const menuItemClass =
+    "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-2)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
+    "hover:bg-[var(--ds-surface-hover)] focus-visible:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
   return (
-    <header className={`flex h-14 shrink-0 items-center justify-between px-4 ${headerSurface}`}>
-      <div className="flex min-w-0 items-center gap-3">
+    <header className={`flex h-14 shrink-0 items-center justify-between gap-[var(--ds-space-3)] px-[var(--ds-space-4)] ${headerSurface}`}>
+      <div className="flex min-w-0 items-center gap-[var(--ds-space-3)]">
         {onMenuClick ? (
-          <button
+          <Button
             type="button"
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg md:hidden ${iconButtonSurface}`}
+            variant="ghost"
+            size="md"
+            className="!h-9 !w-9 !min-w-9 shrink-0 !px-0 md:hidden [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]"
             aria-label="Open navigation"
             onClick={() => {
               setMenuOpen(false);
@@ -118,40 +119,51 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
             }}
           >
             <MenuIcon />
-          </button>
+          </Button>
         ) : null}
         <Link
           href="/"
-          className="cursor-pointer text-lg font-semibold tracking-tight text-neutral-900 no-underline hover:opacity-80 dark:text-neutral-100"
+          className="cursor-pointer text-[length:var(--ds-text-lg)] font-semibold tracking-tight text-[var(--ds-text-primary)] no-underline transition-colors hover:text-[var(--ds-text-secondary)]"
         >
           RiskAI
         </Link>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-[var(--ds-space-2)]">
         {mounted ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="md"
             role="switch"
             aria-checked={theme === "dark"}
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             title={theme === "dark" ? "Light mode" : "Dark mode"}
+            className="!h-9 !w-9 !min-w-9 shrink-0 !px-0 [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]"
             onClick={(e) => {
               toggleTheme();
               (e.currentTarget as HTMLButtonElement).blur();
             }}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg ${iconButtonSurface}`}
           >
             {theme === "dark" ? <MoonIcon /> : <SunIcon />}
-          </button>
+          </Button>
         ) : (
-          <span className="inline-block h-9 w-9 shrink-0 rounded-lg bg-neutral-100 dark:bg-neutral-800" aria-hidden />
+          <span
+            className="inline-block h-9 w-9 shrink-0 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-muted)]"
+            aria-hidden
+          />
         )}
 
         {user !== null && user !== "loading" ? (
           <div className="relative flex items-center" ref={menuRef}>
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="md"
+              className="!h-9 !rounded-full !py-0 !pl-1 !pr-2 !gap-2 !font-normal"
+              aria-expanded={menuOpen}
+              aria-haspopup="menu"
+              aria-label="Account menu"
               onClick={() =>
                 setMenuOpen((o) => {
                   const next = !o;
@@ -159,48 +171,42 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
                   return next;
                 })
               }
-              className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-neutral-200 bg-neutral-50 pl-1 pr-2 text-left text-sm text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-              aria-label="Account menu"
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)]">
                 <PersonIcon />
               </span>
               <ChevronIcon />
-            </button>
+            </Button>
 
             {menuOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-[100] mt-1 min-w-[200px] overflow-hidden rounded-xl border border-neutral-200 bg-white py-1 shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
+                className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] min-w-[200px] overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-elevated)] py-[var(--ds-space-1)] shadow-[var(--ds-shadow-lg)]"
               >
                 <Link
                   href={riskaiPath("/settings")}
                   role="menuitem"
-                  className="block cursor-pointer px-4 py-2.5 text-sm text-neutral-800 no-underline hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  className={menuItemClass}
                   onClick={() => setMenuOpen(false)}
                 >
                   Account Settings
                 </Link>
                 <div
-                  className="my-1 border-t border-neutral-200 dark:border-neutral-700"
+                  className="my-[var(--ds-space-1)] border-t border-[var(--ds-border-subtle)]"
                   role="separator"
                   aria-hidden
                 />
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="w-full cursor-pointer px-4 py-2.5 text-left text-sm text-neutral-800 hover:bg-neutral-50 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                  onClick={handleSignOut}
-                >
+                <button type="button" role="menuitem" className={menuItemClass} onClick={handleSignOut}>
                   Sign out
                 </button>
               </div>
             ) : null}
           </div>
         ) : user === "loading" ? (
-          <span className="inline-block h-9 w-9 shrink-0 rounded-full bg-neutral-200 dark:bg-neutral-700" aria-hidden />
+          <span
+            className="inline-block h-9 w-9 shrink-0 rounded-full bg-[var(--ds-surface-muted)]"
+            aria-hidden
+          />
         ) : null}
       </div>
     </header>

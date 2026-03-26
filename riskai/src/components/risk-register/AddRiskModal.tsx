@@ -16,6 +16,13 @@ import {
   isRiskStatusDraft,
 } from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
+import {
+  Button,
+  Callout,
+  Input,
+  Label,
+  Textarea,
+} from "@visualify/design-system";
 import { useRiskAppliesToOptions } from "./RiskAppliesToOptionsContext";
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { useRiskStatusOptions } from "./RiskStatusOptionsContext";
@@ -28,14 +35,16 @@ import {
 } from "./RiskOwnerPicker";
 import { RiskStatusSelect } from "./RiskStatusSelect";
 
-const inputClass =
-  "w-full px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent";
-const labelClass = "block text-sm font-medium text-[var(--foreground)] mb-1";
+/** Native `<select>` / special inputs: matches design-system Form field chrome (no exported primitive). */
+const nativeSelectClass =
+  "w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 h-9 py-1 " +
+  "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
+  "disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] disabled:text-[var(--ds-text-muted)]";
 
-const btnSecondary =
-  "px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 shrink-0";
-const btnPrimary =
-  "px-4 py-2 rounded-md bg-neutral-800 dark:bg-neutral-200 text-neutral-100 dark:text-neutral-900 text-sm font-medium hover:bg-neutral-700 dark:hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:focus:ring-neutral-400 shrink-0";
+function RequiredStar() {
+  return <span className="text-[var(--ds-status-danger-fg)]" aria-label="required">*</span>;
+}
 
 /** Mirror of RiskDetailModal validateNonDraftRisk for AddRiskModal form. applyMitigation = mitigation text provided. */
 function validateAddRiskNonDraft(form: {
@@ -379,9 +388,13 @@ export function AddRiskModal({
   if (!open) return null;
   if (typeof document === "undefined") return null;
 
+  const overlayScrimClass =
+    "fixed inset-0 z-50 flex items-center justify-center p-4 relative " +
+    "bg-[var(--ds-overlay)] backdrop-blur-sm";
+
   const overlay = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/75 dark:bg-black/80 backdrop-blur-sm p-4"
+      className={overlayScrimClass}
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-risk-dialog-title"
@@ -389,89 +402,102 @@ export function AddRiskModal({
     >
       <div
         ref={modalRef}
-        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-2xl min-h-[400px] min-w-[280px] overflow-hidden flex flex-col"
+        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-[var(--ds-shadow-lg)] min-h-[400px] min-w-[280px] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header: title + close */}
-        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
           <h2
             id="add-risk-dialog-title"
-            className="text-lg font-semibold text-[var(--foreground)]"
+            className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]"
           >
             Add risk
           </h2>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="md"
             onClick={onClose}
-            className="p-2 rounded-md border border-transparent text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent"
+            className="h-9 w-9 shrink-0 p-0"
             aria-label="Close dialog"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1 overflow-hidden">
           <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 sm:px-6 py-5 space-y-6">
             {validationErrors.length > 0 && (
-              <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-800 dark:text-red-200" role="alert">
-                <p className="font-medium mb-1">Complete all required fields before adding (non-draft risks):</p>
-                <ul className="list-disc list-inside">{validationErrors.map((err) => <li key={err}>{err}</li>)}</ul>
-              </div>
+              <Callout status="danger" role="alert">
+                <p className="font-medium mb-1 text-[length:var(--ds-text-sm)]">Complete all required fields before adding (non-draft risks):</p>
+                <ul className="list-disc list-inside text-[length:var(--ds-text-sm)] space-y-0.5">{validationErrors.map((err) => <li key={err}>{err}</li>)}</ul>
+              </Callout>
             )}
             {/* General */}
             <section>
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">General</h3>
+              <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">General</h3>
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="add-risk-title" className={labelClass}>Title <span className="text-red-500">*</span></label>
-                  <input id="add-risk-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} placeholder="e.g. Long lead switchgear" required />
+                  <Label htmlFor="add-risk-title" className="block">
+                    Title <RequiredStar />
+                  </Label>
+                  <Input id="add-risk-title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Long lead switchgear" required />
                 </div>
                 <div>
-                  <label htmlFor="add-risk-description" className={labelClass}>Description</label>
-                  <textarea id="add-risk-description" value={description} onChange={(e) => setDescription(e.target.value)} className={`${inputClass} resize-y min-h-[80px]`} placeholder="Optional description" rows={2} />
+                  <Label htmlFor="add-risk-description" className="block">Description</Label>
+                  <Textarea
+                    id="add-risk-description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="min-h-[80px]"
+                    placeholder="Optional description"
+                    rows={2}
+                  />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="add-risk-category" className={labelClass}>Category</label>
+                    <Label htmlFor="add-risk-category" className="block">Category</Label>
                     <RiskCategorySelect
                       id="add-risk-category"
                       value={category}
                       onChange={setCategory}
-                      className={inputClass}
+                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
                   <div>
-                    <label htmlFor="add-risk-owner" className={labelClass}>Owner {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}</label>
+                    <Label htmlFor="add-risk-owner" className="block">
+                      Owner {!isRiskStatusDraft(status) && <RequiredStar />}
+                    </Label>
                     <RiskOwnerPicker
                       id="add-risk-owner"
                       selectValue={ownerSelect}
                       newNameDraft={ownerNewDraft}
                       onSelectChange={setOwnerSelect}
                       onNewNameDraftChange={setOwnerNewDraft}
-                      className={inputClass}
+                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
                   <div>
-                    <label htmlFor="add-risk-status" className={labelClass}>Status</label>
+                    <Label htmlFor="add-risk-status" className="block">Status</Label>
                     <RiskStatusSelect
                       id="add-risk-status"
                       value={status}
                       onChange={setStatus}
-                      className={inputClass}
+                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
                   <div>
-                    <label htmlFor="add-risk-applies-to" className={labelClass}>Applies To</label>
+                    <Label htmlFor="add-risk-applies-to" className="block">Applies To</Label>
                     <RiskAppliesToSelect
                       id="add-risk-applies-to"
                       value={appliesTo}
                       onChange={setAppliesTo}
-                      className={inputClass}
+                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
@@ -481,64 +507,107 @@ export function AddRiskModal({
 
             {/* Pre-Mitigation */}
             <section>
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Pre-Mitigation</h3>
+              <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Pre-Mitigation</h3>
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="add-risk-pre-prob" className={labelClass}>Probability %</label>
-                  <input id="add-risk-pre-prob" type="number" min={0} max={100} step={1} value={preMitigationProbabilityPct} onChange={(e) => setPreMitigationProbabilityPct(e.target.value)} className={inputClass} placeholder="0–100" />
+                  <Label htmlFor="add-risk-pre-prob" className="block">Probability %</Label>
+                  <Input id="add-risk-pre-prob" type="number" min={0} max={100} step={1} value={preMitigationProbabilityPct} onChange={(e) => setPreMitigationProbabilityPct(e.target.value)} placeholder="0–100" />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className={labelClass}>Cost Min ($)</label><input type="number" min={0} step={1000} value={preMitigationCostMin} onChange={(e) => setPreMitigationCostMin(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Cost Most Likely ($)</label><input type="number" min={0} step={1000} value={preMitigationCostML} onChange={(e) => setPreMitigationCostML(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Cost Max ($)</label><input type="number" min={0} step={1000} value={preMitigationCostMax} onChange={(e) => setPreMitigationCostMax(e.target.value)} className={inputClass} /></div>
+                  <div>
+                    <Label htmlFor="add-risk-pre-cost-min" className="block">Cost Min ($)</Label>
+                    <Input id="add-risk-pre-cost-min" type="number" min={0} step={1000} value={preMitigationCostMin} onChange={(e) => setPreMitigationCostMin(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-pre-cost-ml" className="block">Cost Most Likely ($)</Label>
+                    <Input id="add-risk-pre-cost-ml" type="number" min={0} step={1000} value={preMitigationCostML} onChange={(e) => setPreMitigationCostML(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-pre-cost-max" className="block">Cost Max ($)</Label>
+                    <Input id="add-risk-pre-cost-max" type="number" min={0} step={1000} value={preMitigationCostMax} onChange={(e) => setPreMitigationCostMax(e.target.value)} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className={labelClass}>Time Min (days)</label><input type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Time ML (days)</label><input type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Time Max (days)</label><input type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} className={inputClass} /></div>
+                  <div>
+                    <Label htmlFor="add-risk-pre-time-min" className="block">Time Min (days)</Label>
+                    <Input id="add-risk-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-pre-time-ml" className="block">Time ML (days)</Label>
+                    <Input id="add-risk-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-pre-time-max" className="block">Time Max (days)</Label>
+                    <Input id="add-risk-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
+                  </div>
                 </div>
               </div>
             </section>
 
             {/* Mitigation */}
             <section>
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Mitigation</h3>
+              <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Mitigation</h3>
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="add-risk-mitigation" className={labelClass}>Description</label>
-                  <textarea id="add-risk-mitigation" value={mitigation} onChange={(e) => setMitigation(e.target.value)} className={`${inputClass} resize-y min-h-[60px]`} placeholder="Mitigation strategy" rows={2} />
+                  <Label htmlFor="add-risk-mitigation" className="block">Description</Label>
+                  <Textarea
+                    id="add-risk-mitigation"
+                    value={mitigation}
+                    onChange={(e) => setMitigation(e.target.value)}
+                    className="min-h-[60px]"
+                    placeholder="Mitigation strategy"
+                    rows={2}
+                  />
                 </div>
                 <div>
-                  <label htmlFor="add-risk-mitigation-cost" className={labelClass}>Mitigation Cost ($)</label>
-                  <input id="add-risk-mitigation-cost" type="number" min={0} step={1000} value={mitigationCost} onChange={(e) => setMitigationCost(e.target.value)} className={inputClass} placeholder="—" />
+                  <Label htmlFor="add-risk-mitigation-cost" className="block">Mitigation Cost ($)</Label>
+                  <Input id="add-risk-mitigation-cost" type="number" min={0} step={1000} value={mitigationCost} onChange={(e) => setMitigationCost(e.target.value)} placeholder="—" />
                 </div>
               </div>
             </section>
 
             {/* Post-Mitigation */}
             <section>
-              <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Post-Mitigation</h3>
+              <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Post-Mitigation</h3>
               <div className="space-y-3">
                 <div>
-                  <label htmlFor="add-risk-post-prob" className={labelClass}>Probability %</label>
-                  <input id="add-risk-post-prob" type="number" min={0} max={100} step={1} value={postMitigationProbabilityPct} onChange={(e) => setPostMitigationProbabilityPct(e.target.value)} className={inputClass} placeholder="0–100" />
+                  <Label htmlFor="add-risk-post-prob" className="block">Probability %</Label>
+                  <Input id="add-risk-post-prob" type="number" min={0} max={100} step={1} value={postMitigationProbabilityPct} onChange={(e) => setPostMitigationProbabilityPct(e.target.value)} placeholder="0–100" />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className={labelClass}>Cost Min ($)</label><input type="number" min={0} step={1000} value={postMitigationCostMin} onChange={(e) => setPostMitigationCostMin(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Cost Most Likely ($)</label><input type="number" min={0} step={1000} value={postMitigationCostML} onChange={(e) => setPostMitigationCostML(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Cost Max ($)</label><input type="number" min={0} step={1000} value={postMitigationCostMax} onChange={(e) => setPostMitigationCostMax(e.target.value)} className={inputClass} /></div>
+                  <div>
+                    <Label htmlFor="add-risk-post-cost-min" className="block">Cost Min ($)</Label>
+                    <Input id="add-risk-post-cost-min" type="number" min={0} step={1000} value={postMitigationCostMin} onChange={(e) => setPostMitigationCostMin(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-post-cost-ml" className="block">Cost Most Likely ($)</Label>
+                    <Input id="add-risk-post-cost-ml" type="number" min={0} step={1000} value={postMitigationCostML} onChange={(e) => setPostMitigationCostML(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-post-cost-max" className="block">Cost Max ($)</Label>
+                    <Input id="add-risk-post-cost-max" type="number" min={0} step={1000} value={postMitigationCostMax} onChange={(e) => setPostMitigationCostMax(e.target.value)} />
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <div><label className={labelClass}>Time Min (days)</label><input type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Time ML (days)</label><input type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} className={inputClass} /></div>
-                  <div><label className={labelClass}>Time Max (days)</label><input type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} className={inputClass} /></div>
+                  <div>
+                    <Label htmlFor="add-risk-post-time-min" className="block">Time Min (days)</Label>
+                    <Input id="add-risk-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-post-time-ml" className="block">Time ML (days)</Label>
+                    <Input id="add-risk-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="add-risk-post-time-max" className="block">Time Max (days)</Label>
+                    <Input id="add-risk-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
+                  </div>
                 </div>
               </div>
             </section>
           </div>
-          <div className="flex flex-wrap justify-end gap-3 shrink-0 px-4 sm:px-6 py-4 border-t border-neutral-200 dark:border-neutral-700 bg-[var(--background)]">
-            <button type="button" onClick={onClose} className={btnSecondary}>Cancel</button>
-            <button type="submit" className={btnPrimary}>Save</button>
+          <div className="flex flex-wrap justify-end gap-3 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]">
+            <Button type="button" variant="secondary" size="md" onClick={onClose}>Cancel</Button>
+            <Button type="submit" variant="primary" size="md">Save</Button>
           </div>
         </form>
       </div>

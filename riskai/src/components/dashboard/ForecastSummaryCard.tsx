@@ -1,3 +1,5 @@
+import { Card, CardBody, CardHeader, CardTitle } from "@visualify/design-system";
+
 export type PercentileItem = {
   label: string;
   value: string;
@@ -20,26 +22,31 @@ export function ForecastSummaryCard({
   const hasData = percentiles.length > 0 && percentiles.some((p) => p.value !== "—" && p.value !== "");
 
   return (
-    <section className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-      <h2 className="text-base font-semibold text-[var(--foreground)] px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
-        {title}
-      </h2>
-      <div className="p-4">
+    <Card className="overflow-hidden">
+      <CardHeader className="py-3">
+        <CardTitle className="text-[length:var(--ds-text-base)]">{title}</CardTitle>
+      </CardHeader>
+      <CardBody className="pt-0">
         {!hasData ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">{emptyMessage}</p>
+          <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">{emptyMessage}</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {percentiles.map(({ label, value }) => (
-              <div key={label} className="rounded border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-3">
-                <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+              <div
+                key={label}
+                className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)] p-3"
+              >
+                <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
                   {label}
                 </div>
-                <div className="mt-0.5 text-lg font-semibold text-[var(--foreground)]">{value}</div>
+                <div className="mt-0.5 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
+                  {value}
+                </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-    </section>
+      </CardBody>
+    </Card>
   );
 }

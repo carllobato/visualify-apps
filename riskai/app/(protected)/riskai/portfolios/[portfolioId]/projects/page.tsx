@@ -37,18 +37,18 @@ export default async function PortfolioProjectsPage({
     <>
       <RegisterPageHeaderTitle titleSuffix="Projects" />
       <main className="w-full px-4 py-10">
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-8">
+        <p className="text-sm text-[var(--ds-text-secondary)] mb-8">
           Projects in this portfolio.
         </p>
 
         {list.length === 0 ? (
-          <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 p-6 text-center">
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+          <div className="rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] p-6 text-center">
+            <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
               No projects in this portfolio yet.
             </p>
             <Link
               href={riskaiPath("/projects")}
-              className="text-sm text-[var(--foreground)] underline hover:no-underline"
+              className="text-sm text-[var(--ds-text-primary)] underline hover:no-underline"
             >
               View all your projects
             </Link>
@@ -59,10 +59,10 @@ export default async function PortfolioProjectsPage({
               <li key={p.id}>
                 <Link
                   href={riskaiPath(`/projects/${p.id}`)}
-                  className="block px-4 py-3 rounded-md border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] text-[var(--foreground)] hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                  className="block px-4 py-3 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] transition-colors"
                 >
                   <span className="font-medium">{p.name || p.id}</span>
-                  <span className="ml-2 text-sm text-neutral-500 dark:text-neutral-400">
+                  <span className="ml-2 text-sm text-[var(--ds-text-muted)]">
                     Open →
                   </span>
                 </Link>

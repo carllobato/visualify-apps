@@ -12,7 +12,7 @@ export function ProtectedShell({ children }: { children: React.ReactNode }) {
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[var(--background)] text-[var(--foreground)]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[var(--ds-background)] text-[var(--ds-text-primary)]">
       <OnboardingHost />
       <TopNav
         onMenuClick={() => setMobileNavOpen(true)}

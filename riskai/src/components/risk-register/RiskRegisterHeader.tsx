@@ -19,7 +19,7 @@ export function RiskRegisterHeader({
   return (
     <div className="flex items-center justify-between">
       {readOnlyContent ? (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 m-0" role="status">
+        <p className="m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]" role="status">
           View-only access for this project.
         </p>
       ) : null}

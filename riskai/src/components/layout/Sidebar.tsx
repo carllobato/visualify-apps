@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Button } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   DASHBOARD_PATH,
@@ -97,14 +98,29 @@ const SimulationIcon = () => (
 );
 
 const EngineIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-    <rect x="5" y="8" width="14" height="8" rx="2" />
-    <path d="M3 10h2" />
-    <path d="M3 14h2" />
-    <path d="M19 10h2" />
-    <path d="M19 14h2" />
-    <path d="M10 8V5h4v3" />
-    <path d="M12 12h.01" />
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="h-4 w-4 shrink-0"
+    aria-hidden
+  >
+    <rect width="16" height="16" x="4" y="4" rx="2" />
+    <rect width="6" height="6" x="9" y="9" rx="1" />
+    <path d="M15 2v2" />
+    <path d="M15 20v2" />
+    <path d="M9 2v2" />
+    <path d="M9 20v2" />
+    <path d="M22 9v-1a2 2 0 0 0-2-2h-1" />
+    <path d="M22 15v1a2 2 0 0 1-2 2h-1" />
+    <path d="M2 9v-1a2 2 0 0 1 2-2h1" />
+    <path d="M2 15v1a2 2 0 0 0 2 2h1" />
   </svg>
 );
 
@@ -142,9 +158,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const portfolioIdFromUrl = portfolioIdFromAppPathname(pathname);
   const projectIdFromUrl = projectIdFromAppPathname(pathname);
   const projectIdFromUrlRef = useRef(projectIdFromUrl);
-  projectIdFromUrlRef.current = projectIdFromUrl;
   const [portfolioIdForProject, setPortfolioIdForProject] = useState<string | null>(null);
   const [projectIdFromStorage, setProjectIdFromStorage] = useState<string | null>(null);
+
+  useEffect(() => {
+    projectIdFromUrlRef.current = projectIdFromUrl;
+  }, [projectIdFromUrl]);
 
   const supabase = useMemo(() => supabaseBrowserClient(), []);
 
@@ -226,12 +245,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const navTransition = "duration-200 ease-out";
 
   const linkClass = (active: boolean, disabled?: boolean) =>
-    "flex min-w-0 items-center gap-0 rounded-lg py-2 text-sm font-medium no-underline transition-colors px-3 " +
+    "flex min-w-0 items-center gap-0 rounded-[var(--ds-radius-md)] border-l-[3px] py-2 pl-3 pr-3 text-[length:var(--ds-text-sm)] font-medium no-underline transition-[background-color,border-color,color] " +
     (disabled
-      ? "cursor-not-allowed text-neutral-400 dark:text-neutral-600"
+      ? "cursor-not-allowed border-l-transparent text-[var(--ds-text-muted)] [&_svg]:text-[var(--ds-text-muted)]"
       : active
-        ? "bg-neutral-200/90 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100"
-        : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-white");
+        ? "border-l-[var(--ds-status-neutral-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] [&_svg]:text-[var(--ds-text-primary)]"
+        : "border-l-transparent text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-inset)] hover:text-[var(--ds-text-primary)] [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]");
 
   /** Width, opacity, and margin animate together; margin replaces gap so spacing doesn’t jump. */
   const navLabelClass =
@@ -246,13 +265,13 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const sectionHeader = (label: string, isFirst = false) => (
     <div
       className={
-        "relative px-3 pb-2 pt-6 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 first:pt-2 dark:text-neutral-500 " +
+        "relative px-3 pb-2 pt-6 text-[length:var(--ds-text-xs)] font-semibold uppercase tracking-[0.14em] text-[var(--ds-text-muted)] first:pt-2 " +
         (!isFirst ? "mt-2" : "")
       }
     >
       {visuallyCollapsed ? (
         <div
-          className="pointer-events-none absolute left-3 right-3 top-1/2 z-0 h-px -translate-y-1/2 bg-neutral-200 dark:bg-neutral-700"
+          className="pointer-events-none absolute left-3 right-3 top-1/2 z-0 h-px -translate-y-1/2 bg-[var(--ds-status-neutral-subtle-border)]"
           aria-hidden
         />
       ) : null}
@@ -260,7 +279,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         className={
           "relative z-10 block overflow-hidden whitespace-nowrap uppercase transition-[max-width,opacity] " +
           navTransition +
-          " text-neutral-500 " +
+          " text-[var(--ds-text-muted)] " +
           (visuallyCollapsed ? "max-w-0 opacity-0" : "max-w-[min(12rem,100%)] opacity-100")
         }
         aria-hidden={visuallyCollapsed}
@@ -292,7 +311,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       {mobileOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          className="fixed inset-0 z-40 bg-[var(--ds-overlay)] md:hidden"
           aria-label="Close navigation"
           onClick={onMobileClose}
         />
@@ -300,15 +319,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <aside
         className={
-          "fixed bottom-0 left-0 top-14 z-50 flex flex-col border-r border-neutral-200 bg-neutral-50 transition-[transform,width] duration-200 ease-out will-change-[width] dark:border-neutral-800 dark:bg-neutral-900/80 md:static md:top-auto md:z-0 md:h-full " +
+          "fixed bottom-0 left-0 top-14 z-50 flex flex-col border-r-2 border-[var(--ds-border)] bg-[var(--ds-surface-muted)] transition-[transform,width] duration-200 ease-out will-change-[width] md:static md:top-auto md:z-0 md:h-full " +
           widthClass +
-          (collapsed && hoverPeek ? " shadow-lg ring-1 ring-neutral-200/80 dark:ring-neutral-700" : "") +
+          (collapsed && hoverPeek ? " shadow-[var(--ds-shadow-md)] ring-1 ring-[var(--ds-status-neutral-subtle-border)]" : "") +
           (mobileOpen ? " translate-x-0" : " -translate-x-full md:translate-x-0")
         }
         onMouseEnter={handleAsidePointerEnter}
         onMouseLeave={handleAsidePointerLeave}
       >
-        <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-2">
+        <nav className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-[var(--ds-space-2)]">
           {sectionHeader("Main", true)}
           <ul className="space-y-0.5">
             <li>
@@ -412,13 +431,13 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             </>
           ) : null}
 
-          {(
+          {showProjectNav && projectNavBase ? (
             <>
               {sectionHeader("De-Bug", false)}
               <ul className="space-y-0.5">
                 <li>
                   <Link
-                    href={projectNavBase ? `${projectNavBase}/run-data` : riskaiPath("/dev/run-data")}
+                    href={`${projectNavBase}/run-data`}
                     className={linkClass(runDataActive)}
                     title={visuallyCollapsed ? "Run Data" : undefined}
                     onClick={onMobileClose}
@@ -429,7 +448,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 </li>
                 <li>
                   <Link
-                    href={projectNavBase ? `${projectNavBase}/engine-health` : riskaiPath("/dev/engine-health")}
+                    href={`${projectNavBase}/engine-health`}
                     className={linkClass(healthActive)}
                     title={visuallyCollapsed ? "Engine Health" : undefined}
                     onClick={onMobileClose}
@@ -440,21 +459,23 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 </li>
               </ul>
             </>
-          )}
+          ) : null}
         </nav>
 
-        <div className="flex min-h-12 shrink-0 items-center border-t border-neutral-200 px-2 py-1.5 dark:border-neutral-800">
-          <button
+        <div className="flex min-h-12 shrink-0 items-center border-t border-[var(--ds-status-neutral-subtle-border)] px-[var(--ds-space-2)] py-[var(--ds-space-2)]">
+          <Button
             type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="flex w-full min-w-0 items-center gap-0 rounded-lg px-3 py-1 text-sm font-medium text-neutral-600 transition-colors hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800"
+            variant="ghost"
+            size="sm"
+            className="!h-auto w-full min-w-0 !justify-start !gap-0 rounded-[var(--ds-radius-md)] px-3 py-1 font-medium text-[var(--ds-text-secondary)] hover:!bg-[var(--ds-surface-inset)] hover:!text-[var(--ds-text-primary)] [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]"
             aria-pressed={!collapsed}
             title={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
             aria-label={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
+            onClick={() => setCollapsed((c) => !c)}
           >
             {collapsed ? <PinOpenIcon /> : <PanelLeftIcon />}
             <span className={navLabelClass}>{collapsed ? "Pin open" : "Collapse"}</span>
-          </button>
+          </Button>
         </div>
       </aside>
     </>

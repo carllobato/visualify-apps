@@ -1,19 +1,19 @@
 import { LegalDocumentLink } from "./LegalDocumentLink";
 
 const linkClass =
-  "text-neutral-600 transition-colors hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-neutral-100";
+  "text-[var(--ds-text-muted)] transition-colors hover:text-[var(--ds-text-secondary)]";
 
 export function SiteLegalFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="flex min-h-12 shrink-0 items-center border-t border-neutral-200 bg-white/90 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-950/90">
+    <footer className="flex min-h-12 shrink-0 items-center border-t border-[var(--ds-status-neutral-subtle-border)] bg-[var(--ds-surface-inset)] px-[var(--ds-space-4)] py-[var(--ds-space-3)]">
       <div className="mx-auto w-full max-w-[1800px]">
-        <div className="flex flex-col items-start justify-between gap-2 text-xs text-neutral-500 sm:flex-row sm:items-center">
-          <span className="font-medium text-neutral-600 dark:text-neutral-400 sm:text-left">
+        <div className="flex flex-col items-start justify-between gap-[var(--ds-space-2)] text-[length:var(--ds-text-xs)] sm:flex-row sm:items-center">
+          <span className="font-medium text-[var(--ds-text-muted)] sm:text-left">
             © {year} Visualify. All rights reserved.
           </span>
-          <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-1">
+          <nav aria-label="Legal" className="flex flex-wrap gap-x-[var(--ds-space-4)] gap-y-1">
             <LegalDocumentLink document="privacy" className={linkClass}>
               Privacy Policy
             </LegalDocumentLink>

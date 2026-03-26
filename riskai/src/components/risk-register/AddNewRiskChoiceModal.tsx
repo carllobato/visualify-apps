@@ -7,6 +7,7 @@ import type { Risk, RiskDraft } from "@/domain/risk/risk.schema";
 import { RiskDraftSchema, RiskSchema } from "@/domain/risk/risk.schema";
 import { draftsToRisks, intelligentDraftToRisk } from "@/domain/risk/risk.mapper";
 import { useRiskRegister } from "@/store/risk-register.store";
+import { Callout } from "@visualify/design-system";
 
 function isDraftLike(item: unknown): item is RiskDraft {
   if (!item || typeof item !== "object") return false;
@@ -55,11 +56,11 @@ function deduplicateByTitle(risks: Risk[]): Risk[] {
 }
 
 const containerClass =
-  "rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 flex flex-col min-h-[280px] min-w-0";
+  "rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 flex flex-col min-h-[280px] min-w-0";
 const boxTitleClass =
-  "text-base font-medium text-[var(--foreground)] mb-2 border-b border-neutral-200 dark:border-neutral-700 pb-2";
+  "text-base font-medium text-[var(--ds-text-primary)] mb-2 border-b border-[var(--ds-border)] pb-2";
 const btnPrimary =
-  "px-4 py-2 rounded-md bg-neutral-800 dark:bg-neutral-200 text-neutral-100 dark:text-neutral-900 text-sm font-medium hover:bg-neutral-700 dark:hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:focus:ring-neutral-400 shrink-0";
+  "px-4 py-2 rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
 
 /** Context of the uploaded file – used to determine which API to run (not yet passed to API). */
 export type FileContext =
@@ -265,31 +266,31 @@ export function AddNewRiskChoiceModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/75 dark:bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="add-new-risk-choice-title"
       onClick={handleBackdropClick}
     >
       <div
-        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-2xl overflow-hidden flex flex-col min-h-[400px] min-w-[280px]"
+        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-2xl overflow-hidden flex flex-col min-h-[400px] min-w-[280px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6 py-3">
-          <h2 id="add-new-risk-choice-title" className="text-xl font-semibold text-[var(--foreground)]">
+        <div className="flex items-center justify-between shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
+          <h2 id="add-new-risk-choice-title" className="text-xl font-semibold text-[var(--ds-text-primary)]">
             Add new risk
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
+            className="p-2 rounded-lg hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
             aria-label="Close"
           >
             <span aria-hidden className="text-xl leading-none">×</span>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-6 min-h-0">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+          <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
             Choose how you want to add a risk:
           </p>
           {onAddManualRisk && (
@@ -300,11 +301,11 @@ export function AddNewRiskChoiceModal({
                   onClose();
                   onAddManualRisk();
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-md border-2 border-dashed border-neutral-300 dark:border-neutral-600 bg-neutral-50/80 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 text-sm font-medium hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-md border-2 border-dashed border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] text-[var(--ds-text-secondary)] text-sm font-medium hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
               >
                 Add risk manually
               </button>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1.5">
+              <p className="text-xs text-[var(--ds-text-muted)] mt-1.5">
                 Fill in the risk form (title, category, ratings, mitigation, etc.)
               </p>
             </div>
@@ -317,7 +318,7 @@ export function AddNewRiskChoiceModal({
                 onChange={(e) => setDocumentText(e.target.value)}
                 placeholder="Describe your risk including any mitigation, cost and time data."
                 rows={6}
-                className="flex-1 min-h-[120px] w-full box-border px-3 py-2.5 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent mt-1"
+                className="flex-1 min-h-[120px] w-full box-border px-3 py-2.5 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent mt-1"
               />
             </div>
             <div className={containerClass}>
@@ -336,32 +337,32 @@ export function AddNewRiskChoiceModal({
                 onDrop={onFileDrop}
                 className={`border-2 border-dashed rounded-md p-4 text-center text-sm transition-colors flex-1 min-h-[80px] flex flex-col justify-center ${
                   fileDragOver
-                    ? "border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20"
-                    : "border-neutral-300 dark:border-neutral-600 bg-neutral-50/50 dark:bg-neutral-800/30 hover:border-neutral-400 dark:hover:border-neutral-500"
+                    ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
+                    : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] hover:border-[var(--ds-border)]"
                 }`}
               >
                 {lastSavedFileId && lastSavedFileName ? (
                   <>
-                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]">
                       XLSX
                     </span>
-                    <p className="text-[var(--foreground)] font-medium mt-2 truncate" title={lastSavedFileName}>
+                    <p className="text-[var(--ds-text-primary)] font-medium mt-2 truncate" title={lastSavedFileName}>
                       {lastSavedFileName}
                     </p>
-                    <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-1">
+                    <p className="text-[var(--ds-text-muted)] text-xs mt-1">
                       Drop another file to replace
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-neutral-600 dark:text-neutral-400 mb-2">
+                    <p className="text-[var(--ds-text-secondary)] mb-2">
                       {fileDragOver ? "Drop file here…" : "Drag and drop .xlsx here, or"}
                     </p>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={fileUploadStatus === "loading"}
-                      className="px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50"
+                      className="px-3 py-1.5 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
                     >
                       Choose file
                     </button>
@@ -369,19 +370,22 @@ export function AddNewRiskChoiceModal({
                 )}
               </div>
               {fileUploadStatus === "loading" && (
-                <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">Saving…</p>
+                <div className="mt-2 flex items-center gap-2" aria-busy="true">
+                  <div className="h-3 w-24 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                  <span className="sr-only">Saving file</span>
+                </div>
               )}
               {fileUploadStatus === "error" && fileUploadMessage && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-2" role="alert">
+                <Callout status="danger" role="alert" className="mt-2 text-[length:var(--ds-text-sm)]">
                   {fileUploadMessage}
-                </p>
+                </Callout>
               )}
               {lastSavedFileId && (
-                <div className="mt-4 pt-3 border-t border-neutral-200 dark:border-neutral-600">
-                  <label className="block text-sm font-medium text-[var(--foreground)] mb-2">
+                <div className="mt-4 pt-3 border-t border-[var(--ds-border)]">
+                  <label className="block text-sm font-medium text-[var(--ds-text-primary)] mb-2">
                     Define the context of the file
                   </label>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
+                  <p className="text-xs text-[var(--ds-text-muted)] mb-2">
                     Used to run the appropriate process for this file.
                   </p>
                   <select
@@ -389,7 +393,7 @@ export function AddNewRiskChoiceModal({
                     onChange={(e) =>
                       setFileContext((e.target.value as FileContext) || null)
                     }
-                    className="w-full px-3 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+                    className="w-full px-3 py-2 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
                     aria-label="File context"
                   >
                     <option value="">Select context…</option>
@@ -403,7 +407,7 @@ export function AddNewRiskChoiceModal({
               )}
             </div>
           </div>
-          <div className="mt-6 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+          <div className="mt-6 pt-4 border-t border-[var(--ds-border)]">
             <button
               type="button"
               onClick={handleGenerate}
@@ -413,22 +417,25 @@ export function AddNewRiskChoiceModal({
               Generate
             </button>
             {hasFile && !fileContext && (
-              <p className="text-sm text-amber-600 dark:text-amber-400 mt-2" role="status">
+              <Callout status="warning" role="status" className="mt-2 text-[length:var(--ds-text-sm)]">
                 Select the context of the file above (Risk Register, Variation/Change, etc.) to enable Generate.
-              </p>
+              </Callout>
             )}
             {generateStatus === "loading" && (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">Extracting risks…</p>
+              <div className="mt-2 flex items-center gap-2" aria-busy="true">
+                <div className="h-3 w-32 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                <span className="sr-only">Extracting risks</span>
+              </div>
             )}
             {generateStatus === "success" && generateMessage && (
-              <p className="text-sm text-blue-600 dark:text-blue-400 mt-2" role="status">
+              <Callout status="success" role="status" className="mt-2 text-[length:var(--ds-text-sm)]">
                 {generateMessage}
-              </p>
+              </Callout>
             )}
             {generateStatus === "error" && generateMessage && (
-              <p className="text-sm text-red-600 dark:text-red-400 mt-2" role="alert">
+              <Callout status="danger" role="alert" className="mt-2 text-[length:var(--ds-text-sm)]">
                 {generateMessage}
-              </p>
+              </Callout>
             )}
           </div>
         </div>

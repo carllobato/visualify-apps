@@ -12,6 +12,7 @@ import {
   type StoredFileMeta,
 } from "@/lib/uploadedRiskRegisterStore";
 import { parseExcel, sheetToDocumentText, type ParseExcelResult } from "@/lib/riskImportExcel";
+import { Button, Callout } from "@visualify/design-system";
 
 function isDraftLike(item: unknown): item is RiskDraft {
   if (!item || typeof item !== "object") return false;
@@ -196,14 +197,14 @@ export function RiskRegisterImportCard() {
   if (allImported && !completeExpanded) {
     return (
       <div
-        className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/20 px-4 py-2.5 mb-4 flex flex-wrap items-center gap-2"
+        className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] px-4 py-2.5"
         style={{ marginBottom: 16 }}
       >
-        <span className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+        <span className="text-sm font-medium text-[var(--ds-text-primary)]">
           Generate Risks from existing risk register
         </span>
         <span
-          className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+          className="inline-flex items-center rounded bg-[var(--ds-status-success-bg)] px-2 py-0.5 text-xs font-medium text-[var(--ds-status-success-fg)]"
           title="All uploaded files have been imported to the register"
         >
           ✓ Complete
@@ -211,7 +212,7 @@ export function RiskRegisterImportCard() {
         <button
           type="button"
           onClick={() => setCompleteExpanded(true)}
-          className="ml-auto px-2 py-1 text-xs rounded border border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-neutral-800 dark:hover:text-neutral-200 flex items-center gap-1"
+          className="ml-auto px-2 py-1 text-xs rounded border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] dark:hover:text-[var(--ds-text-secondary)] flex items-center gap-1"
           aria-expanded="false"
         >
           Show details
@@ -227,19 +228,19 @@ export function RiskRegisterImportCard() {
     <div
       className={`rounded-lg border p-4 mb-4 ${
         isCompleteView
-          ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-900/10"
-          : "border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+          ? "border-[var(--ds-status-success-border)] bg-[color-mix(in_oklab,var(--ds-status-success)_10%,var(--ds-surface-default))]"
+          : "border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
       }`}
       style={{ marginBottom: 16 }}
     >
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200">
+        <h2 className="text-lg font-semibold text-[var(--ds-text-primary)]">
           Generate Risks from existing risk register
         </h2>
         {isCompleteView && (
           <>
             <span
-              className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+              className="inline-flex items-center rounded bg-[var(--ds-status-success-bg)] px-2 py-0.5 text-xs font-medium text-[var(--ds-status-success-fg)]"
               title="All uploaded files have been imported to the register"
             >
               ✓ Complete
@@ -247,7 +248,7 @@ export function RiskRegisterImportCard() {
             <button
               type="button"
               onClick={() => setCompleteExpanded(false)}
-              className="ml-auto px-2 py-1 text-xs rounded border border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 flex items-center gap-1"
+              className="ml-auto px-2 py-1 text-xs rounded border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] flex items-center gap-1"
               aria-expanded="true"
             >
               Collapse
@@ -257,7 +258,7 @@ export function RiskRegisterImportCard() {
         )}
       </div>
       {!isCompleteView && (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
+        <p className="text-sm text-[var(--ds-text-secondary)] mb-3">
           Select an uploaded file and generate risks with AI.
         </p>
       )}
@@ -271,45 +272,47 @@ export function RiskRegisterImportCard() {
                 key={f.id}
                 className={`flex flex-wrap items-center gap-2 py-2 px-3 rounded-md border ${
                   selectedFileId === f.id
-                    ? "border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/20"
-                    : "border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50"
+                    ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
+                    : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)]"
                 }`}
               >
                 <button
                   type="button"
                   onClick={() => setSelectedFileId(f.id)}
-                  className="text-left flex-1 min-w-0 font-medium text-neutral-800 dark:text-neutral-200 truncate"
+                  className="text-left flex-1 min-w-0 font-medium text-[var(--ds-text-primary)] truncate"
                 >
                   {f.name}
                 </button>
-                <span className="text-neutral-500 dark:text-neutral-400 shrink-0">
+                <span className="text-[var(--ds-text-muted)] shrink-0">
                   {formatUploadedAt(f.uploadedAt)}
                 </span>
                 {f.importedAt ? (
                   <span
-                    className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0"
+                    className="inline-flex shrink-0 items-center rounded bg-[var(--ds-status-success-bg)] px-2 py-0.5 text-xs font-medium text-[var(--ds-status-success-fg)]"
                     title={`Translated to risks: ${formatUploadedAt(f.importedAt)}`}
                   >
                     Translated to risks
                   </span>
                 ) : null}
                 {!isCompleteView && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleRemoveFile(f.id)}
-                    className="px-2 py-1 text-xs rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 shrink-0"
+                    className="shrink-0 !text-[var(--ds-status-danger-fg)] hover:!bg-[color-mix(in_oklab,var(--ds-status-danger)_12%,transparent)]"
                   >
                     Remove
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}
           </ul>
 
         {parseError && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+          <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
             {parseError}
-          </p>
+          </Callout>
         )}
 
         <div className="flex flex-wrap items-center gap-3">
@@ -317,23 +320,26 @@ export function RiskRegisterImportCard() {
             type="button"
             onClick={handleGenerateRisks}
             disabled={!hasData || importStatus === "loading" || isCompleteView}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none"
+            className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
           >
             Generate Risks with AI
             {selectedFile ? ` (from ${selectedFile.name})` : ""}
           </button>
           {importStatus === "loading" && (
-            <span className="text-sm text-neutral-500">Loading…</span>
+            <div className="inline-flex items-center gap-2 py-1" aria-busy="true" aria-live="polite">
+              <div className="h-3 w-24 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+              <span className="sr-only">Generating risks</span>
+            </div>
           )}
           {importStatus === "success" && importMessage && (
-            <span className="text-sm text-blue-600 dark:text-blue-400" role="status">
+            <Callout status="success" role="status" className="!m-0 inline-block text-[length:var(--ds-text-sm)]">
               {importMessage}
-            </span>
+            </Callout>
           )}
           {importStatus === "error" && importMessage && (
-            <span className="text-sm text-red-600 dark:text-red-400" role="alert">
+            <Callout status="danger" role="alert" className="!m-0 inline-block text-[length:var(--ds-text-sm)]">
               {importMessage}
-            </span>
+            </Callout>
           )}
         </div>
       </div>

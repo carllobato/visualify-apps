@@ -4,6 +4,7 @@ import { useMemo, useEffect, useState } from "react";
 import {
   Badge,
   Button,
+  Callout,
   Card,
   CardBody,
   CardHeader,
@@ -893,71 +894,77 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       counts: { highWarnings, reviewWarnings, passCount, warnCount, failCount },
     };
   }, [consistencyChecks, simulationAssumptionCounts]);
-  const PAGE_CONTAINER = "p-6";
-  const PAGE_TITLE = "text-2xl font-semibold m-0";
-  const PAGE_ACTION_ROW = "mt-6 flex flex-wrap items-center gap-3";
-  const STATUS_TEXT_MUTED = "text-sm text-amber-600 dark:text-amber-400";
-  const STATUS_TEXT_WARN_ALERT = "text-sm text-amber-700 dark:text-amber-300 font-medium";
-  const STATUS_TEXT_FAIL_ALERT_WIDE = "text-sm text-red-700 dark:text-red-300 font-medium max-w-2xl";
-  const STATUS_TEXT_WARN_ALERT_WIDE = "text-sm text-amber-700 dark:text-amber-300 font-medium max-w-2xl";
-  const EMPTY_STATE_TEXT = "mt-8 text-neutral-600 dark:text-neutral-400";
-  const STATUS_TEXT_SUCCESS = "text-emerald-700 dark:text-emerald-400 font-medium";
-  const STATUS_TEXT_WARN = "text-amber-700 dark:text-amber-400 font-medium";
-  const STATUS_TEXT_FAIL = "text-red-700 dark:text-red-400 font-medium";
-  const META_GRID_4 = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-sm";
-  const META_GROUP = "space-y-3";
-  const META_GROUP_TITLE = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
-  const META_DL = "space-y-2 m-0";
-  const META_DT = "text-neutral-500 dark:text-neutral-400 font-normal";
-  const META_DD = "mt-0.5 text-neutral-800 dark:text-neutral-200";
-  const META_DD_MONO_BREAKALL = "mt-0.5 font-mono text-neutral-800 dark:text-neutral-200 break-all";
-  const META_DD_TRUNCATE = "mt-0.5 text-neutral-800 dark:text-neutral-200 truncate";
-  const META_INLINE_NOTE = "text-neutral-500 dark:text-neutral-400 font-normal ml-1";
-  const DIST_META_ROW = "flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400 mb-3";
-  const DIST_PERCENTILES_GRID = "grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-3 text-sm m-0";
-  const DIST_STATS_GRID = "grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs m-0 border-t border-neutral-200 dark:border-neutral-700 pt-3";
-  const DIST_DT = "text-neutral-500 dark:text-neutral-400 font-normal";
-  const DIST_DD = "mt-0.5 text-neutral-800 dark:text-neutral-200 m-0";
-  const DIST_HELPER_TEXT = "text-xs text-neutral-500 dark:text-neutral-400 mt-2 mb-3";
-  const DIAG_TABLE = "w-full text-sm border-collapse";
-  const DIAG_THEAD_ROW = "border-b border-neutral-200 dark:border-neutral-700";
-  const DIAG_TBODY_ROW = "border-b border-neutral-100 dark:border-neutral-700/50";
+  const PAGE_CONTAINER = "px-4 py-4 sm:px-5 sm:py-5";
+  const PAGE_TITLE = "m-0 text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]";
+  const PAGE_ACTION_ROW = "mt-4 flex flex-wrap items-center gap-2";
+  const CALLOUT_ROW = "min-w-0 basis-full shrink-0 sm:basis-auto";
+  const RUN_SECTION_CARD = "border-[var(--ds-border-subtle)]";
+  /** Inset cards: no extra frame inside section body (overrides Card inset border/surface). */
+  const RUN_INSET_CARD = "!border-0 !bg-transparent shadow-none";
+  const RUN_CARD_HEADER = "!border-[var(--ds-border-subtle)] !px-4 !py-2.5";
+  const RUN_CARD_TITLE = "text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)]";
+  const RUN_SUBCARD_TITLE = "text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]";
+  const RUN_CARD_BODY = "!px-4 !py-3";
+  const SECTION_GAP = "!mt-4";
+  const META_GRID_4 = "grid grid-cols-1 gap-4 text-[length:var(--ds-text-sm)] sm:grid-cols-2 lg:grid-cols-4";
+  const META_GROUP = "space-y-2";
+  const META_GROUP_TITLE = "text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]";
+  const META_DL = "m-0 space-y-1.5";
+  const META_DT = "font-normal text-[var(--ds-text-muted)]";
+  const META_DD = "mt-0.5 text-[var(--ds-text-primary)]";
+  const META_DD_MONO_BREAKALL = "mt-0.5 break-all font-mono text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]";
+  const META_DD_TRUNCATE = "mt-0.5 truncate text-[var(--ds-text-primary)]";
+  const META_INLINE_NOTE = "ml-1 font-normal text-[var(--ds-text-muted)]";
+  const DIST_META_ROW = "mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
+  const DIST_PERCENTILES_GRID = "m-0 grid grid-cols-2 gap-x-4 gap-y-2 text-[length:var(--ds-text-sm)] sm:grid-cols-4 lg:grid-cols-6";
+  const DIST_STATS_GRID = "m-0 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-[var(--ds-border-subtle)] pt-2.5 text-[length:var(--ds-text-xs)]";
+  const DIST_DT = "font-normal text-[var(--ds-text-muted)]";
+  const DIST_DD = "m-0 mt-0.5 font-medium tabular-nums text-[var(--ds-text-primary)]";
+  const DIST_HELPER_TEXT = "mb-0 mt-2 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
+  const TABLE_TH_META =
+    "text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--ds-text-muted)]";
+  const DIAG_TABLE = "w-full border-collapse text-[length:var(--ds-text-sm)]";
+  const DIAG_THEAD_ROW = "border-b border-[var(--ds-border-subtle)]";
+  const DIAG_TBODY_ROW = "border-b border-[var(--ds-border-subtle)]";
   const DIAG_TBODY_ROW_LAST = `${DIAG_TBODY_ROW} last:border-b-0`;
-  const DIAG_TH_LEFT_PR2 = "text-left py-1.5 pr-2 font-medium text-neutral-500 dark:text-neutral-400";
-  const DIAG_TH_LEFT_PX2 = "text-left py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400";
-  const DIAG_TH_LEFT_PL2 = "text-left py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400";
-  const DIAG_TH_RIGHT_PX2 = "text-right py-1.5 px-2 font-medium text-neutral-500 dark:text-neutral-400";
-  const DIAG_TH_RIGHT_PL2_W20 = "text-right py-1.5 pl-2 font-medium text-neutral-500 dark:text-neutral-400 w-20";
-  const DIAG_TD_LEFT_PR2 = "py-1.5 pr-2 text-neutral-700 dark:text-neutral-300";
-  const DIAG_TD_LEFT_PX2_MUTED = "py-1.5 px-2 text-neutral-600 dark:text-neutral-400 tabular-nums";
-  const DIAG_TD_LEFT_PL2_MUTED = "py-1.5 pl-2 text-neutral-500 dark:text-neutral-400";
-  const DIAG_TD_RIGHT_PX2_NUM = "text-right py-1.5 px-2 tabular-nums";
+  const DIAG_TH_LEFT_PR2 = `py-1.5 pr-2 text-left ${TABLE_TH_META}`;
+  const DIAG_TH_LEFT_PX2 = `px-2 py-1.5 text-left ${TABLE_TH_META}`;
+  const DIAG_TH_LEFT_PL2 = `py-1.5 pl-2 text-left ${TABLE_TH_META}`;
+  const DIAG_TH_RIGHT_PX2 = `px-2 py-1.5 text-right ${TABLE_TH_META}`;
+  const DIAG_TH_RIGHT_PL2_W20 = `w-20 py-1.5 pl-2 text-right ${TABLE_TH_META}`;
+  const DIAG_TD_LEFT_PR2 = "py-1.5 pr-2 text-[var(--ds-text-secondary)]";
+  const DIAG_TD_LEFT_PX2_MUTED = "px-2 py-1.5 text-left tabular-nums text-[var(--ds-text-secondary)]";
+  const DIAG_TD_LEFT_PL2_MUTED = "py-1.5 pl-2 text-[var(--ds-text-muted)]";
+  const DIAG_TD_RIGHT_PX2_NUM = "px-2 py-1.5 text-right tabular-nums text-[var(--ds-text-primary)]";
   const DIAG_TD_ALIGN_TOP = "py-1.5 pr-2 align-top";
-  const DIAG_WARN_TH_SEVERITY = "text-left py-1 pr-2 font-medium text-neutral-500 dark:text-neutral-400 w-20";
-  const DIAG_WARN_TH_MESSAGE = "text-left py-1 pl-2 font-medium text-neutral-500 dark:text-neutral-400";
-  const DRIVER_TABLE_WRAP = "overflow-x-auto rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)]";
-  const DRIVER_TABLE = "w-full text-sm border-collapse";
-  const DRIVER_HEAD_ROW = "border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50";
-  const DRIVER_TH_LEFT = "text-left py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
-  const DRIVER_TH_RIGHT = "text-right py-2 px-3 text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
-  const DRIVER_ROW = "border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0";
-  const DRIVER_CELL_RANK = "py-1.5 px-3 text-neutral-600 dark:text-neutral-400 tabular-nums";
-  const DRIVER_CELL_NAME = "py-1.5 px-3 text-neutral-800 dark:text-neutral-200 max-w-[200px] truncate";
-  const DRIVER_CELL_MUTED = "py-1.5 px-3 text-neutral-500 dark:text-neutral-400";
-  const DRIVER_CELL_VALUE = "py-1.5 px-3 text-right text-neutral-800 dark:text-neutral-200 font-medium tabular-nums";
-  const DRIVER_CELL_NUMERIC_MUTED = "py-1.5 px-3 text-right text-neutral-500 dark:text-neutral-400 tabular-nums";
-  const DRIVER_CELL_NUMERIC = "py-1.5 px-3 text-right text-neutral-700 dark:text-neutral-300 tabular-nums";
-  const DRIVER_EMPTY = "py-3 px-3 text-sm text-neutral-500 dark:text-neutral-400";
-  const H_TILE_WRAP = "rounded border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3";
-  const H_TILE_LABEL = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide";
-  const H_TILE_VALUE = "mt-0.5 text-base font-semibold tabular-nums";
-  const H_SUBSECTION_TITLE = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2";
-  const H_COMPACT_LIST = "space-y-2 text-sm m-0";
-  const H_COMPACT_LIST_ROW = "flex justify-between items-baseline gap-2";
-  const H_COMPACT_LIST_NAME = "text-neutral-800 dark:text-neutral-200 truncate";
-  const H_COMPACT_LIST_VALUE = "font-medium text-neutral-700 dark:text-neutral-300 shrink-0 tabular-nums";
-  const H_EMPTY_MUTED = "text-sm text-neutral-500 dark:text-neutral-400 m-0";
-  const H_EMPTY_LIST_MUTED = "text-neutral-500 dark:text-neutral-400";
+  const DIAG_WARN_TH_SEVERITY = `w-20 py-1.5 pr-2 text-left ${TABLE_TH_META}`;
+  const DIAG_WARN_TH_MESSAGE = `py-1.5 pl-2 text-left ${TABLE_TH_META}`;
+  const DRIVER_TABLE_WRAP = "overflow-x-auto bg-transparent";
+  const DRIVER_TABLE = "w-full border-collapse text-[length:var(--ds-text-sm)]";
+  const DRIVER_HEAD_ROW = "border-b border-[var(--ds-border-subtle)]";
+  const DRIVER_TH_LEFT = `px-3 py-1.5 text-left ${TABLE_TH_META}`;
+  const DRIVER_TH_RIGHT = `px-3 py-1.5 text-right ${TABLE_TH_META}`;
+  const DRIVER_ROW = "border-b border-[var(--ds-border-subtle)] last:border-b-0";
+  const DRIVER_CELL_RANK = "px-3 py-1.5 text-right tabular-nums text-[var(--ds-text-muted)]";
+  const DRIVER_CELL_NAME = "max-w-[200px] truncate px-3 py-1.5 text-[var(--ds-text-primary)]";
+  const DRIVER_CELL_MUTED = "px-3 py-1.5 text-[var(--ds-text-muted)]";
+  const DRIVER_CELL_VALUE = "px-3 py-1.5 text-right font-medium tabular-nums text-[var(--ds-text-primary)]";
+  const DRIVER_CELL_NUMERIC_MUTED = "px-3 py-1.5 text-right tabular-nums text-[var(--ds-text-muted)]";
+  const DRIVER_CELL_NUMERIC = "px-3 py-1.5 text-right tabular-nums text-[var(--ds-text-secondary)]";
+  const DRIVER_EMPTY = "px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]";
+  const H_TILE_WRAP = "rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)] p-2.5";
+  const H_TILE_LABEL = "text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]";
+  const H_TILE_VALUE = "mt-0.5 text-[length:var(--ds-text-base)] font-semibold tabular-nums text-[var(--ds-text-primary)]";
+  const H_SUBSECTION_TITLE = "mb-1.5 text-[length:var(--ds-text-xs)] font-semibold uppercase tracking-[0.06em] text-[var(--ds-text-muted)]";
+  const H_COMPACT_LIST = "m-0 space-y-1.5 text-[length:var(--ds-text-sm)]";
+  const H_COMPACT_LIST_ROW = "flex items-baseline justify-between gap-2";
+  const H_COMPACT_LIST_NAME = "truncate text-[var(--ds-text-primary)]";
+  const H_COMPACT_LIST_VALUE = "shrink-0 font-medium tabular-nums text-[var(--ds-text-secondary)]";
+  const H_EMPTY_MUTED = "m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]";
+  const H_EMPTY_LIST_MUTED = "text-[var(--ds-text-muted)]";
+  const CARD_DESC = "m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
+  const DRIVER_BLOCK_HEADING =
+    "mb-0 shrink-0 text-[length:var(--ds-text-xs)] font-semibold uppercase tracking-[0.06em] text-[var(--ds-text-muted)]";
 
   return (
     <main className={PAGE_CONTAINER}>
@@ -1023,47 +1030,47 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {loadingLockedRun ? "Loading locked run..." : "Load Last Locked Run"}
         </Button>
         {hasDraftRisks && (
-          <p className={STATUS_TEXT_MUTED} role="status">
+          <Callout status="warning" className={`${CALLOUT_ROW} text-[length:var(--ds-text-sm)]`} role="status">
             Review and save all draft risks in the Risk Register before running simulation.
-          </p>
+          </Callout>
         )}
         {invalidRunnableCount > 0 && (
-          <p className={STATUS_TEXT_MUTED} role="status">
+          <Callout status="warning" className={`${CALLOUT_ROW} text-[length:var(--ds-text-sm)]`} role="status">
             Fix {invalidRunnableCount} risk{invalidRunnableCount !== 1 ? "s" : ""} to run simulation.
-          </p>
+          </Callout>
         )}
         {runBlockedInvalidCount != null && runBlockedInvalidCount > 0 && (
-          <p className={STATUS_TEXT_WARN_ALERT} role="alert">
+          <Callout status="warning" className={`${CALLOUT_ROW} text-[length:var(--ds-text-sm)]`} role="alert">
             Simulation blocked: fix {runBlockedInvalidCount} risk{runBlockedInvalidCount !== 1 ? "s" : ""} to run simulation.
-          </p>
+          </Callout>
         )}
         {snapshotPersistWarning && (
-          <p className={STATUS_TEXT_FAIL_ALERT_WIDE} role="alert">
+          <Callout status="danger" className={`${CALLOUT_ROW} max-w-2xl text-[length:var(--ds-text-sm)]`} role="alert">
             Could not save run to the database: {snapshotPersistWarning}
-          </p>
+          </Callout>
         )}
         {lockedRunLoadWarning && (
-          <p className={STATUS_TEXT_WARN_ALERT_WIDE} role="alert">
+          <Callout status="warning" className={`${CALLOUT_ROW} max-w-2xl text-[length:var(--ds-text-sm)]`} role="alert">
             {lockedRunLoadWarning}
-          </p>
+          </Callout>
         )}
       </div>
 
 
       {!current ? (
-        <p className={EMPTY_STATE_TEXT}>
+        <Callout status="neutral" className={`${SECTION_GAP} text-[length:var(--ds-text-sm)]`}>
           No simulation run yet. Add risks in the Risk Register, then run a simulation.
-        </p>
+        </Callout>
       ) : (
         <>
           {/* ——— BASELINE: inputs that were run ——— */}
           {/* Run Metadata: run identity, config, status. Source: current (simulation run snapshot). */}
-          <Section aria-label="Run metadata">
-            <Card>
-              <CardHeader>
-                <CardTitle>Run Metadata</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Run metadata">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Run Metadata</CardTitle>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
                 <div className={META_GRID_4}>
                   {/* Group A — Identity */}
                   <div className={META_GROUP}>
@@ -1149,7 +1156,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           {reportingDbRow?.locked_for_reporting ? (
                             <Badge status="success">Yes</Badge>
                           ) : (
-                            <span className="text-neutral-500 dark:text-neutral-400">No</span>
+                            <span className="text-[var(--ds-text-muted)]">No</span>
                           )}
                         </dd>
                       </div>
@@ -1173,14 +1180,14 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           {(() => {
                             if (!reportingDbRow?.report_month) {
                               return (
-                                <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
+                                <span className="text-[var(--ds-text-muted)]">Not set</span>
                               );
                             }
                             const label = formatReportMonthLabel(reportingDbRow.report_month);
                             return label !== "—" ? (
                               label
                             ) : (
-                              <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
+                              <span className="text-[var(--ds-text-muted)]">Not set</span>
                             );
                           })()}
                         </dd>
@@ -1189,7 +1196,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         <dt className={META_DT}>Locked by</dt>
                         <dd className={META_DD}>
                           {(reportingLockedByLabel ?? reportingDbRow?.locked_by?.trim()) || (
-                            <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
+                            <span className="text-[var(--ds-text-muted)]">Not set</span>
                           )}
                         </dd>
                       </div>
@@ -1199,7 +1206,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           {reportingDbRow?.locked_at ? (
                             formatRunTimestamp(reportingDbRow.locked_at)
                           ) : (
-                            <span className="text-neutral-500 dark:text-neutral-400">Not set</span>
+                            <span className="text-[var(--ds-text-muted)]">Not set</span>
                           )}
                         </dd>
                       </div>
@@ -1207,7 +1214,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         <dt className={META_DT}>Reporting note</dt>
                         <dd className={META_DD}>
                           {reportingDbRow?.lock_note?.trim() || (
-                            <span className="text-neutral-500 dark:text-neutral-400">Not available</span>
+                            <span className="text-[var(--ds-text-muted)]">Not available</span>
                           )}
                         </dd>
                       </div>
@@ -1219,29 +1226,32 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* RUN VERDICT: single summary from Simulation Warnings + Consistency Checks. Internal diagnostic only. */}
-          <Section className="mt-6" aria-label="Run verdict">
-            <Card>
-              <CardHeader>
-                <CardTitle>RUN VERDICT</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Run verdict">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={`${RUN_CARD_HEADER} !pb-1.5`}>
+                <CardTitle className="text-sm font-semibold text-[var(--ds-text-primary)] mb-2">
+                  Run verdict
+                </CardTitle>
               </CardHeader>
-              <CardBody>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span
-                      className={
-                        runVerdict.status === "Healthy run"
-                          ? STATUS_TEXT_SUCCESS
-                          : runVerdict.status === "Valid with warnings"
-                            ? STATUS_TEXT_WARN
-                            : STATUS_TEXT_FAIL
-                      }
-                    >
-                      {runVerdict.status}
-                    </span>
-                    <span className="text-neutral-500 dark:text-neutral-400">—</span>
-                    <span className="text-sm text-neutral-700 dark:text-neutral-300">{runVerdict.summary}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+              <CardBody className={`${RUN_CARD_BODY} !pt-1.5`}>
+                <div>
+                  <Callout
+                    status={
+                      runVerdict.status === "Healthy run"
+                        ? "success"
+                        : runVerdict.status === "Valid with warnings"
+                          ? "warning"
+                          : "danger"
+                    }
+                  >
+                    <div>
+                      <div className="text-sm font-medium">{runVerdict.status}</div>
+                      <div className="text-xs text-[var(--ds-text-muted)] mt-0.5">
+                        {runVerdict.summary}
+                      </div>
+                    </div>
+                  </Callout>
+                  <div className="text-xs text-[var(--ds-text-muted)] mt-2 flex flex-wrap gap-x-4 gap-y-1">
                     <span>High warnings: {runVerdict.counts.highWarnings}</span>
                     <span>Review warnings: {runVerdict.counts.reviewWarnings}</span>
                     <span>PASS checks: {runVerdict.counts.passCount}</span>
@@ -1254,12 +1264,12 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* Risk Register Snapshot: risk set that fed the run (current.risks). Counts and mix validate input. */}
-          <Section className="mt-6" aria-label="Risk register snapshot">
-            <Card>
-              <CardHeader>
-                <CardTitle>Risk Register Snapshot</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Risk register snapshot">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Risk Register Snapshot</CardTitle>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
                 <div className={META_GRID_4}>
                 {/* Risk Volume */}
                 <div className={META_GROUP}>
@@ -1375,12 +1385,12 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— SIMULATION: Monte Carlo outputs ——— */}
           {/* Cost Distribution: percentiles from neutral run. Source: neutralMc.costSamples or snapshot summary. */}
-          <Section className="mt-6" aria-label="Cost distribution">
-            <Card>
-              <CardHeader>
-                <CardTitle>Cost Distribution</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Cost distribution">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Cost Distribution</CardTitle>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
                 <div className={DIST_META_ROW}>
                   <span>Model: {distributionPercentiles.meta.baselineName}</span>
                   <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
@@ -1449,12 +1459,12 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* Schedule Distribution: percentiles from neutral run. Source: neutralMc.timeSamples or snapshot summary. */}
-          <Section className="mt-6" aria-label="Schedule distribution">
-            <Card>
-              <CardHeader>
-                <CardTitle>Schedule Distribution</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Schedule distribution">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Schedule Distribution</CardTitle>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
                 <div className={DIST_META_ROW}>
                   <span>Model: {distributionPercentiles.meta.baselineName}</span>
                   <span>Iterations: {distributionPercentiles.meta.iterationCount != null ? distributionPercentiles.meta.iterationCount.toLocaleString() : "Not available"}</span>
@@ -1523,29 +1533,27 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* ——— SIMULATION INTEGRITY: Monte Carlo distribution diagnostics ——— */}
-          <Section className="mt-6" aria-label="Simulation integrity">
-            <Card>
-              <CardHeader>
-                <CardTitle>Simulation Integrity</CardTitle>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
-                  Monte Carlo distribution diagnostics
-                </p>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-0.5 pb-2 m-0">
+          <Section className={SECTION_GAP} aria-label="Simulation integrity">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Simulation Integrity</CardTitle>
+                <p className={`${CARD_DESC} mt-1`}>Monte Carlo distribution diagnostics</p>
+                <p className={`${CARD_DESC} mt-1`}>
                   Kurtosis is raw (normal ≈ 3), not excess kurtosis. CV = std dev / mean.
                 </p>
               </CardHeader>
-              <CardBody>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <CardBody className={RUN_CARD_BODY}>
+                <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-2 lg:gap-3">
               {/* Cost distribution diagnostics */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Cost distribution diagnostics</CardTitle>
+                  <Card variant="inset" className={RUN_INSET_CARD}>
+                    <CardHeader className={RUN_CARD_HEADER}>
+                      <CardTitle className={RUN_SUBCARD_TITLE}>Cost distribution diagnostics</CardTitle>
                     </CardHeader>
-                    <CardBody>
+                    <CardBody className={RUN_CARD_BODY}>
                   {simulationIntegrity.cost ? (
                     <Table className={DIAG_TABLE}>
                       <TableHead>
-                        <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                        <TableRow className={DIAG_THEAD_ROW}>
                           <TableHeaderCell className={`${DIAG_TH_LEFT_PR2} pl-0`}>Metric</TableHeaderCell>
                           <TableHeaderCell className={DIAG_TH_RIGHT_PX2}>Value</TableHeaderCell>
                           <TableHeaderCell className={`${DIAG_TH_LEFT_PL2} pr-0`}>Interpretation</TableHeaderCell>
@@ -1624,7 +1632,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </TableBody>
                     </Table>
                   ) : (
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
+                    <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                       Diagnostics unavailable — sample data not stored for this run.
                     </p>
                   )}
@@ -1632,15 +1640,15 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </Card>
 
               {/* Schedule distribution diagnostics */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Schedule distribution diagnostics</CardTitle>
+                  <Card variant="inset" className={RUN_INSET_CARD}>
+                    <CardHeader className={RUN_CARD_HEADER}>
+                      <CardTitle className={RUN_SUBCARD_TITLE}>Schedule distribution diagnostics</CardTitle>
                     </CardHeader>
-                    <CardBody>
+                    <CardBody className={RUN_CARD_BODY}>
                   {simulationIntegrity.schedule ? (
                     <Table className={DIAG_TABLE}>
                       <TableHead>
-                        <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                        <TableRow className={DIAG_THEAD_ROW}>
                           <TableHeaderCell className={`${DIAG_TH_LEFT_PR2} pl-0`}>Metric</TableHeaderCell>
                           <TableHeaderCell className={DIAG_TH_RIGHT_PX2}>Value</TableHeaderCell>
                           <TableHeaderCell className={`${DIAG_TH_LEFT_PL2} pr-0`}>Interpretation</TableHeaderCell>
@@ -1727,7 +1735,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </TableBody>
                     </Table>
                   ) : (
-                    <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
+                    <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                       Diagnostics unavailable — sample data not stored for this run.
                     </p>
                   )}
@@ -1739,16 +1747,14 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* ——— SIMULATION ASSUMPTIONS: input quality checks for Monte Carlo readiness ——— */}
-          <Section className="mt-6" aria-label="Simulation assumptions">
-            <Card>
-              <CardHeader>
-                <CardTitle>Simulation Assumptions</CardTitle>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
-                  Input quality checks for Monte Carlo readiness
-                </p>
+          <Section className={SECTION_GAP} aria-label="Simulation assumptions">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Simulation Assumptions</CardTitle>
+                <p className={`${CARD_DESC} mt-1`}>Input quality checks for Monte Carlo readiness</p>
               </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
+              <CardBody className={RUN_CARD_BODY}>
+                <div className="space-y-2.5">
               {/* Simulation Warnings: derived only from existing assumption counts. High = no variability > 3 or missing probabilities; Review = unchanged mitigation or min = max. */}
               {(() => {
                 const c = simulationAssumptionCounts;
@@ -1790,19 +1796,19 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   });
                 }
                 return (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Simulation Warnings</CardTitle>
+                  <Card variant="inset" className={RUN_INSET_CARD}>
+                    <CardHeader className={RUN_CARD_HEADER}>
+                      <CardTitle className={RUN_SUBCARD_TITLE}>Simulation Warnings</CardTitle>
                     </CardHeader>
-                    <CardBody>
+                    <CardBody className={RUN_CARD_BODY}>
                       {warnings.length === 0 ? (
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 m-0">
+                        <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)] m-0">
                           No material input warnings detected
                         </p>
                       ) : (
                         <Table className={DIAG_TABLE}>
                           <TableHead>
-                            <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                            <TableRow className={DIAG_THEAD_ROW}>
                               <TableHeaderCell className={`${DIAG_WARN_TH_SEVERITY} pl-0`}>Severity</TableHeaderCell>
                               <TableHeaderCell className={`${DIAG_WARN_TH_MESSAGE} pr-0`}>Message</TableHeaderCell>
                             </TableRow>
@@ -1811,15 +1817,9 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                             {warnings.map((w, i) => (
                               <TableRow key={i} className={DIAG_TBODY_ROW_LAST}>
                                 <TableCell className={`${DIAG_TD_ALIGN_TOP} pl-0`}>
-                                  <span
-                                    className={
-                                      w.severity === "High"
-                                        ? STATUS_TEXT_FAIL
-                                        : STATUS_TEXT_WARN
-                                    }
-                                  >
+                                  <Badge status={w.severity === "High" ? "danger" : "warning"} variant="subtle">
                                     {w.severity}
-                                  </span>
+                                  </Badge>
                                 </TableCell>
                                 <TableCell className={`${DIAG_TD_LEFT_PR2} pl-2 pr-0`}>{w.message}</TableCell>
                               </TableRow>
@@ -1833,7 +1833,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
               })()}
               <Table className={DIAG_TABLE}>
                 <TableHead>
-                  <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                  <TableRow className={DIAG_THEAD_ROW}>
                     <TableHeaderCell className={`${DIAG_TH_LEFT_PR2} pl-0`}>Metric</TableHeaderCell>
                     <TableHeaderCell className={DIAG_TH_RIGHT_PX2}>Count</TableHeaderCell>
                     <TableHeaderCell className={`${DIAG_TH_LEFT_PL2} pr-0`}>Interpretation</TableHeaderCell>
@@ -1925,18 +1925,16 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* ——— CONSISTENCY CHECKS: cross-section reconciliation ——— */}
-          <Section className="mt-6" aria-label="Consistency checks">
-            <Card>
-              <CardHeader>
-                <CardTitle>Consistency Checks</CardTitle>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 px-4 pt-2 m-0">
-                  Cross-section reconciliation checks
-                </p>
+          <Section className={SECTION_GAP} aria-label="Consistency checks">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Consistency Checks</CardTitle>
+                <p className={`${CARD_DESC} mt-1`}>Cross-section reconciliation checks</p>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
                 <Table className={DIAG_TABLE}>
                   <TableHead>
-                    <TableRow className={`${DIAG_THEAD_ROW} border-[var(--ds-border)]`}>
+                    <TableRow className={DIAG_THEAD_ROW}>
                       <TableHeaderCell className={DIAG_TH_LEFT_PR2}>Check</TableHeaderCell>
                       <TableHeaderCell className={DIAG_TH_LEFT_PX2}>Result</TableHeaderCell>
                       <TableHeaderCell className={DIAG_TH_RIGHT_PL2_W20}>Status</TableHeaderCell>
@@ -1948,17 +1946,12 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         <TableCell className={DIAG_TD_LEFT_PR2}>{row.check}</TableCell>
                         <TableCell className={DIAG_TD_LEFT_PX2_MUTED}>{row.result}</TableCell>
                         <TableCell className="py-1.5 pl-2 text-right">
-                          <span
-                            className={
-                              row.status === "PASS"
-                                ? STATUS_TEXT_SUCCESS
-                                : row.status === "WARN"
-                                  ? STATUS_TEXT_WARN
-                                  : STATUS_TEXT_FAIL
-                            }
+                          <Badge
+                            status={row.status === "PASS" ? "success" : row.status === "WARN" ? "warning" : "danger"}
+                            variant="subtle"
                           >
                             {row.status}
-                          </span>
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1970,19 +1963,17 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— ANALYSIS: why the results occur ——— */}
           {/* Simulation Drivers: cost from forwardExposure.results.neutral.topDrivers; schedule from current.risks by simMeanDays/expectedDays. */}
-          <Section className="mt-6" aria-label="Simulation drivers">
-            <Card>
-              <CardHeader>
-                <CardTitle>Simulation Drivers</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Simulation drivers">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Simulation Drivers</CardTitle>
               </CardHeader>
-              <CardBody>
-                <div className="space-y-6">
+              <CardBody className={RUN_CARD_BODY}>
+                <div className="space-y-3">
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
-                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                    Cost Drivers
-                  </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h3 className={DRIVER_BLOCK_HEADING}>Cost Drivers</h3>
+                  <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
                     Contribution % = each row&apos;s share of total portfolio exposure (neutral baseline). Denominator = forward exposure engine neutral total.
                   </p>
                 </div>
@@ -1990,7 +1981,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   <Table className={DRIVER_TABLE}>
                     <TableHead>
                       <TableRow className={DRIVER_HEAD_ROW}>
-                        <TableHeaderCell className={DRIVER_TH_LEFT}>Rank</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Rank</TableHeaderCell>
                         <TableHeaderCell className={DRIVER_TH_LEFT}>Risk name</TableHeaderCell>
                         <TableHeaderCell className={DRIVER_TH_LEFT}>Impact type</TableHeaderCell>
                         <TableHeaderCell className={DRIVER_TH_LEFT}>Category</TableHeaderCell>
@@ -2040,11 +2031,9 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 </div>
               </div>
               <div>
-                <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-2">
-                  <h3 className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                    Schedule Drivers
-                  </h3>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <h3 className={DRIVER_BLOCK_HEADING}>Schedule Drivers</h3>
+                  <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
                     Contribution % = each row&apos;s share of total schedule impact (sum of simMeanDays/expectedDays over risks in run).
                   </p>
                 </div>
@@ -2052,7 +2041,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   <Table className={DRIVER_TABLE}>
                     <TableHead>
                       <TableRow className={DRIVER_HEAD_ROW}>
-                        <TableHeaderCell className={DRIVER_TH_LEFT}>Rank</TableHeaderCell>
+                        <TableHeaderCell className={DRIVER_TH_RIGHT}>Rank</TableHeaderCell>
                         <TableHeaderCell className={DRIVER_TH_LEFT}>Risk name</TableHeaderCell>
                         <TableHeaderCell className={DRIVER_TH_LEFT}>Impact type</TableHeaderCell>
                         <TableHeaderCell className={DRIVER_TH_LEFT}>Category</TableHeaderCell>
@@ -2111,23 +2100,23 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {/* ——— EXPOSURE: project-level summary from forward exposure engine ——— */}
           {/* Baseline Exposure: answers "What exposure does the project currently carry?"
               All values from computePortfolioExposure (forward exposure engine); total = sum of risk curves. */}
-          <Section className="mt-6" aria-label="Baseline exposure">
-            <Card>
-              <CardHeader>
-                <CardTitle>Baseline Exposure</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Baseline exposure">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Baseline Exposure</CardTitle>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
               {/* Core exposure metrics from neutral baseline only. */}
               {(() => {
                 const expectedTotal = forwardExposure.result?.total ?? 0;
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-4">
+                  <div className="mb-3 grid grid-cols-1 gap-3 text-[length:var(--ds-text-sm)] sm:grid-cols-2 lg:grid-cols-3">
                     <div className={H_TILE_WRAP}>
                       <div className={H_TILE_LABEL}>
                         Expected exposure
                       </div>
                       <div className={H_TILE_VALUE}>{formatCost(expectedTotal)}</div>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 m-0">Neutral baseline total (forward exposure engine)</p>
+                      <p className={`${CARD_DESC} mt-0.5`}>Neutral baseline total (forward exposure engine)</p>
                     </div>
                   </div>
                 );
@@ -2141,14 +2130,21 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 const top3SharePct = ((selectedResult?.concentration?.top3Share ?? 0) * 100);
                 const hhi = selectedResult?.concentration?.hhi ?? 0;
                 return (
-                  <div className="mb-4">
-                    <div className={H_SUBSECTION_TITLE}>
-                      Exposure concentration
-                    </div>
-                    <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-sm m-0">
-                      <div><dt className="text-neutral-500 dark:text-neutral-400 font-normal">Top 3 share</dt><dd className="mt-0 tabular-nums">{top3SharePct.toFixed(1)}%</dd></div>
-                      <div><dt className="text-neutral-500 dark:text-neutral-400 font-normal">Top 5 share</dt><dd className="mt-0 tabular-nums">{top5SharePct.toFixed(1)}%</dd></div>
-                      <div><dt className="text-neutral-500 dark:text-neutral-400 font-normal">HHI</dt><dd className="mt-0 tabular-nums">{hhi.toFixed(3)}</dd></div>
+                  <div className="mb-3">
+                    <div className={H_SUBSECTION_TITLE}>Exposure concentration</div>
+                    <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-1 text-[length:var(--ds-text-sm)] sm:grid-cols-3">
+                      <div>
+                        <dt className="font-normal text-[var(--ds-text-muted)]">Top 3 share</dt>
+                        <dd className="mt-0 font-medium tabular-nums text-[var(--ds-text-primary)]">{top3SharePct.toFixed(1)}%</dd>
+                      </div>
+                      <div>
+                        <dt className="font-normal text-[var(--ds-text-muted)]">Top 5 share</dt>
+                        <dd className="mt-0 font-medium tabular-nums text-[var(--ds-text-primary)]">{top5SharePct.toFixed(1)}%</dd>
+                      </div>
+                      <div>
+                        <dt className="font-normal text-[var(--ds-text-muted)]">HHI</dt>
+                        <dd className="mt-0 font-medium tabular-nums text-[var(--ds-text-primary)]">{hhi.toFixed(3)}</dd>
+                      </div>
                     </dl>
                   </div>
                 );
@@ -2179,31 +2175,34 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— FORWARD LOOKING: how exposure evolves over the project timeline ——— */}
           {/* Forecasting: exposure over time from forward exposure engine; pressure/early-warning from risk forecast. */}
-          <Section className="mt-6" aria-label="Forecasting">
-            <Card>
-              <CardHeader>
-                <CardTitle>Forecasting</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Forecasting">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Forecasting</CardTitle>
               </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
+              <CardBody className={RUN_CARD_BODY}>
+                <div className="space-y-3">
               {/* Exposure over time: real data from portfolio.monthlyTotal (forward exposure engine). Cost only. */}
               {selectedResult?.monthlyTotal && selectedResult.monthlyTotal.length > 0 && (
                 <div>
                   <div className={H_SUBSECTION_TITLE}>
                     Cost exposure over time
                   </div>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 m-0">
+                  <p className={`${CARD_DESC} mb-1.5`}>
                     Source: forward exposure engine portfolio.monthlyTotal (sum of risk curves per month). Units: cost only.
                   </p>
-                  <div className="overflow-x-auto rounded border border-neutral-200 dark:border-neutral-700">
-                    <Table className="w-full text-sm border-collapse">
+                  <div className={DRIVER_TABLE_WRAP}>
+                    <Table className={DIAG_TABLE}>
                       <TableHead>
-                        <TableRow className="border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50/80 dark:bg-neutral-800/50 border-[var(--ds-border)]">
-                          <TableHeaderCell className="text-left py-1.5 px-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                        <TableRow className={DRIVER_HEAD_ROW}>
+                          <TableHeaderCell className={`px-2 py-1.5 text-left ${TABLE_TH_META}`}>
                             Month
                           </TableHeaderCell>
                           {selectedResult.monthlyTotal.slice(0, forwardExposure.horizonMonths).map((_, i) => (
-                            <TableHeaderCell key={i} className="text-right py-1.5 px-2 text-xs font-medium text-neutral-500 dark:text-neutral-400 tabular-nums">
+                            <TableHeaderCell
+                              key={i}
+                              className={`px-2 py-1.5 text-right tabular-nums ${TABLE_TH_META}`}
+                            >
                               {i + 1}
                             </TableHeaderCell>
                           ))}
@@ -2211,9 +2210,9 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </TableHead>
                       <TableBody>
                         <TableRow className="border-b-0">
-                          <TableCell className="py-1.5 px-2 text-neutral-600 dark:text-neutral-400">Exposure</TableCell>
+                          <TableCell className="px-2 py-1.5 text-[var(--ds-text-secondary)]">Exposure</TableCell>
                           {selectedResult.monthlyTotal.slice(0, forwardExposure.horizonMonths).map((v, i) => (
-                            <TableCell key={i} className="text-right py-1.5 px-2 tabular-nums">
+                            <TableCell key={i} className="px-2 py-1.5 text-right tabular-nums text-[var(--ds-text-primary)]">
                               {formatCost(v)}
                             </TableCell>
                           ))}
@@ -2234,14 +2233,14 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       }
                     }
                     return (
-                      <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3 text-sm">
+                      <dl className="mt-1.5 grid grid-cols-1 gap-2 text-[length:var(--ds-text-sm)] sm:grid-cols-3 sm:gap-4">
                         <div>
-                          <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Peak exposure period</dt>
-                          <dd className="mt-0 font-medium tabular-nums">Month {peakIdx + 1}</dd>
+                          <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Peak exposure period</dt>
+                          <dd className="mt-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">Month {peakIdx + 1}</dd>
                         </div>
                         <div>
-                          <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Peak value</dt>
-                          <dd className="mt-0 font-medium tabular-nums">{formatCost(peakVal)}</dd>
+                          <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Peak value</dt>
+                          <dd className="mt-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">{formatCost(peakVal)}</dd>
                         </div>
                       </dl>
                     );
@@ -2253,7 +2252,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 <div className={H_SUBSECTION_TITLE}>
                   Planned metrics (engine)
                 </div>
-                <ul className="text-sm text-neutral-500 dark:text-neutral-400 space-y-1 m-0 list-disc list-inside">
+                <ul className="m-0 list-inside list-disc space-y-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                   <li>Exposure decay — TBD</li>
                   <li>Risk burn-down — TBD</li>
                 </ul>
@@ -2263,29 +2262,29 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 <div className={H_SUBSECTION_TITLE}>
                   Pressure and trajectory
                 </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2 m-0">
+                <p className={`${CARD_DESC} mb-2`}>
                   Source: risk forecast engine (composite score projection, EII, TTC). Not from exposure engine.
                 </p>
-                <dl className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm m-0">
+                <dl className="m-0 grid grid-cols-2 gap-3 text-[length:var(--ds-text-sm)] sm:grid-cols-5 sm:gap-4">
                   <div>
-                    <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Forward pressure</dt>
-                    <dd className="mt-0.5 font-medium">{meetingPressureLabel}</dd>
+                    <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Forward pressure</dt>
+                    <dd className="mt-0.5 font-semibold text-[var(--ds-text-primary)]">{meetingPressureLabel}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Projected critical</dt>
-                    <dd className="mt-0.5 font-medium tabular-nums">{forwardPressure.projectedCriticalCount}</dd>
+                    <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Projected critical</dt>
+                    <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{forwardPressure.projectedCriticalCount}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Escalating</dt>
-                    <dd className="mt-0.5 font-medium tabular-nums">{momentumSummary.escalatingCount}</dd>
+                    <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Escalating</dt>
+                    <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{momentumSummary.escalatingCount}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Early warning</dt>
-                    <dd className="mt-0.5 font-medium tabular-nums">{earlyWarningCount}</dd>
+                    <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Early warning</dt>
+                    <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{earlyWarningCount}</dd>
                   </div>
                   <div>
-                    <dt className="text-neutral-500 dark:text-neutral-400 font-normal text-xs">Median TTC</dt>
-                    <dd className="mt-0.5 font-medium">{meetingMedianTtc != null ? meetingMedianTtc : "—"}</dd>
+                    <dt className="font-normal text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Median TTC</dt>
+                    <dd className="mt-0.5 font-semibold text-[var(--ds-text-primary)]">{meetingMedianTtc != null ? meetingMedianTtc : "—"}</dd>
                   </div>
                 </dl>
               </div>
@@ -2296,12 +2295,12 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* ——— DECISION SUPPORT: effect of mitigations ——— */}
           {/* Mitigation Results: pre/post exposure and reduction from cost drivers (validates mitigation logic). */}
-          <Section className="mt-6" aria-label="Mitigation results">
-            <Card>
-              <CardHeader>
-                <CardTitle>Mitigation Results</CardTitle>
+          <Section className={SECTION_GAP} aria-label="Mitigation results">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Mitigation Results</CardTitle>
               </CardHeader>
-              <CardBody>
+              <CardBody className={RUN_CARD_BODY}>
               {costDrivers.length > 0 ? (
                 (() => {
                   const preTotal = costDrivers.reduce((s, d) => s + d.preMitigation, 0);
@@ -2311,25 +2310,25 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   const topByReduction = [...costDrivers].filter((d) => d.delta > 0).sort((a, b) => b.delta - a.delta).slice(0, 5);
                   return (
                     <>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-3 m-0">
+                      <p className={`${CARD_DESC} mb-3`}>
                         Cost exposure only (schedule not included). Pre = sum(cost drivers preMitigation), post = sum(cost drivers postMitigation). Validates mitigation impact on cost.
                       </p>
-                      <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-4">
+                      <dl className="mb-3 grid grid-cols-2 gap-3 text-[length:var(--ds-text-sm)] sm:grid-cols-4 sm:gap-4">
                         <div className={H_TILE_WRAP}>
                           <dt className={H_TILE_LABEL}>Pre-mitigation cost exposure</dt>
-                          <dd className="mt-0.5 font-semibold tabular-nums">{formatCost(preTotal)}</dd>
+                          <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{formatCost(preTotal)}</dd>
                         </div>
                         <div className={H_TILE_WRAP}>
                           <dt className={H_TILE_LABEL}>Post-mitigation cost exposure</dt>
-                          <dd className="mt-0.5 font-semibold tabular-nums">{formatCost(postTotal)}</dd>
+                          <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{formatCost(postTotal)}</dd>
                         </div>
                         <div className={H_TILE_WRAP}>
                           <dt className={H_TILE_LABEL}>Cost exposure reduction</dt>
-                          <dd className="mt-0.5 font-semibold tabular-nums">{formatCost(reduction)}</dd>
+                          <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{formatCost(reduction)}</dd>
                         </div>
                         <div className={H_TILE_WRAP}>
                           <dt className={H_TILE_LABEL}>Reduction %</dt>
-                          <dd className="mt-0.5 font-semibold tabular-nums">{preTotal > 0 ? `${reductionPct.toFixed(1)}%` : "—"}</dd>
+                          <dd className="mt-0.5 font-semibold tabular-nums text-[var(--ds-text-primary)]">{preTotal > 0 ? `${reductionPct.toFixed(1)}%` : "—"}</dd>
                         </div>
                       </dl>
                       {topByReduction.length > 0 && (
@@ -2361,9 +2360,11 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
           {/* Mitigation leverage (ROI): API; requires simulation snapshot. */}
           {snapshotNeutral ? (
-            <MitigationOptimisationPanel />
+            <div className={SECTION_GAP}>
+              <MitigationOptimisationPanel />
+            </div>
           ) : (
-            <p className="mt-6 text-sm text-neutral-500 dark:text-neutral-400">
+            <p className={`${SECTION_GAP} text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]`}>
               Run simulation to see mitigation leverage.
             </p>
           )}

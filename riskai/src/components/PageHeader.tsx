@@ -5,10 +5,13 @@ import { riskaiPath } from "@/lib/routes";
 import { usePageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 
 const linkClass =
-  "text-[var(--foreground)] hover:underline focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 focus:ring-offset-[var(--background)] rounded";
+  "text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)] no-underline transition-[color,text-decoration-color] duration-[var(--ds-transition-fast)] ease-in-out " +
+  "hover:text-[var(--ds-text-secondary)] hover:underline " +
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)] " +
+  "rounded-[var(--ds-radius-sm)]";
 
 const titleSeparatorClass =
-  "shrink-0 px-2 font-light text-neutral-400 dark:text-neutral-500";
+  "shrink-0 px-[var(--ds-space-2)] font-semibold text-[length:var(--ds-text-xl)] text-[var(--ds-text-muted)]";
 
 type PageHeaderProps = {
   projectId: string;
@@ -33,8 +36,8 @@ export function PageHeader({
 
   return (
     <>
-      <header className="min-h-[61px] flex items-center justify-between gap-4 px-6 shrink-0">
-        <h1 className="text-xl font-semibold text-[var(--foreground)] m-0 flex min-w-0 flex-1 items-center gap-1">
+      <header className="flex min-h-[61px] shrink-0 items-center justify-between gap-[var(--ds-space-4)] px-[var(--ds-space-6)]">
+        <h1 className="m-0 flex min-w-0 flex-1 items-center gap-[var(--ds-space-1)] text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">
           {portfolioName && portfolioId ? (
             <>
               <Link href={riskaiPath(`/portfolios/${portfolioId}`)} className={linkClass + " shrink-0"}>
@@ -68,21 +71,20 @@ export function PageHeader({
               <span className={titleSeparatorClass} aria-hidden>
                 |
               </span>
-              <span className="shrink-0 text-[var(--foreground)]">{extras.titleSuffix}</span>
+              <span className="shrink-0 text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">
+                {extras.titleSuffix}
+              </span>
             </>
           ) : null}
         </h1>
         {extras?.end ? (
-          <div className="flex shrink-0 flex-col gap-1 text-sm text-neutral-600 dark:text-neutral-300 sm:items-end sm:text-right">
+          <div className="flex shrink-0 flex-col gap-[var(--ds-space-1)] text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] sm:items-end sm:text-right">
             {extras.end}
           </div>
         ) : null}
       </header>
-      <div className="w-full shrink-0 px-6">
-        <div
-          className="h-px w-full bg-neutral-200 dark:bg-neutral-700"
-          aria-hidden
-        />
+      <div className="w-full shrink-0 px-[var(--ds-space-6)]">
+        <div className="h-px w-full bg-[var(--ds-border-subtle)]" aria-hidden />
       </div>
     </>
   );

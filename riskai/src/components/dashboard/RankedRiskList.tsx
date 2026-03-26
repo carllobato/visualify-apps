@@ -17,11 +17,7 @@ export function RankedRiskList<T>({
   emptyMessage = "No items",
 }: RankedRiskListProps<T>) {
   if (items.length === 0) {
-    return (
-      <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
-        {emptyMessage}
-      </p>
-    );
+    return <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">{emptyMessage}</p>;
   }
 
   return (
@@ -29,10 +25,10 @@ export function RankedRiskList<T>({
       {items.map((item, index) => (
         <li
           key={item.id}
-          className="flex items-center gap-3 py-2 px-0 border-b border-neutral-100 dark:border-neutral-700/50 last:border-b-0"
+          className="flex items-center gap-3 border-b border-[var(--ds-border-subtle)] py-2 px-0 last:border-b-0"
         >
           <span
-            className="shrink-0 w-6 h-6 rounded-full bg-neutral-200 dark:bg-neutral-600 text-neutral-600 dark:text-neutral-300 text-xs font-medium flex items-center justify-center"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-surface-muted)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]"
             aria-hidden
           >
             {index + 1}

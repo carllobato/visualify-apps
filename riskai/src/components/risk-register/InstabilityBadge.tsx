@@ -22,30 +22,34 @@ function badgeStyleForLevel(level: InstabilityResult["level"]): React.CSSPropert
     case "Low":
       return {
         ...badgeBaseStyle,
-        backgroundColor: "rgba(128, 128, 128, 0.14)",
-        color: "var(--foreground)",
+        backgroundColor: "var(--ds-risk-neutral-bg)",
+        color: "var(--ds-text-primary)",
         opacity: 0.9,
       };
     case "Moderate":
       return {
         ...badgeBaseStyle,
-        backgroundColor: "rgba(234, 179, 8, 0.2)",
-        color: "#a16207",
+        backgroundColor: "var(--ds-risk-medium-bg)",
+        color: "var(--ds-risk-medium-fg)",
       };
     case "High":
       return {
         ...badgeBaseStyle,
-        backgroundColor: "rgba(249, 115, 22, 0.2)",
-        color: "#c2410c",
+        backgroundColor: "var(--ds-risk-volatile-bg)",
+        color: "var(--ds-risk-volatile-fg)",
       };
     case "Critical":
       return {
         ...badgeBaseStyle,
-        backgroundColor: "rgba(239, 68, 68, 0.12)",
-        color: "#b91c1c",
+        backgroundColor: "var(--ds-risk-high-bg)",
+        color: "var(--ds-risk-high-fg)",
       };
     default:
-      return { ...badgeBaseStyle, backgroundColor: "rgba(128, 128, 128, 0.14)", color: "var(--foreground)" };
+      return {
+        ...badgeBaseStyle,
+        backgroundColor: "var(--ds-risk-neutral-bg)",
+        color: "var(--ds-text-primary)",
+      };
   }
 }
 
@@ -76,7 +80,14 @@ export function InstabilityBadge({
 
   if (!instability) {
     return (
-      <span style={{ ...badgeBaseStyle, cursor: "default", backgroundColor: "transparent", color: "#a3a3a3" }}>
+      <span
+        style={{
+          ...badgeBaseStyle,
+          cursor: "default",
+          backgroundColor: "transparent",
+          color: "var(--ds-text-muted)",
+        }}
+      >
         EII —
       </span>
     );
@@ -111,12 +122,12 @@ export function InstabilityBadge({
             minWidth: 260,
             maxWidth: 320,
             padding: 12,
-            background: "var(--background)",
-            border: "1px solid var(--border, #e5e5e5)",
+            background: "var(--ds-surface-elevated)",
+            border: "1px solid var(--ds-border)",
             borderRadius: 8,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+            boxShadow: "var(--ds-shadow-md)",
             fontSize: 12,
-            color: "var(--foreground)",
+            color: "var(--ds-text-primary)",
             textAlign: "left",
           }}
           onMouseDown={(e) => e.preventDefault()}

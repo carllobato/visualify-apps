@@ -7,6 +7,8 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ProjectRow } from "@/lib/projects";
 import { fetchProjectsClient } from "@/lib/projects";
 import { riskaiPath } from "@/lib/routes";
+import { Callout, Card, CardBody } from "@visualify/design-system";
+import { LoadingPlaceholder } from "@/components/ds/LoadingPlaceholder";
 
 const PROJECTS_PATH = riskaiPath("/projects");
 
@@ -48,17 +50,22 @@ export function ProjectListPageClient() {
 
   if (status === "loading") {
     return (
-      <main className="min-h-[40vh] flex flex-col items-center justify-center px-4">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
+      <main className="mx-auto flex min-h-[40vh] w-full max-w-lg flex-col justify-center px-4 py-10">
+        <LoadingPlaceholder label="Loading projects" />
       </main>
     );
   }
 
   if (status === "error") {
     return (
-      <main className="min-h-[40vh] flex flex-col items-center justify-center px-4">
-        <p className="text-sm text-red-600 dark:text-red-400">Failed to load projects.</p>
-        <Link href={PROJECTS_PATH} className="mt-2 text-sm text-neutral-600 dark:text-neutral-400 underline hover:no-underline">
+      <main className="mx-auto flex min-h-[40vh] w-full max-w-lg flex-col justify-center px-4 py-10">
+        <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+          Failed to load projects.
+        </Callout>
+        <Link
+          href={PROJECTS_PATH}
+          className="mt-3 text-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] underline hover:no-underline"
+        >
           Try again
         </Link>
       </main>
@@ -67,25 +74,30 @@ export function ProjectListPageClient() {
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10">
-      <h1 className="text-2xl font-semibold text-[var(--foreground)] mb-1">
+      <h1 className="text-2xl font-semibold text-[var(--ds-text-primary)] mb-1">
         Projects
       </h1>
-      <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-8">
+      <p className="text-sm text-[var(--ds-text-secondary)] mb-8">
         Your projects. Open one to manage risks or create a new project.
       </p>
 
       {projects.length === 0 ? (
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 p-6 text-center">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
-            You don't have any projects yet.
-          </p>
-          <Link
-            href={riskaiPath("/create-project")}
-            className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
-          >
-            Create your first project
-          </Link>
-        </div>
+        <Card variant="inset" className="text-center">
+          <CardBody className="py-8">
+            <p className="m-0 text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)]">
+              No projects yet
+            </p>
+            <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+              Create a project to manage risks and simulations.
+            </p>
+            <Link
+              href={riskaiPath("/create-project")}
+              className="mt-6 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
+            >
+              Create your first project
+            </Link>
+          </CardBody>
+        </Card>
       ) : (
         <>
           <ul className="space-y-2 mb-6">
@@ -93,7 +105,7 @@ export function ProjectListPageClient() {
               <li key={p.id}>
                 <Link
                   href={riskaiPath(`/projects/${p.id}`)}
-                  className="block px-4 py-3 rounded-md border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] text-[var(--foreground)] hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                  className="block px-4 py-3 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] transition-colors"
                 >
                   <span className="font-medium">{p.name || p.id}</span>
                 </Link>
@@ -102,7 +114,7 @@ export function ProjectListPageClient() {
           </ul>
           <Link
             href={riskaiPath("/create-project")}
-            className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+            className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)]"
           >
             + New project
           </Link>

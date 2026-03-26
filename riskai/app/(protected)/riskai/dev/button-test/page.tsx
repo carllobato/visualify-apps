@@ -8,13 +8,13 @@ export default function DevButtonTestPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="mb-6 text-2xl font-semibold text-[var(--foreground)]">Button test</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-[var(--ds-text-primary)]">Button test</h1>
       <div className="flex flex-col gap-4">
         <Button type="button" onClick={() => setClicked(true)}>
           Click me
         </Button>
         {clicked ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400" role="status">
+          <p className="text-sm text-[var(--ds-text-secondary)]" role="status">
             Button clicked
           </p>
         ) : null}

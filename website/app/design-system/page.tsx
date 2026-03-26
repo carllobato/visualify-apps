@@ -34,17 +34,41 @@ export const metadata: Metadata = {
 
 const colorSwatches: { token: string; label: string; style: CSSProperties }[] = [
   { token: "--ds-primary", label: "Primary", style: { backgroundColor: "var(--ds-primary)" } },
+  { token: "--ds-primary-foreground", label: "Primary foreground", style: { backgroundColor: "var(--ds-primary-foreground)" } },
   { token: "--ds-background", label: "Background", style: { backgroundColor: "var(--ds-background)" } },
   { token: "--ds-foreground", label: "Foreground", style: { backgroundColor: "var(--ds-foreground)" } },
   { token: "--ds-muted", label: "Muted", style: { backgroundColor: "var(--ds-muted)" } },
+  { token: "--ds-muted-foreground", label: "Muted foreground", style: { backgroundColor: "var(--ds-muted-foreground)" } },
+  { token: "--ds-card", label: "Card", style: { backgroundColor: "var(--ds-card)" } },
+  { token: "--ds-card-foreground", label: "Card foreground", style: { backgroundColor: "var(--ds-card-foreground)" } },
   { token: "--ds-border", label: "Border", style: { border: "2px solid var(--ds-border)" } },
+  { token: "--ds-border-subtle", label: "Border subtle", style: { border: "2px solid var(--ds-border-subtle)", backgroundColor: "var(--ds-surface-default)" } },
+  { token: "--ds-surface-hover", label: "Surface hover", style: { backgroundColor: "var(--ds-surface-hover)" } },
 ];
 
 const semanticStatuses = ["success", "warning", "danger", "info", "neutral"] as const;
-const spaceScale = ["--ds-space-1", "--ds-space-2", "--ds-space-3", "--ds-space-4", "--ds-space-6", "--ds-space-8"] as const;
+const spaceScale = [
+  "--ds-space-1",
+  "--ds-space-2",
+  "--ds-space-3",
+  "--ds-space-4",
+  "--ds-space-5",
+  "--ds-space-6",
+  "--ds-space-8",
+  "--ds-space-10",
+  "--ds-space-12",
+] as const;
 const radiusScale = ["--ds-radius-sm", "--ds-radius-md", "--ds-radius-lg", "--ds-radius-xl"] as const;
 const shadowScale = ["--ds-shadow-sm", "--ds-shadow-md", "--ds-shadow-lg"] as const;
-const typeScale = ["--ds-text-xs", "--ds-text-sm", "--ds-text-base", "--ds-text-lg", "--ds-text-xl", "--ds-text-2xl"] as const;
+const typeScale = [
+  "--ds-text-xs",
+  "--ds-text-sm",
+  "--ds-text-base",
+  "--ds-text-lg",
+  "--ds-text-xl",
+  "--ds-text-2xl",
+  "--ds-text-3xl",
+] as const;
 const statusUseCases: Record<(typeof semanticStatuses)[number], string> = {
   success: "Confirmed or complete state",
   warning: "Requires attention, still recoverable",
@@ -52,16 +76,6 @@ const statusUseCases: Record<(typeof semanticStatuses)[number], string> = {
   info: "Informational/supporting context",
   neutral: "Background or non-critical state",
 };
-/** Slightly clearer borders/surfaces in light; dark keeps design-system tokens. */
-const dsRefBorder =
-  "border-[color-mix(in_oklab,var(--ds-border)_100%,var(--ds-foreground)_5%)] dark:border-[var(--ds-border)]";
-const dsRefBorderStrong =
-  "border-[color-mix(in_oklab,var(--ds-border)_100%,var(--ds-foreground)_6%)] dark:border-[var(--ds-border)]";
-const dsRefSectionRule =
-  "border-[color-mix(in_oklab,var(--ds-border)_100%,var(--ds-foreground)_4%)] dark:border-[var(--ds-border)]";
-const dsRefInsetChrome =
-  "rounded-[var(--ds-radius-sm)] border border-[color-mix(in_oklab,var(--ds-border)_100%,var(--ds-foreground)_4%)] bg-[var(--ds-surface-default)] dark:border-transparent dark:bg-transparent";
-const dsRefCalloutLift = "shadow-[var(--ds-shadow-sm)] dark:shadow-none";
 
 const surfaceTextPatterns = [
   {
@@ -83,6 +97,15 @@ const surfaceTextPatterns = [
     helper: "Use for side context, filters, and labels.",
   },
   {
+    title: "Elevated panels and cards",
+    surfaceToken: "--ds-surface-elevated",
+    textToken: "--ds-text-primary",
+    surfaceClass: "bg-[var(--ds-surface-elevated)]",
+    textClass: "text-[var(--ds-text-primary)]",
+    helperClass: "text-[var(--ds-text-secondary)]",
+    helper: "Use for raised cards and spotlight regions.",
+  },
+  {
     title: "Inset background layer",
     surfaceToken: "--ds-surface-inset",
     textToken: "--ds-text-muted",
@@ -93,9 +116,19 @@ const surfaceTextPatterns = [
   },
 ] as const;
 
+const riskSemanticLevels = [
+  { key: "low", label: "Low" },
+  { key: "medium", label: "Medium" },
+  { key: "high", label: "High" },
+  { key: "critical", label: "Critical" },
+  { key: "emerging", label: "Emerging" },
+  { key: "volatile", label: "Volatile" },
+  { key: "neutral", label: "Neutral" },
+] as const;
+
 function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
-    <section className={`border-t pt-8 first:border-t-0 first:pt-0 ${dsRefSectionRule}`}>
+    <section className="border-t border-[var(--ds-border)] pt-8 first:border-t-0 first:pt-0">
       <header className="mb-4">
         <h2 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">{title}</h2>
         <p className="mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">{description}</p>
@@ -109,7 +142,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-12">
       <header
-        className={`rounded-[var(--ds-radius-lg)] border bg-[var(--ds-surface-elevated)] p-6 shadow-[var(--ds-shadow-sm)] dark:shadow-none ${dsRefBorder}`}
+        className="rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-6 shadow-[var(--ds-shadow-sm)] dark:shadow-none"
       >
         <p className="text-[length:var(--ds-text-xs)] uppercase tracking-[0.12em] text-[var(--ds-text-muted)]">Internal reference</p>
         <h1 className="mt-2 text-[length:var(--ds-text-3xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">Visualify design system</h1>
@@ -118,9 +151,12 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         </p>
       </header>
 
-      <Section title="Foundations" description="Semantic status, text, surface, spacing, radius, shadow, and typography scales.">
+      <Section
+        title="Foundations"
+        description="Semantic status, text, surface, spacing, radius, shadow, typography, card and border tokens, and font stack."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardHeader>
               <CardTitle>Core tokens</CardTitle>
             </CardHeader>
@@ -128,7 +164,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               {colorSwatches.map((item) => (
                 <div
                   key={item.token}
-                  className={`grid grid-cols-[auto_1fr] items-center gap-3 rounded-[var(--ds-radius-md)] border px-3 py-2 shadow-[var(--ds-shadow-sm)] dark:bg-[color-mix(in_oklab,var(--ds-surface-default)_95%,var(--ds-surface-elevated))] dark:shadow-none ${dsRefBorder} bg-[var(--ds-surface-elevated)]`}
+                  className="grid grid-cols-[auto_1fr] items-center gap-3 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 shadow-[var(--ds-shadow-sm)] dark:bg-[var(--ds-surface-elevated)] dark:shadow-none"
                 >
                   <div className="h-8 w-8 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]" style={item.style} />
                   <div>
@@ -139,7 +175,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               ))}
             </CardContent>
           </Card>
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardHeader>
               <CardTitle>Status tokens</CardTitle>
             </CardHeader>
@@ -147,7 +183,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               {semanticStatuses.map((status) => (
                 <div
                   key={status}
-                  className={`rounded-[var(--ds-radius-md)] border bg-[var(--ds-surface-default)] p-3 ${dsRefBorder}`}
+                  className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -156,7 +192,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                     </div>
                     <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{`--ds-status-${status}`}</p>
                   </div>
-                  <div className={`mt-2 flex flex-wrap items-center justify-between gap-2 border-t pt-2 ${dsRefSectionRule}`}>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ds-border)] pt-2">
                     <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">{statusUseCases[status]}</p>
                     <Badge status={status}>{status}</Badge>
                   </div>
@@ -164,7 +200,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               ))}
             </CardContent>
           </Card>
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardHeader>
               <CardTitle>Surface + text tokens</CardTitle>
             </CardHeader>
@@ -172,7 +208,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               {surfaceTextPatterns.map((pattern) => (
                 <div
                   key={pattern.surfaceToken}
-                  className={`rounded-[var(--ds-radius-md)] border p-3 ${dsRefBorder} ${pattern.surfaceClass}`}
+                  className={`rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-3 ${pattern.surfaceClass}`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
@@ -181,7 +217,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                     </div>
                     <Button size="sm" variant="secondary">Action</Button>
                   </div>
-                  <div className={`mt-3 rounded-[var(--ds-radius-sm)] border bg-[var(--ds-surface-elevated)] p-2 ${dsRefBorder}`}>
+                  <div className="mt-3 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-2">
                     <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">Sample line item with supporting detail.</p>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
@@ -193,7 +229,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               ))}
             </CardContent>
           </Card>
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardHeader>
               <CardTitle>Scales</CardTitle>
             </CardHeader>
@@ -203,7 +239,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                 {spaceScale.map((token) => (
                   <div key={token} className="grid grid-cols-[120px_1fr] items-center gap-3">
                     <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token}</p>
-                    <div className="h-2 rounded-full border border-[color-mix(in_oklab,var(--ds-border)_100%,var(--ds-foreground)_3%)] bg-[var(--ds-surface-muted)] dark:border-transparent">
+                    <div className="h-2 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]">
                       <div className="h-2 rounded-full bg-[var(--ds-primary)]" style={{ width: `var(${token})` }} />
                     </div>
                   </div>
@@ -216,7 +252,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                     {radiusScale.map((token) => (
                       <div key={token} className="space-y-1 text-center">
                         <div
-                          className={`h-9 w-9 border bg-[var(--ds-surface-muted)] ${dsRefBorder}`}
+                          className="h-9 w-9 border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]"
                           style={{ borderRadius: `var(${token})` }}
                         />
                         <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{token.replace("--ds-radius-", "")}</p>
@@ -230,7 +266,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                     {shadowScale.map((token) => (
                       <div
                         key={token}
-                        className={`flex items-center justify-between rounded-[var(--ds-radius-md)] border bg-[var(--ds-surface-elevated)] px-3 py-2 ${dsRefBorder}`}
+                        className="flex items-center justify-between rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2"
                         style={{ boxShadow: `var(${token})` }}
                       >
                         <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">Elevation sample</p>
@@ -249,9 +285,72 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                   </p>
                 ))}
               </div>
+              <div className="space-y-2 border-t border-[var(--ds-border)] pt-4">
+                <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Font stack</p>
+                <p
+                  className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]"
+                  style={{ fontFamily: "var(--ds-font-sans)" }}
+                >
+                  The quick brown fox jumps over the lazy dog.
+                </p>
+                <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-font-sans</p>
+              </div>
             </CardContent>
           </Card>
         </div>
+      </Section>
+
+      <Section
+        title="Focus and control tokens"
+        description="Row and keyboard-focus highlight surfaces, plus strong control border steps for primary actions."
+      >
+        <Card variant="elevated">
+          <CardContent className="grid gap-[var(--ds-space-6)] md:grid-cols-2">
+            <div className="space-y-[var(--ds-space-2)]">
+              <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">Focus highlight</p>
+              <div
+                className="rounded-[var(--ds-radius-md)] px-[var(--ds-space-3)] py-[var(--ds-space-2)] text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]"
+                style={{
+                  backgroundColor: "var(--ds-focus-highlight-bg)",
+                  outline: "2px solid var(--ds-focus-highlight-outline)",
+                  outlineOffset: 0,
+                }}
+              >
+                Highlighted row
+              </div>
+              <div className="space-y-[var(--ds-space-1)] font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                <p>--ds-focus-highlight-bg</p>
+                <p>--ds-focus-highlight-outline</p>
+              </div>
+            </div>
+            <div className="space-y-[var(--ds-space-2)]">
+              <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">Control borders</p>
+              <div className="grid grid-cols-3 gap-[var(--ds-space-2)]">
+                <div className="space-y-[var(--ds-space-2)]">
+                  <div
+                    className="h-[var(--ds-space-10)] rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-default)]"
+                    style={{ border: "2px solid var(--ds-border)" }}
+                  />
+                  <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-border</p>
+                </div>
+                <div className="space-y-[var(--ds-space-2)]">
+                  <div
+                    className="h-[var(--ds-space-10)] rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-default)]"
+                    style={{ border: "2px solid var(--ds-control-strong-border-hover)" }}
+                  />
+                  <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-control-strong-border-hover</p>
+                </div>
+                <div className="space-y-[var(--ds-space-2)]">
+                  <div
+                    className="h-[var(--ds-space-10)] rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-default)]"
+                    style={{ border: "2px solid var(--ds-control-strong-border-active)" }}
+                  />
+                  <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-control-strong-border-active</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </Section>
 
       <Section title="Buttons" description="Primary, secondary, ghost variants, size support, icons, and disabled states."><Card variant="elevated"><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Button>Primary</Button><Button variant="secondary">Secondary</Button><Button variant="ghost">Ghost</Button></div><div className="flex flex-wrap items-center gap-2"><Button size="sm">Small</Button><Button size="md">Medium</Button><Button size="lg">Large</Button></div><div className="flex flex-wrap gap-2"><Button leftIcon="+" rightIcon="→">Create report</Button><Button variant="secondary" disabled>Disabled secondary</Button><Button variant="ghost" disabled>Disabled ghost</Button></div></CardContent></Card></Section>
@@ -263,18 +362,18 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         description="Default card, elevated card, inset panel, and CardHeader/CardContent/CardFooter structure at multiple widths."
       >
         <div className="grid gap-4 lg:grid-cols-3">
-          <Card variant="default" className={dsRefBorder}>
+          <Card variant="default">
             <CardContent>Default card on base surface.</CardContent>
           </Card>
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardContent>Elevated card with subtle shadow.</CardContent>
           </Card>
-          <Card variant="inset" className={dsRefBorder}>
+          <Card variant="inset">
             <CardContent>Inset panel for grouped context.</CardContent>
           </Card>
         </div>
         <div className="mt-4 space-y-4">
-          <Card variant="elevated" className={`w-full ${dsRefBorder}`}>
+          <Card variant="elevated" className="w-full">
             <CardHeader>
               <CardTitle>CardHeader</CardTitle>
             </CardHeader>
@@ -290,7 +389,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
             </CardFooter>
           </Card>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-            <Card variant="elevated" className={`w-full max-w-xs shrink-0 ${dsRefBorder}`}>
+            <Card variant="elevated" className="w-full max-w-xs shrink-0">
               <CardHeader>
                 <CardTitle>CardHeader</CardTitle>
               </CardHeader>
@@ -305,7 +404,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                 </Button>
               </CardFooter>
             </Card>
-            <Card variant="elevated" className={`w-full max-w-md ${dsRefBorder}`}>
+            <Card variant="elevated" className="w-full max-w-md">
               <CardHeader>
                 <CardTitle>CardHeader</CardTitle>
               </CardHeader>
@@ -321,7 +420,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               </CardFooter>
             </Card>
           </div>
-          <Card variant="elevated" className={`mx-auto w-full max-w-2xl ${dsRefBorder}`}>
+          <Card variant="elevated" className="mx-auto w-full max-w-2xl">
             <CardHeader>
               <CardTitle>CardHeader</CardTitle>
             </CardHeader>
@@ -341,18 +440,18 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
 
       <Section title="Table primitives" description="Clean headers, consistent row borders, and compact realistic data examples.">
         <div className="space-y-4">
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardContent className="overflow-x-auto">
-              <div className={dsRefInsetChrome}>
+              <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
                 <Table>
-                  <TableHead className={dsRefBorderStrong}>
+                  <TableHead>
                     <TableRow>
                       <TableHeadCell>Team</TableHeadCell>
                       <TableHeadCell>Owner</TableHeadCell>
                       <TableHeadCell>Status</TableHeadCell>
                     </TableRow>
                   </TableHead>
-                  <TableBody className="[&>tr]:!border-[color-mix(in_oklab,var(--ds-border)_88%,transparent)] dark:[&>tr]:!border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)]">
+                  <TableBody>
                     <TableRow>
                       <TableCell>RiskOps</TableCell>
                       <TableCell>Sarah</TableCell>
@@ -372,14 +471,14 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               </div>
             </CardContent>
           </Card>
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardHeader>
               <CardTitle>Compact data example</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <div className={dsRefInsetChrome}>
+              <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
                 <Table className="text-[13px]">
-                  <TableHead className={dsRefBorderStrong}>
+                  <TableHead>
                     <TableRow>
                       <TableHeadCell>Rule</TableHeadCell>
                       <TableHeadCell>Events</TableHeadCell>
@@ -387,7 +486,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
                       <TableHeadCell>Result</TableHeadCell>
                     </TableRow>
                   </TableHead>
-                  <TableBody className="[&>tr]:!border-[color-mix(in_oklab,var(--ds-border)_88%,transparent)] dark:[&>tr]:!border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)]">
+                  <TableBody>
                     <TableRow>
                       <TableCell>Velocity check</TableCell>
                       <TableCell>142</TableCell>
@@ -412,9 +511,55 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         </div>
       </Section>
 
+      <Section
+        title="Status semantics"
+        description="Subtle and strong status surfaces: background, foreground, and border tokens for each semantic family."
+      >
+        <div className="grid gap-[var(--ds-space-4)] md:grid-cols-2 xl:grid-cols-3">
+          {semanticStatuses.map((status) => (
+            <div
+              key={status}
+              className="space-y-[var(--ds-space-3)] rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-[var(--ds-space-4)]"
+            >
+              <p className="text-[length:var(--ds-text-sm)] font-semibold capitalize text-[var(--ds-text-primary)]">{status}</p>
+              <div className="flex flex-col gap-[var(--ds-space-2)]">
+                <div
+                  className="rounded-[var(--ds-radius-sm)] px-[var(--ds-space-3)] py-[var(--ds-space-2)] text-[length:var(--ds-text-sm)]"
+                  style={{
+                    backgroundColor: `var(--ds-status-${status}-subtle-bg)`,
+                    color: `var(--ds-status-${status}-subtle-fg)`,
+                    border: `1px solid var(--ds-status-${status}-subtle-border)`,
+                  }}
+                >
+                  Subtle
+                </div>
+                <div
+                  className="rounded-[var(--ds-radius-sm)] px-[var(--ds-space-3)] py-[var(--ds-space-2)] text-[length:var(--ds-text-sm)]"
+                  style={{
+                    backgroundColor: `var(--ds-status-${status}-strong-bg)`,
+                    color: `var(--ds-status-${status}-strong-fg)`,
+                    border: `1px solid var(--ds-status-${status}-strong-border)`,
+                  }}
+                >
+                  Strong
+                </div>
+              </div>
+              <div className="space-y-[var(--ds-space-1)] font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                <p>{`--ds-status-${status}-subtle-bg`}</p>
+                <p>{`--ds-status-${status}-subtle-fg`}</p>
+                <p>{`--ds-status-${status}-subtle-border`}</p>
+                <p>{`--ds-status-${status}-strong-bg`}</p>
+                <p>{`--ds-status-${status}-strong-fg`}</p>
+                <p>{`--ds-status-${status}-strong-border`}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
       <Section title="Status and feedback" description="Semantic badge usage and lightweight info/warning/danger/success callouts.">
         <div className="space-y-4">
-          <Card variant="elevated" className={dsRefBorder}>
+          <Card variant="elevated">
             <CardContent className="flex flex-wrap gap-2">
               <Badge status="neutral">Neutral</Badge>
               <Badge status="success">Success</Badge>
@@ -427,16 +572,16 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
             </CardContent>
           </Card>
           <div className="grid gap-3 md:grid-cols-2">
-            <Callout status="info" className={dsRefCalloutLift}>
+            <Callout status="info">
               Info callout: deployment window starts in 15 minutes.
             </Callout>
-            <Callout status="warning" className={dsRefCalloutLift}>
+            <Callout status="warning">
               Warning callout: anomaly threshold is close to limit.
             </Callout>
-            <Callout status="danger" className={dsRefCalloutLift}>
+            <Callout status="danger">
               Error callout: failed to load latest rule execution.
             </Callout>
-            <Callout status="success" className={dsRefCalloutLift}>
+            <Callout status="success">
               Success callout: model update completed.
             </Callout>
           </div>
@@ -444,6 +589,177 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
       </Section>
 
       <Section title="Navigation and states" description="Lightweight tabs plus empty/loading/error state patterns."><div className="space-y-4"><Tabs><Tab active>Overview</Tab><Tab>Activity</Tab><Tab>Settings</Tab></Tabs><div className="grid gap-4 md:grid-cols-3"><Card variant="inset"><CardContent><p className="font-medium">Empty state</p><p className="mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">No incidents yet. Connect a source to begin ingestion.</p></CardContent></Card><Card variant="inset"><CardContent><p className="font-medium">Loading state</p><div className="mt-2 space-y-2"><div className="h-2 w-5/6 animate-pulse rounded bg-[var(--ds-surface-muted)]" /><div className="h-2 w-3/4 animate-pulse rounded bg-[var(--ds-surface-muted)]" /></div></CardContent></Card><Card variant="inset"><CardContent><p className="font-medium">Error state</p><p className="mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-status-danger-fg)]">Unable to fetch rule results.</p></CardContent></Card></div></div></Section>
+
+      <Section
+        title="Risk semantics"
+        description="Semantic risk levels for register surfaces: background, foreground, and border tokens."
+      >
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {riskSemanticLevels.map((level) => (
+            <div
+              key={level.key}
+              className="rounded-[var(--ds-radius-md)] border border-solid p-[var(--ds-space-4)]"
+              style={{
+                backgroundColor: `var(--ds-risk-${level.key}-bg)`,
+                color: `var(--ds-risk-${level.key}-fg)`,
+                borderColor: `var(--ds-risk-${level.key}-border)`,
+              }}
+            >
+              <p className="text-[length:var(--ds-text-sm)] font-semibold">{level.label}</p>
+              <p className="mt-3 font-mono text-[length:var(--ds-text-xs)] opacity-[0.92]">bg: --ds-risk-{level.key}-bg</p>
+              <p className="mt-1 font-mono text-[length:var(--ds-text-xs)] opacity-[0.92]">text: --ds-risk-{level.key}-fg</p>
+              <p className="mt-1 font-mono text-[length:var(--ds-text-xs)] opacity-[0.92]">border: --ds-risk-{level.key}-border</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-[var(--ds-radius-md)] border border-solid border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-[var(--ds-space-3)]">
+          <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-primary)]">Matrix tint (low)</p>
+          <div
+            className="mt-2 h-[var(--ds-space-3)] w-full rounded-[var(--ds-radius-sm)]"
+            style={{ backgroundColor: "var(--ds-risk-low-matrix-tint)" }}
+          />
+          <p className="mt-2 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-risk-low-matrix-tint</p>
+        </div>
+      </Section>
+
+      <Section
+        title="Overlay, glass, and scrim"
+        description="Scrim and overlay for modals, glass and auth shells for elevated surfaces, vignettes, and photo backdrops."
+      >
+        <div className="grid gap-[var(--ds-space-6)] lg:grid-cols-2">
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle>Overlay / scrim tokens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-[var(--ds-space-4)]">
+              <div
+                className="relative overflow-hidden rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)]"
+              >
+                <div className="p-[var(--ds-space-4)]">
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Base surface</p>
+                  <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+                    Content sits beneath a semi-transparent overlay layer.
+                  </p>
+                </div>
+                <div
+                  className="absolute inset-0 flex items-center justify-center p-[var(--ds-space-3)]"
+                  style={{ backgroundColor: "var(--ds-overlay)" }}
+                >
+                  <p className="text-center font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-inverse)]">--ds-overlay</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-[var(--ds-space-3)]">
+                <div
+                  className="h-10 w-10 shrink-0 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]"
+                  style={{ backgroundColor: "var(--ds-scrim-ink)" }}
+                  aria-hidden
+                />
+                <div>
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Scrim ink</p>
+                  <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-scrim-ink</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card variant="elevated">
+            <CardHeader>
+              <CardTitle>Glass / auth surface tokens</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-[var(--ds-space-4)]">
+              <div className="grid gap-[var(--ds-space-3)] sm:grid-cols-2">
+                <div
+                  className="rounded-[var(--ds-radius-md)] p-[var(--ds-space-3)] backdrop-blur-[20px]"
+                  style={{
+                    backgroundColor: "var(--ds-surface-glass)",
+                    border: "1px solid var(--ds-border-glass-shell)",
+                    boxShadow: "var(--ds-shadow-glass-outer)",
+                  }}
+                >
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Light glass</p>
+                  <p className="mt-2 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                    --ds-surface-glass · --ds-border-glass-shell · --ds-shadow-glass-outer
+                  </p>
+                </div>
+                <div
+                  className="rounded-[var(--ds-radius-md)] p-[var(--ds-space-3)] backdrop-blur-[20px]"
+                  style={{
+                    backgroundColor: "var(--ds-surface-glass-dark)",
+                    border: "1px solid var(--ds-border-auth-shell)",
+                    boxShadow: "var(--ds-shadow-auth-card)",
+                  }}
+                >
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Dark glass</p>
+                  <p className="mt-2 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                    --ds-surface-glass-dark · --ds-border-auth-shell · --ds-shadow-auth-card
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="mb-[var(--ds-space-2)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
+                  Modal panel shadow
+                </p>
+                <div
+                  className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-[var(--ds-space-3)]"
+                  style={{ boxShadow: "var(--ds-shadow-modal-panel)" }}
+                >
+                  <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">--ds-shadow-modal-panel</p>
+                </div>
+              </div>
+              <div>
+                <p className="mb-[var(--ds-space-2)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
+                  Glass vignette gradients
+                </p>
+                <div className="grid gap-[var(--ds-space-2)] sm:grid-cols-2">
+                  <div className="space-y-[var(--ds-space-1)]">
+                    <div
+                      className="h-[var(--ds-space-8)] w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)]"
+                      style={{ backgroundImage: "var(--ds-gradient-glass-vignette-light)" }}
+                    />
+                    <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                      --ds-gradient-glass-vignette-light
+                    </p>
+                  </div>
+                  <div className="space-y-[var(--ds-space-1)]">
+                    <div
+                      className="h-[var(--ds-space-8)] w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)]"
+                      style={{ backgroundImage: "var(--ds-gradient-glass-vignette-dark)" }}
+                    />
+                    <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                      --ds-gradient-glass-vignette-dark
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="mb-[var(--ds-space-2)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
+                  Photo backdrop washes
+                </p>
+                <div className="flex gap-[var(--ds-space-2)]">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div
+                      className="h-[var(--ds-space-8)] w-full rounded-[var(--ds-radius-md)] border border-solid border-[var(--ds-border)]"
+                      style={{ background: "var(--ds-backdrop-photo-light)" }}
+                    />
+                    <p className="mt-[var(--ds-space-2)] font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                      --ds-backdrop-photo-light
+                    </p>
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div
+                      className="h-[var(--ds-space-8)] w-full rounded-[var(--ds-radius-md)] border border-solid border-[var(--ds-border)]"
+                      style={{ background: "var(--ds-backdrop-photo-dark)" }}
+                    />
+                    <p className="mt-[var(--ds-space-2)] font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                      --ds-backdrop-photo-dark
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </Section>
 
       <Section title="Charts" description="Shared chart defaults and semantic chart token usage."><ChartShowcase uniqueId={`${idPrefix}-charts`} /></Section>
     </div>

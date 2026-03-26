@@ -46,10 +46,10 @@ const CELL_SEVERITY: Record<number, RiskLevel> = {
 
 /** Subtle cell background tint by severity (UI only). Low opacity for light and dark. */
 const HEAT_TINT: Record<RiskLevel, string> = {
-  low: "rgba(34, 197, 94, 0.08)",
-  medium: "rgba(234, 179, 8, 0.1)",
-  high: "rgba(239, 68, 68, 0.08)",
-  extreme: "rgba(127, 29, 29, 0.12)",
+  low: "var(--ds-risk-low-matrix-tint)",
+  medium: "var(--ds-risk-medium-matrix-tint)",
+  high: "var(--ds-risk-high-matrix-tint)",
+  extreme: "var(--ds-risk-critical-matrix-tint)",
 };
 
 type MatrixMode = "Inherent" | "Residual";
@@ -157,7 +157,7 @@ export default function RiskMatrixPage() {
       <p className="mt-1.5 opacity-80">
         Visual validation of risk positions (no scoring logic).
       </p>
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--ds-text-secondary)]">
         <span>Active risks (excludes archived): {count}</span>
         <span>Plotted: {plottableCount}</span>
         <span>Unplottable: {unplottableCount}</span>
@@ -165,7 +165,7 @@ export default function RiskMatrixPage() {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div
-          className="inline-flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-0.5"
+          className="inline-flex rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5"
           role="group"
           aria-label="Inherent or Residual"
         >
@@ -174,8 +174,8 @@ export default function RiskMatrixPage() {
             onClick={() => setMode("Inherent")}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === "Inherent"
-                ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm dark:bg-neutral-700"
-                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                ? "bg-[var(--ds-background)] text-[var(--ds-text-primary)] shadow-sm dark:bg-[var(--ds-surface-inset)]"
+                : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)]"
             }`}
           >
             Inherent
@@ -185,14 +185,14 @@ export default function RiskMatrixPage() {
             onClick={() => setMode("Residual")}
             className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === "Residual"
-                ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm dark:bg-neutral-700"
-                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                ? "bg-[var(--ds-background)] text-[var(--ds-text-primary)] shadow-sm dark:bg-[var(--ds-surface-inset)]"
+                : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)]"
             }`}
           >
             Residual
           </button>
         </div>
-        <span className="text-xs text-neutral-500">Mode: {mode}</span>
+        <span className="text-xs text-[var(--ds-text-muted)]">Mode: {mode}</span>
         <div className="flex flex-wrap items-center gap-2" role="list" aria-label="Severity legend">
           {SEVERITY_LEGEND_ORDER.map((level) => {
             const s = LEVEL_STYLES[level];
@@ -217,7 +217,7 @@ export default function RiskMatrixPage() {
       <div className="mt-8 w-full max-w-5xl">
         {/* Option A: outer 2x2 grid — [headerCol, matrixCol] x [headerRow, matrixRow]. Only the 5x5 has heat/cells. */}
         <div
-          className="grid w-full gap-px rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-200 dark:bg-neutral-700 p-px"
+          className="grid w-full gap-px rounded-lg border border-[var(--ds-border)] bg-[var(--ds-muted)] p-px"
           style={{
             gridTemplateColumns: "2.5rem 1fr",
             gridTemplateRows: "auto auto",
@@ -226,7 +226,7 @@ export default function RiskMatrixPage() {
         >
           {/* (0,0) Corner — empty header cell */}
           <div
-            className="min-h-[28px] min-w-[2.5rem] rounded-sm bg-neutral-100 dark:bg-neutral-800"
+            className="min-h-[28px] min-w-[2.5rem] rounded-sm bg-[var(--ds-surface-muted)]"
             style={{ gridArea: "corner" }}
           />
           {/* (1,0) Top header row — Consequence 1..5, own row, 5 equal columns aligned with matrix */}
@@ -237,7 +237,7 @@ export default function RiskMatrixPage() {
             {CONSEQUENCE.map((c) => (
               <div
                 key={`h-${c}`}
-                className="flex items-center justify-center rounded-sm bg-neutral-100 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                className="flex items-center justify-center rounded-sm bg-[var(--ds-surface-muted)] text-xs font-medium text-[var(--ds-text-secondary)]"
               >
                 {c}
               </div>
@@ -254,7 +254,7 @@ export default function RiskMatrixPage() {
             {PROBABILITY.map((p) => (
               <div
                 key={`p-${p}`}
-                className="flex items-center justify-center rounded-sm bg-neutral-100 text-xs font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                className="flex items-center justify-center rounded-sm bg-[var(--ds-surface-muted)] text-xs font-medium text-[var(--ds-text-secondary)]"
               >
                 {p}
               </div>
@@ -285,7 +285,7 @@ export default function RiskMatrixPage() {
                 return (
                   <div
                     key={cellKey}
-                    className="flex min-h-[72px] min-w-0 w-full flex-col overflow-hidden rounded-sm border border-neutral-200 bg-[var(--background)] p-1.5 dark:border-neutral-700"
+                    className="flex min-h-[72px] min-w-0 w-full flex-col overflow-hidden rounded-sm border border-[var(--ds-border)] bg-[var(--ds-surface-inset)] p-1.5"
                     style={{ backgroundColor: tint }}
                   >
                     <div className="flex min-h-0 flex-1 flex-wrap content-start gap-1.5 overflow-auto">
@@ -317,7 +317,7 @@ export default function RiskMatrixPage() {
                         <button
                           type="button"
                           onClick={() => toggleCellExpanded(cellKey)}
-                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-[var(--ds-text-muted)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
                         >
                           +{overflowCount} more
                         </button>
@@ -326,7 +326,7 @@ export default function RiskMatrixPage() {
                         <button
                           type="button"
                           onClick={() => toggleCellExpanded(cellKey)}
-                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700 dark:hover:bg-neutral-700 dark:hover:text-neutral-300"
+                          className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium text-[var(--ds-text-muted)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
                         >
                           Less
                         </button>
@@ -338,7 +338,7 @@ export default function RiskMatrixPage() {
             )}
           </div>
         </div>
-        <p className="mt-2 text-center text-xs text-neutral-500">
+        <p className="mt-2 text-center text-xs text-[var(--ds-text-muted)]">
           Consequence →
         </p>
       </div>

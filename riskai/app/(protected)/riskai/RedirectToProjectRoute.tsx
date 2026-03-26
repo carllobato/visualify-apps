@@ -33,7 +33,7 @@ export function RedirectToProjectRoute({ slug }: { slug: ProjectSlug }) {
 
   return (
     <main className="min-h-[20vh] flex flex-col items-center justify-center px-4">
-      <p className="text-sm text-neutral-500 dark:text-neutral-400">Redirecting…</p>
+      <p className="text-sm text-[var(--ds-text-muted)]">Redirecting…</p>
     </main>
   );
 }

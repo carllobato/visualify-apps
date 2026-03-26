@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
+import { Badge, Button, Card, CardBody } from "@visualify/design-system";
+import { LoadingPlaceholder } from "@/components/ds/LoadingPlaceholder";
 import {
   Line,
   LineChart,
@@ -46,6 +48,10 @@ type CdfChartPoint = { x: number; p: number };
 const CHART_HEIGHT = 200;
 /** Extra top room for on-chart “Target (PXX)” / “Current” labels. */
 const CHART_MARGIN = { top: 14, right: 12, left: 4, bottom: 4 };
+
+/** Page shell: DS canvas + text so the route is not stuck on a parent pure-black shell. */
+const overviewPageShellClass =
+  "min-h-full w-full bg-[var(--ds-background)] text-[var(--ds-text-primary)] p-6";
 
 /** P on the piecewise-linear CDF at x (same anchors as the line). */
 function interpolatePAtX(points: CdfChartPoint[], x: number): number | null {
@@ -94,18 +100,12 @@ function DistributionTooltipContent({
     Math.abs(point.p - closestToMean.p) < 1e-9;
 
   return (
-    <div
-      className="rounded-lg px-2.5 py-1.5 text-xs shadow-sm"
-      style={{
-        background: "var(--background)",
-        border: "1px solid oklch(0.85 0.01 250 / 0.35)",
-      }}
-    >
-      <p className="m-0 font-medium text-[var(--foreground)] tabular-nums leading-snug">
+    <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-2.5 py-1.5 text-[length:var(--ds-text-xs)] shadow-[var(--ds-shadow-sm)]">
+      <p className="m-0 font-medium text-[var(--ds-text-primary)] tabular-nums leading-snug">
         P{point.p} • {formatX(point.x)}
       </p>
       {isNearestAnchorToMean ? (
-        <p className="m-0 mt-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">(Current)</p>
+        <p className="m-0 mt-0.5 text-[10px] text-[var(--ds-text-muted)]">(Current)</p>
       ) : null}
     </div>
   );
@@ -139,28 +139,27 @@ type ProjectOverviewContentProps = {
   initialData: ProjectOverviewInitialData;
 };
 
-function ragPresentation(status: RagStatus): { label: string; badgeClass: string } {
+function ragPresentation(status: RagStatus): { label: string; badgeStatus: "success" | "warning" | "danger" | "neutral" } {
   switch (status) {
     case "green":
       return {
         label: "Healthy",
-        badgeClass:
-          "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500/25",
+        badgeStatus: "success",
       };
     case "amber":
       return {
         label: "Watch",
-        badgeClass: "bg-amber-500/15 text-amber-900 dark:text-amber-300 ring-1 ring-amber-500/25",
+        badgeStatus: "warning",
       };
     case "red":
       return {
         label: "At risk",
-        badgeClass: "bg-red-500/15 text-red-800 dark:text-red-300 ring-1 ring-red-500/25",
+        badgeStatus: "danger",
       };
     default:
       return {
         label: "—",
-        badgeClass: "bg-neutral-500/10 text-neutral-600 dark:text-neutral-400 ring-1 ring-neutral-500/20",
+        badgeStatus: "neutral",
       };
   }
 }
@@ -178,21 +177,19 @@ function countHighSeverityActive(risks: Risk[]): number {
 
 function DashCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={`rounded-2xl bg-neutral-100/70 dark:bg-white/[0.06] p-5 shadow-sm ${className ?? ""}`}
-    >
-      {children}
-    </div>
+    <Card variant="elevated" className={className}>
+      <CardBody className="p-5">{children}</CardBody>
+    </Card>
   );
 }
 
 function BufferBar({ fraction }: { fraction: number | null }) {
   const pct = fraction == null ? null : Math.round(Math.min(100, Math.max(0, fraction * 100)));
   return (
-    <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-neutral-200/90 dark:bg-neutral-700/80">
+    <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-[var(--ds-surface-muted)]">
       {pct != null ? (
         <div
-          className="h-full rounded-full bg-neutral-600 dark:bg-neutral-400 transition-[width] duration-300"
+          className="h-full rounded-full bg-[var(--ds-text-secondary)] transition-[width] duration-300"
           style={{ width: `${Math.max(pct, 3)}%` }}
           aria-valuenow={pct}
           aria-valuemin={0}
@@ -220,7 +217,7 @@ function DistributionMiniChart({
   formatX: (n: number) => string;
 }) {
   const hasLine = points.length >= 2;
-  const stroke = "var(--foreground)";
+  const stroke = "var(--ds-text-secondary)";
 
   const pAtCurrent =
     hasLine && currentX != null && Number.isFinite(currentX)
@@ -233,33 +230,37 @@ function DistributionMiniChart({
 
   return (
     <DashCard className="flex flex-col gap-3">
-      <h3 className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0">
+      <h3 className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0">
         {title}
       </h3>
       {!hasLine ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0 py-8 text-center">Unavailable</p>
+        <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 py-8 text-center">Unavailable</p>
       ) : (
-        <div className="w-full min-h-[200px]" style={{ height: CHART_HEIGHT }} aria-label={title}>
+        <div
+          className="w-full min-h-[200px] overflow-hidden rounded-[var(--ds-radius-sm)] border border-[var(--ds-chart-panel-border)] bg-[var(--ds-chart-surface)]"
+          style={{ height: CHART_HEIGHT }}
+          aria-label={title}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={points} margin={CHART_MARGIN}>
               <XAxis
                 type="number"
                 dataKey="x"
                 domain={["dataMin", "dataMax"]}
-                tick={{ fontSize: 10, fill: "var(--foreground)", opacity: 0.5 }}
+                tick={{ fontSize: 10, fill: "var(--ds-text-muted)", opacity: 1 }}
                 tickFormatter={(v) => formatX(Number(v))}
-                axisLine={{ stroke: "var(--foreground)", strokeOpacity: 0.12 }}
-                tickLine={{ stroke: "var(--foreground)", strokeOpacity: 0.12 }}
+                axisLine={{ stroke: "var(--ds-chart-panel-border)", strokeOpacity: 1 }}
+                tickLine={{ stroke: "var(--ds-chart-panel-border)", strokeOpacity: 1 }}
               />
               <YAxis
                 type="number"
                 dataKey="p"
                 domain={[0, 100]}
                 width={32}
-                tick={{ fontSize: 10, fill: "var(--foreground)", opacity: 0.5 }}
+                tick={{ fontSize: 10, fill: "var(--ds-text-muted)", opacity: 1 }}
                 tickFormatter={(v) => `P${v}`}
-                axisLine={{ stroke: "var(--foreground)", strokeOpacity: 0.12 }}
-                tickLine={{ stroke: "var(--foreground)", strokeOpacity: 0.12 }}
+                axisLine={{ stroke: "var(--ds-chart-panel-border)", strokeOpacity: 1 }}
+                tickLine={{ stroke: "var(--ds-chart-panel-border)", strokeOpacity: 1 }}
               />
               <Tooltip
                 content={(props) => (
@@ -285,15 +286,15 @@ function DistributionMiniChart({
               {showTargetGuide ? (
                 <ReferenceLine
                   x={targetX}
-                  stroke="var(--foreground)"
-                  strokeOpacity={0.4}
+                  stroke="var(--ds-border)"
+                  strokeOpacity={0.6}
                   strokeWidth={1.5}
                   strokeDasharray="5 4"
                   label={{
                     value: `Target (${targetLabel})`,
                     position: "insideTop",
-                    fill: "var(--foreground)",
-                    fillOpacity: 0.5,
+                    fill: "var(--ds-text-muted)",
+                    fillOpacity: 1,
                     fontSize: 10,
                   }}
                 />
@@ -301,8 +302,8 @@ function DistributionMiniChart({
               {showCurrentGuide ? (
                 <ReferenceLine
                   x={currentX}
-                  stroke="var(--foreground)"
-                  strokeOpacity={0.88}
+                  stroke="var(--ds-text-primary)"
+                  strokeOpacity={0.8}
                   strokeWidth={2}
                 />
               ) : null}
@@ -311,15 +312,15 @@ function DistributionMiniChart({
                   x={currentX}
                   y={pAtCurrent}
                   r={7}
-                  fill="var(--foreground)"
+                  fill="var(--ds-text-primary)"
                   fillOpacity={1}
-                  stroke="var(--background)"
+                  stroke="var(--ds-chart-surface)"
                   strokeWidth={2}
                   strokeOpacity={1}
                   label={{
                     value: "Current",
                     position: "top",
-                    fill: "var(--foreground)",
+                    fill: "var(--ds-text-primary)",
                     fillOpacity: 0.88,
                     fontSize: 10,
                   }}
@@ -569,17 +570,17 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     return (
       <>
         <p className="m-0">
-          <span className="text-neutral-500 dark:text-neutral-400">Reporting run </span>
-          <span className="font-medium text-[var(--foreground)]">{reportingMonthHeader ?? "—"}</span>
+          <span className="text-[var(--ds-text-secondary)]">Reporting run </span>
+          <span className="font-medium text-[var(--ds-text-primary)]">{reportingMonthHeader ?? "—"}</span>
         </p>
         <div className="m-0 max-w-md sm:max-w-sm">
-          <span className="text-neutral-500 dark:text-neutral-400">Note </span>
+          <span className="text-[var(--ds-text-secondary)]">Note </span>
           {reportingNoteTrimmed ? (
-            <span className="font-medium text-neutral-800 dark:text-neutral-200">
+            <span className="font-medium text-[var(--ds-text-primary)]">
               {reportingNoteTrimmed}
             </span>
           ) : (
-            <span className="text-neutral-500 dark:text-neutral-400">—</span>
+            <span className="text-[var(--ds-text-secondary)]">—</span>
           )}
         </div>
       </>
@@ -600,44 +601,38 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   /** Mean minus appetite line: ≤0 (at/under target) reads favorable. */
   const gapValueClass = (meanMinusAppetite: number | null) => {
     if (meanMinusAppetite == null || !Number.isFinite(meanMinusAppetite)) {
-      return "text-[var(--foreground)]";
+      return "text-[var(--ds-text-primary)]";
     }
-    if (meanMinusAppetite <= 0) return "text-emerald-600 dark:text-emerald-400";
-    return "text-red-600 dark:text-red-400";
+    if (meanMinusAppetite <= 0) return "text-[var(--ds-status-success-strong-fg)]";
+    return "text-[var(--ds-status-danger-strong-fg)]";
   };
 
   if (!reportingSnapshot) {
     return (
-      <main className="p-6 w-full">
-        <div className="rounded-2xl bg-neutral-100/70 dark:bg-white/[0.06] p-8 text-center shadow-sm">
-          <p className="text-base font-medium text-[var(--foreground)] m-0">No reporting run locked</p>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0 mt-2 max-w-md mx-auto">
+      <main className={overviewPageShellClass}>
+        <Card variant="elevated" className="p-8 text-center">
+          <p className="text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)] m-0">No reporting run locked</p>
+          <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 max-w-md mx-auto">
             Lock a simulation for reporting to populate this overview. Reporting uses only the latest locked
             run—not draft or unlocked simulations.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link
-              href={simulationHref}
-              className="inline-flex items-center rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-sm font-medium text-[var(--background)] no-underline hover:opacity-90"
-            >
-              Go to Simulation
+            <Link href={simulationHref} className="no-underline">
+              <Button>Go to Simulation</Button>
             </Link>
-            <Link
-              href={runDataHref}
-              className="inline-flex items-center rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--foreground)] no-underline hover:bg-neutral-200/50 dark:hover:bg-white/10"
-            >
-              Run Data
+            <Link href={runDataHref} className="no-underline">
+              <Button variant="secondary">Run Data</Button>
             </Link>
           </div>
-        </div>
+        </Card>
       </main>
     );
   }
 
   if (loadingRisks) {
     return (
-      <main className="p-6 w-full">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
+      <main className={overviewPageShellClass}>
+        <LoadingPlaceholder label="Loading project overview" />
       </main>
     );
   }
@@ -659,37 +654,35 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       : null;
 
   return (
-    <main className="p-6 w-full">
+    <main className={overviewPageShellClass}>
       {/* Row 1 — headline metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-3">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-3">
             Project status
           </p>
-          <span
-            className={`inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-semibold ${rag.badgeClass}`}
-          >
+          <Badge status={rag.badgeStatus} variant="strong" className="px-3.5 py-1.5 text-[length:var(--ds-text-sm)] font-semibold">
             {rag.label}
-          </span>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 m-0 mt-3 tabular-nums">
+          </Badge>
+          <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] m-0 mt-3 tabular-nums">
             {activeN} active risk{activeN === 1 ? "" : "s"}
             {highN > 0 ? ` · ${highN} high / extreme` : ""}
           </p>
         </DashCard>
 
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-3">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-3">
             Target vs current confidence
           </p>
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="text-3xl font-bold tracking-tight text-[var(--foreground)] tabular-nums">
+              <span className="text-3xl font-bold tracking-tight text-[var(--ds-text-primary)] tabular-nums">
                 {currentConfidenceLabel ?? "—"}
               </span>
-              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">(Current)</span>
+              <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">(Current)</span>
               {confidenceVsTargetDir === "above" ? (
                 <span
-                  className="text-base leading-none text-emerald-600 dark:text-emerald-400"
+                  className="text-base leading-none text-[var(--ds-status-success-strong-fg)]"
                   aria-label="Above target"
                   role="img"
                 >
@@ -697,7 +690,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
                 </span>
               ) : confidenceVsTargetDir === "below" ? (
                 <span
-                  className="text-base leading-none text-red-600 dark:text-red-400"
+                  className="text-base leading-none text-[var(--ds-status-danger-strong-fg)]"
                   aria-label="Below target"
                   role="img"
                 >
@@ -705,14 +698,14 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
                 </span>
               ) : null}
             </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0 tabular-nums">
+            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 tabular-nums">
               Target: {targetAppetite}
             </p>
           </div>
         </DashCard>
 
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-2">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             $ gap to target
           </p>
           <p
@@ -723,7 +716,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         </DashCard>
 
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-2">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Time gap to target
           </p>
           <p
@@ -757,19 +750,19 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       {/* Row 3 — buffer */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-8">
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0">
             $ contingency remaining
           </p>
-          <p className="text-2xl font-semibold tracking-tight text-[var(--foreground)] m-0 mt-2 tabular-nums">
+          <p className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary)] m-0 mt-2 tabular-nums">
             {bufferCostDisplay}
           </p>
           <BufferBar fraction={costBufferBarFraction} />
         </DashCard>
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0">
             Time contingency remaining
           </p>
-          <p className="text-2xl font-semibold tracking-tight text-[var(--foreground)] m-0 mt-2 tabular-nums">
+          <p className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary)] m-0 mt-2 tabular-nums">
             {bufferTimeDisplay}
           </p>
           <BufferBar fraction={timeBufferBarFraction} />
@@ -779,40 +772,40 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       {/* Insights */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-2">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Key cost risk
           </p>
-          <p className="text-sm font-semibold text-[var(--foreground)] m-0 leading-snug line-clamp-3">
+          <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
             {keyCostRisk ?? "—"}
           </p>
           {keyCostRiskImpact != null ? (
-            <p className="text-sm text-neutral-600 dark:text-neutral-300 m-0 mt-2 tabular-nums">
+            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
               {formatCurrency(keyCostRiskImpact)} exposure
             </p>
           ) : null}
         </DashCard>
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-2">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Key time risk
           </p>
-          <p className="text-sm font-semibold text-[var(--foreground)] m-0 leading-snug line-clamp-3">
+          <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
             {keyTimeRisk ?? "—"}
           </p>
           {keyTimeRiskDays != null && keyTimeRiskDays > 0 ? (
-            <p className="text-sm text-neutral-600 dark:text-neutral-300 m-0 mt-2 tabular-nums">
+            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
               {formatDurationDays(keyTimeRiskDays)} mean
             </p>
           ) : null}
         </DashCard>
         <DashCard>
-          <p className="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400 m-0 mb-2">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Key opportunity
           </p>
-          <p className="text-sm font-semibold text-[var(--foreground)] m-0 leading-snug line-clamp-3">
+          <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
             {keyOpportunityInfo?.name ?? "—"}
           </p>
           {keyOpportunityInfo != null && keyOpportunityInfo.delta > 0 ? (
-            <p className="text-sm text-neutral-600 dark:text-neutral-300 m-0 mt-2 tabular-nums">
+            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
               {formatCurrency(keyOpportunityInfo.delta)} pre vs modelled
             </p>
           ) : null}

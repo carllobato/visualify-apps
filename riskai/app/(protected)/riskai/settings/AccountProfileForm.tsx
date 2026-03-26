@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ACCOUNT_PROFILE_UPDATED_EVENT } from "@/lib/onboarding/types";
 import { saveUserProfileThroughApi } from "@/lib/profiles/profileDb";
+import { Callout } from "@visualify/design-system";
 
 const SAVED_RESET_DELAY_MS = 2500;
 
@@ -67,14 +68,14 @@ export function AccountProfileForm({
   }, [status]);
 
   const inputClass =
-    "w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500";
-  const labelClass = "block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1";
+    "w-full rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
+  const labelClass = "block text-sm font-medium text-[var(--ds-text-secondary)] mb-1";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label htmlFor="profile-first-name" className={labelClass}>
-          First name <span className="text-red-600 dark:text-red-400">*</span>
+          First name <span className="text-[var(--ds-status-danger)]">*</span>
         </label>
         <input
           id="profile-first-name"
@@ -89,7 +90,7 @@ export function AccountProfileForm({
       </div>
       <div>
         <label htmlFor="profile-last-name" className={labelClass}>
-          Surname <span className="text-red-600 dark:text-red-400">*</span>
+          Surname <span className="text-[var(--ds-status-danger)]">*</span>
         </label>
         <input
           id="profile-last-name"
@@ -104,7 +105,7 @@ export function AccountProfileForm({
       </div>
       <div>
         <label htmlFor="profile-company" className={labelClass}>
-          Company <span className="text-red-600 dark:text-red-400">*</span>
+          Company <span className="text-[var(--ds-status-danger)]">*</span>
         </label>
         <input
           id="profile-company"
@@ -132,20 +133,18 @@ export function AccountProfileForm({
         />
       </div>
       {message && (
-        <p
-          className={`text-sm ${
-            status === "error"
-              ? "text-red-600 dark:text-red-400"
-              : "text-neutral-600 dark:text-neutral-400"
-          }`}
+        <Callout
+          status={status === "error" ? "danger" : "success"}
+          role="status"
+          className="text-[length:var(--ds-text-sm)]"
         >
           {message}
-        </p>
+        </Callout>
       )}
       <button
         type="submit"
         disabled={status === "saving"}
-        className="inline-flex px-4 py-2 text-sm font-medium rounded-md bg-neutral-800 dark:bg-neutral-200 text-white dark:text-neutral-900 hover:bg-neutral-700 dark:hover:bg-neutral-100 disabled:opacity-50"
+        className="inline-flex px-4 py-2 text-sm font-medium rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]"
       >
         {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Save profile"}
       </button>

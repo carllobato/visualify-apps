@@ -28,19 +28,19 @@ const SORT_OPTIONS: { value: DecisionSort; label: string }[] = [
 ];
 
 const ALERT_TAG_CLASS: Record<AlertTag, string> = {
-  CRITICAL: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-  ACCELERATING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  VOLATILE: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  UNSTABLE: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-  EMERGING: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  IMPROVING: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+  CRITICAL: "bg-[var(--ds-risk-critical-bg)] text-[var(--ds-risk-critical-fg)]",
+  ACCELERATING: "bg-[var(--ds-risk-medium-bg)] text-[var(--ds-risk-medium-fg)]",
+  VOLATILE: "bg-[var(--ds-risk-volatile-bg)] text-[var(--ds-risk-volatile-fg)]",
+  UNSTABLE: "bg-[var(--ds-risk-medium-bg)] text-[var(--ds-risk-medium-fg)]",
+  EMERGING: "bg-[var(--ds-risk-emerging-bg)] text-[var(--ds-risk-emerging-fg)]",
+  IMPROVING: "bg-[var(--ds-risk-low-bg)] text-[var(--ds-risk-low-fg)]",
 };
 
 function scoreBadgeClass(score: number): string {
   const band = getScoreBand(score);
-  if (band === "critical") return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-  if (band === "watch") return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
-  return "bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300";
+  if (band === "critical") return "bg-[var(--ds-risk-critical-bg)] text-[var(--ds-risk-critical-fg)]";
+  if (band === "watch") return "bg-[var(--ds-risk-medium-bg)] text-[var(--ds-risk-medium-fg)]";
+  return "bg-[var(--ds-status-neutral-subtle-bg)] text-[var(--ds-status-neutral-subtle-fg)]";
 }
 
 export function DecisionPanel() {
@@ -117,85 +117,85 @@ export function DecisionPanel() {
   }, [risks, riskForecastsById]);
 
   return (
-    <section className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-      <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
-        <h2 className="text-lg font-semibold text-neutral-800 dark:text-neutral-200 m-0">Decision</h2>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400 m-0">
+    <section className="overflow-hidden rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_52%,var(--ds-surface-default))]">
+      <div className="p-4 border-b border-[var(--ds-border)]">
+        <h2 className="m-0 text-lg font-semibold text-[var(--ds-text-primary)]">Decision</h2>
+        <p className="m-0 mt-1 text-sm text-[var(--ds-text-muted)]">
           Decision-grade ranking from behavioural metrics.
         </p>
-        <p className="mt-1.5 text-xs text-neutral-500 dark:text-neutral-400 m-0" title="Neutral baseline projection.">
+        <p className="m-0 mt-1.5 text-xs text-[var(--ds-text-muted)]" title="Neutral baseline projection.">
           Forecast Model: Neutral Baseline
         </p>
-        <p className="mt-0.5 text-xs text-neutral-400 dark:text-neutral-500 m-0">
+        <p className="m-0 mt-0.5 text-xs text-[var(--ds-text-muted)]">
           Forecast Confidence: Based on history depth, momentum stability, and volatility.
         </p>
       </div>
 
       <div className="p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Total Risks
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.totalRisks}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Critical
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.criticalCount}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Accelerating
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.acceleratingCount}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Volatile
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.volatileCount}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Unstable
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.unstableCount}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Emerging
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.emergingCount}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Avg Score
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.avgCompositeScore.toFixed(1)}</div>
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Projected critical (5 cycles)
           </div>
           <div className="mt-0.5 text-lg font-semibold">{forwardPressure.projectedCriticalCount}</div>
           {forwardPressure.mitigationInsufficientCount > 0 && (
-            <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+            <div className="mt-0.5 text-xs text-[var(--ds-text-muted)]">
               +{forwardPressure.mitigationInsufficientCount} mitigation insufficient
             </div>
           )}
         </div>
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-3">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             EII Summary
           </div>
           <div className="mt-0.5 text-lg font-semibold">{eiiSummary.avgEii}</div>
-          <div className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+          <div className="mt-0.5 text-xs text-[var(--ds-text-muted)]">
             # High (≥50): {eiiSummary.highCount} · # Critical (≥75): {eiiSummary.criticalCount}
           </div>
           {eiiSummary.top3.length > 0 && (
-            <div className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
-              <div className="font-medium text-neutral-700 dark:text-neutral-300 mb-1">Top 3 unstable</div>
+            <div className="mt-2 text-xs text-[var(--ds-text-secondary)]">
+              <div className="mb-1 font-medium text-[var(--ds-text-secondary)]">Top 3 unstable</div>
               <ul className="list-none p-0 m-0 space-y-0.5">
                 {eiiSummary.top3.map(({ riskId, title, index }) => (
                   <li key={riskId} className="truncate" title={title}>
@@ -209,27 +209,27 @@ export function DecisionPanel() {
       </div>
 
       <div className="px-4 pb-4">
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-4">
-          <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-3">
+        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-4">
+          <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mb-3">
             Instability Drivers
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm text-neutral-700 dark:text-neutral-300">
+          <div className="grid grid-cols-2 gap-3 text-sm text-[var(--ds-text-secondary)] sm:grid-cols-4">
             <div>High Volatility: {instabilityDrivers.highVolatilityCount} risks</div>
             <div>Low Confidence: {instabilityDrivers.lowConfidenceCount} risks</div>
             <div>High Scenario Spread: {instabilityDrivers.highSensitivityCount} risks</div>
             <div>High Velocity: {instabilityDrivers.highVelocityCount} risks</div>
           </div>
           {instabilityDrivers.topContributors.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-              <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-2">
+            <div className="mt-4 pt-3 border-t border-[var(--ds-border)]">
+              <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mb-2">
                 Top Contributors
               </div>
-              <ul className="list-none p-0 m-0 space-y-1.5 text-sm text-neutral-700 dark:text-neutral-300">
+              <ul className="m-0 list-none space-y-1.5 p-0 text-sm text-[var(--ds-text-secondary)]">
                 {instabilityDrivers.topContributors.map(({ riskId, title, eii, level }) => (
                   <li key={riskId} className="truncate flex items-center gap-2 flex-wrap">
                     <span className="font-medium truncate min-w-0" title={title}>{title}</span>
-                    <span className="text-neutral-500 dark:text-neutral-400 shrink-0">EII {eii}</span>
-                    <span className="shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-400">{level}</span>
+                    <span className="shrink-0 text-[var(--ds-text-muted)]">EII {eii}</span>
+                    <span className="shrink-0 text-xs font-medium text-[var(--ds-text-secondary)]">{level}</span>
                   </li>
                 ))}
               </ul>
@@ -239,9 +239,9 @@ export function DecisionPanel() {
       </div>
 
       <div className="px-4 pb-2 flex flex-wrap items-center gap-2">
-        <span className="text-sm text-neutral-600 dark:text-neutral-400">Sort:</span>
+        <span className="text-sm text-[var(--ds-text-secondary)]">Sort:</span>
         <div
-          className="inline-flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-0.5"
+          className="inline-flex rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5"
           role="group"
           aria-label="Decision list sort"
         >
@@ -252,8 +252,8 @@ export function DecisionPanel() {
               onClick={() => setSortBy(opt.value)}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 sortBy === opt.value
-                  ? "bg-neutral-200 text-neutral-900 shadow-sm ring-1 ring-neutral-300 dark:bg-neutral-600 dark:text-white dark:ring-neutral-500"
-                  : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                  ? "bg-[var(--ds-surface-hover)] text-[var(--ds-text-primary)] shadow-sm ring-1 ring-[var(--ds-border)] dark:bg-[var(--ds-surface-inset)] dark:text-[var(--ds-text-primary)] dark:ring-[var(--ds-border)]"
+                  : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)]"
               }`}
             >
               {opt.label}
@@ -263,12 +263,12 @@ export function DecisionPanel() {
       </div>
 
       <div className="px-4 pb-4">
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">
+        <p className="text-xs text-[var(--ds-text-muted)] mb-2">
           Sorted by {sortBy === "score" ? "Score" : sortBy === "instability" ? "Instability" : sortBy === "velocity" ? "Velocity" : "Volatility"} (desc)
         </p>
-        <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-2">Top Critical Risks</h3>
+        <h3 className="mb-2 text-sm font-medium text-[var(--ds-text-secondary)]">Top Critical Risks</h3>
         {displayList.length === 0 ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">No risks. Run a simulation.</p>
+          <p className="text-sm text-[var(--ds-text-muted)]">No risks. Run a simulation.</p>
         ) : (
           <ul className="list-none p-0 m-0 space-y-2">
             {displayList.map((row, index) => {
@@ -295,9 +295,9 @@ export function DecisionPanel() {
               return (
                 <li
                   key={row.riskId}
-                  className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)]"
+                  className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]"
                 >
-                  <span className="font-medium text-neutral-800 dark:text-neutral-200 flex-1 min-w-0 truncate">
+                  <span className="min-w-0 flex-1 truncate font-medium text-[var(--ds-text-primary)]">
                     {row.title || "—"}
                   </span>
                   <span
@@ -312,26 +312,29 @@ export function DecisionPanel() {
                   <div className="flex flex-wrap items-center gap-1 shrink-0">
                     {showProjectedUp && (
                       <span
-                        className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-100 text-neutral-600 dark:bg-neutral-700 dark:text-neutral-400"
+                        className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-[var(--ds-status-neutral-subtle-bg)] text-[var(--ds-status-neutral-subtle-fg)]"
                         title={cyclesText ?? undefined}
                       >
                         Projected ↑
                       </span>
                     )}
                     {cyclesText != null && (
-                      <span className="text-xs text-neutral-500 dark:text-neutral-400" title={isCritical ? "Already critical" : `Reaches critical in ${signals.timeToCritical} cycles`}>
+                      <span className="text-xs text-[var(--ds-text-muted)]" title={isCritical ? "Already critical" : `Reaches critical in ${signals.timeToCritical} cycles`}>
                         {cyclesText}
                       </span>
                     )}
                     {mitigationLabel != null && (
-                      <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" title={isCritical ? "Remains critical within horizon" : "Mitigation still crosses critical within horizon"}>
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium bg-[var(--ds-risk-medium-bg)] text-[var(--ds-risk-medium-fg)]"
+                        title={isCritical ? "Remains critical within horizon" : "Mitigation still crosses critical within horizon"}
+                      >
                         <span aria-hidden>⚠</span>
                         {mitigationLabel}
                       </span>
                     )}
                     {showConfidence && confBand != null && (
                       <span
-                        className="text-xs text-neutral-500 dark:text-neutral-400"
+                        className="text-xs text-[var(--ds-text-muted)]"
                         title="Forecast Confidence: Based on history depth, momentum stability, and volatility."
                       >
                         {typeof confScore === "number" ? `${Math.round(confScore)}%` : "—"} • {confBand.charAt(0).toUpperCase() + confBand.slice(1)}
@@ -346,13 +349,13 @@ export function DecisionPanel() {
                       </span>
                     ))}
                     {extra > 0 && (
-                      <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-neutral-200 text-neutral-600 dark:bg-neutral-600 dark:text-neutral-300">
+                      <span className="inline-flex rounded px-1.5 py-0.5 text-xs font-medium bg-[var(--ds-status-neutral-bg)] text-[var(--ds-status-neutral-subtle-fg)]">
                         +{extra}
                       </span>
                     )}
                   </div>
                   {"rank" in row && row.rank > 0 && (
-                    <span className="text-xs text-neutral-500 dark:text-neutral-400">#{row.rank}</span>
+                    <span className="text-xs text-[var(--ds-text-muted)]">#{row.rank}</span>
                   )}
                 </li>
               );

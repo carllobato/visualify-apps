@@ -3,6 +3,18 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@visualify/design-system";
+import {
   Area,
   ComposedChart,
   ReferenceDot,
@@ -80,6 +92,7 @@ function RefLineLabelBottom({
   offsetX = 0,
   viewBox,
   x: lineXProp,
+  fill = "var(--ds-text-secondary)",
 }: {
   value: string;
   viewBox?: LabelProps["viewBox"];
@@ -87,6 +100,7 @@ function RefLineLabelBottom({
   fontWeight?: number;
   /** Pixels to shift label from line: negative = left, positive = right. */
   offsetX?: number;
+  fill?: string;
 }) {
   // Recharts passes Cartesian or Polar viewBox; we only support Cartesian (x, y, width, height)
   if (!viewBox || !("width" in viewBox)) return null;
@@ -103,7 +117,7 @@ function RefLineLabelBottom({
       textAnchor={textAnchor}
       fontSize={12}
       fontWeight={fontWeight}
-      fill="var(--foreground)"
+      fill={fill}
     >
       {lines.map((line, i) => (
         <tspan key={i} x={x} dy={i === 0 ? 0 : lineHeight}>
@@ -212,9 +226,14 @@ export type SimulationSectionProps = {
   settingsHref?: string | null;
 };
 
-const RAG_RED = "#ef4444";
-const RAG_GREEN = "#22c55e";
-const RAG_AMBER = "#f59e0b";
+/** RAG band fills use design-system semantic chart / warning tokens (SVG stopColor accepts CSS variables). */
+const RAG_BAND_NEGATIVE = "var(--ds-chart-insight-negative)";
+const RAG_BAND_POSITIVE = "var(--ds-chart-insight-positive)";
+const RAG_BAND_NEUTRAL = "var(--ds-warning)";
+
+/** Secondary emphasis for target / key percentile lines (below primary curve stroke). */
+const CHART_TARGET_STROKE =
+  "color-mix(in oklab, var(--ds-primary) 58%, var(--ds-muted-foreground))";
 
 function CostChart({
   results,
@@ -306,7 +325,7 @@ function CostChart({
     const x1 = Math.min(currentPCost, targetLineX);
     const x2 = Math.max(currentPCost, targetLineX);
     const color =
-      deltaToTargetP > 0 ? RAG_RED : deltaToTargetP < 0 ? RAG_GREEN : RAG_AMBER;
+      deltaToTargetP > 0 ? RAG_BAND_NEGATIVE : deltaToTargetP < 0 ? RAG_BAND_POSITIVE : RAG_BAND_NEUTRAL;
     const targetAtLeft = targetLineX <= currentPCost;
     return { x1, x2, color, targetAtLeft };
   }, [currentPCost, targetLineX, deltaToTargetP]);
@@ -474,24 +493,25 @@ function CostChart({
   const empty = smoothData.length === 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
-        <h3 className="text-base font-semibold text-[var(--foreground)] m-0">Cost Distribution</h3>
+    <Card className="overflow-hidden border border-[var(--ds-border-subtle)] shadow-none">
+      <CardHeader className="border-b border-[var(--ds-border-subtle)] px-4 py-2.5">
+        <CardTitle className="text-[length:var(--ds-text-sm)] font-semibold">Cost Distribution</CardTitle>
         {!empty && isDebug && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 m-0">
+          <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
             {costSamples.length > 0
               ? `Monte Carlo (${iterationCount.toLocaleString()} iterations)`
               : "Derived from percentiles"}
           </p>
         )}
-      </div>
-      <div className="p-4 w-full text-foreground" style={{ height: CHART_HEIGHT }}>
+      </CardHeader>
+      <CardContent className="w-full p-4" style={{ height: CHART_HEIGHT }}>
         {empty ? (
-          <div className="h-full flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="flex h-full items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             No data
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+          <div className="h-full overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
+          <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartDataWithRagBand} margin={CHART_MARGIN}>
               <XAxis
                 type="number"
@@ -502,7 +522,7 @@ function CostChart({
                 padding={{ left: 0, right: 0 }}
                 tick={false}
                 tickLine={false}
-                axisLine={{ stroke: "var(--foreground)", strokeOpacity: 0.3 }}
+                axisLine={{ stroke: "var(--ds-border-subtle)", strokeOpacity: 1 }}
               />
               <YAxis hide domain={[0, yMax]} />
               <Tooltip
@@ -540,22 +560,22 @@ function CostChart({
                   if (activeCostTimeoutRef.current) clearTimeout(activeCostTimeoutRef.current);
                   activeCostTimeoutRef.current = setTimeout(() => setActiveCost(closest.cost), 0);
                   return (
-                    <div className="px-2.5 py-2 text-sm space-y-1 rounded-lg border bg-white text-neutral-900 shadow-md dark:bg-black dark:text-white dark:border-white dark:shadow-none">
-                      <div className="font-medium">{closest.pLabel}</div>
-                      <div className="text-neutral-700 dark:text-neutral-300">{formatCostCompact(closest.cost)}</div>
+                    <div className="space-y-1.5 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2.5 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] shadow-[var(--ds-shadow-md)]">
+                      <div className="font-semibold leading-tight text-[var(--ds-text-primary)]">{closest.pLabel}</div>
+                      <div className="leading-snug text-[var(--ds-text-secondary)]">{formatCostCompact(closest.cost)}</div>
                     </div>
                   );
                 }}
               />
               <defs>
                 <linearGradient id="simDistDepthCost" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity={0.01} />
+                  <stop offset="0%" stopColor="var(--ds-primary)" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="var(--ds-primary)" stopOpacity={0.02} />
                 </linearGradient>
                 {ragBand && (
                   <linearGradient id="costChartRagFill" x1="0" y1="0" x2="1" y2="0">
                     {(() => {
-                      const isGreen = ragBand.color === RAG_GREEN;
+                      const isGreen = ragBand.color === RAG_BAND_POSITIVE;
                       const darkerAtLeft = isGreen ? !ragBand.targetAtLeft : ragBand.targetAtLeft;
                       return darkerAtLeft ? (
                         <>
@@ -575,8 +595,8 @@ function CostChart({
               <Area
                 type="natural"
                 dataKey="smoothPct"
-                stroke="currentColor"
-                strokeWidth={2}
+                stroke="var(--ds-primary)"
+                strokeWidth={2.5}
                 fill="url(#simDistDepthCost)"
                 fillOpacity={1}
                 dot={false}
@@ -605,10 +625,10 @@ function CostChart({
                     key={c.p}
                     x={c.x}
                     y={c.y}
-                    r={isActive ? 5 : 3}
-                    fill="var(--foreground)"
-                    stroke="var(--background)"
-                    strokeWidth={1.5}
+                    r={isActive ? 4.5 : 2.75}
+                    fill="var(--ds-chart-annotation)"
+                    stroke="var(--ds-surface-default)"
+                    strokeWidth={1.25}
                   />
                 );
               })}
@@ -621,12 +641,12 @@ function CostChart({
                     activeCost != null &&
                     currentPCost != null &&
                     Math.abs(activeCost - currentPCost) < 1e-9
-                      ? 5
-                      : 3
+                      ? 4.5
+                      : 2.75
                   }
-                  fill="var(--foreground)"
-                  stroke="var(--background)"
-                  strokeWidth={1.5}
+                  fill="color-mix(in oklab, var(--ds-chart-annotation) 72%, var(--ds-muted-foreground))"
+                  stroke="var(--ds-surface-default)"
+                  strokeWidth={1.25}
                 />
               )}
               {targetLineX != null && Number.isFinite(targetLineX) && targetPLabel && (
@@ -637,9 +657,9 @@ function CostChart({
                       : undefined
                   }
                   x={targetLineCurveY == null ? targetLineX : undefined}
-                  stroke="var(--foreground)"
-                  strokeWidth={2}
-                  strokeOpacity={0.9}
+                  stroke={CHART_TARGET_STROKE}
+                  strokeWidth={1.75}
+                  strokeOpacity={1}
                   label={{
                     content: (p: LabelProps) => (
                       <RefLineLabelBottom
@@ -648,6 +668,7 @@ function CostChart({
                         offsetX={deltaToTargetP != null && deltaToTargetP > 0 ? REF_LINE_LABEL_OFFSET_X : -REF_LINE_LABEL_OFFSET_X}
                         viewBox={p.viewBox}
                         x={p.x as number | undefined}
+                        fill="var(--ds-text-secondary)"
                       />
                     ),
                   }}
@@ -657,9 +678,9 @@ function CostChart({
                 currentFundingCurvePoint ? (
                   <ReferenceLine
                     segment={[{ x: currentPCost, y: 0 }, { x: currentPCost, y: currentFundingCurvePoint.y }]}
-                    stroke="var(--foreground)"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.7}
+                    stroke="var(--ds-chart-annotation)"
+                    strokeWidth={1.25}
+                    strokeOpacity={0.62}
                     strokeDasharray="4 4"
                     label={{
                       content: (p: LabelProps) => (
@@ -669,6 +690,7 @@ function CostChart({
                           offsetX={deltaToTargetP != null && deltaToTargetP > 0 ? -REF_LINE_LABEL_OFFSET_X : REF_LINE_LABEL_OFFSET_X}
                           viewBox={p.viewBox}
                           x={p.x as number | undefined}
+                          fill="var(--ds-text-muted)"
                         />
                       ),
                     }}
@@ -676,9 +698,9 @@ function CostChart({
                 ) : (
                   <ReferenceLine
                     x={currentPCost}
-                    stroke="var(--foreground)"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.7}
+                    stroke="var(--ds-chart-annotation)"
+                    strokeWidth={1.25}
+                    strokeOpacity={0.62}
                     strokeDasharray="4 4"
                     label={{
                       content: (p: LabelProps) => (
@@ -688,6 +710,7 @@ function CostChart({
                           offsetX={deltaToTargetP != null && deltaToTargetP > 0 ? -REF_LINE_LABEL_OFFSET_X : REF_LINE_LABEL_OFFSET_X}
                           viewBox={p.viewBox}
                           x={p.x as number | undefined}
+                          fill="var(--ds-text-muted)"
                         />
                       ),
                     }}
@@ -696,9 +719,10 @@ function CostChart({
               )}
             </ComposedChart>
           </ResponsiveContainer>
+          </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -872,24 +896,25 @@ function TimeChart({
   const empty = smoothData.length === 0;
 
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-      <div className="px-4 py-3 border-b border-neutral-200 dark:border-neutral-700">
-        <h3 className="text-base font-semibold text-[var(--foreground)] m-0">Time Distribution</h3>
+    <Card className="overflow-hidden border border-[var(--ds-border-subtle)] shadow-none">
+      <CardHeader className="border-b border-[var(--ds-border-subtle)] px-4 py-2.5">
+        <CardTitle className="text-[length:var(--ds-text-sm)] font-semibold">Time Distribution</CardTitle>
         {!empty && isDebug && (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5 m-0">
+          <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
             {timeSamples.length > 0
               ? `Monte Carlo (${iterationCount.toLocaleString()} iterations)`
               : "Derived from percentiles"}
           </p>
         )}
-      </div>
-      <div className="p-4 w-full text-foreground" style={{ height: CHART_HEIGHT }}>
+      </CardHeader>
+      <CardContent className="w-full p-4" style={{ height: CHART_HEIGHT }}>
         {empty ? (
-          <div className="h-full flex items-center justify-center text-sm text-neutral-500 dark:text-neutral-400">
+          <div className="flex h-full items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             No data
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+          <div className="h-full overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
+          <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={CHART_MARGIN}>
               <XAxis
                 type="number"
@@ -900,7 +925,7 @@ function TimeChart({
                 padding={{ left: 0, right: 0 }}
                 tick={false}
                 tickLine={false}
-                axisLine={{ stroke: "var(--foreground)", strokeOpacity: 0.3 }}
+                axisLine={{ stroke: "var(--ds-border-subtle)", strokeOpacity: 1 }}
               />
               <YAxis hide domain={[0, yMax]} />
               <Tooltip
@@ -938,24 +963,24 @@ function TimeChart({
                   if (activeTimeTimeoutRef.current) clearTimeout(activeTimeTimeoutRef.current);
                   activeTimeTimeoutRef.current = setTimeout(() => setActiveTime(closest.time), 0);
                   return (
-                    <div className="px-2.5 py-2 text-sm space-y-1 rounded-lg border bg-white text-neutral-900 shadow-md dark:bg-black dark:text-white dark:border-white dark:shadow-none">
-                      <div className="font-medium">{closest.pLabel}</div>
-                      <div className="text-neutral-700 dark:text-neutral-300">{formatDurationDays(closest.time)}</div>
+                    <div className="space-y-1.5 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2.5 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] shadow-[var(--ds-shadow-md)]">
+                      <div className="font-semibold leading-tight text-[var(--ds-text-primary)]">{closest.pLabel}</div>
+                      <div className="leading-snug text-[var(--ds-text-secondary)]">{formatDurationDays(closest.time)}</div>
                     </div>
                   );
                 }}
               />
               <defs>
                 <linearGradient id="simDistDepthTime" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="currentColor" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="currentColor" stopOpacity={0.01} />
+                  <stop offset="0%" stopColor="var(--ds-primary)" stopOpacity={0.18} />
+                  <stop offset="100%" stopColor="var(--ds-primary)" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <Area
                 type="natural"
                 dataKey="smoothPct"
-                stroke="currentColor"
-                strokeWidth={2}
+                stroke="var(--ds-primary)"
+                strokeWidth={2.5}
                 fill="url(#simDistDepthTime)"
                 fillOpacity={1}
                 dot={false}
@@ -971,10 +996,10 @@ function TimeChart({
                     key={c.p}
                     x={c.x}
                     y={c.y}
-                    r={isActive ? 5 : 3}
-                    fill="var(--foreground)"
-                    stroke="var(--background)"
-                    strokeWidth={1.5}
+                    r={isActive ? 4.5 : 2.75}
+                    fill="var(--ds-chart-annotation)"
+                    stroke="var(--ds-surface-default)"
+                    strokeWidth={1.25}
                   />
                 );
               })}
@@ -986,23 +1011,24 @@ function TimeChart({
                       : undefined
                   }
                   x={targetLineCurveY == null ? targetLineX : undefined}
-                  stroke="var(--foreground)"
-                  strokeWidth={2}
-                  strokeOpacity={0.9}
+                  stroke={CHART_TARGET_STROKE}
+                  strokeWidth={1.75}
+                  strokeOpacity={1}
                   label={{
                     value: `Target (${targetPLabel})`,
                     position: "insideTop",
                     fontSize: 12,
-                    fontWeight: 600,
-                    fill: "var(--foreground)",
+                    fontWeight: 500,
+                    fill: "var(--ds-text-secondary)",
                   }}
                 />
               )}
             </ComposedChart>
           </ResponsiveContainer>
+          </div>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1069,36 +1095,39 @@ export function SimulationSection(props: SimulationSectionProps) {
   const tableLabelDisplay = tableSubtitle ? `${tableLabel} (${tableSubtitle})` : tableLabel;
 
   return (
-    <section className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-      <h2 className="text-base font-semibold text-[var(--foreground)] px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
-        {title}
-      </h2>
-      <div className="p-4 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
-          <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-4 transition-colors hover:border-neutral-300 dark:hover:border-neutral-600 min-h-[8.5rem] flex flex-col">
-            <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+    <Card variant="inset" className="overflow-hidden">
+      <CardHeader className="border-b border-[var(--ds-border)] px-4 py-3">
+        <CardTitle className="text-[length:var(--ds-text-base)]">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 p-4">
+        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+          <Card className="flex min-h-[8.5rem] flex-col transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]">
+            <CardContent className="flex flex-1 flex-col p-4">
+            <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
               {mode === "cost" ? "Current Funding Confidence" : "Current P-Value (Time)"}
             </div>
-            <div className="mt-1 text-lg font-semibold text-[var(--foreground)]">
+            <div className="mt-1 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
               {currentPValue != null ? `P${currentPValue}` : "—"}
             </div>
             {mode === "cost" && (
-              <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+              <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
                 {contingencyValueDollars != null ? "Likelihood of delivery within current funding" : "Confidence at approved budget"}
               </div>
             )}
             {mode === "time" && (
-              <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+              <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
                 Confidence at planned duration
               </div>
             )}
-          </div>
-          <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-4 transition-colors hover:border-neutral-300 dark:hover:border-neutral-600 min-h-[8.5rem] flex flex-col">
-            <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
+            </CardContent>
+          </Card>
+          <Card className="flex min-h-[8.5rem] flex-col transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]">
+            <CardContent className="flex flex-1 flex-col p-4">
+            <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
               Funding Position vs Target{mode === "cost" ? "" : " (Time)"}
             </div>
             <div className="mt-1 flex items-center gap-2">
-              <span className="text-lg font-semibold text-[var(--foreground)]">
+              <span className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
                 {mode === "cost"
                   ? (deltaToTargetP != null
                       ? formatCostDisplay(Math.abs(deltaToTargetP))
@@ -1107,15 +1136,15 @@ export function SimulationSection(props: SimulationSectionProps) {
               </span>
               {mode === "cost" && deltaToTargetP != null && (
                 <span
-                  className="shrink-0 w-2.5 h-2.5 rounded-full border border-neutral-300 dark:border-neutral-600"
+                  className="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--ds-border)]"
                   title={deltaToTargetP > 0 ? "Shortfall" : deltaToTargetP < 0 ? "Headroom" : "On target"}
                   style={{
                     backgroundColor:
                       deltaToTargetP > 0
-                        ? "var(--rag-red, #ef4444)"
+                        ? "var(--ds-chart-insight-negative)"
                         : deltaToTargetP < 0
-                          ? "var(--rag-green, #22c55e)"
-                          : "var(--rag-amber, #f59e0b)",
+                          ? "var(--ds-chart-insight-positive)"
+                          : "var(--ds-warning)",
                   }}
                   aria-hidden
                 />
@@ -1125,7 +1154,7 @@ export function SimulationSection(props: SimulationSectionProps) {
             ((contingencyValueDollars != null && deltaToTargetP != null) ||
               (contingencyValueDollars != null && isDebug) ||
               (contingencyValueDollars == null && isDebug)) ? (
-              <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+              <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
                 {contingencyValueDollars != null && deltaToTargetP != null ? (
                   deltaToTargetP > 0
                     ? `Below ${targetPLabel} Target`
@@ -1135,7 +1164,7 @@ export function SimulationSection(props: SimulationSectionProps) {
                 ) : contingencyValueDollars != null && isDebug ? (
                   <>
                     Contingency adjustment to achieve{" "}
-                    <Link href={settingsHref ?? riskaiPath("/projects")} className="underline hover:text-neutral-700 dark:hover:text-neutral-300">
+                    <Link href={settingsHref ?? riskaiPath("/projects")} className="text-[var(--ds-text-secondary)] underline hover:text-[var(--ds-text-primary)]">
                       Target P-Value ({targetPLabel})
                     </Link>
                   </>
@@ -1145,11 +1174,12 @@ export function SimulationSection(props: SimulationSectionProps) {
               </div>
             ) : null}
             {mode === "time" && (
-              <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+              <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
                 {valueAtTargetP != null ? "Duration at target P percentile" : "Time at target confidence level"}
               </div>
             )}
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {mode === "cost" && costResults && (
@@ -1172,57 +1202,57 @@ export function SimulationSection(props: SimulationSectionProps) {
           />
         )}
 
-        <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-          <div className="px-4 py-2 border-b border-neutral-200 dark:border-neutral-700">
-            <h3 className="text-sm font-semibold text-[var(--foreground)] m-0">{tableLabelDisplay}</h3>
+        <Card className="overflow-hidden">
+          <div className="border-b border-[var(--ds-border)] px-4 py-2">
+            <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">{tableLabelDisplay}</h3>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-neutral-200 dark:border-neutral-700">
-                  <th className="text-left py-2 px-3 font-medium text-neutral-600 dark:text-neutral-400">#</th>
-                  <th className="text-left py-2 px-3 font-medium text-neutral-600 dark:text-neutral-400">Risk</th>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell className="py-2 pl-3 pr-3 text-left normal-case tracking-normal">#</TableHeaderCell>
+                  <TableHeaderCell className="py-2 pl-3 pr-3 text-left normal-case tracking-normal">Risk</TableHeaderCell>
                   {mode === "cost" ? (
-                    <th className="text-right py-2 px-3 font-medium text-neutral-600 dark:text-neutral-400">Cost impact</th>
+                    <TableHeaderCell className="py-2 pl-3 pr-3 text-right normal-case tracking-normal">Cost impact</TableHeaderCell>
                   ) : (
-                    <th className="text-right py-2 px-3 font-medium text-neutral-600 dark:text-neutral-400">Time impact (days)</th>
+                    <TableHeaderCell className="py-2 pl-3 pr-3 text-right normal-case tracking-normal">Time impact (days)</TableHeaderCell>
                   )}
-                </tr>
-              </thead>
-              <tbody>
+                </TableRow>
+              </TableHead>
+              <TableBody>
                 {top10.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-4 px-3 text-neutral-500 dark:text-neutral-400 text-center">
+                  <TableRow>
+                    <TableCell colSpan={3} className="py-4 text-center text-[var(--ds-text-muted)]">
                       No risks in simulation
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   top10.map((risk, i) => (
-                    <tr
+                    <TableRow
                       key={risk.id}
-                      className="border-b border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800/50"
+                      className="hover:bg-[color-mix(in_oklab,var(--ds-muted)_35%,transparent)]"
                     >
-                      <td className="py-2.5 px-3 text-neutral-600 dark:text-neutral-400">{i + 1}</td>
-                      <td className="py-2.5 px-3 text-[var(--foreground)] truncate max-w-[200px]" title={risk.title}>
+                      <TableCell className="py-2.5 pl-3 pr-3 text-[var(--ds-text-muted)]">{i + 1}</TableCell>
+                      <TableCell className="max-w-[200px] truncate py-2.5 pl-3 pr-3 text-[var(--ds-text-primary)]" title={risk.title}>
                         {risk.title}
-                      </td>
+                      </TableCell>
                       {mode === "cost" ? (
-                        <td className="py-2.5 px-3 text-right font-medium">
+                        <TableCell className="py-2.5 pl-3 pr-3 text-right font-medium">
                           {formatCostDisplay(risk.simMeanCost ?? risk.expectedCost)}
-                        </td>
+                        </TableCell>
                       ) : (
-                        <td className="py-2.5 px-3 text-right font-medium">
+                        <TableCell className="py-2.5 pl-3 pr-3 text-right font-medium">
                           {formatDurationDays(risk.simMeanDays ?? risk.expectedDays)}
-                        </td>
+                        </TableCell>
                       )}
-                    </tr>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
-        </div>
-      </div>
-    </section>
+        </Card>
+      </CardContent>
+    </Card>
   );
 }

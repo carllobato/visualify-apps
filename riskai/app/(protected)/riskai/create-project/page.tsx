@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { riskaiPath } from "@/lib/routes";
+import { Callout } from "@visualify/design-system";
+import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
 const UUID_REGEX =
@@ -97,10 +99,13 @@ function CreateProjectForm() {
   if (loadError) {
     return (
       <main className="mx-auto max-w-md px-4 py-12">
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
           {loadError}
-        </p>
-        <Link href="/" className="mt-4 inline-block text-sm text-neutral-600 underline dark:text-neutral-400">
+        </Callout>
+        <Link
+          href="/"
+          className="mt-4 inline-block text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] underline"
+        >
           Back to dashboard
         </Link>
       </main>
@@ -109,25 +114,25 @@ function CreateProjectForm() {
 
   if (portfolios === null) {
     return (
-      <main className="mx-auto flex min-h-[30vh] max-w-md flex-col items-center justify-center px-4">
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
+      <main className="mx-auto flex min-h-[30vh] max-w-md flex-col justify-center px-4 py-12">
+        <LoadingPlaceholder label="Loading portfolios" />
       </main>
     );
   }
 
   const selectClass =
-    "w-full rounded border border-neutral-300 bg-[var(--background)] px-3 py-2 text-sm text-neutral-900 dark:border-neutral-600 dark:text-neutral-100";
+    "w-full rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm text-[var(--ds-text-primary)]";
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
-      <h1 className="mb-2 text-xl font-semibold text-[var(--foreground)]">Create project</h1>
-      <p className="mb-6 text-sm text-neutral-600 dark:text-neutral-400">
+      <h1 className="mb-2 text-xl font-semibold text-[var(--ds-text-primary)]">Create project</h1>
+      <p className="mb-6 text-sm text-[var(--ds-text-secondary)]">
         Projects are stored under a portfolio. You can move or add more portfolios later from the app.
       </p>
       <form onSubmit={handleCreate} className="space-y-3">
         {portfolios.length > 1 ? (
           <div>
-            <label htmlFor="create-project-portfolio" className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+            <label htmlFor="create-project-portfolio" className="mb-1 block text-sm font-medium text-[var(--ds-text-secondary)]">
               Portfolio
             </label>
             <select
@@ -146,8 +151,8 @@ function CreateProjectForm() {
             </select>
           </div>
         ) : (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Portfolio: <span className="font-medium text-[var(--foreground)]">{portfolios[0]?.name}</span>
+          <p className="text-xs text-[var(--ds-text-muted)]">
+            Portfolio: <span className="font-medium text-[var(--ds-text-primary)]">{portfolios[0]?.name}</span>
           </p>
         )}
         <input
@@ -155,27 +160,28 @@ function CreateProjectForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Project name"
-          className="w-full rounded border border-neutral-300 bg-[var(--background)] px-3 py-2 text-neutral-900 dark:border-neutral-600 dark:text-neutral-100"
+          className="w-full rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-[var(--ds-text-primary)]"
           required
           disabled={loading}
         />
         <button
           type="submit"
           disabled={loading}
-          className="rounded border border-neutral-300 bg-[var(--foreground)] px-4 py-2 text-sm font-medium text-[var(--background)] hover:opacity-90 disabled:opacity-50 dark:border-neutral-600"
+          className="rounded border border-[var(--ds-border)] bg-[var(--ds-text-primary)] px-4 py-2 text-sm font-medium text-[var(--ds-text-inverse)] hover:opacity-90 disabled:opacity-50"
         >
           {loading ? "Creating…" : "Create project"}
         </button>
       </form>
       {message && (
-        <p
-          className={`mt-3 text-sm ${message.type === "success" ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}
+        <Callout
+          status={message.type === "success" ? "success" : "danger"}
           role="alert"
+          className="mt-3 text-[length:var(--ds-text-sm)]"
         >
           {message.text}
-        </p>
+        </Callout>
       )}
-      <p className="mt-6 text-sm text-neutral-500 dark:text-neutral-400">
+      <p className="mt-6 text-sm text-[var(--ds-text-muted)]">
         <Link href="/" className="underline hover:no-underline">
           ← Back to dashboard
         </Link>
@@ -188,8 +194,8 @@ export default function CreateProjectPage() {
   return (
     <Suspense
       fallback={
-        <main className="mx-auto flex min-h-[30vh] max-w-md flex-col items-center justify-center px-4">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
+        <main className="mx-auto flex min-h-[30vh] max-w-md flex-col justify-center px-4 py-12">
+          <LoadingPlaceholderCompact label="Loading" />
         </main>
       }
     >

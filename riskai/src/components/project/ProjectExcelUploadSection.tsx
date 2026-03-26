@@ -1,6 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardBody,
+  CardHeader,
+  HelperText,
+} from "@visualify/design-system";
 import { loadFiles, saveFile, deleteFile, markFileImported, type StoredFileMeta } from "@/lib/uploadedRiskRegisterStore";
 import { parseExcel, sheetToDocumentText, type ParseExcelResult } from "@/lib/riskImportExcel";
 import type { Risk, RiskDraft } from "@/domain/risk/risk.schema";
@@ -215,106 +224,113 @@ export function ProjectExcelUploadSection() {
   const selectedFile = files.find((f) => f.id === selectedFileId);
 
   return (
-    <section className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-4 sm:p-5 mb-4">
-      <h2 className="text-base font-semibold text-[var(--foreground)] mb-3 border-b border-neutral-200 dark:border-neutral-700 pb-2">
-        Risk Register Files (Excel)
-      </h2>
-      <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
-        Upload Excel risk register files, then select one and generate risks with AI. Generated risks are added to the Risk Register.
-      </p>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={ACCEPT_EXCEL}
-        onChange={handleFileChange}
-        className="hidden"
-        aria-label="Upload Excel file"
-      />
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="px-3 py-1.5 text-sm rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-        >
-          Add .xlsx file
-        </button>
-        {error && (
-          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-            {error}
-          </p>
-        )}
-        {files.length > 0 && (
-          <>
-            <ul className="space-y-2 text-sm mt-2">
-              {files.map((f) => (
-                <li
-                  key={f.id}
-                  className={`flex flex-wrap items-center gap-2 py-2 px-3 rounded-md border ${
-                    selectedFileId === f.id
-                      ? "border-blue-400 dark:border-blue-600 bg-blue-50/50 dark:bg-blue-900/20"
-                      : "border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFileId(f.id)}
-                    className="text-left flex-1 min-w-0 font-medium text-neutral-800 dark:text-neutral-200 truncate"
+    <Card className="mb-4">
+      <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
+        <h2 className="m-0 text-[length:var(--ds-text-base)] font-semibold leading-6 text-[var(--ds-text-primary)]">
+          Risk Register Files (Excel)
+        </h2>
+      </CardHeader>
+      <CardBody className="!px-4 !py-3">
+        <HelperText className="!mb-3 !mt-0">
+          Upload Excel risk register files, then select one and generate risks with AI. Generated risks are added to
+          the Risk Register.
+        </HelperText>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPT_EXCEL}
+          onChange={handleFileChange}
+          className="hidden"
+          aria-label="Upload Excel file"
+        />
+        <div className="space-y-2">
+          <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+            Add .xlsx file
+          </Button>
+          {error ? (
+            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+              {error}
+            </Callout>
+          ) : null}
+          {files.length > 0 && (
+            <>
+              <ul className="mt-2 list-none space-y-2 p-0 text-[length:var(--ds-text-sm)]">
+                {files.map((f) => (
+                  <li
+                    key={f.id}
+                    className={
+                      "flex flex-wrap items-center gap-2 rounded-[var(--ds-radius-md)] border px-3 py-2 " +
+                      (selectedFileId === f.id
+                        ? "border-[var(--ds-primary)] bg-[var(--ds-surface-inset)]"
+                        : "border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)]")
+                    }
                   >
-                    {f.name}
-                  </button>
-                  <span className="text-neutral-500 dark:text-neutral-400 shrink-0">
-                    {formatUploadedAt(f.uploadedAt)}
-                  </span>
-                  {f.importedAt ? (
-                    <span
-                      className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 shrink-0"
-                      title={`Translated to risks: ${formatUploadedAt(f.importedAt)}`}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFileId(f.id)}
+                      className="min-w-0 flex-1 truncate text-left font-medium text-[var(--ds-text-primary)]"
                     >
-                      Translated to risks
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveFile(f.id)}
-                    className="ml-auto px-2 py-1 text-xs rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 shrink-0"
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-            {parseError && (
-              <p className="text-sm text-red-600 dark:text-red-400 mt-2" role="alert">
-                {parseError}
-              </p>
-            )}
-            <div className="flex flex-wrap items-center gap-3 mt-3">
-              <button
-                type="button"
-                onClick={handleGenerateRisks}
-                disabled={!hasData || importStatus === "loading"}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none"
-              >
-                Generate Risks with AI
-                {selectedFile ? ` (from ${selectedFile.name})` : ""}
-              </button>
-              {importStatus === "loading" && (
-                <span className="text-sm text-neutral-500">Loading…</span>
-              )}
-              {importStatus === "success" && importMessage && (
-                <span className="text-sm text-blue-600 dark:text-blue-400" role="status">
-                  {importMessage}
-                </span>
-              )}
-              {importStatus === "error" && importMessage && (
-                <span className="text-sm text-red-600 dark:text-red-400" role="alert">
-                  {importMessage}
-                </span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </section>
+                      {f.name}
+                    </button>
+                    <span className="shrink-0 text-[var(--ds-text-muted)]">{formatUploadedAt(f.uploadedAt)}</span>
+                    {f.importedAt ? (
+                      <Badge
+                        status="success"
+                        variant="subtle"
+                        className="shrink-0"
+                        title={`Translated to risks: ${formatUploadedAt(f.importedAt)}`}
+                      >
+                        Translated to risks
+                      </Badge>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="ml-auto shrink-0 !border-[var(--ds-status-danger-strong-border)] !text-[var(--ds-status-danger-fg)]"
+                      onClick={() => handleRemoveFile(f.id)}
+                    >
+                      Remove
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              {parseError ? (
+                <Callout status="danger" role="alert" className="!mt-2 text-[length:var(--ds-text-sm)]">
+                  {parseError}
+                </Callout>
+              ) : null}
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleGenerateRisks}
+                  disabled={!hasData || importStatus === "loading"}
+                >
+                  Generate Risks with AI
+                  {selectedFile ? ` (from ${selectedFile.name})` : ""}
+                </Button>
+                {importStatus === "loading" && (
+                  <div className="inline-flex items-center gap-2 py-1" aria-busy="true">
+                    <div className="h-3 w-24 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                    <span className="sr-only">Generating risks</span>
+                  </div>
+                )}
+                {importStatus === "success" && importMessage ? (
+                  <Callout status="success" className="!m-0 !inline-block !px-3 !py-2" role="status">
+                    <span className="text-[length:var(--ds-text-sm)]">{importMessage}</span>
+                  </Callout>
+                ) : null}
+                {importStatus === "error" && importMessage ? (
+                  <Callout status="danger" role="alert" className="!m-0 text-[length:var(--ds-text-sm)]">
+                    {importMessage}
+                  </Callout>
+                ) : null}
+              </div>
+            </>
+          )}
+        </div>
+      </CardBody>
+    </Card>
   );
 }

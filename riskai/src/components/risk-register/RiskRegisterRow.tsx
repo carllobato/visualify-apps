@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { Risk, RiskLevel } from "@/domain/risk/risk.schema";
 import type { DecisionMetrics } from "@/domain/decision/decision.types";
 import { isRiskStatusDraft } from "@/domain/risk/riskFieldSemantics";
@@ -8,16 +8,45 @@ import { dlog } from "@/lib/debug";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { RiskEditCell } from "@/components/risk-register/RiskEditCell";
 import { RiskOwnerRowSelect } from "@/components/risk-register/RiskOwnerRowSelect";
-import { RATING_TABLE_LEVEL_STYLES } from "@/components/risk-register/RiskLevelBadge";
 import { RiskCategorySelect } from "@/components/risk-register/RiskCategorySelect";
 import { RiskStatusSelect } from "@/components/risk-register/RiskStatusSelect";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  TableCell,
+  TableRow,
+} from "@visualify/design-system";
 
 function formatCategoryLabel(category: string | "" | null | undefined): string {
   if (category == null || category === "") return "—";
   return category;
 }
 
-/** Map risk level to single letter for Pre/Post Rating column. */
+type DsBadgeTone = {
+  status: "neutral" | "success" | "warning" | "danger" | "info";
+  variant: "subtle" | "strong";
+};
+
+/** H / M / L (and E) rating letters → DS Badge semantics. */
+function ratingLetterToBadgeTone(letter: "L" | "M" | "H" | "E"): DsBadgeTone {
+  switch (letter) {
+    case "L":
+      return { status: "success", variant: "subtle" };
+    case "M":
+      return { status: "warning", variant: "subtle" };
+    case "H":
+      return { status: "danger", variant: "subtle" };
+    case "E":
+      return { status: "danger", variant: "strong" };
+  }
+}
+
+/** Circular DS-aligned rating / movement badge (no custom colours). */
+const RATING_BADGE_CIRCLE =
+  "!inline-flex !h-7 !w-7 !min-h-[1.75rem] !min-w-[1.75rem] !rounded-full !p-0 items-center justify-center text-[length:var(--ds-text-xs)]";
+
 function levelToLetter(level: RiskLevel): "L" | "M" | "H" | "E" {
   const map: Record<RiskLevel, "L" | "M" | "H" | "E"> = {
     low: "L",
@@ -35,15 +64,8 @@ function getRiskMovement(preScore: number, postScore: number): "↑" | "↓" | "
   return "→";
 }
 
-/** Tailwind classes for Δ movement pill (stable only). Improving (↓) and Worsening (↑) use post-rating low/high styles for consistency. */
-const MOVEMENT_PILL_CLASS_STABLE = "bg-neutral-100 text-[var(--foreground)] dark:bg-neutral-700/50 dark:text-neutral-300";
-
-const selectStyle: React.CSSProperties = {
-  padding: "6px 8px",
-  borderRadius: 8,
-  border: "1px solid #ddd",
-  background: "transparent",
-};
+const DS_NATIVE_SELECT =
+  "w-full min-w-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)] px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]";
 
 const DESCRIPTION_TOOLTIP_MAX_LEN = 140;
 
@@ -55,6 +77,9 @@ function truncateDescription(desc: string): string {
 
 export function RiskRegisterRow({
   risk,
+  rowIndex: _rowIndex,
+  decision: _decision,
+  scoreDelta: _scoreDelta,
   onRiskClick,
   onRestoreArchived,
   validationErrors,
@@ -75,42 +100,58 @@ export function RiskRegisterRow({
   const hasDescription = Boolean(risk.description?.trim());
   const isDraft = isRiskStatusDraft(risk.status);
 
-  const cellTextClass = "text-sm text-[var(--foreground)] truncate min-w-0";
+  const cellTextClass =
+    "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] truncate min-w-0";
 
   const handleRowClick = (e: React.MouseEvent) => {
     if (!onRiskClick) return;
     const target = e.target as Node;
-    if (target instanceof Element && (target.closest("button") || target.closest("select") || target.closest("input") || target.closest("a") || target.closest("[data-description-card]"))) return;
+    if (
+      target instanceof Element &&
+      (target.closest("button") ||
+        target.closest("select") ||
+        target.closest("input") ||
+        target.closest("a") ||
+        target.closest("[data-description-card]"))
+    )
+      return;
     onRiskClick(risk);
   };
 
-  const handleRowFocus = () => { if (hasDescription) setShowDescCard(true); };
-  const handleRowBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+  const handleRowFocus = () => {
+    if (hasDescription) setShowDescCard(true);
+  };
+  const handleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node)) setShowDescCard(false);
   };
 
-  const riskIdDisplay =
-    risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : "—";
+  const riskIdDisplay = risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : "—";
   const preLetter = levelToLetter(risk.inherentRating.level);
   const postLetter = levelToLetter(risk.residualRating.level);
   const movement = getRiskMovement(risk.inherentRating.score, risk.residualRating.score);
-  const movementPillClass = movement === "→" ? MOVEMENT_PILL_CLASS_STABLE : "";
-  const preStyle = RATING_TABLE_LEVEL_STYLES[risk.inherentRating.level];
-  const postStyle = RATING_TABLE_LEVEL_STYLES[risk.residualRating.level];
-  const actionCol = onRestoreArchived
-    ? "minmax(168px, 1.1fr)"
-    : onRiskClick
-      ? "minmax(96px, 96px)"
-      : "";
-  const gridCols = onRiskClick
-    ? `56px minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) 100px 100px 100px minmax(0, 0.9fr) ${actionCol}`
-    : "56px minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) 100px 100px 100px minmax(0, 0.9fr)";
+  const preBadge = ratingLetterToBadgeTone(preLetter);
+  const postBadge = ratingLetterToBadgeTone(postLetter);
+
+  const movementBadge: DsBadgeTone =
+    movement === "→"
+      ? { status: "neutral", variant: "subtle" }
+      : movement === "↓"
+        ? { status: "success", variant: "subtle" }
+        : { status: "danger", variant: "subtle" };
 
   const hasValidationErrors = Boolean(validationErrors?.length);
+  const colSpan = onRiskClick ? 9 : 8;
+
+  const rowHoverClass =
+    onRiskClick && "cursor-pointer transition-colors hover:bg-[var(--ds-surface-hover)]";
+
+  const draftEdgeClass =
+    isDraft &&
+    "border-l-2 border-l-[var(--ds-status-warning-border)] bg-[color-mix(in_oklab,var(--ds-status-warning)_8%,var(--ds-surface-default))]";
 
   return (
-    <div className={hasValidationErrors ? "border-b border-neutral-200 dark:border-neutral-700" : undefined}>
-      <div
+    <Fragment>
+      <TableRow
         id={`risk-${risk.id}`}
         role={onRiskClick ? "row" : undefined}
         tabIndex={onRiskClick && hasDescription ? 0 : undefined}
@@ -118,196 +159,181 @@ export function RiskRegisterRow({
         onFocus={handleRowFocus}
         onBlur={handleRowBlur}
         className={[
-          onRiskClick && "cursor-pointer transition-colors hover:bg-neutral-50/80 dark:hover:bg-neutral-800/50 hover:shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] dark:hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]",
-          isDraft && "bg-amber-50/40 dark:bg-amber-950/20 border-l-2 border-l-amber-400/60 dark:border-l-amber-500/50",
-        ].filter(Boolean).join(" ")}
-        style={{
-          display: "grid",
-          gridTemplateColumns: gridCols,
-          padding: "10px 12px",
-          borderBottom: hasValidationErrors ? "none" : "1px solid #eee",
-          alignItems: "center",
-          gap: 10,
-          minWidth: 0,
-        }}
+          rowHoverClass,
+          draftEdgeClass,
+          hasValidationErrors ? "border-b-0" : undefined,
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
-      {/* Risk ID (persistent 001, 002, …) */}
-      <span className={cellTextClass} title={risk.id}>
-        {riskIdDisplay}
-      </span>
-
-      {/* Title + optional description hover card */}
-      {readOnly ? (
-        <div
-          className="relative min-w-0"
-          onMouseEnter={() => hasDescription && setShowDescCard(true)}
-          onMouseLeave={() => setShowDescCard(false)}
-        >
-          <span className={`${cellTextClass} block`} title={risk.title}>
-            {risk.title || "—"}
+        <TableCell className="w-[56px] tabular-nums align-middle">
+          <span className={cellTextClass} title={risk.id}>
+            {riskIdDisplay}
           </span>
-          {hasDescription && showDescCard && (
-            <div
-              data-description-card
-              role="tooltip"
-              className="absolute left-0 top-full z-10 mt-1 w-max min-w-0 max-w-[320px] rounded-md border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-2.5 py-2 shadow-md text-xs text-neutral-700 dark:text-neutral-300 whitespace-normal"
-              style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
-            >
-              {truncateDescription(risk.description ?? "").split("\n").join(" ")}
-            </div>
-          )}
-        </div>
-      ) : (
-        <RiskEditCell
-          value={risk.title}
-          placeholder="Risk title"
-          onChange={(title) => updateRisk(risk.id, { title })}
-        />
-      )}
+        </TableCell>
 
-      {/* Category */}
-      {readOnly ? (
-        <span className={cellTextClass}>{formatCategoryLabel(risk.category)}</span>
-      ) : (
-        <RiskCategorySelect
-          id={`risk-row-category-${risk.id}`}
-          value={risk.category ?? ""}
-          onChange={(name) => updateRisk(risk.id, { category: name })}
-          className="w-full min-w-0"
-          style={selectStyle}
-          allowEmptyPlaceholder={isDraft || !(risk.category?.trim())}
-        />
-      )}
-
-      {/* Owner */}
-      {readOnly ? (
-        <span className={cellTextClass}>{risk.owner ?? "—"}</span>
-      ) : (
-        <RiskOwnerRowSelect
-          riskId={risk.id}
-          owner={risk.owner}
-          onCommit={(name) => updateRisk(risk.id, { owner: name || undefined })}
-        />
-      )}
-
-      {/* Pre Rating (L / M / H / E) — softer green for L */}
-      <span
-        title={`Inherent: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minWidth: 28,
-          padding: "2px 6px",
-          borderRadius: 6,
-          fontSize: 13,
-          fontWeight: 600,
-          backgroundColor: preStyle.bg,
-          color: preStyle.text,
-        }}
-      >
-        {preLetter}
-      </span>
-
-      {/* Post Rating (L / M / H / E) or N/A when no mitigation applied */}
-      {risk.mitigation?.trim() ? (
-        <span
-          title={`Residual: ${risk.residualRating.level} (score ${risk.residualRating.score})`}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: 28,
-            padding: "2px 6px",
-            borderRadius: 6,
-            fontSize: 13,
-            fontWeight: 600,
-            backgroundColor: postStyle.bg,
-            color: postStyle.text,
-          }}
-        >
-          {postLetter}
-        </span>
-      ) : (
-        <span
-          title="No mitigation applied"
-          className={`inline-flex items-center justify-center min-w-[28px] py-0.5 px-1.5 rounded-md text-[13px] font-semibold ${MOVEMENT_PILL_CLASS_STABLE} opacity-80`}
-        >
-          N/A
-        </span>
-      )}
-
-      {/* Mitigation Movement (coloured pill like Pre/Post; Improving/Worsening use post-rating low/high styles) */}
-      <span
-        title={movement === "↑" ? "Worsening" : movement === "↓" ? "Improving" : "Stable"}
-        className={`inline-flex items-center justify-center min-w-[28px] py-0.5 px-1.5 rounded-md text-[13px] font-semibold ${movementPillClass} ${movement === "→" ? "opacity-80" : ""}`}
-        style={movement === "↓" ? { backgroundColor: RATING_TABLE_LEVEL_STYLES.low.bg, color: RATING_TABLE_LEVEL_STYLES.low.text } : movement === "↑" ? { backgroundColor: RATING_TABLE_LEVEL_STYLES.high.bg, color: RATING_TABLE_LEVEL_STYLES.high.text } : undefined}
-      >
-        {movement}
-      </span>
-
-      {/* Status */}
-      <div className="flex items-center gap-1.5 flex-wrap">
         {readOnly ? (
-          isDraft ? (
-            <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 shrink-0">
-              Draft
+          <TableCell className="relative min-w-0 align-middle">
+            <div
+              className="relative min-w-0"
+              onMouseEnter={() => hasDescription && setShowDescCard(true)}
+              onMouseLeave={() => setShowDescCard(false)}
+            >
+              <span className={`${cellTextClass} block`} title={risk.title}>
+                {risk.title || "—"}
+              </span>
+              {hasDescription && showDescCard && (
+                <Card
+                  data-description-card
+                  variant="elevated"
+                  role="tooltip"
+                  className="absolute left-0 top-full z-10 mt-1 w-max min-w-0 max-w-[320px] p-2.5 shadow-[var(--ds-shadow-md)]"
+                >
+                  <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-primary)] whitespace-normal">
+                    {truncateDescription(risk.description ?? "").split("\n").join(" ")}
+                  </p>
+                </Card>
+              )}
+            </div>
+          </TableCell>
+        ) : (
+          <TableCell className="min-w-0 align-middle">
+            <RiskEditCell
+              value={risk.title}
+              placeholder="Risk title"
+              onChange={(title) => updateRisk(risk.id, { title })}
+            />
+          </TableCell>
+        )}
+
+        {readOnly ? (
+          <TableCell className="min-w-0 align-middle">
+            <span className={cellTextClass}>{formatCategoryLabel(risk.category)}</span>
+          </TableCell>
+        ) : (
+          <TableCell className="min-w-0 align-middle">
+            <RiskCategorySelect
+              id={`risk-row-category-${risk.id}`}
+              value={risk.category ?? ""}
+              onChange={(name) => updateRisk(risk.id, { category: name })}
+              className={DS_NATIVE_SELECT}
+              allowEmptyPlaceholder={isDraft || !risk.category?.trim()}
+            />
+          </TableCell>
+        )}
+
+        {readOnly ? (
+          <TableCell className="min-w-0 align-middle">
+            <span className={cellTextClass}>{risk.owner ?? "—"}</span>
+          </TableCell>
+        ) : (
+          <TableCell className="min-w-0 align-middle">
+            <RiskOwnerRowSelect
+              riskId={risk.id}
+              owner={risk.owner}
+              onCommit={(name) => updateRisk(risk.id, { owner: name || undefined })}
+            />
+          </TableCell>
+        )}
+
+        <TableCell className="align-middle">
+          <span title={`Inherent: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`}>
+            <Badge status={preBadge.status} variant={preBadge.variant} className={RATING_BADGE_CIRCLE}>
+              {preLetter}
+            </Badge>
+          </span>
+        </TableCell>
+
+        <TableCell className="align-middle">
+          {risk.mitigation?.trim() ? (
+            <span title={`Residual: ${risk.residualRating.level} (score ${risk.residualRating.score})`}>
+              <Badge status={postBadge.status} variant={postBadge.variant} className={RATING_BADGE_CIRCLE}>
+                {postLetter}
+              </Badge>
             </span>
           ) : (
-            <span className={cellTextClass}>{risk.status}</span>
-          )
-        ) : (
-          <RiskStatusSelect
-            id={`risk-row-status-${risk.id}`}
-            value={risk.status}
-            onChange={(name) => {
-              dlog("[risk register row] status change", name);
-              updateRisk(risk.id, { status: name });
-            }}
-            style={selectStyle}
-            className="w-full min-w-0"
-          />
-        )}
-      </div>
-
-      {onRiskClick && (
-        <div className="flex items-center justify-end gap-1 min-w-0 shrink-0 flex-wrap">
-          {onRestoreArchived && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRestoreArchived(risk);
-              }}
-              className="px-2 py-1.5 text-xs font-medium rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 shrink-0 whitespace-nowrap"
-              title="Restore this risk to Open status"
-            >
-              Restore
-            </button>
+            <span title="No mitigation applied">
+              <Badge status="neutral" variant="subtle" className={RATING_BADGE_CIRCLE}>
+                N/A
+              </Badge>
+            </span>
           )}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRiskClick(risk);
-            }}
-            className="px-2 py-1.5 text-xs font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 shrink-0 whitespace-nowrap"
-            title="View and edit details"
-          >
-            View / Edit
-          </button>
-        </div>
-      )}
-      </div>
+        </TableCell>
+
+        <TableCell className="align-middle">
+          <span title={movement === "↑" ? "Worsening" : movement === "↓" ? "Improving" : "Stable"}>
+            <Badge status={movementBadge.status} variant={movementBadge.variant} className={RATING_BADGE_CIRCLE}>
+              {movement}
+            </Badge>
+          </span>
+        </TableCell>
+
+        <TableCell className="align-middle">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {readOnly ? (
+              isDraft ? (
+                <Badge status="warning" variant="subtle" className="shrink-0">
+                  Draft
+                </Badge>
+              ) : (
+                <span className={cellTextClass}>{risk.status}</span>
+              )
+            ) : (
+              <RiskStatusSelect
+                id={`risk-row-status-${risk.id}`}
+                value={risk.status}
+                onChange={(name) => {
+                  dlog("[risk register row] status change", name);
+                  updateRisk(risk.id, { status: name });
+                }}
+                className={DS_NATIVE_SELECT}
+              />
+            )}
+          </div>
+        </TableCell>
+
+        {onRiskClick && (
+          <TableCell className="align-middle text-right">
+            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2">
+              {onRestoreArchived && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestoreArchived(risk);
+                  }}
+                  title="Restore this risk to Open status"
+                >
+                  Restore
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRiskClick(risk);
+                }}
+                title="View and edit details"
+              >
+                View / Edit
+              </Button>
+            </div>
+          </TableCell>
+        )}
+      </TableRow>
       {hasValidationErrors && (
-        <div
-          className="px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 border-b border-neutral-200 dark:border-neutral-700"
-          role="status"
-          aria-live="polite"
-        >
-          {validationErrors!.join(" · ")}
-        </div>
+        <TableRow>
+          <TableCell colSpan={colSpan} className="border-b border-[var(--ds-border-subtle)] p-0">
+            <Callout status="warning" role="status" aria-live="polite" className="rounded-none border-x-0 border-t-0">
+              {validationErrors!.join(" · ")}
+            </Callout>
+          </TableCell>
+        </TableRow>
       )}
-    </div>
+    </Fragment>
   );
 }

@@ -9,12 +9,8 @@ import {
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { dlog } from "@/lib/debug";
 
-const selectStyle: React.CSSProperties = {
-  padding: "6px 8px",
-  borderRadius: 8,
-  border: "1px solid #ddd",
-  background: "transparent",
-};
+const DS_ROW_FIELD =
+  "w-full min-w-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)] px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]";
 
 /**
  * Inline owner cell: updates the risk when choosing an existing owner immediately;
@@ -75,8 +71,7 @@ export function RiskOwnerRowSelect({
       onSelectChange={handleSelectChange}
       onNewNameDraftChange={setNewNameDraft}
       onNewNameInputBlur={handleNewBlur}
-      className="w-full min-w-0"
-      style={selectStyle}
+      className={DS_ROW_FIELD}
       allowEmptyPlaceholder={normalized === ""}
     />
   );

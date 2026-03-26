@@ -140,15 +140,15 @@ export function NavBar() {
   // On 404, use full-page links so leaving the page remounts the app and restores the nav.
   const useFullPageLinks = isUnknownRoute;
 
-  const logoClassName = "text-lg font-semibold text-[var(--foreground)] no-underline shrink-0 hover:opacity-80 transition-opacity";
+  const logoClassName = "text-lg font-semibold text-[var(--ds-text-primary)] no-underline shrink-0 hover:opacity-80 transition-opacity";
   const navLinkClassName = (isActive: boolean) =>
     "inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium no-underline transition-colors " +
     (isActive
-      ? "bg-neutral-200 dark:bg-neutral-700 text-[var(--foreground)] underline underline-offset-4"
-      : "text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800");
+      ? "bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] underline underline-offset-4"
+      : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]");
 
   return (
-    <nav className="sticky top-0 z-50 flex items-center gap-6 px-6 py-3 border-b border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-sm">
+    <nav className="sticky top-0 z-50 flex items-center gap-6 px-6 py-3 border-b border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-sm">
       {useFullPageLinks ? (
         <a href={homeHref} className={logoClassName}>
           RiskAI
@@ -203,23 +203,23 @@ export function NavBar() {
               toggleTheme();
               (e.currentTarget as HTMLButtonElement).blur();
             }}
-            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-0.5 transition-colors hover:bg-neutral-200 dark:hover:bg-neutral-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5 transition-colors hover:bg-[var(--ds-surface-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-border)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]"
           >
-            <span className="pointer-events-none absolute left-0.5 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
+            <span className="pointer-events-none absolute left-0.5 top-1/2 -translate-y-1/2 text-[var(--ds-text-muted)]">
               <SunIcon />
             </span>
-            <span className="pointer-events-none absolute right-0.5 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">
+            <span className="pointer-events-none absolute right-0.5 top-1/2 -translate-y-1/2 text-[var(--ds-text-muted)]">
               <MoonIcon />
             </span>
             <span
               className={
-                "pointer-events-none absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-neutral-300 dark:bg-neutral-500 shadow-sm transition-transform duration-200 ease-out " +
+                "pointer-events-none absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[color-mix(in_oklab,var(--ds-text-muted)_72%,var(--ds-surface-default))] shadow-sm transition-transform duration-200 ease-out " +
                 (theme === "dark" ? "translate-x-4" : "translate-x-0")
               }
             />
           </button>
         ) : (
-          <span className="inline-block h-5 w-9 shrink-0 rounded-full border border-neutral-300 bg-neutral-200" aria-hidden />
+          <span className="inline-block h-5 w-9 shrink-0 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]" aria-hidden />
         )}
         <div
           className="relative shrink-0"
@@ -232,13 +232,13 @@ export function NavBar() {
             aria-haspopup="true"
             aria-label="User menu"
             title={isLoggedIn ? "Account" : "Log in"}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:ring-offset-2 focus:ring-offset-[var(--background)]"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:ring-offset-2 focus:ring-offset-[var(--ds-background)]"
           >
             <UserIcon />
           </button>
           {userMenuOpen && (
             <div
-              className="absolute right-0 top-full z-50 min-w-[10rem] rounded-md border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] pt-2 pb-1 shadow-lg"
+              className="absolute right-0 top-full z-50 min-w-[10rem] rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] pt-2 pb-1 shadow-lg"
               role="menu"
             >
               {isLoggedIn ? (
@@ -247,7 +247,7 @@ export function NavBar() {
                     href={riskaiPath("/settings")}
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
-                    className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 no-underline"
+                    className="block px-4 py-2 text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] no-underline"
                   >
                     Account settings
                   </Link>
@@ -259,7 +259,7 @@ export function NavBar() {
                       await supabaseBrowserClient().auth.signOut();
                       window.location.href = "/";
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    className="block w-full px-4 py-2 text-left text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)]"
                   >
                     Log out
                   </button>
@@ -268,7 +268,7 @@ export function NavBar() {
                 <a
                   href={LOGIN_URL}
                   role="menuitem"
-                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 no-underline"
+                  className="block px-4 py-2 text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] no-underline"
                 >
                   Log in
                 </a>
@@ -277,7 +277,7 @@ export function NavBar() {
                   href={LOGIN_URL}
                   role="menuitem"
                   onClick={() => setUserMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 no-underline"
+                  className="block px-4 py-2 text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] no-underline"
                 >
                   Log in
                 </Link>

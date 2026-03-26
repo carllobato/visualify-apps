@@ -66,26 +66,26 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 cursor-default bg-black/65 backdrop-blur-md transition-opacity dark:bg-black/75"
+        className="absolute inset-0 cursor-default bg-[var(--ds-overlay)] backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-doc-title"
-        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-neutral-200/60 bg-neutral-50/95 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.2)] dark:border-neutral-800/50 dark:bg-neutral-950 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)]"
+        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[color-mix(in_oklab,var(--ds-border)_60%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_95%,transparent)] shadow-[var(--ds-shadow-modal-panel)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] dark:bg-[var(--ds-surface-inset)]"
       >
         {/* Header */}
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-neutral-200/50 px-6 pt-6 dark:border-neutral-800/50 sm:px-8 sm:pt-7">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] px-6 pt-6 sm:px-8 sm:pt-7">
           <div className="min-w-0 flex-1">
             <h1
               id="legal-doc-title"
-              className="text-2xl font-semibold tracking-tight text-neutral-950 dark:text-neutral-50 sm:text-[1.75rem]"
+              className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary)] sm:text-[1.75rem]"
             >
               {meta.title}
             </h1>
-            <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">{meta.subtitle}</p>
-            <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+            <p className="mt-2 text-sm text-[var(--ds-text-muted)]">{meta.subtitle}</p>
+            <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-[var(--ds-text-muted)]">
               Effective {meta.effectiveDate}
             </p>
           </div>
@@ -93,7 +93,7 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 cursor-pointer rounded-full p-2 text-neutral-500 transition-colors hover:bg-neutral-200/80 hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 dark:focus-visible:outline-neutral-400"
+            className="shrink-0 cursor-pointer rounded-full p-2 text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)]"
           >
             <CloseIcon />
           </button>
@@ -105,11 +105,11 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
         </div>
 
         {/* Footer — subtle close only */}
-        <div className="flex shrink-0 items-center justify-end border-t border-neutral-200/50 px-6 py-3 dark:border-neutral-800/50 sm:px-8">
+        <div className="flex shrink-0 items-center justify-end border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] px-6 py-3 sm:px-8">
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer text-sm font-medium text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:text-neutral-400 dark:hover:text-neutral-100 dark:focus-visible:outline-neutral-400"
+            className="cursor-pointer text-sm font-medium text-[var(--ds-text-muted)] transition-colors hover:text-[var(--ds-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)]"
           >
             Close
           </button>

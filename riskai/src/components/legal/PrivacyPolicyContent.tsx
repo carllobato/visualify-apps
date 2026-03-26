@@ -14,11 +14,11 @@ export function PrivacyPolicyContent({ fullWidth = false, inModal = false }: { f
     >
       {!inModal && (
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 dark:text-neutral-50 sm:text-[1.65rem] sm:leading-snug">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--ds-text-primary)] sm:text-[1.65rem] sm:leading-snug">
             Privacy Policy
           </h1>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 sm:text-[15px]">How Visualify handles your data</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-500">Effective date: March 21, 2026</p>
+          <p className="text-sm text-[var(--ds-text-secondary)] sm:text-[15px]">How Visualify handles your data</p>
+          <p className="text-xs text-[var(--ds-text-muted)]">Effective date: March 21, 2026</p>
         </header>
       )}
 

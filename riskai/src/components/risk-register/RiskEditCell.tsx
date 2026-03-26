@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { Input } from "@visualify/design-system";
 
 type Props = {
   value: string;
@@ -10,17 +10,11 @@ type Props = {
 
 export function RiskEditCell({ value, placeholder, onChange }: Props) {
   return (
-    <input
+    <Input
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      style={{
-        width: "100%",
-        padding: "6px 8px",
-        border: "1px solid #ddd",
-        borderRadius: 8,
-        background: "transparent",
-      }}
+      className="min-w-0 w-full"
     />
   );
 }

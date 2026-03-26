@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { Callout } from "@visualify/design-system";
 
 export function DeleteAccountSection() {
   const [open, setOpen] = useState(false);
@@ -38,19 +39,19 @@ export function DeleteAccountSection() {
 
   return (
     <section className="mb-10">
-      <h2 className="mb-3 text-lg font-medium text-[var(--foreground)]">Danger zone</h2>
-      <div className="rounded-lg border border-red-200 bg-red-50/40 p-4 dark:border-red-900/50 dark:bg-red-950/20">
-        <p className="mb-3 text-sm text-neutral-700 dark:text-neutral-300">
+      <h2 className="mb-3 text-lg font-medium text-[var(--ds-text-primary)]">Danger zone</h2>
+      <div className="rounded-lg border border-[var(--ds-status-danger-border)] bg-[var(--ds-status-danger-subtle-bg)] p-4">
+        <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
           Permanently delete your account and associated access. This does not remove data owned by
           organisations you were invited to unless your user record is the only link — confirm with
           your admin if unsure.
         </p>
-        <p className="mb-3 text-xs leading-relaxed text-neutral-500 dark:text-neutral-400">
-          <span className="font-medium text-neutral-600 dark:text-neutral-300">Setup (self-hosted / local):</span> add{" "}
-          <code className="rounded bg-neutral-200/80 px-1 py-0.5 font-mono text-[11px] dark:bg-neutral-800">
+        <p className="mb-3 text-xs leading-relaxed text-[var(--ds-text-muted)]">
+          <span className="font-medium text-[var(--ds-text-secondary)]">Setup (self-hosted / local):</span> add{" "}
+          <code className="rounded bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] px-1 py-0.5 font-mono text-[11px]">
             SUPABASE_SERVICE_ROLE_KEY
           </code>{" "}
-          to <code className="rounded bg-neutral-200/80 px-1 py-0.5 font-mono text-[11px] dark:bg-neutral-800">.env.local</code>{" "}
+          to <code className="rounded bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] px-1 py-0.5 font-mono text-[11px]">.env.local</code>{" "}
           (Supabase → Project Settings → API → <span className="whitespace-nowrap">service_role</span> secret), then
           restart the dev server. On Vercel, add the same variable under Project → Settings → Environment Variables and
           redeploy.
@@ -61,7 +62,7 @@ export function DeleteAccountSection() {
             setError(null);
             setOpen(true);
           }}
-          className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-950/70"
+          className="rounded-md border border-[var(--ds-status-danger-border)] bg-[var(--ds-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--ds-status-danger-fg)] hover:bg-[var(--ds-status-danger-bg)]"
         >
           Delete account
         </button>
@@ -69,7 +70,7 @@ export function DeleteAccountSection() {
 
       {open ? (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-[2px]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-account-title"
@@ -77,33 +78,30 @@ export function DeleteAccountSection() {
           onClick={() => !deleting && setOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-neutral-200/90 bg-[var(--background)] p-6 shadow-xl dark:border-neutral-700/90"
+            className="w-full max-w-md rounded-xl border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h3
               id="delete-account-title"
-              className="text-lg font-semibold tracking-tight text-[var(--foreground)]"
+              className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
             >
               Delete account?
             </h3>
-            <p id="delete-account-desc" className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <p id="delete-account-desc" className="mt-2 text-sm text-[var(--ds-text-secondary)]">
               Are you sure? This can&apos;t be undone. Your sign-in will be removed and you will lose
               access to this account immediately.
             </p>
             {error && (
-              <p
-                className="mt-3 text-sm leading-relaxed text-red-600 dark:text-red-400"
-                role="alert"
-              >
+              <Callout status="danger" role="alert" className="mt-3 text-[length:var(--ds-text-sm)] leading-relaxed">
                 {error}
-              </p>
+              </Callout>
             )}
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
               <button
                 type="button"
                 disabled={deleting}
                 onClick={() => setOpen(false)}
-                className="rounded-lg border border-neutral-300 px-4 py-2.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                className="rounded-lg border border-[var(--ds-border)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -111,7 +109,7 @@ export function DeleteAccountSection() {
                 type="button"
                 disabled={deleting}
                 onClick={confirmDelete}
-                className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 dark:bg-red-700 dark:hover:bg-red-600"
+                className="rounded-lg bg-[var(--ds-status-danger-strong-bg)] px-4 py-2.5 text-sm font-medium text-[var(--ds-status-danger-strong-fg)] hover:opacity-90 disabled:opacity-50"
               >
                 {deleting ? "Deleting…" : "Yes, delete my account"}
               </button>

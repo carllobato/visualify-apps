@@ -18,6 +18,16 @@ import {
 import { dlog } from "@/lib/debug";
 import { getRiskValidationErrors } from "@/domain/risk/runnable-risk.validator";
 import { nowIso } from "@/lib/time";
+import {
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardContent,
+  Input,
+  Label,
+  Textarea,
+} from "@visualify/design-system";
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { RiskAppliesToSelect } from "./RiskAppliesToSelect";
 import { RiskCategorySelect } from "./RiskCategorySelect";
@@ -28,9 +38,19 @@ import {
 } from "./RiskOwnerPicker";
 import { RiskStatusSelect } from "./RiskStatusSelect";
 
-const inputClass =
-  "w-full h-9 px-3 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-transparent";
-const selectClass = inputClass;
+/** Native `<select>` / special inputs: matches design-system Form field chrome (no exported primitive). */
+const nativeSelectClass =
+  "w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 h-9 py-1 " +
+  "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
+  "disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] disabled:text-[var(--ds-text-muted)]";
+
+const rangeTrackClass =
+  "col-span-2 min-w-0 h-2 rounded-[var(--ds-radius-sm)] appearance-none bg-[var(--ds-surface-muted)] accent-[var(--ds-primary)]";
+
+function RequiredStar() {
+  return <span className="text-[var(--ds-status-danger-fg)]" aria-label="required">*</span>;
+}
 
 function formatCostDisplay(value: string): string {
   const trimmed = value.trim().replace(/,/g, "");
@@ -45,14 +65,6 @@ function parseCostInput(value: string): string {
   if (firstDot === -1) return allowed;
   return allowed.slice(0, firstDot + 1) + allowed.slice(firstDot + 1).replace(/\./g, "");
 }
-const labelClass = "block text-sm font-medium text-[var(--foreground)] mb-1";
-
-const btnSecondary =
-  "px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 shrink-0";
-const btnPrimary =
-  "px-4 py-2 rounded-md bg-neutral-800 dark:bg-neutral-200 text-neutral-100 dark:text-neutral-900 text-sm font-medium hover:bg-neutral-700 dark:hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:focus:ring-neutral-400 shrink-0";
-const btnDangerOutline =
-  "px-4 py-2 rounded-md border border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-sm font-medium hover:bg-red-100 dark:hover:bg-red-900/40 focus:outline-none focus:ring-2 focus:ring-red-400 dark:focus:ring-red-600 shrink-0";
 
 /** Special id passed as initialRiskId to open the modal at the "Add new risk" slot. */
 export const ADD_NEW_RISK_ID = "__add_new__";
@@ -794,9 +806,13 @@ export function RiskDetailModal({
   if (!open) return null;
   if (typeof document === "undefined") return null;
 
+  const overlayScrimClass =
+    "fixed inset-0 z-50 flex items-center justify-center p-4 relative " +
+    "bg-[var(--ds-overlay)] backdrop-blur-sm";
+
   const overlay = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/75 dark:bg-black/80 backdrop-blur-sm p-4"
+      className={overlayScrimClass}
       role="dialog"
       aria-modal="true"
       aria-labelledby="risk-detail-dialog-title"
@@ -805,23 +821,23 @@ export function RiskDetailModal({
       <div
         ref={modalRef}
         tabIndex={-1}
-        className="w-full max-w-[70vw] max-h-[90vh] min-h-[400px] shrink-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-2xl flex flex-col overflow-hidden outline-none"
+        className="w-full max-w-[70vw] max-h-[90vh] min-h-[400px] shrink-0 flex flex-col overflow-hidden outline-none rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-[var(--ds-shadow-lg)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {isAddNewSlot ? (
-              <h2 id="risk-detail-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+              <h2 id="risk-detail-dialog-title" className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
                 Add new risk
               </h2>
             ) : isEmpty ? (
-              <h2 id="risk-detail-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+              <h2 id="risk-detail-dialog-title" className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
                 No risks
               </h2>
             ) : currentRisk ? (
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 <span
-                  className="w-14 shrink-0 text-lg font-semibold text-[var(--foreground)]"
+                  className="w-14 shrink-0 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]"
                   aria-label="Risk ID"
                 >
                   {currentRisk.riskNumber != null ? String(currentRisk.riskNumber).padStart(3, "0") : currentRisk.id}
@@ -831,47 +847,54 @@ export function RiskDetailModal({
                   value={title}
                   readOnly={readOnly}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="flex-1 min-w-0 text-lg font-semibold text-[var(--foreground)] bg-transparent border border-transparent hover:border-neutral-300 dark:hover:border-neutral-600 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-500 focus:border-neutral-300 dark:focus:border-neutral-600"
+                  className={
+                    "flex-1 min-w-0 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)] bg-transparent " +
+                    "border border-transparent rounded-[var(--ds-radius-md)] px-1.5 py-0.5 " +
+                    "hover:border-[var(--ds-border)] " +
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
+                    "focus-visible:border-[var(--ds-border)]"
+                  }
                   aria-label="Risk title"
                   id="risk-detail-dialog-title"
                 />
                 {isRiskStatusArchived(currentRisk.status) && (
-                  <span
-                    className="shrink-0 px-2 py-0.5 text-xs font-medium rounded-md bg-neutral-200 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-200"
-                    aria-label="Archived risk"
-                  >
+                  <Badge status="neutral" variant="subtle" className="shrink-0" aria-label="Archived risk">
                     Archived
-                  </span>
+                  </Badge>
                 )}
               </div>
             ) : null}
           </div>
           {hasMultipleOrAddNew && !isAddNewSlot && (
             <div className="flex items-center gap-2 shrink-0">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="md"
                 onClick={goPrev}
                 disabled={currentIndex === 0}
-                className={btnSecondary}
                 aria-label="Previous risk"
               >
                 Previous
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
+                size="md"
                 onClick={goNext}
                 disabled={currentIndex === risks.length || (isLast && !hasAddNewSlot)}
-                className={btnSecondary}
                 aria-label="Next risk"
               >
                 Next
-              </button>
+              </Button>
             </div>
           )}
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="md"
             onClick={requestClose}
-            className="p-2 rounded-md border border-transparent text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 shrink-0"
+            className="h-9 w-9 shrink-0 p-0"
             aria-label="Close dialog"
           >
             <svg
@@ -888,40 +911,37 @@ export function RiskDetailModal({
             >
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 flex flex-col">
           {readOnly && (
-            <div
-              className="mb-4 shrink-0 rounded-md border border-neutral-200 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800/50 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300"
-              role="status"
-            >
-              View-only access. Editing is disabled.
-            </div>
+            <Callout status="info" className="mb-4 shrink-0" role="status">
+              <p className="text-[length:var(--ds-text-sm)]">View-only access. Editing is disabled.</p>
+            </Callout>
           )}
           {isEmpty || isAddNewSlot ? (
-            <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center text-neutral-600 dark:text-neutral-400">
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
               <p className="mb-6">
                 {isAddNewSlot ? "Add a new risk to the register." : "There are no risks to review."}
               </p>
               {!readOnly && (onAddNewWithFile != null || onAddNewWithAI != null) ? (
                 <div className="flex flex-col sm:flex-row gap-3">
                   {onAddNewWithFile && (
-                    <button type="button" onClick={onAddNewWithFile} className={btnPrimary}>
+                    <Button type="button" variant="primary" size="md" onClick={onAddNewWithFile}>
                       Create Risk with AI File Uploader
-                    </button>
+                    </Button>
                   )}
                   {onAddNewWithAI && (
-                    <button type="button" onClick={onAddNewWithAI} className={btnPrimary}>
+                    <Button type="button" variant="primary" size="md" onClick={onAddNewWithAI}>
                       Create Risk with AI
-                    </button>
+                    </Button>
                   )}
                 </div>
               ) : !readOnly && onAddNew ? (
-                <button type="button" onClick={onAddNew} className={btnPrimary}>
+                <Button type="button" variant="primary" size="md" onClick={onAddNew}>
                   {isAddNewSlot ? "Add new risk" : "Create new risk"}
-                </button>
+                </Button>
               ) : null}
             </div>
           ) : (
@@ -930,86 +950,88 @@ export function RiskDetailModal({
                 {(() => {
                   const runnableErrors = getRiskValidationErrors(currentRisk);
                   return runnableErrors.length > 0 ? (
-                    <div className="rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-800 dark:text-amber-200" role="status">
-                      <p className="font-medium mb-1">Fix these to run simulation:</p>
-                      <ul className="list-disc list-inside">{runnableErrors.map((e) => <li key={e}>{e}</li>)}</ul>
-                    </div>
+                    <Callout status="warning" role="status">
+                      <p className="font-medium mb-1 text-[length:var(--ds-text-sm)]">Fix these to run simulation:</p>
+                      <ul className="list-disc list-inside text-[length:var(--ds-text-sm)] space-y-0.5">{runnableErrors.map((e) => <li key={e}>{e}</li>)}</ul>
+                    </Callout>
                   ) : null;
                 })()}
                 {validationErrors.length > 0 && (
-                  <div className="rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 text-sm text-red-800 dark:text-red-200" role="alert">
-                    <p className="font-medium mb-1">Complete all required fields before saving (non-draft risks):</p>
-                    <ul className="list-disc list-inside">{validationErrors.map((e) => <li key={e}>{e}</li>)}</ul>
-                  </div>
+                  <Callout status="danger" role="alert">
+                    <p className="font-medium mb-1 text-[length:var(--ds-text-sm)]">Complete all required fields before saving (non-draft risks):</p>
+                    <ul className="list-disc list-inside text-[length:var(--ds-text-sm)] space-y-0.5">{validationErrors.map((e) => <li key={e}>{e}</li>)}</ul>
+                  </Callout>
                 )}
                 {/* General */}
                 <section>
                   <div className="space-y-3">
                     {isRiskStatusDraft(status) && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400 rounded-md bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
-                        This risk is in draft. Change status to Open and save to include it in simulation.
-                      </p>
+                      <Callout status="warning">
+                        <p className="text-[length:var(--ds-text-sm)]">
+                          This risk is in draft. Change status to Open and save to include it in simulation.
+                        </p>
+                      </Callout>
                     )}
                     <div>
-                      <label htmlFor="detail-description" className={labelClass}>
-                        Description {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                      </label>
-                      <textarea
+                      <Label htmlFor="detail-description" className="block">
+                        Description {!isRiskStatusDraft(status) && <RequiredStar />}
+                      </Label>
+                      <Textarea
                         id="detail-description"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        className={`${inputClass} resize-y min-h-[80px] h-auto`}
+                        className="min-h-[80px]"
                         placeholder="Include a detailed description of the risk."
                         rows={2}
                       />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor="detail-category" className={labelClass}>
-                          Category {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                        </label>
+                        <Label htmlFor="detail-category" className="block">
+                          Category {!isRiskStatusDraft(status) && <RequiredStar />}
+                        </Label>
                         <RiskCategorySelect
                           id="detail-category"
                           value={category}
                           onChange={setCategory}
-                          className={selectClass}
+                          className={nativeSelectClass}
                           allowEmptyPlaceholder
                         />
                       </div>
                       <div>
-                        <label htmlFor="detail-owner" className={labelClass}>
-                          Owner {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                        </label>
+                        <Label htmlFor="detail-owner" className="block">
+                          Owner {!isRiskStatusDraft(status) && <RequiredStar />}
+                        </Label>
                         <RiskOwnerPicker
                           id="detail-owner"
                           selectValue={ownerSelect}
                           newNameDraft={ownerNewDraft}
                           onSelectChange={setOwnerSelect}
                           onNewNameDraftChange={setOwnerNewDraft}
-                          className={selectClass}
+                          className={nativeSelectClass}
                           allowEmptyPlaceholder
                         />
                       </div>
                       <div>
-                        <label htmlFor="detail-status" className={labelClass}>
-                          Status {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                        </label>
+                        <Label htmlFor="detail-status" className="block">
+                          Status {!isRiskStatusDraft(status) && <RequiredStar />}
+                        </Label>
                         <RiskStatusSelect
                           id="detail-status"
                           value={status}
                           onChange={setStatus}
-                          className={selectClass}
+                          className={nativeSelectClass}
                         />
                       </div>
                       <div>
-                        <label htmlFor="detail-applies-to" className={labelClass}>
-                          Applies To {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                        </label>
+                        <Label htmlFor="detail-applies-to" className="block">
+                          Applies To {!isRiskStatusDraft(status) && <RequiredStar />}
+                        </Label>
                         <RiskAppliesToSelect
                           id="detail-applies-to"
                           value={appliesTo}
                           onChange={setAppliesTo}
-                          className={selectClass}
+                          className={nativeSelectClass}
                         />
                       </div>
                     </div>
@@ -1018,12 +1040,12 @@ export function RiskDetailModal({
 
                 {/* Pre-Mitigation */}
                 <section>
-                  <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Pre-Mitigation</h3>
+                  <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Pre-Mitigation</h3>
                   <div className="space-y-3">
                     <div>
-                      <label htmlFor="detail-pre-prob" className={labelClass}>
-                        Probability % {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                      </label>
+                      <Label htmlFor="detail-pre-prob" className="block">
+                        Probability % {!isRiskStatusDraft(status) && <RequiredStar />}
+                      </Label>
                       <div className="grid grid-cols-3 gap-2 items-center">
                         <input
                           type="range"
@@ -1032,10 +1054,10 @@ export function RiskDetailModal({
                           step={5}
                           value={Math.min(100, Math.max(0, parseFloat(preMitigationProbabilityPct) || 0))}
                           onChange={(e) => setPreMitigationProbabilityPct(e.target.value)}
-                          className="col-span-2 min-w-0 h-2 rounded-lg appearance-none bg-neutral-200 dark:bg-neutral-600 accent-neutral-700 dark:accent-neutral-300"
+                          className={rangeTrackClass}
                           aria-label="Pre-Mitigation Probability %"
                         />
-                        <input
+                        <Input
                           id="detail-pre-prob"
                           type="number"
                           min={0}
@@ -1043,37 +1065,36 @@ export function RiskDetailModal({
                           step={1}
                           value={preMitigationProbabilityPct}
                           onChange={(e) => setPreMitigationProbabilityPct(e.target.value)}
-                          className={inputClass}
                           placeholder="0–100"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label htmlFor="detail-pre-cost-min" className={labelClass}>Cost Min ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-pre-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMin)} onChange={(e) => setPreMitigationCostMin(parseCostInput(e.target.value))} className={inputClass} />
+                        <Label htmlFor="detail-pre-cost-min" className="block">Cost Min ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-pre-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMin)} onChange={(e) => setPreMitigationCostMin(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <label htmlFor="detail-pre-cost-ml" className={labelClass}>Cost Most Likely ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-pre-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostML)} onChange={(e) => setPreMitigationCostML(parseCostInput(e.target.value))} className={inputClass} />
+                        <Label htmlFor="detail-pre-cost-ml" className="block">Cost Most Likely ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-pre-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostML)} onChange={(e) => setPreMitigationCostML(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <label htmlFor="detail-pre-cost-max" className={labelClass}>Cost Max ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-pre-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMax)} onChange={(e) => setPreMitigationCostMax(parseCostInput(e.target.value))} className={inputClass} />
+                        <Label htmlFor="detail-pre-cost-max" className="block">Cost Max ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-pre-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMax)} onChange={(e) => setPreMitigationCostMax(parseCostInput(e.target.value))} />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label htmlFor="detail-pre-time-min" className={labelClass}>Time Min (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} className={inputClass} />
+                        <Label htmlFor="detail-pre-time-min" className="block">Time Min (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} />
                       </div>
                       <div>
-                        <label htmlFor="detail-pre-time-ml" className={labelClass}>Time ML (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} className={inputClass} />
+                        <Label htmlFor="detail-pre-time-ml" className="block">Time ML (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} />
                       </div>
                       <div>
-                        <label htmlFor="detail-pre-time-max" className={labelClass}>Time Max (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} className={inputClass} />
+                        <Label htmlFor="detail-pre-time-max" className="block">Time Max (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
                       </div>
                     </div>
                   </div>
@@ -1082,24 +1103,32 @@ export function RiskDetailModal({
                 {/* Apply Mitigation toggle */}
                 <section>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-[var(--foreground)]">Apply Mitigation</span>
-                    <div className="flex rounded-lg border border-neutral-300 dark:border-neutral-600 p-0.5 bg-neutral-100 dark:bg-neutral-800">
-                      <button
+                    <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Apply Mitigation</span>
+                    <div
+                      className="inline-flex rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-0.5 bg-[var(--ds-surface-inset)] gap-0.5"
+                      role="group"
+                      aria-label="Apply mitigation"
+                    >
+                      <Button
                         type="button"
+                        variant={!applyMitigation ? "primary" : "ghost"}
+                        size="sm"
                         onClick={() => setApplyMitigation(false)}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${!applyMitigation ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm" : "text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)]"}`}
+                        className="rounded-[var(--ds-radius-sm)] shadow-none"
                         aria-pressed={!applyMitigation}
                       >
                         No
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
+                        variant={applyMitigation ? "primary" : "ghost"}
+                        size="sm"
                         onClick={() => setApplyMitigation(true)}
-                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${applyMitigation ? "bg-[var(--background)] text-[var(--foreground)] shadow-sm" : "text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)]"}`}
+                        className="rounded-[var(--ds-radius-sm)] shadow-none"
                         aria-pressed={applyMitigation}
                       >
                         Yes
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </section>
@@ -1108,32 +1137,31 @@ export function RiskDetailModal({
                   <>
                 {/* Mitigation */}
                 <section>
-                  <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Mitigation</h3>
+                  <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Mitigation</h3>
                   <div className="space-y-3">
                     <div>
-                      <label htmlFor="detail-mitigation" className={labelClass}>
-                        Description {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                      </label>
-                      <textarea
+                      <Label htmlFor="detail-mitigation" className="block">
+                        Description {!isRiskStatusDraft(status) && <RequiredStar />}
+                      </Label>
+                      <Textarea
                         id="detail-mitigation"
                         value={mitigation}
                         onChange={(e) => setMitigation(e.target.value)}
-                        className={`${inputClass} resize-y min-h-[60px]`}
+                        className="min-h-[60px]"
                         placeholder="Mitigation strategy"
                         rows={2}
                       />
                     </div>
                     <div>
-                      <label htmlFor="detail-mitigation-cost" className={labelClass}>
+                      <Label htmlFor="detail-mitigation-cost" className="block">
                         Mitigation Cost ($)
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         id="detail-mitigation-cost"
                         type="text"
                         inputMode="numeric"
                         value={formatCostDisplay(mitigationCost)}
                         onChange={(e) => setMitigationCost(parseCostInput(e.target.value))}
-                        className={inputClass}
                         placeholder="—"
                       />
                     </div>
@@ -1142,12 +1170,12 @@ export function RiskDetailModal({
 
                 {/* Post-Mitigation */}
                 <section>
-                  <h3 className="text-sm font-medium text-neutral-600 dark:text-neutral-400 mb-3">Post-Mitigation</h3>
+                  <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Post-Mitigation</h3>
                   <div className="space-y-3">
                     <div>
-                      <label htmlFor="detail-post-prob" className={labelClass}>
-                        Probability % {!isRiskStatusDraft(status) && <span className="text-red-500" aria-label="required">*</span>}
-                      </label>
+                      <Label htmlFor="detail-post-prob" className="block">
+                        Probability % {!isRiskStatusDraft(status) && <RequiredStar />}
+                      </Label>
                       <div className="grid grid-cols-3 gap-2 items-center">
                         <input
                           type="range"
@@ -1156,10 +1184,10 @@ export function RiskDetailModal({
                           step={5}
                           value={Math.min(100, Math.max(0, parseFloat(postMitigationProbabilityPct) || 0))}
                           onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
-                          className="col-span-2 min-w-0 h-2 rounded-lg appearance-none bg-neutral-200 dark:bg-neutral-600 accent-neutral-700 dark:accent-neutral-300"
+                          className={rangeTrackClass}
                           aria-label="Post-Mitigation Probability %"
                         />
-                        <input
+                        <Input
                           id="detail-post-prob"
                           type="number"
                           min={0}
@@ -1167,37 +1195,36 @@ export function RiskDetailModal({
                           step={1}
                           value={postMitigationProbabilityPct}
                           onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
-                          className={inputClass}
                           placeholder="0–100"
                         />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label htmlFor="detail-post-cost-min" className={labelClass}>Cost Min ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-post-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMin)} onChange={(e) => setPostMitigationCostMin(parseCostInput(e.target.value))} className={inputClass} />
+                        <Label htmlFor="detail-post-cost-min" className="block">Cost Min ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-post-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMin)} onChange={(e) => setPostMitigationCostMin(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <label htmlFor="detail-post-cost-ml" className={labelClass}>Cost Most Likely ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-post-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostML)} onChange={(e) => setPostMitigationCostML(parseCostInput(e.target.value))} className={inputClass} />
+                        <Label htmlFor="detail-post-cost-ml" className="block">Cost Most Likely ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-post-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostML)} onChange={(e) => setPostMitigationCostML(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <label htmlFor="detail-post-cost-max" className={labelClass}>Cost Max ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-post-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMax)} onChange={(e) => setPostMitigationCostMax(parseCostInput(e.target.value))} className={inputClass} />
+                        <Label htmlFor="detail-post-cost-max" className="block">Cost Max ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-post-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMax)} onChange={(e) => setPostMitigationCostMax(parseCostInput(e.target.value))} />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label htmlFor="detail-post-time-min" className={labelClass}>Time Min (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} className={inputClass} />
+                        <Label htmlFor="detail-post-time-min" className="block">Time Min (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} />
                       </div>
                       <div>
-                        <label htmlFor="detail-post-time-ml" className={labelClass}>Time ML (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} className={inputClass} />
+                        <Label htmlFor="detail-post-time-ml" className="block">Time ML (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} />
                       </div>
                       <div>
-                        <label htmlFor="detail-post-time-max" className={labelClass}>Time Max (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <span className="text-red-500" aria-label="required">*</span>}</label>
-                        <input id="detail-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} className={inputClass} />
+                        <Label htmlFor="detail-post-time-max" className="block">Time Max (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Input id="detail-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
                       </div>
                     </div>
                   </div>
@@ -1210,44 +1237,47 @@ export function RiskDetailModal({
         </div>
 
         {(!isEmpty || isAddNewSlot) && !readOnly && (
-          <div className="flex flex-wrap justify-between items-center gap-3 shrink-0 px-4 sm:px-6 py-4 border-t border-neutral-200 dark:border-neutral-700 bg-[var(--background)]">
+          <div className="flex flex-wrap justify-between items-center gap-3 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]">
             <div className="flex gap-2">
               {onAddNewWithAI && (
-                <button type="button" onClick={requestGenerateAI} className={btnSecondary} aria-label="Generate AI Risk">
+                <Button type="button" variant="secondary" size="md" onClick={requestGenerateAI} aria-label="Generate AI Risk">
                   Generate AI Risk
-                </button>
+                </Button>
               )}
               {isAddNewSlot && onAddNew && onAddNewWithFile == null && onAddNewWithAI == null && (
-                <button type="button" onClick={onAddNew} className={btnPrimary}>
+                <Button type="button" variant="primary" size="md" onClick={onAddNew}>
                   Add new risk
-                </button>
+                </Button>
               )}
             </div>
             <div className="flex flex-wrap gap-2 ml-auto items-center justify-end">
               {!isAddNewSlot && currentRisk && onArchiveRisk && !isRiskStatusArchived(currentRisk.status) && (
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="md"
                   onClick={handleArchiveRiskAction}
-                  className={btnDangerOutline}
+                  className="border-[var(--ds-status-danger-border)] text-[var(--ds-status-danger-fg)] hover:bg-[var(--ds-status-danger-subtle-bg)]"
                   aria-label="Archive risk — move to archived list"
                 >
                   Archive risk
-                </button>
+                </Button>
               )}
               {!isAddNewSlot && currentRisk && onRestoreRisk && isRiskStatusArchived(currentRisk.status) && (
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="md"
                   onClick={handleRestoreRiskAction}
-                  className={btnPrimary}
                   aria-label="Restore risk to Open status"
                 >
                   Restore to Open
-                </button>
+                </Button>
               )}
               {!isAddNewSlot && (
-                <button type="button" onClick={() => void handleSave()} className={btnPrimary}>
+                <Button type="button" variant="primary" size="md" onClick={() => void handleSave()}>
                   Save
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -1256,28 +1286,30 @@ export function RiskDetailModal({
 
       {showSavePrompt && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-xl z-10"
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-[var(--ds-radius-lg)] bg-[var(--ds-overlay)] p-4"
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="save-prompt-title"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-[var(--background)] border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-xl p-4 max-w-sm flex flex-col gap-3">
-            <p id="save-prompt-title" className="text-sm font-medium text-[var(--foreground)]">
-              You have unsaved changes. Do you want to save the risk?
-            </p>
-            <div className="flex gap-2 justify-end flex-wrap">
-              <button type="button" onClick={handleCancelNav} className={btnSecondary}>
-                Cancel
-              </button>
-              <button type="button" onClick={handleDiscardThenNav} className={btnSecondary}>
-                Don&apos;t save
-              </button>
-              <button type="button" onClick={handleSaveThenNav} className={btnPrimary}>
-                Save
-              </button>
-            </div>
-          </div>
+          <Card variant="elevated" className="max-w-sm w-full shadow-[var(--ds-shadow-md)]">
+            <CardContent className="flex flex-col gap-3">
+              <p id="save-prompt-title" className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
+                You have unsaved changes. Do you want to save the risk?
+              </p>
+              <div className="flex gap-2 justify-end flex-wrap">
+                <Button type="button" variant="secondary" size="md" onClick={handleCancelNav}>
+                  Cancel
+                </Button>
+                <Button type="button" variant="secondary" size="md" onClick={handleDiscardThenNav}>
+                  Don&apos;t save
+                </Button>
+                <Button type="button" variant="primary" size="md" onClick={handleSaveThenNav}>
+                  Save
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

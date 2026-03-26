@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Callout } from "@visualify/design-system";
+import { LoadingPlaceholder } from "@/components/ds/LoadingPlaceholder";
 
 type PortfolioRow = { id: string; name: string };
 
@@ -74,21 +76,25 @@ export default function CreateProjectClient() {
   };
 
   const selectClass =
-    "w-full max-w-xs rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] px-3 py-2 text-sm text-neutral-900 dark:text-neutral-100";
+    "w-full max-w-xs rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm text-[var(--ds-text-primary)]";
 
   if (loadError) {
-    return <p className="text-sm text-red-700 dark:text-red-400">{loadError}</p>;
+    return (
+      <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+        {loadError}
+      </Callout>
+    );
   }
 
   if (portfolios === null) {
-    return <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading portfolios…</p>;
+    return <LoadingPlaceholder label="Loading portfolios" />;
   }
 
   return (
     <form onSubmit={handleCreate} className="space-y-2">
       {portfolios.length > 1 ? (
         <div>
-          <label htmlFor="dev-create-project-portfolio" className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400">
+          <label htmlFor="dev-create-project-portfolio" className="mb-1 block text-xs font-medium text-[var(--ds-text-secondary)]">
             Portfolio
           </label>
           <select
@@ -107,8 +113,8 @@ export default function CreateProjectClient() {
           </select>
         </div>
       ) : (
-        <p className="text-xs text-neutral-500 dark:text-neutral-400 max-w-xs">
-          Portfolio: <span className="font-medium text-[var(--foreground)]">{portfolios[0]?.name}</span>
+        <p className="max-w-xs text-xs text-[var(--ds-text-muted)]">
+          Portfolio: <span className="font-medium text-[var(--ds-text-primary)]">{portfolios[0]?.name}</span>
         </p>
       )}
       <input
@@ -116,21 +122,25 @@ export default function CreateProjectClient() {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Project name"
-        className="w-full max-w-xs px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-neutral-900 dark:text-neutral-100"
+        className="w-full max-w-xs rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-[var(--ds-text-primary)]"
         required
         disabled={loading}
       />
       <button
         type="submit"
         disabled={loading}
-        className="px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-700 text-sm font-medium disabled:opacity-50"
+        className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm font-medium hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
       >
         {loading ? "Creating…" : "Create"}
       </button>
       {message && (
-        <p className={`text-sm ${message.type === "success" ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+        <Callout
+          status={message.type === "success" ? "success" : "danger"}
+          role="alert"
+          className="text-[length:var(--ds-text-sm)]"
+        >
           {message.text}
-        </p>
+        </Callout>
       )}
     </form>
   );

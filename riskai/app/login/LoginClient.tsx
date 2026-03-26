@@ -2,29 +2,13 @@
 
 import Link from "next/link";
 import { LegalDocumentLink } from "@/components/legal/LegalDocumentLink";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { DASHBOARD_PATH } from "@/lib/routes";
 
-type Tab = "signin" | "signup";
-
-const inputBaseClass =
-  "w-full rounded-md border border-neutral-400 bg-[#F3F5F8] px-3 py-2.5 text-sm text-neutral-950 transition-[border-color,box-shadow] duration-200 ease-out placeholder:text-neutral-600 " +
-  "focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/18 " +
-  "disabled:cursor-not-allowed disabled:opacity-50 " +
-  "dark:border-neutral-500 dark:bg-[#0C0E12] dark:text-neutral-100 dark:placeholder:text-neutral-400 " +
-  "dark:focus:border-neutral-300 dark:focus:ring-neutral-300/22";
-
-const subtleLinkClass =
-  "cursor-pointer text-xs text-neutral-600 transition-colors duration-200 ease-in-out hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 dark:text-neutral-400 dark:hover:text-neutral-100 dark:focus-visible:outline-neutral-400";
-
-const legalLinkClass =
-  "cursor-pointer text-[11px] text-neutral-600 transition-[color,text-decoration-color] duration-200 ease-in-out hover:text-neutral-900 hover:underline hover:decoration-neutral-500/90 hover:underline-offset-2 dark:text-neutral-500 dark:hover:text-neutral-300 dark:hover:decoration-neutral-500";
-
-const primaryButtonClass =
-  "relative mt-1 w-full cursor-pointer rounded-md border border-transparent bg-[#111] px-4 py-3 text-sm font-semibold text-white transition-[background-color,border-color] duration-200 ease-out hover:border-white/25 hover:bg-neutral-800 active:border-white/40 active:bg-neutral-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-700 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 " +
-  "dark:border-neutral-400/50 dark:bg-white dark:text-neutral-950 dark:hover:border-neutral-500/75 dark:hover:bg-neutral-200 dark:active:border-neutral-600/85 dark:active:bg-neutral-400 dark:focus-visible:outline-neutral-400";
+type LoginTabId = "signin" | "signup";
 
 /** Crossfade / collapse timing when switching Sign in ↔ Sign up */
 const tabSwitchMs = "duration-[250ms]";
@@ -34,9 +18,6 @@ const tabCollapseGridClass = `grid overflow-hidden transition-[grid-template-row
 
 /** Toggle to show the Google / Microsoft row again. */
 const SHOW_SOCIAL_LOGIN = false;
-
-const oauthButtonClass =
-  "flex w-full cursor-pointer items-center justify-center gap-2 rounded-md border border-neutral-400 bg-[#F3F5F8] px-3 py-2.5 text-sm font-medium text-neutral-900 transition-colors duration-200 ease-out hover:border-neutral-500 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-500 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-[0.62] dark:border-neutral-500 dark:bg-[#0C0E12] dark:text-neutral-200 dark:hover:border-neutral-400 dark:hover:bg-neutral-900 dark:focus-visible:outline-neutral-400";
 
 function IconGoogle({ className }: { className?: string }) {
   return (
@@ -67,7 +48,7 @@ function LoginSocialProviders({
   onClearFormError,
   onError,
 }: {
-  tab: Tab;
+  tab: LoginTabId;
   formLoading: boolean;
   next: string;
   onClearFormError: () => void;
@@ -106,8 +87,8 @@ function LoginSocialProviders({
   return (
     <div className="mt-5">
       <div className="flex items-center gap-3" role="separator" aria-label="Alternative sign-in options">
-        <div className="h-px flex-1 bg-neutral-300 dark:bg-neutral-600" />
-        <span className="relative inline-flex min-h-[1rem] shrink-0 items-center justify-center text-xs font-medium text-neutral-600 dark:text-neutral-400">
+        <div className="h-px flex-1 bg-[var(--ds-border)]" />
+        <span className="relative inline-flex min-h-[1rem] shrink-0 items-center justify-center text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
           <span
             className={`whitespace-nowrap ${tabCrossfadeClass} ${
               tab === "signin" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
@@ -123,29 +104,25 @@ function LoginSocialProviders({
             Sign up with
           </span>
         </span>
-        <div className="h-px flex-1 bg-neutral-300 dark:bg-neutral-600" />
+        <div className="h-px flex-1 bg-[var(--ds-border)]" />
       </div>
 
       <div className="mt-3.5 flex flex-col gap-2 sm:flex-row sm:gap-2.5">
-        <button
-          type="button"
-          disabled
-          title="Coming soon"
-          className={`${oauthButtonClass} sm:flex-1`}
-        >
-          <IconGoogle className="shrink-0 text-neutral-800 dark:text-neutral-300" />
+        <Button type="button" variant="secondary" disabled title="Coming soon" className="w-full justify-center sm:flex-1">
+          <IconGoogle className="shrink-0 text-[var(--ds-text-primary)]" />
           Google
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="secondary"
           onClick={() => void handleMicrosoftOAuth()}
           disabled={formLoading || microsoftOAuthLoading}
           title={microsoftOAuthLoading ? "Redirecting…" : undefined}
-          className={`${oauthButtonClass} sm:flex-1`}
+          className="w-full justify-center sm:flex-1"
         >
-          <IconMicrosoft className="shrink-0 text-neutral-800 dark:text-neutral-300" />
+          <IconMicrosoft className="shrink-0 text-[var(--ds-text-primary)]" />
           {microsoftOAuthLoading ? "Redirecting…" : "Microsoft"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -155,7 +132,7 @@ export function LoginClient() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? DASHBOARD_PATH;
 
-  const [tab, setTab] = useState<Tab>("signin");
+  const [tab, setTab] = useState<LoginTabId>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -178,7 +155,7 @@ export function LoginClient() {
     window.location.href = path;
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: FormEvent) => {
     e.preventDefault();
     resetFormState();
     setLoading(true);
@@ -199,7 +176,7 @@ export function LoginClient() {
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
     resetFormState();
     setLoading(true);
@@ -222,43 +199,42 @@ export function LoginClient() {
 
   const handleSubmit = tab === "signin" ? handleSignIn : handleSignUp;
 
-  const tabButton = (id: Tab, label: string) => (
-    <button
-      type="button"
-      onClick={() => {
-        if (tab !== id) {
-          resetFormState();
-        }
-        setTab(id);
-      }}
-      className={`-mb-px cursor-pointer border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors duration-[250ms] ease-in-out ${
-        tab === id
-          ? "border-neutral-950 text-neutral-950 dark:border-neutral-50 dark:text-neutral-50"
-          : "border-transparent text-neutral-700 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-neutral-200"
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const legalLinkClass =
+    "cursor-pointer text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--ds-text-primary)] hover:underline";
 
   return (
     <div className="w-full">
-      <div className="mb-3.5 flex gap-6 border-b border-neutral-300/95 transition-colors duration-[250ms] ease-in-out dark:border-neutral-600/95">
-        {tabButton("signin", "Sign in")}
-        {tabButton("signup", "Sign up")}
-      </div>
+      <Tabs className="mb-4 flex w-full !bg-transparent border-[var(--ds-border-subtle)] [&_button]:min-w-0 [&_button]:flex-1 [&_button[aria-selected=true]]:!bg-transparent [&_button[aria-selected=true]]:shadow-none [&_button[aria-selected=true]]:font-semibold">
+        <Tab
+          type="button"
+          active={tab === "signin"}
+          onClick={() => {
+            if (tab !== "signin") resetFormState();
+            setTab("signin");
+          }}
+        >
+          Sign in
+        </Tab>
+        <Tab
+          type="button"
+          active={tab === "signup"}
+          onClick={() => {
+            if (tab !== "signup") resetFormState();
+            setTab("signup");
+          }}
+        >
+          Sign up
+        </Tab>
+      </Tabs>
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-neutral-900 transition-colors duration-[250ms] ease-in-out dark:text-neutral-100">
-            Email
-          </label>
-          <input
+          <Label htmlFor="login-email">Email</Label>
+          <Input
             id="login-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={inputBaseClass}
             placeholder="you@example.com"
             required
             autoComplete="email"
@@ -266,31 +242,31 @@ export function LoginClient() {
           />
         </div>
         <div>
-          <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-neutral-900 transition-colors duration-[250ms] ease-in-out dark:text-neutral-100">
-            Password
-          </label>
+          <Label htmlFor="login-password">Password</Label>
           <div className="relative">
-            <input
+            <Input
               id="login-password"
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`${inputBaseClass} pr-11`}
+              className="pr-14"
               required
               autoComplete={tab === "signin" ? "current-password" : "new-password"}
               disabled={loading}
               minLength={6}
             />
-            <button
+            <Button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer rounded px-1.5 py-1 text-[11px] font-medium text-neutral-600 transition-colors hover:text-neutral-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-neutral-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-neutral-400 dark:hover:text-neutral-100 dark:focus-visible:outline-neutral-400"
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 min-h-0 -translate-y-1/2 px-2 py-1"
               onClick={() => setShowPassword((v) => !v)}
               disabled={loading}
               aria-pressed={showPassword}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? "Hide" : "Show"}
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -300,11 +276,16 @@ export function LoginClient() {
         >
           <div className="min-h-0 overflow-hidden">
             {error ? (
-              <div className="space-y-1.5 text-center" role="alert">
-                <p className="text-sm text-red-800 dark:text-red-300/95">{error}</p>
+              <div className="space-y-1.5 text-center">
+                <Callout status="danger" role="alert" className="text-center text-[length:var(--ds-text-sm)]">
+                  {error}
+                </Callout>
                 {tab === "signin" && (
                   <div>
-                    <Link href="/forgot-password" className={subtleLinkClass}>
+                    <Link
+                      href="/forgot-password"
+                      className="cursor-pointer text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] transition-colors hover:text-[var(--ds-text-primary)]"
+                    >
                       Trouble signing in?
                     </Link>
                   </div>
@@ -314,7 +295,7 @@ export function LoginClient() {
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className={primaryButtonClass}>
+        <Button type="submit" variant="primary" disabled={loading} className="relative mt-1 w-full">
           {loading ? (
             <span className="flex min-h-[1.25rem] w-full items-center justify-center">Please wait…</span>
           ) : (
@@ -335,23 +316,19 @@ export function LoginClient() {
               </span>
             </>
           )}
-        </button>
+        </Button>
         <div className="relative mt-2">
           <p
-            className={`text-center text-[11px] leading-snug text-neutral-500 dark:text-neutral-400 ${tabCrossfadeClass} ${
-              tab === "signin"
-                ? "opacity-90"
-                : "pointer-events-none absolute inset-0 opacity-0"
+            className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
+              tab === "signin" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
             }`}
             aria-hidden={tab !== "signin"}
           >
             Secure login | Your data is protected
           </p>
           <p
-            className={`text-center text-[11px] leading-snug text-neutral-500 dark:text-neutral-400 ${tabCrossfadeClass} ${
-              tab === "signup"
-                ? "opacity-90"
-                : "pointer-events-none absolute inset-0 opacity-0"
+            className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
+              tab === "signup" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
             }`}
             aria-hidden={tab !== "signup"}
           >
@@ -370,12 +347,12 @@ export function LoginClient() {
         />
       ) : null}
 
-      <footer className="mt-6 border-t border-neutral-300/90 pt-4 dark:border-neutral-600/90">
+      <footer className="mt-6 border-t border-[var(--ds-border)] pt-4">
         <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
           <LegalDocumentLink document="privacy" className={legalLinkClass}>
             Privacy Policy
           </LegalDocumentLink>
-          <span className="select-none text-[11px] text-neutral-500 dark:text-neutral-600" aria-hidden>
+          <span className="select-none text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]" aria-hidden>
             ·
           </span>
           <LegalDocumentLink document="terms" className={legalLinkClass}>

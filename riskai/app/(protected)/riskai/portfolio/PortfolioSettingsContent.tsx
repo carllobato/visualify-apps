@@ -24,6 +24,7 @@ import {
 } from "@/components/settings/settingsFieldClasses";
 import type { PortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAccess";
 import { getPortfolioSettingsPermissionNotice } from "@/lib/settings/settingsPermissionMessages";
+import { Callout, FieldError } from "@visualify/design-system";
 
 export type PortfolioSettingsInitial = {
   name: string;
@@ -107,7 +108,7 @@ export default function PortfolioSettingsContent({
         <div className="space-y-3">
           <div>
             <label htmlFor="portfolio-name" className={settingsLabelClass}>
-              Name <span className="text-red-500">*</span>
+              Name <span className="text-[var(--ds-status-danger)]">*</span>
             </label>
             <input
               id="portfolio-name"
@@ -124,11 +125,7 @@ export default function PortfolioSettingsContent({
               }
               placeholder="e.g. Infrastructure Portfolio"
             />
-            {validation.name && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                {validation.name}
-              </p>
-            )}
+            {validation.name && <FieldError className="!mt-1">{validation.name}</FieldError>}
           </div>
           <div>
             <label htmlFor="portfolio-description" className={settingsLabelClass}>
@@ -158,14 +155,14 @@ export default function PortfolioSettingsContent({
             {saving ? "Saving…" : "Save"}
           </button>
           {validation.submit && (
-            <p className="text-sm text-red-600 dark:text-red-400">
+            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
               {validation.submit}
-            </p>
+            </Callout>
           )}
         </div>
         {saved && (
           <div
-            className="mt-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2.5 text-sm text-emerald-800 dark:text-emerald-200"
+            className="mt-3 rounded-lg border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] px-4 py-2.5 text-sm text-[var(--ds-status-success-fg)]"
             role="status"
           >
             Saved ✓ Portfolio settings updated.
@@ -178,16 +175,16 @@ export default function PortfolioSettingsContent({
       {/* Read-only meta */}
       <section className="mb-10">
         <h2 className={settingsStandaloneSectionTitleClass}>Details</h2>
-        <dl className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 p-4 space-y-2 text-sm">
+        <dl className="rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] p-4 space-y-2 text-sm">
           <div>
-            <dt className="text-neutral-500 dark:text-neutral-400">Owner ID</dt>
-            <dd className="font-mono text-xs text-[var(--foreground)] break-all">
+            <dt className="text-[var(--ds-text-muted)]">Owner ID</dt>
+            <dd className="font-mono text-xs text-[var(--ds-text-primary)] break-all">
               {initial.owner_user_id}
             </dd>
           </div>
           <div>
-            <dt className="text-neutral-500 dark:text-neutral-400">Created</dt>
-            <dd className="text-[var(--foreground)]">
+            <dt className="text-[var(--ds-text-muted)]">Created</dt>
+            <dd className="text-[var(--ds-text-primary)]">
               {formatDate(initial.created_at)}
             </dd>
           </div>
@@ -197,13 +194,13 @@ export default function PortfolioSettingsContent({
       <div className="flex flex-wrap gap-3">
         <Link
           href={riskaiPath(`/portfolios/${portfolioId}/projects`)}
-          className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)]"
         >
           View projects
         </Link>
         <Link
           href={riskaiPath("/portfolios")}
-          className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+          className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)]"
         >
           ← Back to portfolios
         </Link>

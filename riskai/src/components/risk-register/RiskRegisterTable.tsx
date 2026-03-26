@@ -5,6 +5,17 @@ import type { Risk, RiskLevel } from "@/domain/risk/risk.schema";
 import type { DecisionMetrics } from "@/domain/decision/decision.types";
 import { getRiskValidationErrors } from "@/domain/risk/runnable-risk.validator";
 import { RiskRegisterRow } from "@/components/risk-register/RiskRegisterRow";
+import {
+  Button,
+  Card,
+  Input,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@visualify/design-system";
 
 const LEVEL_LETTER: Record<RiskLevel, string> = { low: "L", medium: "M", high: "H", extreme: "E" };
 function levelToLetter(level: RiskLevel): string {
@@ -19,20 +30,11 @@ function getPostDisplay(risk: Risk): string {
   return risk.mitigation?.trim() ? levelToLetter(risk.residualRating.level) : "N/A";
 }
 
-/** Column order: Risk ID | Title | Category | Owner | Pre | Post | Mitigation Movement | Status | [View / Edit] */
-const TABLE_GRID_COLS = "56px minmax(0, 2.5fr) minmax(0, 1fr) minmax(0, 1fr) 100px 100px 100px minmax(0, 0.9fr)";
-const TABLE_GRID_WITH_ACTION = `${TABLE_GRID_COLS} minmax(96px, 96px)`;
-const TABLE_GRID_WITH_RESTORE = `${TABLE_GRID_COLS} minmax(168px, 1.1fr)`;
-
-const addNewRowGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: TABLE_GRID_WITH_ACTION,
-  padding: "10px 12px",
-  borderBottom: "1px solid #eee",
-  alignItems: "center",
-  gap: 10,
-  minWidth: 0,
-};
+const SORT_HEADER_BTN =
+  "inline-flex min-w-0 max-w-full items-center text-left text-[11px] font-semibold uppercase tracking-[0.06em] " +
+  "text-[var(--ds-text-muted)] hover:text-[var(--ds-text-primary)] " +
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 " +
+  "rounded-[calc(var(--ds-radius-md)-2px)] px-1 -mx-1";
 
 export type SortColumn =
   | "riskId"
@@ -47,9 +49,6 @@ export type SortColumn =
 export type SortDirection = "asc" | "desc";
 
 export type TableSortState = { column: SortColumn; direction: SortDirection } | null;
-
-const SORT_HEADER_BASE =
-  "text-left font-semibold hover:text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 rounded px-1 -mx-1 min-w-0";
 
 function SortableHeader({
   label,
@@ -70,12 +69,20 @@ function SortableHeader({
     <button
       type="button"
       onClick={() => onSort(column)}
-      className={SORT_HEADER_BASE}
+      className={SORT_HEADER_BTN}
       title={title ?? `Sort by ${label}`}
     >
       {label}
-      {dir === "asc" && <span className="ml-1 text-neutral-500" aria-hidden>↑</span>}
-      {dir === "desc" && <span className="ml-1 text-neutral-500" aria-hidden>↓</span>}
+      {dir === "asc" && (
+        <span className="ml-1 text-[var(--ds-text-muted)]" aria-hidden>
+          ↑
+        </span>
+      )}
+      {dir === "desc" && (
+        <span className="ml-1 text-[var(--ds-text-muted)]" aria-hidden>
+          ↓
+        </span>
+      )}
     </button>
   );
 }
@@ -153,7 +160,7 @@ function FilterIcon({ active }: { active?: boolean }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      className={active ? "text-neutral-800 dark:text-neutral-200" : "text-neutral-500 dark:text-neutral-400"}
+      className={active ? "text-[var(--ds-text-primary)]" : "text-[var(--ds-text-muted)]"}
     >
       <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
     </svg>
@@ -176,7 +183,6 @@ function FilterPopover({
   anchorRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const popoverRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -194,13 +200,12 @@ function FilterPopover({
 
   useEffect(() => {
     setSearchQuery("");
-    searchInputRef.current?.focus();
+    const id = `risk-filter-search-${column}`;
+    requestAnimationFrame(() => document.getElementById(id)?.focus());
   }, [column]);
 
   const q = searchQuery.trim().toLowerCase();
-  const filteredOptions = q
-    ? options.filter((opt) => opt.toLowerCase().includes(q))
-    : options;
+  const filteredOptions = q ? options.filter((opt) => opt.toLowerCase().includes(q)) : options;
 
   const toggle = (value: string) => {
     if (selected.includes(value)) onSelect(selected.filter((s) => s !== value));
@@ -212,58 +217,50 @@ function FilterPopover({
   return (
     <div
       ref={popoverRef}
-      className="absolute left-0 top-full z-50 mt-1 min-w-[140px] max-w-[220px] rounded-md border border-neutral-200 dark:border-neutral-600 bg-[var(--background)] py-2 shadow-lg"
+      className="absolute left-0 top-full z-50 mt-1 min-w-[140px] max-w-[220px] rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-elevated)] py-2 shadow-[var(--ds-shadow-sm)]"
       role="dialog"
       aria-label={`Filter by ${column}`}
     >
-      <div className="px-2 pb-2 border-b border-neutral-100 dark:border-neutral-700 mb-2">
-        <input
-          ref={searchInputRef}
+      <div className="mb-2 border-b border-[var(--ds-border-subtle)] px-2 pb-2">
+        <Input
+          id={`risk-filter-search-${column}`}
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search..."
-          className="w-full h-8 px-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+          className="h-8"
           aria-label="Search options"
         />
       </div>
       <div className="max-h-48 overflow-y-auto px-2">
         {filteredOptions.length === 0 ? (
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 py-1">
+          <p className="m-0 py-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
             {options.length === 0 ? "No options" : "No matches"}
           </p>
         ) : (
           filteredOptions.map((opt) => (
             <label
               key={opt}
-              className="flex items-center gap-2 py-1 text-sm cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded px-1"
+              className="flex cursor-pointer items-center gap-2 rounded-[calc(var(--ds-radius-md)-2px)] px-1 py-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] hover:bg-[color-mix(in_oklab,var(--ds-muted)_48%,transparent)]"
             >
               <input
                 type="checkbox"
                 checked={selected.includes(opt)}
                 onChange={() => toggle(opt)}
-                className="rounded border-neutral-300 dark:border-neutral-600"
+                className="rounded border-[var(--ds-border-subtle)]"
               />
               <span className="truncate">{opt}</span>
             </label>
           ))
         )}
       </div>
-      <div className="flex gap-1 pt-2 px-2 border-t border-neutral-100 dark:border-neutral-700 mt-1">
-        <button
-          type="button"
-          onClick={selectAll}
-          className="text-xs text-neutral-600 dark:text-neutral-400 hover:underline"
-        >
+      <div className="mt-1 flex gap-1 border-t border-[var(--ds-border-subtle)] px-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={selectAll}>
           All
-        </button>
-        <button
-          type="button"
-          onClick={clearAll}
-          className="text-xs text-neutral-600 dark:text-neutral-400 hover:underline"
-        >
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={clearAll}>
           Clear
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -296,7 +293,7 @@ function HeaderCell({
   const selected = columnFilters[column] ?? [];
 
   return (
-    <div className="relative flex items-center gap-1 min-w-0">
+    <div className="relative flex min-w-0 items-center gap-1">
       {children}
       {canFilter && onColumnFilterChange && (
         <div className="shrink-0">
@@ -304,7 +301,7 @@ function HeaderCell({
             ref={btnRef}
             type="button"
             onClick={() => setOpenFilterColumn(openFilterColumn === column ? null : column)}
-            className="p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-600 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
+            className="rounded-[calc(var(--ds-radius-md)-2px)] p-0.5 text-[var(--ds-text-muted)] hover:bg-[color-mix(in_oklab,var(--ds-muted)_48%,transparent)] hover:text-[var(--ds-text-primary)]"
             title={`Filter ${column}`}
             aria-label={`Filter by ${column}`}
             aria-expanded={openFilterColumn === column}
@@ -354,194 +351,257 @@ export function RiskRegisterTable({
   onColumnFilterChange?: (column: SortColumn, values: string[]) => void;
 }) {
   const showActions = Boolean(onRiskClick);
-  const gridCols =
-    showActions && onArchivedRestore ? TABLE_GRID_WITH_RESTORE : showActions ? TABLE_GRID_WITH_ACTION : TABLE_GRID_COLS;
   const canSort = Boolean(onSortByColumn);
   const canFilter = Boolean(onColumnFilterChange);
   const [openFilterColumn, setOpenFilterColumn] = useState<SortColumn | null>(null);
   const filterOptionsRisks = risksForFilterOptions ?? risks;
 
-  return (
-    <div className="mt-4 rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden bg-[var(--background)]">
-      <div
-        className="grid gap-2.5 py-2.5 px-3 font-semibold border-b border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 text-neutral-700 dark:text-neutral-300 text-sm"
-        style={{ gridTemplateColumns: gridCols }}
-      >
-        <HeaderCell
-          canFilter={canFilter}
-          column="riskId"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Risk ID" column="riskId" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Risk ID</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="title"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Title" column="title" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Title</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="category"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Category" column="category" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Category</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="owner"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Owner" column="owner" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Owner</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="preRating"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Pre Rating" column="preRating" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Pre Rating</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="postRating"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Post Rating" column="postRating" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Post Rating</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="mitigationMovement"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader
-              label="Mitigation Movement"
-              column="mitigationMovement"
-              sortState={sortState}
-              onSort={onSortByColumn!}
-              title="Improving ↓, worsening ↑, stable →"
-            />
-          ) : (
-            <div title="Improving ↓, worsening ↑, stable →">Mitigation Movement</div>
-          )}
-        </HeaderCell>
-        <HeaderCell
-          canFilter={canFilter}
-          column="status"
-          risks={risks}
-          risksForFilterOptions={filterOptionsRisks}
-          columnFilters={columnFilters}
-          onColumnFilterChange={onColumnFilterChange}
-          openFilterColumn={openFilterColumn}
-          setOpenFilterColumn={setOpenFilterColumn}
-        >
-          {canSort ? (
-            <SortableHeader label="Status" column="status" sortState={sortState} onSort={onSortByColumn!} />
-          ) : (
-            <div>Status</div>
-          )}
-        </HeaderCell>
-        {showActions && <div />}
-      </div>
+  const lastColWidth = showActions ? (onArchivedRestore ? 168 : 96) : undefined;
 
-      {risks.length === 0 && !onAddNewClick ? (
-        <div className="p-3 opacity-80 text-[var(--foreground)]">No risks yet.</div>
-      ) : (
-        <>
-          {risks.map((risk, index) => (
-            <RiskRegisterRow
-              key={risk.id ?? (risk as { tempId?: string }).tempId ?? index}
-              risk={risk}
-              rowIndex={index}
-              decision={decisionById[risk.id]}
-              scoreDelta={scoreDeltaByRiskId[risk.id]}
-              onRiskClick={onRiskClick}
-              onRestoreArchived={onArchivedRestore}
-              validationErrors={getRiskValidationErrors(risk)}
-            />
-          ))}
-          {onAddNewClick && showActions && (
-            <div
-              role="row"
-              style={addNewRowGridStyle}
-              className="border-t border-dashed border-neutral-300 dark:border-neutral-600 bg-neutral-50/50 dark:bg-neutral-800/30 cursor-pointer hover:bg-neutral-100/50 dark:hover:bg-neutral-800/50"
-              onClick={onAddNewClick}
-            >
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                Add new risk
-              </span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-              <span className="text-sm text-neutral-400 dark:text-neutral-500" aria-hidden>{"\u00A0"}</span>
-            </div>
+  return (
+    <Card className="mt-4 overflow-hidden border-[var(--ds-border-subtle)] p-0">
+      <Table className="table-fixed w-full [&_tbody_td]:py-[10px] [&_thead_th]:py-1.5 [&_thead_th]:text-[11px] [&_thead_th]:text-[var(--ds-text-muted)]">
+        <colgroup>
+          <col style={{ width: 56 }} />
+          <col />
+          <col />
+          <col />
+          <col style={{ width: 100 }} />
+          <col style={{ width: 100 }} />
+          <col style={{ width: 100 }} />
+          <col />
+          {showActions && <col style={{ width: lastColWidth }} />}
+        </colgroup>
+        <TableHead className="border-b border-[var(--ds-border-subtle)]">
+          <TableRow>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="riskId"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader label="Risk ID" column="riskId" sortState={sortState} onSort={onSortByColumn!} />
+                ) : (
+                  <span>Risk ID</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="title"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader label="Title" column="title" sortState={sortState} onSort={onSortByColumn!} />
+                ) : (
+                  <span>Title</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="category"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader
+                    label="Category"
+                    column="category"
+                    sortState={sortState}
+                    onSort={onSortByColumn!}
+                  />
+                ) : (
+                  <span>Category</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="owner"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader label="Owner" column="owner" sortState={sortState} onSort={onSortByColumn!} />
+                ) : (
+                  <span>Owner</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="preRating"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader
+                    label="Pre Rating"
+                    column="preRating"
+                    sortState={sortState}
+                    onSort={onSortByColumn!}
+                  />
+                ) : (
+                  <span>Pre Rating</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="postRating"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader
+                    label="Post Rating"
+                    column="postRating"
+                    sortState={sortState}
+                    onSort={onSortByColumn!}
+                  />
+                ) : (
+                  <span>Post Rating</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="mitigationMovement"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader
+                    label="Mitigation Movement"
+                    column="mitigationMovement"
+                    sortState={sortState}
+                    onSort={onSortByColumn!}
+                    title="Improving ↓, worsening ↑, stable →"
+                  />
+                ) : (
+                  <span title="Improving ↓, worsening ↑, stable →">Mitigation Movement</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="status"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader label="Status" column="status" sortState={sortState} onSort={onSortByColumn!} />
+                ) : (
+                  <span>Status</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            {showActions && <TableHeaderCell className="align-middle" />}
+          </TableRow>
+        </TableHead>
+        <TableBody className="[&>tr]:border-[var(--ds-border-subtle)]">
+          {risks.length === 0 && !onAddNewClick ? (
+            <TableRow>
+              <TableCell colSpan={showActions ? 9 : 8}>
+                <p className="m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">No risks yet.</p>
+              </TableCell>
+            </TableRow>
+          ) : (
+            <>
+              {risks.map((risk, index) => (
+                <RiskRegisterRow
+                  key={risk.id ?? (risk as { tempId?: string }).tempId ?? index}
+                  risk={risk}
+                  rowIndex={index}
+                  decision={decisionById[risk.id]}
+                  scoreDelta={scoreDeltaByRiskId[risk.id]}
+                  onRiskClick={onRiskClick}
+                  onRestoreArchived={onArchivedRestore}
+                  validationErrors={getRiskValidationErrors(risk)}
+                />
+              ))}
+              {onAddNewClick && showActions && (
+                <TableRow
+                  role="row"
+                  className="cursor-pointer border-t border-dashed border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] hover:bg-[var(--ds-surface-hover)]"
+                  onClick={onAddNewClick}
+                >
+                  <TableCell className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]" aria-hidden>
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">
+                    Add new risk
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
+                  </TableCell>
+                </TableRow>
+              )}
+            </>
           )}
-        </>
-      )}
-    </div>
+        </TableBody>
+      </Table>
+    </Card>
   );
 }

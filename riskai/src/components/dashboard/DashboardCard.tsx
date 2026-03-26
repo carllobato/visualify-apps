@@ -8,8 +8,8 @@ type DashboardCardProps = {
  */
 export function DashboardCard({ title, children }: DashboardCardProps) {
   return (
-    <section className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] overflow-hidden">
-      <h2 className="text-base font-semibold text-[var(--foreground)] px-4 py-3 border-b border-neutral-200 dark:border-neutral-700 m-0">
+    <section className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] overflow-hidden">
+      <h2 className="text-base font-semibold text-[var(--ds-text-primary)] px-4 py-3 border-b border-[var(--ds-border)] m-0">
         {title}
       </h2>
       <div className="p-4">{children}</div>

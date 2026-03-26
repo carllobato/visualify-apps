@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { selectDecisionByRiskId, selectDecisionScoreDelta } from "@/store/selectors";
@@ -27,6 +27,16 @@ import { isRiskStatusArchived, RISK_STATUS_ARCHIVED_LOOKUP } from "@/domain/risk
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import {
+  Button,
+  Card,
+  CardBody,
+  Callout,
+  FieldError,
+  Tab,
+  Tabs,
+} from "@visualify/design-system";
+import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 const FOCUS_HIGHLIGHT_CLASS = "risk-focus-highlight";
 const HIGHLIGHT_DURATION_MS = 2000;
 
@@ -421,7 +431,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     return (
       <RiskRegisterLookupProviders projectId={projectIdForDb}>
         <main className="p-6">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading…</p>
+          <LoadingPlaceholderCompact label="Loading risk register" />
         </main>
       </RiskRegisterLookupProviders>
     );
@@ -430,7 +440,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   if (risksLoading) {
     return (
       <RiskRegisterLookupProviders projectId={projectIdForDb}>
-      <main className="p-6">
+      <main className="p-6 text-[var(--ds-text-primary)]">
         <div className="mb-6">
           <RiskRegisterHeader
             projectContext={projectContext}
@@ -444,7 +454,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             saveToServerLoading={saveToServerLoading}
           />
         </div>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading risks…</p>
+        <LoadingPlaceholder />
       </main>
       </RiskRegisterLookupProviders>
     );
@@ -453,7 +463,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   if (risksLoadError) {
     return (
       <RiskRegisterLookupProviders projectId={projectIdForDb}>
-      <main className="p-6">
+      <main className="p-6 text-[var(--ds-text-primary)]">
         <div className="mb-6">
           <RiskRegisterHeader
             projectContext={projectContext}
@@ -467,22 +477,13 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             saveToServerLoading={saveToServerLoading}
           />
         </div>
-        <div
-          className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/20 p-4"
-          role="alert"
-        >
-          <p className="text-sm font-medium text-red-800 dark:text-red-200">
-            Failed to load risks
-          </p>
-          <p className="mt-1 text-sm text-red-700 dark:text-red-300">{risksLoadError}</p>
-          <button
-            type="button"
-            onClick={handleRetryLoad}
-            className="mt-3 px-3 py-1.5 text-sm font-medium rounded-md border border-red-300 dark:border-red-700 bg-white dark:bg-neutral-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/30"
-          >
+        <Callout status="danger" role="alert">
+          <p className="m-0 text-[length:var(--ds-text-sm)] font-medium">Failed to load risks</p>
+          <p className="mt-1 m-0 text-[length:var(--ds-text-sm)]">{risksLoadError}</p>
+          <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={handleRetryLoad}>
             Retry
-          </button>
-        </div>
+          </Button>
+        </Callout>
       </main>
       </RiskRegisterLookupProviders>
     );
@@ -490,7 +491,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   return (
     <RiskRegisterLookupProviders projectId={projectIdForDb}>
-    <main className="p-6">
+    <main className="p-6 text-[var(--ds-text-primary)]">
       <div className="mb-6">
         <RiskRegisterHeader
           projectContext={projectContext}
@@ -504,110 +505,85 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
           saveToServerLoading={saveToServerLoading}
         />
         {saveToServerError && (
-          <p className="mt-2 text-sm text-red-600 dark:text-red-400" role="alert">
-            Save failed: {saveToServerError}
-          </p>
+          <FieldError className="mt-2">Save failed: {saveToServerError}</FieldError>
         )}
       </div>
       {risks.length === 0 ? (
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/30 p-8 text-center">
-          <p className="text-neutral-600 dark:text-neutral-400 font-medium">No risks in this project</p>
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-500">
-            {contentReadOnly
-              ? "You have view-only access to this project."
-              : "Add a risk manually, from file, or with AI to get started."}
-          </p>
-          {!contentReadOnly && (
-            <button
-              type="button"
-              onClick={() => setShowAddNewRiskChoiceModal(true)}
-              className="mt-4 px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-            >
-              Add risk
-            </button>
-          )}
-        </div>
+        <Card variant="inset" className="text-center">
+          <CardBody className="py-8">
+            <p className="m-0 font-medium text-[var(--ds-text-primary)]">No risks in this project</p>
+            <p className="m-0 mt-1 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
+              {contentReadOnly
+                ? "You have view-only access to this project."
+                : "Add a risk manually, from file, or with AI to get started."}
+            </p>
+            {!contentReadOnly && (
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-4"
+                onClick={() => setShowAddNewRiskChoiceModal(true)}
+              >
+                Add risk
+              </Button>
+            )}
+          </CardBody>
+        </Card>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b border-neutral-200 dark:border-neutral-700 pb-3">
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Risk register view">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={registerView === "active"}
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ds-border-subtle)] pb-3">
+            <Tabs aria-label="Risk register view" className="flex-wrap">
+              <Tab
+                active={registerView === "active"}
                 onClick={() => {
                   setRegisterView("active");
                   setColumnFilters({});
                 }}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors ${
-                  registerView === "active"
-                    ? "border-neutral-800 dark:border-neutral-200 bg-neutral-100 dark:bg-neutral-800 text-[var(--foreground)]"
-                    : "border-transparent text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                }`}
               >
                 Active register
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={registerView === "archived"}
+              </Tab>
+              <Tab
+                active={registerView === "archived"}
                 onClick={() => {
                   setRegisterView("archived");
                   setColumnFilters({});
                 }}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors ${
-                  registerView === "archived"
-                    ? "border-neutral-800 dark:border-neutral-200 bg-neutral-100 dark:bg-neutral-800 text-[var(--foreground)]"
-                    : "border-transparent text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                }`}
               >
                 Archived
-              </button>
-            </div>
+              </Tab>
+            </Tabs>
             {!contentReadOnly && (
               <div className="flex flex-wrap items-center gap-3">
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
                   onClick={() => handleSaveToServer()}
                   disabled={saveToServerLoading}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:opacity-50 disabled:pointer-events-none"
                 >
                   {saveToServerLoading ? "Saving…" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddNewRiskChoiceModal(true)}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
-                >
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => setShowAddNewRiskChoiceModal(true)}>
                   Generate AI Risk
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAiReviewClick}
-                  disabled={aiReviewLoading}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700 disabled:opacity-50 disabled:pointer-events-none"
-                >
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={handleAiReviewClick} disabled={aiReviewLoading}>
                   AI Review
-                </button>
-                <button
-                  type="button"
-                  onClick={clearRisks}
-                  className="px-3 py-1.5 text-sm rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
-                >
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={clearRisks}>
                   Clear
-                </button>
+                </Button>
               </div>
             )}
           </div>
           {registerView === "active" &&
             risks.length > 0 &&
             risks.every((r) => isRiskStatusArchived(r.status)) && (
-              <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">
-                All risks are archived. Open the <strong>Archived</strong> tab to review or restore them.
+              <p className="mb-3 m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                All risks are archived. Open the <strong className="font-semibold text-[var(--ds-text-primary)]">Archived</strong> tab to review or restore them.
               </p>
             )}
           {registerView === "archived" && !risks.some((r) => isRiskStatusArchived(r.status)) && (
-            <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-3">No archived risks.</p>
+            <p className="mb-3 m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">No archived risks.</p>
           )}
           <RiskRegisterTable
             risks={filteredRisks}

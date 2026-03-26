@@ -29,19 +29,19 @@ export function GreetingHeader({ firstName, className }: GreetingHeaderProps) {
     <header className={rootClass}>
       <div className="min-h-[2.5rem]">
         {greeting != null ? (
-          <h1 className="text-2xl font-medium tracking-tight text-[var(--foreground)]">
+          <h1 className="text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">
             {greeting}, {displayName}
           </h1>
         ) : (
           <h1
-            className="invisible text-2xl font-medium tracking-tight text-[var(--foreground)]"
+            className="invisible text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]"
             aria-hidden
           >
             Good afternoon, {displayName}
           </h1>
         )}
       </div>
-      <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
+      <p className="mt-0.5 text-sm text-[var(--ds-text-secondary)]">
         Here&apos;s your current workspace
       </p>
     </header>

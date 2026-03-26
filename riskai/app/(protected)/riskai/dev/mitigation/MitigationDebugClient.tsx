@@ -130,32 +130,34 @@ export function MitigationDebugClient() {
 
   const jsonIsNull = mitPost != null && mitPost.json === null;
 
+  const preClass = "mt-2 overflow-auto bg-[var(--ds-surface-muted)] p-2 text-xs text-[var(--ds-text-primary)]";
+
   return (
-    <div style={{ marginTop: 16 }}>
-      <div style={{ marginBottom: 16 }}>
-        <button type="button" onClick={load} style={{ marginRight: 8 }}>
+    <div className="mt-4">
+      <div className="mb-4 flex flex-wrap gap-2">
+        <button type="button" onClick={load} className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-1.5 text-sm hover:bg-[var(--ds-surface-hover)]">
           Refresh
         </button>
-        <button type="button" onClick={runPost}>
+        <button type="button" onClick={runPost} className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-1.5 text-sm hover:bg-[var(--ds-surface-hover)]">
           Run POST optimisation
         </button>
       </div>
 
       {mitPost && (
-        <section style={{ marginBottom: 24, border: "2px solid #333", padding: 16 }}>
-          <h2 style={{ fontSize: 18 }}>POST /api/mitigation-optimisation result</h2>
-          <p style={{ fontSize: 16, fontWeight: "bold", margin: "8px 0" }}>
+        <section className="mb-6 border-2 border-[var(--ds-border)] p-4">
+          <h2 className="text-lg font-semibold text-[var(--ds-text-primary)]">POST /api/mitigation-optimisation result</h2>
+          <p className="my-2 text-base font-bold text-[var(--ds-text-primary)]">
             HTTP status: {mitPost.httpStatus ?? "—"} · Error: {mitPost.error ?? "none"} · Response JSON: {jsonIsNull ? "null" : "ok"}
           </p>
-          {mitPost.error && <p style={{ color: "#c00" }}>{mitPost.error}</p>}
+          {mitPost.error && <p className="text-[var(--ds-status-danger-fg)]">{mitPost.error}</p>}
           {jsonIsNull && mitPost.textPreview != null && (
-            <p style={{ marginTop: 8 }}>
+            <p className="mt-2">
               <strong>textPreview (first 200 chars):</strong>
-              <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflow: "auto" }}>{mitPost.textPreview}</pre>
+              <pre className={preClass}>{mitPost.textPreview}</pre>
             </p>
           )}
           {postPayload && !mitPost.error && (
-            <div style={{ marginBottom: 8 }}>
+            <div className="mb-2">
               <p>
                 <strong>baseline.neutralP80:</strong> {postPayload.baseline?.neutralP80 ?? "—"}
               </p>
@@ -175,37 +177,27 @@ export function MitigationDebugClient() {
           )}
           <details>
             <summary>Full JSON</summary>
-            <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflow: "auto" }}>
-              {JSON.stringify(mitPost.json, null, 2)}
-            </pre>
+            <pre className={preClass}>{JSON.stringify(mitPost.json, null, 2)}</pre>
           </details>
         </section>
       )}
 
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18 }}>GET /api/simulation-context/status</h2>
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold text-[var(--ds-text-primary)]">GET /api/simulation-context/status</h2>
         {status?.headers && Object.keys(status.headers).length > 0 && (
-          <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflow: "auto" }}>
-            {JSON.stringify(status.headers, null, 2)}
-          </pre>
+          <pre className={preClass}>{JSON.stringify(status.headers, null, 2)}</pre>
         )}
-        {status?.error && <p style={{ color: "#c00" }}>{status.error}</p>}
-        <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflow: "auto" }}>
-          {JSON.stringify(status?.json ?? {}, null, 2)}
-        </pre>
+        {status?.error && <p className="text-[var(--ds-status-danger-fg)]">{status.error}</p>}
+        <pre className={preClass}>{JSON.stringify(status?.json ?? {}, null, 2)}</pre>
       </section>
 
-      <section style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18 }}>GET /api/mitigation-optimisation</h2>
+      <section className="mb-6">
+        <h2 className="text-lg font-semibold text-[var(--ds-text-primary)]">GET /api/mitigation-optimisation</h2>
         {mitOpt?.headers && Object.keys(mitOpt.headers).length > 0 && (
-          <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflow: "auto" }}>
-            {JSON.stringify(mitOpt.headers, null, 2)}
-          </pre>
+          <pre className={preClass}>{JSON.stringify(mitOpt.headers, null, 2)}</pre>
         )}
-        {mitOpt?.error && <p style={{ color: "#c00" }}>{mitOpt.error}</p>}
-        <pre style={{ background: "#f5f5f5", padding: 8, fontSize: 12, overflow: "auto" }}>
-          {JSON.stringify(mitOpt?.json ?? {}, null, 2)}
-        </pre>
+        {mitOpt?.error && <p className="text-[var(--ds-status-danger-fg)]">{mitOpt.error}</p>}
+        <pre className={preClass}>{JSON.stringify(mitOpt?.json ?? {}, null, 2)}</pre>
       </section>
     </div>
   );

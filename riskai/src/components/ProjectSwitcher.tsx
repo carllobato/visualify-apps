@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchProjectsClient, type ProjectRow } from "@/lib/projects";
 import { riskaiPath } from "@/lib/routes";
+import { Callout } from "@visualify/design-system";
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
 const SUBPAGES = ["project-home", "risks", "run-data", "simulation", "health"] as const;
@@ -166,7 +167,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
 
   if (loading) {
     return (
-      <div className="h-8 w-32 rounded border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 animate-pulse" aria-hidden />
+      <div className="h-8 w-32 rounded border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] animate-pulse" aria-hidden />
     );
   }
 
@@ -180,7 +181,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
         aria-expanded={dropdownOpen}
         aria-haspopup="listbox"
         aria-label="Switch project"
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors truncate max-w-[220px]"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium text-[var(--ds-text-secondary)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] hover:bg-[var(--ds-surface-hover)] transition-colors truncate max-w-[220px]"
       >
         <span className="truncate">{buttonLabel}</span>
         {showDropdown && <ChevronDown />}
@@ -189,17 +190,17 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
       {dropdownOpen && (
         <ul
           role="listbox"
-          className="absolute right-0 top-full mt-1 min-w-[200px] max-h-64 overflow-auto rounded-md border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-lg py-1 z-50"
+          className="absolute right-0 top-full mt-1 min-w-[200px] max-h-64 overflow-auto rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-lg py-1 z-50"
         >
           {projects.map((p) => (
             <li key={p.id} role="option" aria-selected={p.id === selectedProjectIdForList}>
               <button
                 type="button"
                 onClick={() => selectProject(p.id)}
-                className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
               >
                 {p.id === selectedProjectIdForList ? (
-                  <span className="text-emerald-600 dark:text-emerald-400" aria-hidden>
+                  <span className="text-[var(--ds-status-success-fg)]" aria-hidden>
                     <CheckIcon />
                   </span>
                 ) : (
@@ -209,7 +210,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
               </button>
             </li>
           ))}
-          <li className="border-t border-neutral-200 dark:border-neutral-700 mt-1 pt-1">
+          <li className="border-t border-[var(--ds-border)] mt-1 pt-1">
             <button
               type="button"
               onClick={() => {
@@ -218,7 +219,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
                 setNewProjectError(null);
                 setNewProjectName("");
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)]"
+              className="w-full flex items-center gap-2 px-3 py-2 text-left text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
             >
               <span className="w-[14px]" aria-hidden />
               + New project
@@ -229,13 +230,13 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
 
       {modalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--ds-overlay)] p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-project-title"
         >
-          <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] p-4 w-full max-w-sm shadow-lg">
-            <h2 id="new-project-title" className="text-base font-semibold text-[var(--foreground)] mb-3">
+          <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 w-full max-w-sm shadow-lg">
+            <h2 id="new-project-title" className="text-base font-semibold text-[var(--ds-text-primary)] mb-3">
               New project
             </h2>
             <form onSubmit={handleCreateProject} className="space-y-3">
@@ -244,15 +245,15 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="Project name"
-                className="w-full px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm"
+                className="w-full px-3 py-2 rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] text-sm"
                 required
                 disabled={newProjectLoading}
                 autoFocus
               />
               {newProjectError && (
-                <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+                <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
                   {newProjectError}
-                </p>
+                </Callout>
               )}
               <div className="flex justify-end gap-2">
                 <button
@@ -261,14 +262,14 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
                     setModalOpen(false);
                     setNewProjectError(null);
                   }}
-                  className="px-3 py-1.5 rounded border border-neutral-300 dark:border-neutral-600 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  className="px-3 py-1.5 rounded border border-[var(--ds-border)] text-sm font-medium hover:bg-[var(--ds-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={newProjectLoading}
-                  className="px-3 py-1.5 rounded bg-[var(--foreground)] text-[var(--background)] text-sm font-medium hover:opacity-90 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 disabled:opacity-50"
                 >
                   {newProjectLoading ? "Creating…" : "Create"}
                 </button>

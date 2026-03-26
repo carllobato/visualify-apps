@@ -15,6 +15,8 @@ import {
   settingsMemberAddButtonClass,
   settingsSectionTitleClass,
 } from "@/components/settings/settingsFieldClasses";
+import { Callout } from "@visualify/design-system";
+import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 
 type Viewer = {
   currentUserId: string;
@@ -150,10 +152,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
   const semanticsLine = useMemo(() => {
     if (!roleSemantics) return null;
     return (
-      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+      <p className="text-xs text-[var(--ds-text-muted)] mt-2">
         {ROLE_OPTIONS.map(({ value }) => (
           <span key={value} className="mr-3">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300 capitalize">
+            <span className="font-medium text-[var(--ds-text-secondary)] capitalize">
               {value}
             </span>
             {": "}
@@ -279,30 +281,24 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
       {semanticsLine}
 
       {listError && (
-        <div
-          className="mb-3 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-800 dark:text-red-200"
-          role="alert"
-        >
+        <Callout status="danger" role="alert" className="mb-3 text-[length:var(--ds-text-sm)]">
           {listError}
-        </div>
+        </Callout>
       )}
 
       {rowActionError && (
-        <div
-          className="mb-3 rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-100"
-          role="alert"
-        >
+        <Callout status="warning" role="alert" className="mb-3 text-[length:var(--ds-text-sm)]">
           {rowActionError}
-        </div>
+        </Callout>
       )}
 
       {loading ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading members…</p>
+        <LoadingPlaceholderCompact label="Loading members" />
       ) : (
         <div className="overflow-x-auto -mx-1">
           <table className="min-w-full text-sm text-left">
             <thead>
-              <tr className="border-b border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">
+              <tr className="border-b border-[var(--ds-border)] text-[var(--ds-text-secondary)]">
                 <th className="py-2 pr-3 font-medium">First name</th>
                 <th className="py-2 pr-3 font-medium">Surname</th>
                 <th className="py-2 pr-3 font-medium">Email</th>
@@ -328,10 +324,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                   : identityFallback;
                 const sn = hasNameParts ? normalizedProfile?.surname?.trim() || "—" : "—";
                 return (
-                  <tr key={m.id} className="border-b border-neutral-100 dark:border-neutral-800">
-                    <td className="py-2 pr-3 text-[var(--foreground)]">{fn}</td>
-                    <td className="py-2 pr-3 text-[var(--foreground)]">{sn}</td>
-                    <td className="py-2 pr-3 text-neutral-600 dark:text-neutral-400">
+                  <tr key={m.id} className="border-b border-[var(--ds-border-subtle)]">
+                    <td className="py-2 pr-3 text-[var(--ds-text-primary)]">{fn}</td>
+                    <td className="py-2 pr-3 text-[var(--ds-text-primary)]">{sn}</td>
+                    <td className="py-2 pr-3 text-[var(--ds-text-secondary)]">
                       {displayEmail}
                     </td>
                     <td className="py-2 pr-3">
@@ -359,7 +355,7 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                           ))}
                         </select>
                       ) : (
-                        <span className="capitalize text-[var(--foreground)]">{m.role}</span>
+                        <span className="capitalize text-[var(--ds-text-primary)]">{m.role}</span>
                       )}
                     </td>
                     {showRowActions && (
@@ -369,12 +365,12 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                             type="button"
                             disabled={busy}
                             onClick={() => void onRemove(m)}
-                            className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-[length:var(--ds-text-sm)] text-[var(--ds-status-danger-fg)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Remove
                           </button>
                         ) : (
-                          <span className="text-neutral-400 text-xs">—</span>
+                          <span className="text-[var(--ds-text-muted)] text-xs">—</span>
                         )}
                       </td>
                     )}
@@ -384,24 +380,21 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
             </tbody>
           </table>
           {members.length === 0 && !listError && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">No members yet.</p>
+            <p className="mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">No members yet.</p>
           )}
         </div>
       )}
 
       {canInvite && (
-        <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700 space-y-3">
-          <p className="text-sm font-medium text-[var(--foreground)]">Add member</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="mt-4 pt-4 border-t border-[var(--ds-border)] space-y-3">
+          <p className="text-sm font-medium text-[var(--ds-text-primary)]">Add member</p>
+          <p className="text-xs text-[var(--ds-text-muted)]">
             Enter the email of an existing RiskAI user (they must have signed up already).
           </p>
           {addError && (
-            <div
-              className="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-800 dark:text-red-200"
-              role="alert"
-            >
+            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
               {addError}
-            </div>
+            </Callout>
           )}
           <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
             <div className="flex-1 min-w-0">

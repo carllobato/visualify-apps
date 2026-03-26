@@ -17,7 +17,7 @@ export function TableHead({ className = "", ...props }: TableSectionProps) {
 }
 
 export function TableBody({ className = "", ...props }: TableSectionProps) {
-  const base = "[&>tr]:border-b [&>tr]:border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)]";
+  const base = "[&>tr]:border-b [&>tr]:border-[var(--ds-border-subtle)]";
   return <tbody className={`${base} ${className}`} {...props} />;
 }
 

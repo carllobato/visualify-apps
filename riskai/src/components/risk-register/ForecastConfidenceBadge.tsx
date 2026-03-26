@@ -28,24 +28,24 @@ function badgeStyleForBand(band: ConfidenceBand): React.CSSProperties {
   if (band === "low") {
     return {
       ...badgeBaseStyle,
-      color: "var(--foreground)",
+      color: "var(--ds-text-primary)",
       opacity: 0.78,
-      backgroundColor: "rgba(128, 128, 128, 0.14)",
+      backgroundColor: "var(--ds-risk-neutral-bg)",
     };
   }
   if (band === "medium") {
     return {
       ...badgeBaseStyle,
-      color: "var(--foreground)",
+      color: "var(--ds-text-primary)",
       opacity: 0.88,
       backgroundColor: "transparent",
     };
   }
   return {
     ...badgeBaseStyle,
-    color: "var(--foreground)",
+    color: "var(--ds-text-primary)",
     opacity: 1,
-    backgroundColor: "rgba(34, 197, 94, 0.12)",
+    backgroundColor: "var(--ds-risk-low-bg)",
   };
 }
 

@@ -6,10 +6,26 @@ export const LEVEL_STYLES: Record<
   RiskLevel,
   { bg: string; dot: string; text: string }
 > = {
-  low: { bg: "rgba(34, 197, 94, 0.12)", dot: "#16a34a", text: "#15803d" },
-  medium: { bg: "rgba(234, 179, 8, 0.14)", dot: "#ca8a04", text: "#a16207" },
-  high: { bg: "rgba(239, 68, 68, 0.12)", dot: "#dc2626", text: "#b91c1c" },
-  extreme: { bg: "rgba(127, 29, 29, 0.2)", dot: "#991b1b", text: "#7f1d1d" },
+  low: {
+    bg: "var(--ds-risk-low-bg)",
+    dot: "var(--ds-risk-low)",
+    text: "var(--ds-risk-low-fg)",
+  },
+  medium: {
+    bg: "var(--ds-risk-medium-bg)",
+    dot: "var(--ds-risk-medium)",
+    text: "var(--ds-risk-medium-fg)",
+  },
+  high: {
+    bg: "var(--ds-risk-high-bg)",
+    dot: "var(--ds-risk-high)",
+    text: "var(--ds-risk-high-fg)",
+  },
+  extreme: {
+    bg: "var(--ds-risk-critical-bg)",
+    dot: "var(--ds-risk-critical)",
+    text: "var(--ds-risk-critical-fg)",
+  },
 };
 
 /** Softer green for Pre/Post rating "L" in table so it doesn’t clash with Mitigation Movement green. */
@@ -17,10 +33,10 @@ export const RATING_TABLE_LEVEL_STYLES: Record<
   RiskLevel,
   { bg: string; text: string }
 > = {
-  low: { bg: "rgba(74, 222, 128, 0.15)", text: "#15803d" },
-  medium: { bg: "rgba(234, 179, 8, 0.14)", text: "#a16207" },
-  high: { bg: "rgba(239, 68, 68, 0.12)", text: "#b91c1c" },
-  extreme: { bg: "rgba(127, 29, 29, 0.2)", text: "#7f1d1d" },
+  low: { bg: "var(--ds-risk-low-soft-bg)", text: "var(--ds-risk-low-fg)" },
+  medium: { bg: "var(--ds-risk-medium-bg)", text: "var(--ds-risk-medium-fg)" },
+  high: { bg: "var(--ds-risk-high-bg)", text: "var(--ds-risk-high-fg)" },
+  extreme: { bg: "var(--ds-risk-critical-bg)", text: "var(--ds-risk-critical-fg)" },
 };
 
 export function RiskLevelBadge({ level }: { level: RiskLevel }) {

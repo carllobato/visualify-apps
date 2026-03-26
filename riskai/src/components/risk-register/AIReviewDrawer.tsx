@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { Callout, Card, CardBody } from "@visualify/design-system";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { probabilityScaleToDisplayPct } from "@/domain/risk/risk.logic";
 import type { RiskMergeCluster, MergeRiskDraft } from "@/domain/risk/risk-merge.types";
@@ -16,9 +17,9 @@ import {
 } from "./RiskOwnerPicker";
 
 const panelClass =
-  "rounded-lg border border-neutral-200 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800/50 p-3 text-sm";
-const labelClass = "text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mt-2 first:mt-0";
-const valueClass = "text-[var(--foreground)] mt-0.5";
+  "rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]/50 p-3 text-sm";
+const labelClass = "text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mt-2 first:mt-0";
+const valueClass = "text-[var(--ds-text-primary)] mt-0.5";
 
 function formatPct(n: number | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -94,7 +95,7 @@ function riskValue(risk: Risk, key: string): string {
 }
 
 const inputClass =
-  "w-full px-2 py-1.5 rounded border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-sm text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-neutral-400 dark:focus:ring-neutral-500";
+  "w-full px-2 py-1.5 rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--ds-border)]";
 
 type ComparisonRow = {
   key: string;
@@ -186,7 +187,7 @@ function ProposedMergedCard({ draft }: { draft: MergeRiskDraft }) {
       <div className={labelClass}>Proposed merged risk (summary)</div>
       <div className={valueClass}><strong>{draft.title}</strong></div>
       {draft.description && (
-        <div className={valueClass + " text-neutral-600 dark:text-neutral-300"}>{draft.description}</div>
+        <div className={valueClass + " text-[var(--ds-text-secondary)]"}>{draft.description}</div>
       )}
       <div className={labelClass}>Category</div>
       <div className={valueClass}>{draft.category}</div>
@@ -202,7 +203,7 @@ function ProposedMergedCard({ draft }: { draft: MergeRiskDraft }) {
           <div className={valueClass}>
             {draft.mitigation}
             {draft.mitigationCost != null && draft.mitigationCost > 0 && (
-              <span className="text-neutral-500 dark:text-neutral-400"> · Cost {formatCost(draft.mitigationCost)}</span>
+              <span className="text-[var(--ds-text-muted)]"> · Cost {formatCost(draft.mitigationCost)}</span>
             )}
           </div>
         </>
@@ -265,26 +266,26 @@ function ClusterBlock({
   .filter((r: Risk | undefined): r is Risk => r != null);
 
   return (
-    <section className="border border-neutral-200 dark:border-neutral-600 rounded-xl p-5 bg-[var(--background)]">
-      <h3 className="font-semibold text-[var(--foreground)] text-lg">
+    <section className="border border-[var(--ds-border)] rounded-xl p-5 bg-[var(--ds-surface-muted)]">
+      <h3 className="font-semibold text-[var(--ds-text-primary)] text-lg">
         Cluster #{cluster.clusterId} – Similar risks
       </h3>
-      <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mt-2">Why these are similar</p>
-      <p className="text-sm text-[var(--foreground)] mt-0.5 mb-4">{cluster.rationale}</p>
+      <p className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mt-2">Why these are similar</p>
+      <p className="text-sm text-[var(--ds-text-secondary)] mt-0.5 mb-4">{cluster.rationale}</p>
 
-      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-600">
+      <div className="overflow-x-auto rounded-lg border border-[var(--ds-border)]">
         <table className="w-full min-w-[800px] text-sm border-collapse">
           <thead>
-            <tr className="bg-neutral-100 dark:bg-neutral-800/80">
-              <th className="text-left py-2 px-3 font-medium text-neutral-600 dark:text-neutral-300 w-[140px] border-b border-r border-neutral-200 dark:border-neutral-600">
+            <tr className="bg-[var(--ds-surface-muted)]/80">
+              <th className="text-left py-2 px-3 font-medium text-[var(--ds-text-secondary)] w-[140px] border-b border-r border-[var(--ds-border)]">
                 Parameter
               </th>
               {sourceRisks.map((r: Risk) => (
                 <th
                   key={r.id}
-                  className="text-left py-2 px-3 font-medium text-neutral-700 dark:text-neutral-200 border-b border-r border-neutral-200 dark:border-neutral-600 last:border-r-0 max-w-[220px]"
+                  className="text-left py-2 px-3 font-medium text-[var(--ds-text-secondary)] border-b border-r border-[var(--ds-border)] last:border-r-0 max-w-[220px]"
                 >
-                  <span className="font-mono text-xs text-neutral-500">
+                  <span className="font-mono text-xs text-[var(--ds-text-muted)]">
                     {r.riskNumber != null ? String(r.riskNumber).padStart(3, "0") : r.id.slice(0, 8)}
                   </span>
                   <span className="block truncate font-semibold mt-0.5" title={r.title}>
@@ -292,7 +293,7 @@ function ClusterBlock({
                   </span>
                 </th>
               ))}
-              <th className="text-left py-2 px-3 font-medium text-blue-700 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-900/20 border-b last:border-r-0 max-w-[220px]">
+              <th className="text-left py-2 px-3 font-medium text-[var(--ds-status-info-fg)] bg-[var(--ds-status-info-bg)] border-b last:border-r-0 max-w-[220px]">
                 Proposed merged (edit below)
               </th>
             </tr>
@@ -301,20 +302,20 @@ function ClusterBlock({
             {comparisonRows.map(({ key, label, inputType, selectOptions }) => (
               <tr
                 key={key}
-                className="border-b border-neutral-200 dark:border-neutral-600 last:border-b-0 hover:bg-neutral-50/50 dark:hover:bg-neutral-800/30"
+                className="border-b border-[var(--ds-border)] last:border-b-0 hover:bg-[color-mix(in_oklab,var(--ds-surface-hover)_50%,transparent)]"
               >
-                <td className="py-2 px-3 text-neutral-600 dark:text-neutral-400 font-medium border-r border-neutral-200 dark:border-neutral-600 align-top">
+                <td className="py-2 px-3 text-[var(--ds-text-secondary)] font-medium border-r border-[var(--ds-border)] align-top">
                   {label}
                 </td>
                 {sourceRisks.map((r: Risk) => (
                   <td
                     key={r.id}
-                    className="py-2 px-3 text-[var(--foreground)] border-r border-neutral-200 dark:border-neutral-600 last:border-r-0 align-top max-w-[220px] break-words"
+                    className="py-2 px-3 text-[var(--ds-text-primary)] border-r border-[var(--ds-border)] last:border-r-0 align-top max-w-[220px] break-words"
                   >
                     {riskValue(r, key)}
                   </td>
                 ))}
-                <td className="py-1 px-2 align-top max-w-[220px] bg-blue-50/30 dark:bg-blue-900/10">
+                <td className="py-1 px-2 align-top max-w-[220px] bg-[var(--ds-status-info-subtle-bg)]">
                   {!draft ? (
                     "—"
                   ) : inputType === "textarea" ? (
@@ -397,21 +398,21 @@ function ClusterBlock({
           <div className="mt-4">
             <ProposedMergedCard draft={draft} />
           </div>
-          <p className="mt-3 text-xs text-neutral-500 dark:text-neutral-400">
+          <p className="mt-3 text-xs text-[var(--ds-text-muted)]">
             Accept creates a <strong>new risk</strong> from the proposed values and <strong>archives</strong> the merged risks for completeness.
           </p>
           <div className="flex gap-2 mt-3">
             <button
               type="button"
               onClick={() => void handleAccept()}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-neutral-800 dark:bg-neutral-200 text-neutral-100 dark:text-neutral-900 hover:opacity-90"
+              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] hover:opacity-90 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)]"
             >
               Accept merge (new risk + archive merged)
             </button>
             <button
               type="button"
               onClick={() => onSkip(cluster.clusterId)}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
             >
               Skip
             </button>
@@ -423,7 +424,7 @@ function ClusterBlock({
           <button
             type="button"
             onClick={() => onSkip(cluster.clusterId)}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
           >
             Skip
           </button>
@@ -469,7 +470,7 @@ export function AIReviewDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-40"
+        className="fixed inset-0 z-40 bg-[var(--ds-overlay)]"
         aria-hidden
         onClick={onClose}
       />
@@ -480,17 +481,17 @@ export function AIReviewDrawer({
         aria-modal="true"
       >
         <div
-          className="pointer-events-auto w-full max-w-[70vw] max-h-[90vh] flex flex-col bg-[var(--background)] border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-2xl overflow-hidden"
+          className="pointer-events-auto w-full max-w-[70vw] max-h-[90vh] flex flex-col bg-[var(--ds-surface-elevated)] border border-[var(--ds-border)] rounded-xl shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-700 shrink-0">
-            <h2 id="ai-review-title" className="text-xl font-semibold text-[var(--foreground)]">
+          <div className="flex items-center justify-between p-4 border-b border-[var(--ds-border)] shrink-0">
+            <h2 id="ai-review-title" className="text-xl font-semibold text-[var(--ds-text-primary)]">
               AI Risk Review – Similar risk merge
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-400 transition-colors"
+              className="p-2 rounded-lg hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
               aria-label="Close"
             >
               <span aria-hidden className="text-xl leading-none">×</span>
@@ -498,17 +499,28 @@ export function AIReviewDrawer({
           </div>
           <div className="flex-1 overflow-y-auto p-6 min-h-0">
             {loading && (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Reviewing risks…</p>
-            )}
-            {error && (
-              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 text-sm text-amber-800 dark:text-amber-200" role="alert">
-                {error}
+              <div className="space-y-2" aria-busy="true">
+                <div className="h-3 w-40 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                <div className="h-3 w-56 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+                <span className="sr-only">Reviewing risks</span>
               </div>
             )}
+            {error && (
+              <Callout status="warning" role="alert" className="text-[length:var(--ds-text-sm)]">
+                {error}
+              </Callout>
+            )}
             {!loading && !error && clusters.length === 0 && (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                No similar risk groups to merge. Try again after adding more risks.
-              </p>
+              <Card variant="inset">
+                <CardBody className="py-6 text-center">
+                  <p className="m-0 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
+                    No merge groups found
+                  </p>
+                  <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    No similar risk groups to merge. Try again after adding more risks.
+                  </p>
+                </CardBody>
+              </Card>
             )}
             {!loading && !error && clusters.length > 0 && (
               <div className="space-y-6">

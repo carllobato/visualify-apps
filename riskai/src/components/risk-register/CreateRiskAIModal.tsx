@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { RiskExtractPanel } from "@/components/risk-register/RiskExtractPanel";
 
 const btnSecondary =
-  "px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 shrink-0";
+  "px-4 py-2 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] text-sm font-medium hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0";
 
 export function CreateRiskAIModal({
   open,
@@ -22,7 +22,7 @@ export function CreateRiskAIModal({
 
   const overlay = (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-900/75 dark:bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-risk-ai-dialog-title"
@@ -30,17 +30,17 @@ export function CreateRiskAIModal({
     >
       <div
         style={{ width: "90vw", maxWidth: 560, maxHeight: "90vh" }}
-        className="shrink-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-xl flex flex-col overflow-hidden"
+        className="shrink-0 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6 py-3">
-          <h2 id="create-risk-ai-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
+          <h2 id="create-risk-ai-dialog-title" className="text-lg font-semibold text-[var(--ds-text-primary)]">
             Create Risk with AI
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-md border border-transparent text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+            className="p-2 rounded-md border border-transparent text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
             aria-label="Close"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -49,12 +49,12 @@ export function CreateRiskAIModal({
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-4">
+          <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
             Describe your risk including mitigation, cost and time data. AI will extract structured risk fields.
           </p>
           <RiskExtractPanel hideTitle showStatus />
         </div>
-        <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-neutral-200 dark:border-neutral-700">
+        <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)]">
           <button type="button" onClick={onClose} className={btnSecondary}>
             Close
           </button>

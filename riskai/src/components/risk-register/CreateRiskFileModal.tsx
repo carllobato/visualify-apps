@@ -8,6 +8,7 @@ import type { Risk, RiskDraft } from "@/domain/risk/risk.schema";
 import { RiskDraftSchema, RiskSchema } from "@/domain/risk/risk.schema";
 import { draftsToRisks } from "@/domain/risk/risk.mapper";
 import { useRiskRegister } from "@/store/risk-register.store";
+import { Callout } from "@visualify/design-system";
 
 function isDraftLike(item: unknown): item is RiskDraft {
   if (!item || typeof item !== "object") return false;
@@ -56,9 +57,9 @@ function deduplicateByTitle(risks: Risk[]): Risk[] {
 }
 
 const btnPrimary =
-  "px-4 py-2 rounded-md bg-neutral-800 dark:bg-neutral-200 text-neutral-100 dark:text-neutral-900 text-sm font-medium hover:bg-neutral-700 dark:hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-500 dark:focus:ring-neutral-400 shrink-0";
+  "px-4 py-2 rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
 const btnSecondary =
-  "px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500 shrink-0";
+  "px-4 py-2 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] text-sm font-medium hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0";
 
 export function CreateRiskFileModal({
   open,
@@ -185,7 +186,7 @@ export function CreateRiskFileModal({
 
   const overlay = (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-900/75 dark:bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-risk-file-dialog-title"
@@ -193,17 +194,17 @@ export function CreateRiskFileModal({
     >
       <div
         style={{ width: "90vw", maxWidth: 480, maxHeight: "90vh" }}
-        className="shrink-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-xl flex flex-col overflow-hidden"
+        className="shrink-0 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6 py-3">
-          <h2 id="create-risk-file-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
+          <h2 id="create-risk-file-dialog-title" className="text-lg font-semibold text-[var(--ds-text-primary)]">
             Create Risk with AI File Uploader
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-md border border-transparent text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+            className="p-2 rounded-md border border-transparent text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
             aria-label="Close"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -226,32 +227,32 @@ export function CreateRiskFileModal({
             onDrop={onFileDrop}
             className={`border-2 border-dashed rounded-md p-6 text-center text-sm transition-colors min-h-[120px] flex flex-col justify-center ${
               fileDragOver
-                ? "border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20"
-                : "border-neutral-300 dark:border-neutral-600 bg-neutral-50/50 dark:bg-neutral-800/30 hover:border-neutral-400 dark:hover:border-neutral-500"
+                ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
+                : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] hover:border-[var(--ds-border)]"
             }`}
           >
             {lastSavedFileId && lastSavedFileName ? (
               <>
-                <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300">
+                <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]">
                   XLSX
                 </span>
-                <p className="text-[var(--foreground)] font-medium mt-2 truncate" title={lastSavedFileName}>
+                <p className="text-[var(--ds-text-primary)] font-medium mt-2 truncate" title={lastSavedFileName}>
                   {lastSavedFileName}
                 </p>
-                <p className="text-neutral-500 dark:text-neutral-400 text-xs mt-1">
+                <p className="text-[var(--ds-text-muted)] text-xs mt-1">
                   Drop another file to replace
                 </p>
               </>
             ) : (
               <>
-                <p className="text-neutral-600 dark:text-neutral-400 mb-2">
+                <p className="text-[var(--ds-text-secondary)] mb-2">
                   {fileDragOver ? "Drop file here…" : "Drag and drop .xlsx here, or"}
                 </p>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={fileUploadStatus === "loading"}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
                 >
                   Choose file
                 </button>
@@ -259,12 +260,15 @@ export function CreateRiskFileModal({
             )}
           </div>
           {fileUploadStatus === "loading" && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Saving…</p>
+            <div className="flex items-center gap-2 py-1" aria-busy="true">
+              <div className="h-3 w-24 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+              <span className="sr-only">Saving file</span>
+            </div>
           )}
           {fileUploadStatus === "error" && fileUploadMessage && (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
               {fileUploadMessage}
-            </p>
+            </Callout>
           )}
           <button
             type="button"
@@ -275,20 +279,23 @@ export function CreateRiskFileModal({
             Generate Risk
           </button>
           {generateStatus === "loading" && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">Extracting risks…</p>
+            <div className="flex items-center gap-2 py-1" aria-busy="true">
+              <div className="h-3 w-32 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
+              <span className="sr-only">Extracting risks</span>
+            </div>
           )}
           {generateStatus === "success" && generateMessage && (
-            <p className="text-sm text-blue-600 dark:text-blue-400" role="status">
+            <Callout status="success" role="status" className="text-[length:var(--ds-text-sm)]">
               {generateMessage}
-            </p>
+            </Callout>
           )}
           {generateStatus === "error" && generateMessage && (
-            <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
               {generateMessage}
-            </p>
+            </Callout>
           )}
         </div>
-        <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-neutral-200 dark:border-neutral-700">
+        <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)]">
           <button type="button" onClick={onClose} className={btnSecondary}>
             Close
           </button>

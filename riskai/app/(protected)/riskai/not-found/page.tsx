@@ -18,22 +18,22 @@ export default function AccessNotFoundPage() {
   return (
     <main className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <div className="max-w-md text-center space-y-4">
-        <h1 className="text-xl font-semibold text-neutral-800 dark:text-neutral-200">
+        <h1 className="text-xl font-semibold text-[var(--ds-text-primary)]">
           Project or portfolio not found
         </h1>
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p className="text-sm text-[var(--ds-text-secondary)]">
           The item you requested does not exist or you do not have access to it.
         </p>
         <div className="flex flex-wrap justify-center gap-3 pt-2">
           <Link
             href={riskaiPath("/projects")}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+            className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
           >
             Go to projects
           </Link>
           <Link
             href={riskaiPath("/portfolios")}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900/50"
+            className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] text-[var(--ds-status-success-fg)] hover:bg-[var(--ds-status-success-bg)]"
           >
             Go to portfolios
           </Link>

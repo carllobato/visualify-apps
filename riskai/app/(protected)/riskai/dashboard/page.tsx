@@ -13,6 +13,7 @@ import { fetchPublicProfile } from "@/lib/profiles/profileDb";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { dlog } from "@/lib/debug";
 import { riskaiPath } from "@/lib/routes";
+import { Callout, Card, CardBody } from "@visualify/design-system";
 
 export const dynamic = "force-dynamic";
 
@@ -53,41 +54,46 @@ export default async function DashboardPage() {
   return (
     <div className="w-full px-4 py-10 sm:px-6">
       {devBypass && !user ? (
-        <p className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+        <Callout status="warning" className="mb-6 text-[length:var(--ds-text-sm)]">
           <span className="font-medium">Dev preview:</span> no Supabase session. Remove{" "}
-          <code className="rounded bg-amber-100/80 px-1 font-mono text-xs dark:bg-amber-900/50">
+          <code className="rounded bg-[var(--ds-surface-muted)] px-1 font-mono text-[length:var(--ds-text-xs)]">
             DEV_SKIP_AUTH_GUARD=1
           </code>{" "}
-          from <code className="font-mono text-xs">.env.local</code> to test real sign-in. Project URLs still need a
-          logged-in user (RLS).
-        </p>
+          from <code className="font-mono text-[length:var(--ds-text-xs)]">.env.local</code> to test real sign-in.
+          Project URLs still need a logged-in user (RLS).
+        </Callout>
       ) : null}
       <GreetingHeader firstName={dashboardFirstName} />
 
       <section className="mb-10">
-        <h2 className="mb-3 text-lg font-medium text-[var(--foreground)]">Portfolios</h2>
+        <h2 className="mb-3 text-lg font-medium text-[var(--ds-text-primary)]">Portfolios</h2>
         {portfolios.length === 0 ? (
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-6 text-center dark:border-neutral-700 dark:bg-neutral-800/30">
-            <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
-              Create a portfolio to organise your projects. If you&apos;re seeing this by mistake, refresh the page.
-            </p>
-            <Link
-              href={riskaiPath("/onboarding/portfolio")}
-              className="inline-flex rounded-md border border-neutral-300 bg-[var(--background)] px-4 py-2 text-sm font-medium text-neutral-800 no-underline hover:bg-neutral-100 dark:border-neutral-600 dark:text-neutral-100 dark:hover:bg-neutral-800"
-            >
-              Create portfolio
-            </Link>
-          </div>
+          <Card variant="inset" className="text-center">
+            <CardBody className="py-8">
+              <p className="m-0 text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)]">
+                No portfolios yet
+              </p>
+              <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                Create a portfolio to organise your projects. If you&apos;re seeing this by mistake, refresh the page.
+              </p>
+              <Link
+                href={riskaiPath("/onboarding/portfolio")}
+                className="mt-6 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
+              >
+                Create portfolio
+              </Link>
+            </CardBody>
+          </Card>
         ) : (
           <ul className="space-y-2">
             {portfolios.map((p) => (
               <li key={p.id}>
                 <Link
                   href={riskaiPath(`/portfolios/${p.id}`)}
-                  className="group flex h-14 items-center justify-between gap-3 rounded-lg border border-neutral-200/55 bg-[var(--background)] px-[1.125rem] text-[var(--foreground)] shadow-[0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:border-neutral-200/80 hover:shadow-[0_3px_12px_rgba(0,0,0,0.055)] dark:border-neutral-700/50 dark:shadow-[0_1px_2px_rgba(0,0,0,0.2)] dark:hover:border-neutral-700/75 dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus-visible:ring-2 focus-visible:ring-neutral-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]"
+                  className="group flex h-14 items-center justify-between gap-3 rounded-lg border border-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] bg-[var(--ds-surface-elevated)] px-[1.125rem] text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-tile)] outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--ds-border)_80%,transparent)] hover:shadow-[var(--ds-elevation-tile-hover)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]"
                 >
                   <span className="font-medium">{p.name || p.id}</span>
-                  <span className="ml-2 text-sm text-neutral-500 dark:text-neutral-400">Open portfolio →</span>
+                  <span className="ml-2 text-sm text-[var(--ds-text-muted)]">Open portfolio →</span>
                 </Link>
               </li>
             ))}
@@ -96,29 +102,39 @@ export default async function DashboardPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-medium text-[var(--foreground)]">Projects</h2>
+        <h2 className="mb-3 text-lg font-medium text-[var(--ds-text-primary)]">Projects</h2>
         {projects.length === 0 ? (
-          <div className="rounded-lg border border-neutral-200 bg-neutral-50/50 p-6 text-center dark:border-neutral-700 dark:bg-neutral-800/30">
-            {portfolios.length === 0 ? (
-              <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
-                You don&apos;t have any projects yet. Create a portfolio first if you need to start your own workspace, or ask to be added to a project you collaborate on.
-              </p>
-            ) : (
-              <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">You don&apos;t have any projects yet.</p>
-            )}
-            {portfolios.length > 0 ? (
-              <Link
-                href={
-                  portfolios[0]?.id
-                    ? `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolios[0].id)}`
-                    : riskaiPath("/create-project")
-                }
-                className="inline-flex rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 no-underline hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200 dark:hover:bg-emerald-900/50"
-              >
-                Create your first project
-              </Link>
-            ) : null}
-          </div>
+          <Card variant="inset" className="text-center">
+            <CardBody className="py-8">
+              {portfolios.length === 0 ? (
+                <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                  You don&apos;t have any projects yet. Create a portfolio first if you need to start your own workspace,
+                  or ask to be added to a project you collaborate on.
+                </p>
+              ) : (
+                <>
+                  <p className="m-0 text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)]">
+                    No projects yet
+                  </p>
+                  <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    Create a project to open the risk register and simulations.
+                  </p>
+                </>
+              )}
+              {portfolios.length > 0 ? (
+                <Link
+                  href={
+                    portfolios[0]?.id
+                      ? `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolios[0].id)}`
+                      : riskaiPath("/create-project")
+                  }
+                  className="mt-6 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
+                >
+                  Create your first project
+                </Link>
+              ) : null}
+            </CardBody>
+          </Card>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {projectTiles.map((payload) => (

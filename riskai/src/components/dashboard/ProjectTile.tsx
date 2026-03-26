@@ -5,13 +5,13 @@ import { riskaiPath } from "@/lib/routes";
 function ragDotClass(status: ProjectTilePayload["ragStatus"]): string {
   switch (status) {
     case "green":
-      return "bg-emerald-500 dark:bg-emerald-400";
+      return "bg-[var(--ds-risk-low)]";
     case "amber":
-      return "bg-amber-500 dark:bg-amber-400";
+      return "bg-[var(--ds-risk-medium)]";
     case "red":
-      return "bg-red-500 dark:bg-red-400";
+      return "bg-[var(--ds-risk-high)]";
     default:
-      return "bg-neutral-400 dark:bg-neutral-500";
+      return "bg-[color-mix(in_oklab,var(--ds-text-muted)_72%,var(--ds-surface-default))]";
   }
 }
 
@@ -40,7 +40,7 @@ function RagDot({ status }: { status: ProjectTilePayload["ragStatus"] }) {
 
 /** Shared shell for dashboard project row tiles (project + new-project). Fixed height so rows align. */
 export const PROJECT_TILE_LINK_CLASSES =
-  "group flex h-14 items-center justify-between gap-3 self-start rounded-lg border border-neutral-200/55 bg-[var(--background)] px-[1.125rem] shadow-[0_1px_2px_rgba(0,0,0,0.03)] outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:border-neutral-200/80 hover:shadow-[0_3px_12px_rgba(0,0,0,0.055)] dark:border-neutral-700/50 dark:shadow-[0_1px_2px_rgba(0,0,0,0.2)] dark:hover:border-neutral-700/75 dark:hover:shadow-[0_4px_16px_rgba(0,0,0,0.28)] focus-visible:ring-2 focus-visible:ring-neutral-400/35 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]";
+  "group flex h-14 items-center justify-between gap-3 self-start rounded-lg border border-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] bg-[var(--ds-surface-elevated)] px-[1.125rem] shadow-[var(--ds-elevation-tile)] outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--ds-border)_80%,transparent)] hover:shadow-[var(--ds-elevation-tile-hover)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]";
 
 export type ProjectTileProps = {
   payload: ProjectTilePayload;
@@ -48,7 +48,7 @@ export type ProjectTileProps = {
 
 /** Distinct from project rows: dashed frame, tinted fill, emerald hover. */
 const NEW_PROJECT_TILE_EXTRA_CLASSES =
-  "border-dashed border-neutral-300/70 bg-neutral-50/60 hover:border-emerald-400/45 hover:bg-emerald-50/35 dark:border-neutral-600/70 dark:bg-neutral-800/40 dark:hover:border-emerald-500/35 dark:hover:bg-emerald-950/25";
+  "border-dashed border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_60%,transparent)] hover:border-[var(--ds-risk-low-border)] hover:bg-[var(--ds-risk-low-soft-bg)] dark:border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_40%,transparent)] dark:hover:border-[var(--ds-risk-low-border)] dark:hover:bg-[color-mix(in_oklab,var(--ds-risk-low)_14%,var(--ds-surface-default))]";
 
 export type NewProjectTileProps = {
   /** Default portfolio for `/create-project` when the user has several. */
@@ -70,11 +70,11 @@ export function NewProjectTile({ portfolioId = null }: NewProjectTileProps) {
       className={`${PROJECT_TILE_LINK_CLASSES} ${NEW_PROJECT_TILE_EXTRA_CLASSES}`}
       aria-label="Create a new project"
     >
-      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight tracking-tight text-neutral-800 dark:text-neutral-100">
+      <span className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight tracking-tight text-[var(--ds-text-primary)]">
         New project
       </span>
       <span
-        className="shrink-0 text-2xl font-light leading-none text-neutral-800 dark:text-neutral-100"
+        className="shrink-0 text-2xl font-light leading-none text-[var(--ds-text-primary)]"
         aria-hidden
       >
         +
@@ -96,7 +96,7 @@ export function ProjectTile({ payload }: ProjectTileProps) {
       className={PROJECT_TILE_LINK_CLASSES}
       aria-label={`Open project ${title}. ${ragAriaFragment(ragStatus)}`}
     >
-      <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight tracking-tight text-[var(--foreground)]">
+      <h3 className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight tracking-tight text-[var(--ds-text-primary)]">
         {title}
       </h3>
       <RagDot status={ragStatus} />

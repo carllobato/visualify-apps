@@ -21,8 +21,10 @@ const themeScript = `
     var stored = localStorage.getItem('riskai-theme');
     var theme = (stored === 'dark' || stored === 'light') ? stored
       : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(theme);
+    var root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    root.setAttribute('data-theme', theme);
   } catch (e) {}
 })();
 `;
@@ -37,7 +39,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className={`antialiased font-sans bg-[var(--background)] text-[var(--foreground)] ${geist.variable} ${geistMono.variable}`}>
+      <body className={`antialiased font-sans ${geist.variable} ${geistMono.variable}`}>
         <ThemeProvider>
           <ProjectionScenarioProvider>
             <RiskRegisterProvider>

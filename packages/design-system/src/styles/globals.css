@@ -9,7 +9,8 @@
   --ds-muted-foreground: #6b7280;
 
   --ds-border: rgba(15, 23, 42, 0.08);
-  --ds-primary: #3f5bd6;
+  --ds-border-subtle: color-mix(in oklab, var(--ds-border) 52%, transparent);
+  --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 36%, var(--ds-surface-default));
   --ds-primary-foreground: #ffffff;
 
   --ds-success: #1f9d55;
@@ -81,6 +82,51 @@
   --ds-status-neutral-strong-fg: var(--ds-text-inverse);
   --ds-status-neutral-strong-border: color-mix(in oklab, var(--ds-status-neutral) 62%, var(--ds-text-primary));
 
+  /* Semantic risk levels & alert meanings (RiskAI): low / watch / high / critical / emerging / volatile / neutral */
+  --ds-risk-low: #16a34a;
+  --ds-risk-medium: #ca8a04;
+  --ds-risk-high: #dc2626;
+  --ds-risk-critical: #991b1b;
+  --ds-risk-emerging: #2563eb;
+  --ds-risk-volatile: #ea580c;
+  --ds-risk-neutral: color-mix(in oklab, var(--ds-text-primary) 28%, var(--ds-text-muted));
+
+  --ds-risk-low-bg: color-mix(in oklab, var(--ds-risk-low) 18%, var(--ds-surface-default));
+  --ds-risk-low-fg: color-mix(in oklab, var(--ds-risk-low) 78%, var(--ds-text-primary));
+  --ds-risk-low-border: color-mix(in oklab, var(--ds-risk-low) 34%, var(--ds-border));
+  --ds-risk-low-soft-bg: color-mix(in oklab, var(--ds-risk-low) 15%, var(--ds-surface-default));
+  --ds-risk-low-matrix-tint: color-mix(in oklab, var(--ds-risk-low) 8%, var(--ds-surface-default));
+  --ds-risk-low-zone-bg: color-mix(in oklab, var(--ds-risk-low) 10%, var(--ds-surface-default));
+
+  --ds-risk-medium-bg: color-mix(in oklab, var(--ds-risk-medium) 18%, var(--ds-surface-default));
+  --ds-risk-medium-fg: color-mix(in oklab, var(--ds-risk-medium) 78%, var(--ds-text-primary));
+  --ds-risk-medium-border: color-mix(in oklab, var(--ds-risk-medium) 34%, var(--ds-border));
+  --ds-risk-medium-matrix-tint: color-mix(in oklab, var(--ds-risk-medium) 10%, var(--ds-surface-default));
+  --ds-risk-medium-zone-bg: color-mix(in oklab, var(--ds-risk-medium) 10%, var(--ds-surface-default));
+
+  --ds-risk-high-bg: color-mix(in oklab, var(--ds-risk-high) 18%, var(--ds-surface-default));
+  --ds-risk-high-fg: color-mix(in oklab, var(--ds-risk-high) 78%, var(--ds-text-primary));
+  --ds-risk-high-border: color-mix(in oklab, var(--ds-risk-high) 34%, var(--ds-border));
+  --ds-risk-high-matrix-tint: color-mix(in oklab, var(--ds-risk-high) 8%, var(--ds-surface-default));
+  --ds-risk-high-zone-bg: color-mix(in oklab, var(--ds-risk-high) 10%, var(--ds-surface-default));
+
+  --ds-risk-critical-bg: color-mix(in oklab, var(--ds-risk-critical) 18%, var(--ds-surface-default));
+  --ds-risk-critical-fg: color-mix(in oklab, var(--ds-risk-critical) 78%, var(--ds-text-primary));
+  --ds-risk-critical-border: color-mix(in oklab, var(--ds-risk-critical) 34%, var(--ds-border));
+  --ds-risk-critical-matrix-tint: color-mix(in oklab, var(--ds-risk-critical) 12%, var(--ds-surface-default));
+
+  --ds-risk-emerging-bg: color-mix(in oklab, var(--ds-risk-emerging) 18%, var(--ds-surface-default));
+  --ds-risk-emerging-fg: color-mix(in oklab, var(--ds-risk-emerging) 78%, var(--ds-text-primary));
+  --ds-risk-emerging-border: color-mix(in oklab, var(--ds-risk-emerging) 34%, var(--ds-border));
+
+  --ds-risk-volatile-bg: color-mix(in oklab, var(--ds-risk-volatile) 18%, var(--ds-surface-default));
+  --ds-risk-volatile-fg: color-mix(in oklab, var(--ds-risk-volatile) 78%, var(--ds-text-primary));
+  --ds-risk-volatile-border: color-mix(in oklab, var(--ds-risk-volatile) 34%, var(--ds-border));
+
+  --ds-risk-neutral-bg: color-mix(in oklab, var(--ds-risk-neutral) 18%, var(--ds-surface-default));
+  --ds-risk-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-risk-neutral));
+  --ds-risk-neutral-border: color-mix(in oklab, var(--ds-risk-neutral) 34%, var(--ds-border));
+
   --ds-radius-sm: 10px;
   --ds-radius-md: 16px;
   --ds-radius-lg: 24px;
@@ -89,6 +135,49 @@
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --ds-shadow-md: 0 12px 40px rgba(15, 23, 42, 0.08);
   --ds-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
+
+  /* Ink for scrims, shadows, vignettes (independent of semantic text colour) */
+  --ds-scrim-ink: #0f172a;
+  /* Modal / drawer backdrop — single system app-wide */
+  --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 50%, transparent);
+  /* Marketing / photo washes behind glass (login hero) */
+  --ds-backdrop-photo-light: color-mix(in oklab, var(--ds-text-inverse) 48%, transparent);
+  --ds-backdrop-photo-dark: color-mix(in oklab, var(--ds-scrim-ink) 80%, transparent);
+  /* Frosted auth & compact cards */
+  --ds-surface-glass: color-mix(in oklab, var(--ds-text-inverse) 64%, transparent);
+  --ds-surface-glass-dark: color-mix(in oklab, rgb(20 20 20) 68%, transparent);
+  /* Rim on glass shells (login card) */
+  --ds-border-glass-shell: color-mix(in oklab, var(--ds-text-inverse) 8%, transparent);
+  /* Alternate shell border (e.g. forgot-password card) */
+  --ds-border-auth-shell: color-mix(in oklab, var(--ds-scrim-ink) 14%, transparent);
+  --ds-shadow-glass-outer: 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 6%, transparent),
+    0 8px 32px -4px color-mix(in oklab, var(--ds-scrim-ink) 9%, transparent);
+  --ds-shadow-auth-card: 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 6%, transparent),
+    0 4px 14px -2px color-mix(in oklab, var(--ds-scrim-ink) 9%, transparent);
+  --ds-gradient-glass-vignette-light: radial-gradient(
+    ellipse 78% 72% at 50% 45%,
+    transparent 0%,
+    color-mix(in oklab, var(--ds-scrim-ink) 6%, transparent) 100%
+  );
+  --ds-gradient-glass-vignette-dark: radial-gradient(
+    ellipse 78% 72% at 50% 45%,
+    transparent 0%,
+    color-mix(in oklab, var(--ds-scrim-ink) 22%, transparent) 100%
+  );
+  /* RiskAI brand accent — primary actions use brand */
+  --ds-brand-accent: #d96c32;
+  --ds-primary: var(--ds-brand-accent);
+  /* Focus / scroll target highlight */
+  --ds-focus-highlight-bg: color-mix(in oklab, var(--ds-status-warning) 20%, transparent);
+  --ds-focus-highlight-outline: color-mix(in oklab, var(--ds-status-warning) 60%, transparent);
+  /* Solid CTA that uses inverse text — hover border tints */
+  --ds-control-strong-border-hover: color-mix(in oklab, var(--ds-text-inverse) 25%, transparent);
+  --ds-control-strong-border-active: color-mix(in oklab, var(--ds-text-inverse) 40%, transparent);
+  /* Raised list tiles */
+  --ds-elevation-tile: 0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 3%, transparent);
+  --ds-elevation-tile-hover: 0 3px 12px color-mix(in oklab, var(--ds-scrim-ink) 5.5%, transparent);
+  /* Modal panels (legal, etc.) */
+  --ds-shadow-modal-panel: 0 25px 50px -12px color-mix(in oklab, var(--ds-scrim-ink) 20%, transparent);
 
   --ds-space-1: 4px;
   --ds-space-2: 8px;
@@ -164,7 +253,8 @@
   --ds-muted-foreground: #9ca3af;
 
   --ds-border: rgba(255, 255, 255, 0.08);
-  --ds-primary: #5b74e8;
+  --ds-border-subtle: color-mix(in oklab, var(--ds-border) 58%, transparent);
+  --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 44%, var(--ds-surface-default));
   --ds-primary-foreground: #ffffff;
 
   --ds-text-primary: var(--ds-foreground);
@@ -232,9 +322,85 @@
   --ds-status-neutral-strong-fg: var(--ds-text-inverse);
   --ds-status-neutral-strong-border: color-mix(in oklab, var(--ds-status-neutral) 64%, var(--ds-text-primary));
 
+  --ds-risk-low: #4ade80;
+  --ds-risk-medium: #fbbf24;
+  --ds-risk-high: #f87171;
+  --ds-risk-critical: #ef4444;
+  --ds-risk-emerging: #60a5fa;
+  --ds-risk-volatile: #fb923c;
+  --ds-risk-neutral: color-mix(in oklab, var(--ds-text-primary) 20%, var(--ds-text-muted));
+
+  --ds-risk-low-bg: color-mix(in oklab, var(--ds-risk-low) 22%, var(--ds-surface-default));
+  --ds-risk-low-fg: color-mix(in oklab, var(--ds-risk-low) 82%, var(--ds-text-primary));
+  --ds-risk-low-border: color-mix(in oklab, var(--ds-risk-low) 38%, var(--ds-border));
+  --ds-risk-low-soft-bg: color-mix(in oklab, var(--ds-risk-low) 16%, var(--ds-surface-default));
+  --ds-risk-low-matrix-tint: color-mix(in oklab, var(--ds-risk-low) 10%, var(--ds-surface-default));
+  --ds-risk-low-zone-bg: color-mix(in oklab, var(--ds-risk-low) 15%, var(--ds-surface-default));
+
+  --ds-risk-medium-bg: color-mix(in oklab, var(--ds-risk-medium) 22%, var(--ds-surface-default));
+  --ds-risk-medium-fg: color-mix(in oklab, var(--ds-risk-medium) 82%, var(--ds-text-primary));
+  --ds-risk-medium-border: color-mix(in oklab, var(--ds-risk-medium) 38%, var(--ds-border));
+  --ds-risk-medium-matrix-tint: color-mix(in oklab, var(--ds-risk-medium) 12%, var(--ds-surface-default));
+  --ds-risk-medium-zone-bg: color-mix(in oklab, var(--ds-risk-medium) 15%, var(--ds-surface-default));
+
+  --ds-risk-high-bg: color-mix(in oklab, var(--ds-risk-high) 22%, var(--ds-surface-default));
+  --ds-risk-high-fg: color-mix(in oklab, var(--ds-risk-high) 82%, var(--ds-text-primary));
+  --ds-risk-high-border: color-mix(in oklab, var(--ds-risk-high) 38%, var(--ds-border));
+  --ds-risk-high-matrix-tint: color-mix(in oklab, var(--ds-risk-high) 10%, var(--ds-surface-default));
+  --ds-risk-high-zone-bg: color-mix(in oklab, var(--ds-risk-high) 15%, var(--ds-surface-default));
+
+  --ds-risk-critical-bg: color-mix(in oklab, var(--ds-risk-critical) 22%, var(--ds-surface-default));
+  --ds-risk-critical-fg: color-mix(in oklab, var(--ds-risk-critical) 82%, var(--ds-text-primary));
+  --ds-risk-critical-border: color-mix(in oklab, var(--ds-risk-critical) 38%, var(--ds-border));
+  --ds-risk-critical-matrix-tint: color-mix(in oklab, var(--ds-risk-critical) 14%, var(--ds-surface-default));
+
+  --ds-risk-emerging-bg: color-mix(in oklab, var(--ds-risk-emerging) 22%, var(--ds-surface-default));
+  --ds-risk-emerging-fg: color-mix(in oklab, var(--ds-risk-emerging) 82%, var(--ds-text-primary));
+  --ds-risk-emerging-border: color-mix(in oklab, var(--ds-risk-emerging) 38%, var(--ds-border));
+
+  --ds-risk-volatile-bg: color-mix(in oklab, var(--ds-risk-volatile) 22%, var(--ds-surface-default));
+  --ds-risk-volatile-fg: color-mix(in oklab, var(--ds-risk-volatile) 82%, var(--ds-text-primary));
+  --ds-risk-volatile-border: color-mix(in oklab, var(--ds-risk-volatile) 38%, var(--ds-border));
+
+  --ds-risk-neutral-bg: color-mix(in oklab, var(--ds-risk-neutral) 22%, var(--ds-surface-default));
+  --ds-risk-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 90%, var(--ds-risk-neutral));
+  --ds-risk-neutral-border: color-mix(in oklab, var(--ds-risk-neutral) 38%, var(--ds-border));
+
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --ds-shadow-md: 0 12px 40px rgba(0, 0, 0, 0.28);
   --ds-shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.36);
+
+  --ds-scrim-ink: #000000;
+  --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 58%, transparent);
+  --ds-backdrop-photo-light: color-mix(in oklab, var(--ds-text-inverse) 48%, transparent);
+  --ds-backdrop-photo-dark: color-mix(in oklab, var(--ds-scrim-ink) 80%, transparent);
+  --ds-surface-glass: color-mix(in oklab, var(--ds-text-inverse) 64%, transparent);
+  --ds-surface-glass-dark: color-mix(in oklab, rgb(20 20 20) 68%, transparent);
+  --ds-border-glass-shell: color-mix(in oklab, var(--ds-text-inverse) 8%, transparent);
+  --ds-border-auth-shell: color-mix(in oklab, var(--ds-text-inverse) 12%, transparent);
+  --ds-shadow-glass-outer: 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 35%, transparent),
+    0 8px 36px -4px color-mix(in oklab, var(--ds-scrim-ink) 55%, transparent);
+  --ds-shadow-auth-card: 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 35%, transparent),
+    0 4px 16px -2px color-mix(in oklab, var(--ds-scrim-ink) 55%, transparent);
+  --ds-gradient-glass-vignette-light: radial-gradient(
+    ellipse 78% 72% at 50% 45%,
+    transparent 0%,
+    color-mix(in oklab, var(--ds-scrim-ink) 6%, transparent) 100%
+  );
+  --ds-gradient-glass-vignette-dark: radial-gradient(
+    ellipse 78% 72% at 50% 45%,
+    transparent 0%,
+    color-mix(in oklab, var(--ds-scrim-ink) 22%, transparent) 100%
+  );
+  --ds-brand-accent: #d96c32;
+  --ds-primary: var(--ds-brand-accent);
+  --ds-focus-highlight-bg: color-mix(in oklab, var(--ds-status-warning) 22%, transparent);
+  --ds-focus-highlight-outline: color-mix(in oklab, var(--ds-status-warning) 64%, transparent);
+  --ds-control-strong-border-hover: color-mix(in oklab, var(--ds-text-inverse) 25%, transparent);
+  --ds-control-strong-border-active: color-mix(in oklab, var(--ds-text-inverse) 40%, transparent);
+  --ds-elevation-tile: 0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 20%, transparent);
+  --ds-elevation-tile-hover: 0 4px 16px color-mix(in oklab, var(--ds-scrim-ink) 28%, transparent);
+  --ds-shadow-modal-panel: 0 25px 50px -12px color-mix(in oklab, var(--ds-scrim-ink) 55%, transparent);
 
   --ds-chart-series-1: var(--ds-primary);
   --ds-chart-series-2: #60a5fa;

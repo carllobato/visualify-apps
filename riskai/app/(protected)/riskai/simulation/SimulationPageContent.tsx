@@ -3,6 +3,14 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import {
+  Button,
+  Callout,
+  Card,
+  CardContent,
+  Label,
+  Textarea,
+} from "@visualify/design-system";
 import { usePathname, useRouter } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import {
@@ -69,17 +77,25 @@ function MetricTile({
   helper?: string;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 p-3 transition-colors hover:border-neutral-300 dark:hover:border-neutral-600">
-      <div className="text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-        {label}
-      </div>
-      <div className="mt-0.5 text-base font-semibold text-[var(--foreground)]">{value}</div>
-      {helper && (
-        <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{helper}</div>
-      )}
-    </div>
+    <Card
+      variant="elevated"
+      className="transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]"
+    >
+      <CardContent className="p-3">
+        <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+          {label}
+        </div>
+        <div className="mt-0.5 text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)]">{value}</div>
+        {helper && (
+          <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">{helper}</div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
+
+const linkSecondaryClassName =
+  "inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)] no-underline transition-all duration-150 hover:bg-[var(--ds-surface-muted)]";
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
 
@@ -410,9 +426,9 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     <main className="p-6">
       <div className="mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold m-0 text-[var(--foreground)]">Simulation</h2>
+          <h2 className="m-0 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">Simulation</h2>
           <div className="flex flex-wrap items-center gap-3">
-        <button
+        <Button
           type="button"
           onClick={async () => {
             if (simulationReadOnly) return;
@@ -435,68 +451,73 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
             }
           }}
           disabled={simulationReadOnly || hasDraftRisks || invalidRunnableCount > 0}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          variant="secondary"
         >
           Run Simulation
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() => clearSimulationHistory()}
           disabled={simulationReadOnly}
-          className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          variant="secondary"
         >
           Clear History
-        </button>
+        </Button>
         {showResults &&
           isCurrentRunPersisted &&
           effectiveProjectId &&
           !reportingDbRow?.locked_for_reporting && (
-          <button
+          <Button
             type="button"
             onClick={() => !simulationReadOnly && setSetReportingModalOpen(true)}
             disabled={simulationReadOnly}
-            className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            variant="secondary"
           >
             Set as reporting version
-          </button>
+          </Button>
         )}
         </div>
       </div>
       </div>
       {hasDraftRisks && (
-        <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 text-right" role="status">
+        <Callout status="warning" className="mt-2 text-right" role="status">
           Review and save all draft risks in the Risk Register before running simulation.
-        </p>
+        </Callout>
       )}
       {invalidRunnableCount > 0 && (
-        <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 text-right" role="status">
+        <Callout status="warning" className="mt-2 text-right" role="status">
           Fix {invalidRunnableCount} risk{invalidRunnableCount !== 1 ? "s" : ""} to run simulation.
-        </p>
+        </Callout>
       )}
       {runBlockedInvalidCount != null && runBlockedInvalidCount > 0 && (
-        <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mt-2" role="alert">
+        <Callout status="warning" className="mt-2 font-medium" role="alert">
           Simulation blocked: fix {runBlockedInvalidCount} risk{runBlockedInvalidCount !== 1 ? "s" : ""} to run simulation.
-        </p>
+        </Callout>
       )}
       {simulationReadOnly && (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2" role="status">
+        <Callout status="info" className="mt-2" role="status">
           View-only access: you cannot run or change simulations for this project.
-        </p>
+        </Callout>
       )}
 
       {loadingSnapshot && (
-        <div className="mt-0 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-6 text-center">
-          <p className="text-[var(--foreground)] font-medium m-0">Loading simulation data…</p>
-        </div>
+        <Card variant="inset" className="mt-0 p-6" aria-busy="true" aria-live="polite">
+          <div className="mx-auto max-w-md animate-pulse space-y-3">
+            <div className="mx-auto h-4 w-3/4 max-w-sm rounded bg-[var(--ds-surface-muted)]" />
+            <div className="mx-auto h-4 w-1/2 max-w-xs rounded bg-[var(--ds-surface-muted)]" />
+            <div className="mx-auto h-4 w-2/3 max-w-56 rounded bg-[var(--ds-surface-muted)]" />
+          </div>
+          <span className="sr-only">Loading simulation data</span>
+        </Card>
       )}
 
       {showRunOnly && (
-        <div className="mt-0 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-6 text-center">
-          <p className="text-[var(--foreground)] font-medium m-0">
+        <Card variant="inset" className="mt-0 p-6 text-center">
+          <p className="m-0 font-medium text-[var(--ds-text-primary)]">
             No simulation run for this project yet. Run a simulation to see results.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <button
+            <Button
               type="button"
               onClick={async () => {
                 if (simulationReadOnly) return;
@@ -519,28 +540,28 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                 }
               }}
               disabled={simulationReadOnly || hasDraftRisks || invalidRunnableCount > 0}
-              className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              variant="secondary"
             >
               Run simulation
-            </button>
+            </Button>
             {effectiveProjectId && (
               <Link
                 href={riskaiPath(`/projects/${effectiveProjectId}/run-data`)}
-                className="rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-4 py-2 text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors no-underline text-[var(--foreground)]"
+                className={linkSecondaryClassName}
               >
                 Go to Run Data
               </Link>
             )}
           </div>
-        </div>
+        </Card>
       )}
 
       {showResults && (
         <>
           {/* Baseline — compact row with header */}
-          <section className="mt-0 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 overflow-hidden">
-            <div className="py-3 bg-white dark:bg-neutral-900">
-              <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <section className="mt-0 overflow-hidden rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-muted)]">
+            <div className="bg-[var(--ds-surface-elevated)] py-3">
+              <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 <MetricTile
                   label="Base value"
                   value={formatDash(displayContext?.projectValue_m, (m) => formatMoneyMillions(m))}
@@ -571,7 +592,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
           </section>
 
           {/* Group 2 & 3 — Cost (left) and Schedule (right) side by side */}
-          <section className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
             {costBaseline && (
               <SimulationSection
                 title="Cost Simulation"
@@ -599,8 +620,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       )}
 
       {currentProjectHasSnapshot && lastRun && (
-        <footer className="mt-8 pt-4 border-t border-neutral-200 dark:border-neutral-700">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
+        <footer className="mt-8 border-t border-[var(--ds-border)] pt-4">
+          <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             Last simulation run: {new Date(lastRun).toLocaleString()}
           </p>
         </footer>
@@ -608,7 +629,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
 
       {setReportingModalOpen && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-neutral-900/75 dark:bg-black/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="set-reporting-version-dialog-title"
@@ -616,86 +637,85 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
         >
           <div
             style={{ width: "90vw", maxWidth: 400 }}
-            className="shrink-0 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-[var(--background)] shadow-xl flex flex-col overflow-hidden"
+            className="flex shrink-0 flex-col overflow-hidden rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] shadow-[var(--ds-shadow-lg)]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between gap-4 shrink-0 border-b border-neutral-200 dark:border-neutral-700 px-4 sm:px-6 py-3">
-              <h2 id="set-reporting-version-dialog-title" className="text-lg font-semibold text-[var(--foreground)]">
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--ds-border)] px-4 py-3 sm:px-6">
+              <h2 id="set-reporting-version-dialog-title" className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
                 Set as reporting version
               </h2>
               <button
                 type="button"
                 onClick={() => { setSetReportingModalOpen(false); setReportingNote(""); setReportingMonthYear(toMonthYearKey(new Date())); }}
-                className="p-2 rounded-md border border-transparent text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+                className="rounded-[var(--ds-radius-md)] border border-transparent p-2 text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-muted)] hover:text-[var(--ds-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
                 aria-label="Close"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="px-4 sm:px-6 py-4 space-y-4">
+            <div className="space-y-4 px-4 py-4 sm:px-6">
               <div>
-                <label htmlFor="reporting-month-year-select" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                <Label htmlFor="reporting-month-year-select" className="mb-1 block">
                   Reporting month / year
-                </label>
+                </Label>
                 <select
                   id="reporting-month-year-select"
                   value={reportingMonthYear}
                   onChange={(e) => setReportingMonthYear(e.target.value)}
-                  className="w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
+                  className="w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
                 >
                   {reportingMonthYearOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
-                <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">Locked once confirmed</p>
+                <p className="mt-0.5 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Locked once confirmed</p>
               </div>
-              <div className="rounded-md border border-neutral-200 dark:border-neutral-600 bg-neutral-100 dark:bg-neutral-800/50 px-3 py-2.5 space-y-1.5 text-sm">
+              <div className="space-y-1.5 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-3 py-2.5 text-[length:var(--ds-text-sm)]">
                 <div className="flex justify-between gap-2">
-                  <span className="text-neutral-500 dark:text-neutral-400">Reporting version</span>
-                  <span className="text-neutral-500 dark:text-neutral-400 font-medium">Yes</span>
+                  <span className="text-[var(--ds-text-muted)]">Reporting version</span>
+                  <span className="font-medium text-[var(--ds-text-muted)]">Yes</span>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <span className="text-neutral-500 dark:text-neutral-400">Reporting month / year</span>
-                  <span className="text-neutral-500 dark:text-neutral-400">{formatReportingMonthYear(reportingMonthYear)}</span>
+                  <span className="text-[var(--ds-text-muted)]">Reporting month / year</span>
+                  <span className="text-[var(--ds-text-muted)]">{formatReportingMonthYear(reportingMonthYear)}</span>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <span className="text-neutral-500 dark:text-neutral-400">Locked by</span>
-                  <span className="text-neutral-500 dark:text-neutral-400 truncate">{triggeredBy ?? "Not available"}</span>
+                  <span className="text-[var(--ds-text-muted)]">Locked by</span>
+                  <span className="truncate text-[var(--ds-text-muted)]">{triggeredBy ?? "Not available"}</span>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <span className="text-neutral-500 dark:text-neutral-400">Locked on</span>
-                  <span className="text-neutral-500 dark:text-neutral-400">{new Date().toLocaleString()}</span>
+                  <span className="text-[var(--ds-text-muted)]">Locked on</span>
+                  <span className="text-[var(--ds-text-muted)]">{new Date().toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between gap-2 items-start">
-                  <span className="text-neutral-500 dark:text-neutral-400 shrink-0">Reporting note</span>
-                  <span className="text-neutral-500 dark:text-neutral-400 text-right min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="shrink-0 text-[var(--ds-text-muted)]">Reporting note</span>
+                  <span className="min-w-0 text-right text-[var(--ds-text-muted)]">
                     {reportingNote.trim() || "—"}
                   </span>
                 </div>
               </div>
               <div>
-                <label htmlFor="reporting-note-input-sim" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
+                <Label htmlFor="reporting-note-input-sim" className="mb-1 block">
                   Reporting note
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                   id="reporting-note-input-sim"
                   placeholder="Why is this the reporting version?"
                   value={reportingNote}
                   onChange={(e) => setReportingNote(e.target.value)}
                   rows={3}
-                  className="w-full rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-neutral-500 dark:placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-neutral-200 dark:border-neutral-700">
-              <button
+            <div className="flex shrink-0 justify-end gap-2 border-t border-[var(--ds-border)] px-4 py-4 sm:px-6">
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => { setSetReportingModalOpen(false); setReportingNote(""); setReportingMonthYear(toMonthYearKey(new Date())); }}
-                className="px-4 py-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-[var(--background)] text-[var(--foreground)] text-sm font-medium hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-400 dark:focus:ring-neutral-500"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 disabled={setReportingSaving}
                 onClick={async () => {
@@ -737,10 +757,10 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                     setSetReportingSaving(false);
                   }
                 }}
-                className="px-4 py-2 rounded-md bg-neutral-800 dark:bg-neutral-200 text-neutral-100 dark:text-neutral-900 text-sm font-medium hover:bg-neutral-700 dark:hover:bg-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-500 disabled:opacity-60"
+                variant="primary"
               >
                 {setReportingSaving ? "Saving…" : "Confirm"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>,

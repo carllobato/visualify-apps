@@ -8,14 +8,27 @@ import type {
   ProfileDisplayRow,
   ProjectMemberWithProfileRow,
 } from "@/types/projectMembers";
-import { MemberSectionPermissionHints } from "@/components/settings/MemberSectionPermissionHints";
 import {
-  settingsCardClass,
-  settingsInputClass,
-  settingsLabelClass,
-  settingsMemberAddButtonClass,
-  settingsSectionTitleClass,
-} from "@/components/settings/settingsFieldClasses";
+  Badge,
+  Button,
+  Callout,
+  Card,
+  CardBody,
+  CardHeader,
+  FieldError,
+  HelperText,
+  Input,
+  Label,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@visualify/design-system";
+import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
+import { ProjectMemberPermissionHints } from "@/components/project/ProjectMemberPermissionHints";
+import { projectSettingsSelectClass } from "@/components/project/projectSettingsDsFormClasses";
 
 type Viewer = {
   currentUserId: string;
@@ -146,15 +159,15 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const semanticsLine = useMemo(() => {
     if (!roleSemantics) return null;
     return (
-      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+      <HelperText className="!mt-2">
         {ROLE_OPTIONS.map(({ value }) => (
           <span key={value} className="mr-3">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300 capitalize">{value}</span>
+            <span className="font-medium capitalize text-[var(--ds-text-primary)]">{value}</span>
             {": "}
             {roleSemantics[value]}
           </span>
         ))}
-      </p>
+      </HelperText>
     );
   }, [roleSemantics]);
 
@@ -267,177 +280,161 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   };
 
   return (
-    <section className={settingsCardClass + " mb-4"}>
-      <h2 className={settingsSectionTitleClass}>Project members</h2>
+    <Card className="mb-4">
+      <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
+        <h2 className="m-0 text-[length:var(--ds-text-base)] font-semibold leading-6 text-[var(--ds-text-primary)]">
+          Project members
+        </h2>
+      </CardHeader>
+      <CardBody className="!px-4 !py-3">
+        {semanticsLine}
 
-      {semanticsLine}
+        {listError ? (
+          <Callout status="danger" className="mb-3" role="alert">
+            {listError}
+          </Callout>
+        ) : null}
 
-      {listError && (
-        <div
-          className="mb-3 rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-800 dark:text-red-200"
-          role="alert"
-        >
-          {listError}
-        </div>
-      )}
+        {rowActionError ? (
+          <Callout status="warning" className="mb-3" role="alert">
+            {rowActionError}
+          </Callout>
+        ) : null}
 
-      {rowActionError && (
-        <div
-          className="mb-3 rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-100"
-          role="alert"
-        >
-          {rowActionError}
-        </div>
-      )}
-
-      {loading ? (
-        <p className="text-sm text-neutral-500 dark:text-neutral-400">Loading members…</p>
-      ) : (
-        <div className="overflow-x-auto -mx-1">
-          <table className="min-w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400">
-                <th className="py-2 pr-3 font-medium">Name</th>
-                <th className="py-2 pr-3 font-medium">Email</th>
-                <th className="py-2 pr-3 font-medium">Role</th>
-                {showRowActions && <th className="py-2 pr-0 font-medium text-right">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => {
-                const normalizedProfile = normalizeResolvedProfile(m, profiles);
-                const displayName = computeDisplayName(normalizedProfile, m.email, m.user_id);
-                const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
-                const isSelf = viewer?.currentUserId === m.user_id;
-                const busy = pendingId === m.id;
-                return (
-                  <tr key={m.id} className="border-b border-neutral-100 dark:border-neutral-800">
-                    <td className="py-2 pr-3 text-[var(--foreground)]">
-                      {displayName}
-                    </td>
-                    <td className="py-2 pr-3 text-neutral-600 dark:text-neutral-400">
-                      {displayEmail}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {canChangeRole && !isSelf ? (
-                        <select
-                          className={settingsInputClass + " h-9 py-1"}
-                          value={m.role}
-                          disabled={busy}
-                          aria-label={`Role for ${displayName}`}
-                          onChange={(e) => {
-                            const next = e.target.value as ProjectMemberRole | string;
-                            if (!isStandardProjectRole(next)) return;
-                            if (next !== m.role) void onRoleChange(m, next);
-                          }}
-                        >
-                          {!isStandardProjectRole(m.role) && (
-                            <option value={m.role}>
-                              {m.role} (current)
-                            </option>
-                          )}
-                          {ROLE_OPTIONS.map(({ value, label }) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="capitalize text-[var(--foreground)]">{m.role}</span>
-                      )}
-                    </td>
-                    {showRowActions && (
-                      <td className="py-2 pl-2 text-right">
-                        {canRemove && !isSelf ? (
-                          <button
-                            type="button"
+        {loading ? (
+          <LoadingPlaceholderCompact label="Loading members" />
+        ) : (
+          <div className="-mx-1 overflow-x-auto">
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Name</TableHeaderCell>
+                  <TableHeaderCell>Email</TableHeaderCell>
+                  <TableHeaderCell>Role</TableHeaderCell>
+                  {showRowActions ? (
+                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
+                  ) : null}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {members.map((m) => {
+                  const normalizedProfile = normalizeResolvedProfile(m, profiles);
+                  const displayName = computeDisplayName(normalizedProfile, m.email, m.user_id);
+                  const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
+                  const isSelf = viewer?.currentUserId === m.user_id;
+                  const busy = pendingId === m.id;
+                  return (
+                    <TableRow key={m.id}>
+                      <TableCell className="text-[var(--ds-text-primary)]">{displayName}</TableCell>
+                      <TableCell className="text-[var(--ds-text-secondary)]">{displayEmail}</TableCell>
+                      <TableCell>
+                        {canChangeRole && !isSelf ? (
+                          <select
+                            className={projectSettingsSelectClass(false, "sm")}
+                            value={m.role}
                             disabled={busy}
-                            onClick={() => void onRemove(m)}
-                            className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label={`Role for ${displayName}`}
+                            onChange={(e) => {
+                              const next = e.target.value as ProjectMemberRole | string;
+                              if (!isStandardProjectRole(next)) return;
+                              if (next !== m.role) void onRoleChange(m, next);
+                            }}
                           >
-                            Remove
-                          </button>
+                            {!isStandardProjectRole(m.role) && (
+                              <option value={m.role}>
+                                {m.role} (current)
+                              </option>
+                            )}
+                            {ROLE_OPTIONS.map(({ value, label }) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
-                          <span className="text-neutral-400 text-xs">—</span>
+                          <span className="capitalize text-[var(--ds-text-primary)]">{m.role}</span>
                         )}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {members.length === 0 && !listError && (
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-2">No members yet.</p>
-          )}
-        </div>
-      )}
-
-      {canInvite && (
-        <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700 space-y-3">
-          <p className="text-sm font-medium text-[var(--foreground)]">Add member</p>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Enter the email of an existing RiskAI user (they must have signed up already).
-          </p>
-          {addError && (
-            <div
-              className="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-800 dark:text-red-200"
-              role="alert"
-            >
-              {addError}
-            </div>
-          )}
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-            <div className="flex-1 min-w-0">
-              <label htmlFor="member-email" className={settingsLabelClass}>
-                Email
-              </label>
-              <input
-                id="member-email"
-                type="email"
-                autoComplete="off"
-                value={addEmail}
-                onChange={(e) => setAddEmail(e.target.value)}
-                className={settingsInputClass}
-                placeholder="name@company.com"
-              />
-            </div>
-            <div className="w-full sm:w-40">
-              <label htmlFor="member-role" className={settingsLabelClass}>
-                Role
-              </label>
-              <select
-                id="member-role"
-                className={settingsInputClass}
-                value={addRole}
-                onChange={(e) => setAddRole(e.target.value as ProjectMemberRole)}
-              >
-                {ROLE_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="button"
-              onClick={() => void onAdd()}
-              disabled={pendingId === "__add__"}
-              className={settingsMemberAddButtonClass}
-            >
-              Add
-            </button>
+                      </TableCell>
+                      {showRowActions ? (
+                        <TableCell className="text-right">
+                          {canRemove && !isSelf ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              disabled={busy}
+                              className="!text-[var(--ds-status-danger-fg)] hover:!bg-[color-mix(in_oklab,var(--ds-status-danger)_12%,transparent)]"
+                              onClick={() => void onRemove(m)}
+                            >
+                              Remove
+                            </Button>
+                          ) : (
+                            <span className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">—</span>
+                          )}
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            {members.length === 0 && !listError && (
+              <HelperText className="!mt-2">No members yet.</HelperText>
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {viewer && (
-        <MemberSectionPermissionHints
-          resource="project"
-          canInviteMembers={viewer.canInviteMembers}
-          canChangeMemberRoles={viewer.canChangeMemberRoles}
-        />
-      )}
-    </section>
+        {canInvite && (
+          <div className="mt-4 space-y-3 border-t border-[var(--ds-border-subtle)] pt-4">
+            <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Add member</p>
+            <HelperText className="!m-0">
+              Enter the email of an existing RiskAI user (they must have signed up already).
+            </HelperText>
+            {addError ? (
+              <FieldError className="!mt-0">{addError}</FieldError>
+            ) : null}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1">
+                <Label htmlFor="member-email">Email</Label>
+                <Input
+                  id="member-email"
+                  type="email"
+                  autoComplete="off"
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  placeholder="name@company.com"
+                />
+              </div>
+              <div className="w-full sm:w-40">
+                <Label htmlFor="member-role">Role</Label>
+                <select
+                  id="member-role"
+                  className={projectSettingsSelectClass(false)}
+                  value={addRole}
+                  onChange={(e) => setAddRole(e.target.value as ProjectMemberRole)}
+                >
+                  {ROLE_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button type="button" onClick={() => void onAdd()} disabled={pendingId === "__add__"}>
+                Add
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {viewer ? (
+          <ProjectMemberPermissionHints
+            resource="project"
+            canInviteMembers={viewer.canInviteMembers}
+            canChangeMemberRoles={viewer.canChangeMemberRoles}
+          />
+        ) : null}
+      </CardBody>
+    </Card>
   );
 }

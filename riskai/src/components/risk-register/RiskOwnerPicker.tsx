@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
+import { Callout, FieldError } from "@visualify/design-system";
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { dlog } from "@/lib/debug";
 
@@ -58,6 +59,8 @@ type RiskOwnerPickerProps = {
   allowEmptyPlaceholder?: boolean;
 };
 
+const fieldStackClass = "flex flex-col gap-[var(--ds-space-2)]";
+
 export function RiskOwnerPicker({
   id,
   selectValue,
@@ -100,10 +103,10 @@ export function RiskOwnerPicker({
 
   if (error && owners.length === 0) {
     return (
-      <div className="space-y-1">
-        <p className="text-xs text-amber-600 dark:text-amber-400">
+      <div className={fieldStackClass}>
+        <Callout status="warning" role="status" className="text-[length:var(--ds-text-sm)]">
           Owners unavailable — enter owner name as text.
-        </p>
+        </Callout>
         <input
           id={id}
           type="text"
@@ -127,9 +130,9 @@ export function RiskOwnerPicker({
   }
 
   return (
-    <div className="space-y-1">
+    <div className={fieldStackClass}>
       {error && owners.length > 0 && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">{error}</p>
+        <FieldError className="!mt-0">{error}</FieldError>
       )}
       <select
         id={id}

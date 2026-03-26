@@ -38,8 +38,8 @@ export function PositionBar({
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-sm font-medium text-[var(--foreground)]">{label}</span>
-        <span className="text-sm tabular-nums text-[var(--foreground)]">
+        <span className="text-sm font-medium text-[var(--ds-text-primary)]">{label}</span>
+        <span className="text-sm tabular-nums text-[var(--ds-text-primary)]">
           {valueLabel} {formatValue(p50)}
         </span>
       </div>
@@ -49,37 +49,37 @@ export function PositionBar({
         role="img"
         aria-label={`${label}: ${valueLabel} at ${formatValue(p50)}; range ${formatValue(p10)} to ${formatValue(p90)}`}
       >
-        <div className="flex-1 h-full bg-emerald-500/10 dark:bg-emerald-500/15" title="Controlled" />
-        <div className="flex-1 h-full bg-amber-500/10 dark:bg-amber-500/15" title="At Risk" />
-        <div className="flex-1 h-full bg-red-500/10 dark:bg-red-500/15" title="Exposed" />
+        <div className="flex-1 h-full bg-[var(--ds-risk-low-zone-bg)]" title="Controlled" />
+        <div className="flex-1 h-full bg-[var(--ds-risk-medium-zone-bg)]" title="At Risk" />
+        <div className="flex-1 h-full bg-[var(--ds-risk-high-zone-bg)]" title="Exposed" />
         {/* P50 marker */}
         <div
-          className="absolute top-0 bottom-0 w-px bg-[var(--foreground)]/60"
+          className="absolute top-0 bottom-0 w-px bg-[var(--ds-text-primary)]/60"
           style={{ left: `${p50Pct}%` }}
           aria-hidden
         />
         {/* P80 marker */}
         <div
-          className="absolute top-0 bottom-0 w-px bg-[var(--foreground)]/40"
+          className="absolute top-0 bottom-0 w-px bg-[var(--ds-text-primary)]/40"
           style={{ left: `${p80Pct}%` }}
           aria-hidden
         />
         {/* Current position indicator */}
         {currentPct != null && (
           <div
-            className="absolute top-0 bottom-0 w-1 -translate-x-1/2 rounded-full bg-[var(--foreground)]"
+            className="absolute top-0 bottom-0 w-1 -translate-x-1/2 rounded-full bg-[var(--ds-text-primary)]"
             style={{ left: `${currentPct}%` }}
             title="Current position"
             aria-hidden
           />
         )}
       </div>
-      <div className="flex justify-between text-xs text-neutral-500 dark:text-neutral-400">
+      <div className="flex justify-between text-xs text-[var(--ds-text-muted)]">
         <span>Controlled</span>
         <span>At Risk</span>
         <span>Exposed</span>
       </div>
-      <div className="flex justify-between text-xs text-neutral-400 dark:text-neutral-500 tabular-nums">
+      <div className="flex justify-between text-xs text-[var(--ds-text-muted)] tabular-nums">
         <span>{formatValue(p10)}</span>
         <span>{formatValue(p90)}</span>
       </div>

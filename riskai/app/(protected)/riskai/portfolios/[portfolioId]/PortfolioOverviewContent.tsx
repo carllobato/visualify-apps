@@ -65,19 +65,19 @@ export function PortfolioOverviewContent() {
             renderRow={(item) => (
               <div className="flex-1 min-w-0 flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--foreground)] truncate m-0">
+                  <p className="text-sm font-medium text-[var(--ds-text-primary)] truncate m-0">
                     {item.title}
                   </p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 m-0">
+                  <p className="text-xs text-[var(--ds-text-muted)] m-0">
                     {item.projectName}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-medium text-[var(--foreground)]">
+                  <span className="text-sm font-medium text-[var(--ds-text-primary)]">
                     {formatPortfolioCurrency(item.value)}
                   </span>
                   {item.status != null && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-200 dark:bg-neutral-600 text-neutral-700 dark:text-neutral-300">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]">
                       {item.status}
                     </span>
                   )}
@@ -92,14 +92,14 @@ export function PortfolioOverviewContent() {
             renderRow={(item) => (
               <div className="flex-1 min-w-0 flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--foreground)] truncate m-0">
+                  <p className="text-sm font-medium text-[var(--ds-text-primary)] truncate m-0">
                     {item.title}
                   </p>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 m-0">
+                  <p className="text-xs text-[var(--ds-text-muted)] m-0">
                     {item.projectName}
                   </p>
                 </div>
-                <span className="text-sm font-medium text-[var(--foreground)] shrink-0">
+                <span className="text-sm font-medium text-[var(--ds-text-primary)] shrink-0">
                   {item.impactDays} days
                 </span>
               </div>
@@ -114,12 +114,12 @@ export function PortfolioOverviewContent() {
           Portfolio distribution (placeholder)
         </h2>
         <DashboardCard title="Risk Exposure by Project">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
+          <p className="text-sm text-[var(--ds-text-muted)] m-0">
             Chart placeholder. Risk exposure by project will be displayed here.
           </p>
         </DashboardCard>
         <DashboardCard title="Risks by Category">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 m-0">
+          <p className="text-sm text-[var(--ds-text-muted)] m-0">
             Chart placeholder. Risk breakdown by category will be displayed here.
           </p>
         </DashboardCard>

@@ -30,7 +30,7 @@ export function OnboardingStepActions({
         type="button"
         onClick={onBack}
         disabled={busy}
-        className="rounded-lg border border-neutral-300 bg-transparent px-4 py-2.5 text-sm font-medium text-neutral-800 transition-opacity hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-600 dark:text-neutral-200 dark:hover:bg-neutral-800/60 sm:min-w-[100px]"
+        className="rounded-lg border border-[var(--ds-border)] bg-transparent px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] transition-opacity hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 sm:min-w-[100px]"
       >
         {backLabel}
       </button>

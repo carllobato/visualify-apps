@@ -143,10 +143,10 @@ const PROJECT_NAV = (projectId: string) => [
 const linkClassName = (isActive: boolean) =>
   "flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium no-underline transition-colors " +
   (isActive
-    ? "bg-neutral-200 dark:bg-neutral-700 text-[var(--foreground)]"
-    : "text-neutral-600 dark:text-neutral-400 hover:text-[var(--foreground)] hover:bg-neutral-100 dark:hover:bg-neutral-800");
+    ? "bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)]"
+    : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]");
 
-const sectionLabelClassName = "px-3 pt-6 pb-2 text-xs font-semibold uppercase tracking-wider text-[var(--foreground)]";
+const sectionLabelClassName = "px-3 pt-6 pb-2 text-xs font-semibold uppercase tracking-wider text-[var(--ds-text-muted)]";
 
 type NavLinkProps = {
   href: string;
@@ -228,15 +228,15 @@ export function AppSidebar() {
   }, []);
 
   return (
-    <aside className="sticky top-0 self-start flex h-screen flex-col w-56 overflow-hidden border-r border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-[var(--background)] shrink-0">
+    <aside className="sticky top-0 self-start flex h-screen flex-col w-56 overflow-hidden border-r border-[var(--ds-border)] bg-[var(--ds-surface-muted)] dark:bg-[var(--ds-background)] shrink-0">
       {/* Logo - height and background match page header (61px), grey bar */}
-      <div className="h-[61px] flex items-center px-4 border-b border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 shrink-0">
+      <div className="h-[61px] flex items-center px-4 border-b border-[var(--ds-border)] bg-[var(--ds-surface-muted)] shrink-0">
         {useFullPageLinks ? (
-          <a href={homeHref} className="text-lg font-semibold text-[var(--foreground)] no-underline hover:opacity-80 transition-opacity">
+          <a href={homeHref} className="text-lg font-semibold text-[var(--ds-text-primary)] no-underline hover:opacity-80 transition-opacity">
             RiskAI
           </a>
         ) : (
-          <Link href={homeHref} className="text-lg font-semibold text-[var(--foreground)] no-underline hover:opacity-80 transition-opacity">
+          <Link href={homeHref} className="text-lg font-semibold text-[var(--ds-text-primary)] no-underline hover:opacity-80 transition-opacity">
             RiskAI
           </Link>
         )}
@@ -310,7 +310,7 @@ export function AppSidebar() {
       </nav>
 
       {/* Bottom: theme + user - grey to match top bar */}
-      <div className="p-2 border-t border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 flex flex-col gap-1">
+      <div className="p-2 border-t border-[var(--ds-border)] bg-[var(--ds-surface-muted)] flex flex-col gap-1">
         {mounted ? (
           <button
             type="button"
@@ -322,19 +322,19 @@ export function AppSidebar() {
               toggleTheme();
               (e.currentTarget as HTMLButtonElement).blur();
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)]"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
           >
             {theme === "dark" ? <MoonIcon /> : <SunIcon />}
             <span>{theme === "dark" ? "Dark" : "Light"}</span>
           </button>
         ) : (
-          <span className="inline-block h-9 px-3 rounded-md bg-neutral-100 dark:bg-neutral-800" aria-hidden />
+          <span className="inline-block h-9 px-3 rounded-md bg-[var(--ds-surface-muted)]" aria-hidden />
         )}
         {isLoggedIn ? (
           <>
             <Link
               href={riskaiPath("/settings")}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)] no-underline"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
             >
               <CogIcon />
               <span>Account Settings</span>
@@ -345,7 +345,7 @@ export function AppSidebar() {
                 await supabaseBrowserClient().auth.signOut();
                 window.location.href = "/";
               }}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)] text-left"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] text-left"
             >
               <UserIcon />
               <span>Log out</span>
@@ -354,7 +354,7 @@ export function AppSidebar() {
         ) : useFullPageLinks ? (
           <a
             href={LOGIN_URL}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)] no-underline"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
           >
             <UserIcon />
             <span>Log in</span>
@@ -362,7 +362,7 @@ export function AppSidebar() {
         ) : (
           <Link
             href={LOGIN_URL}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[var(--foreground)] no-underline"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
           >
             <UserIcon />
             <span>Log in</span>
