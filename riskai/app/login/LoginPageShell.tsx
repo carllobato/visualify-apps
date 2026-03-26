@@ -13,7 +13,7 @@ export function LoginPageShell() {
       >
         <CardContent className="px-5 py-5">
           <h1 className="mb-4 text-center text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
-            Sign in to RiskAI
+            Welcome to Visualify
           </h1>
           <Suspense fallback={<LoadingPlaceholderCompact className="text-center" label="Loading sign-in" />}>
             <LoginClient />

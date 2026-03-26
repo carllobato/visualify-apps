@@ -343,7 +343,7 @@ export function LoginClient() {
                       : "pointer-events-none absolute inset-0 opacity-0"
                   }`}
                 >
-                  Continue to RiskAI
+                  Continue
                 </span>
                 <span
                   className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${

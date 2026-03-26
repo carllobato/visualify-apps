@@ -123,7 +123,7 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
         ) : null}
         <Link
           href="/"
-          className="inline-flex h-9 items-center px-[var(--ds-space-2)] text-[length:var(--ds-text-lg)] font-semibold leading-none tracking-tight text-[var(--ds-text-primary)] no-underline transition-colors hover:text-[var(--ds-text-secondary)]"
+          className="inline-flex h-9 items-center px-[var(--ds-space-2)] text-[length:var(--ds-text-lg)] font-medium leading-none tracking-tight text-[var(--ds-text-primary)] no-underline transition-colors hover:text-[var(--ds-text-secondary)]"
         >
           Visualify <span className="mx-1.5 font-normal">|</span> RiskAI
         </Link>
