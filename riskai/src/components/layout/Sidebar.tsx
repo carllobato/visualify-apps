@@ -226,7 +226,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const portfolioProjectsActive =
     portfolioId != null && pathname.startsWith(`${RISKAI_BASE}/portfolios/${portfolioId}/projects`);
   const portfolioSettingsActive =
-    portfolioId != null && pathname.startsWith(`${RISKAI_BASE}/portfolios/${portfolioId}/settings`);
+    portfolioId != null &&
+    pathname.startsWith(`${RISKAI_BASE}/portfolios/${portfolioId}/portfolio-settings`);
 
   const projectOverviewActive =
     projectBase != null &&
@@ -366,7 +367,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 </li>
                 <li>
                   <Link
-                    href={riskaiPath(`/portfolios/${portfolioId}/settings`)}
+                    href={riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`)}
                     className={linkClass(portfolioSettingsActive)}
                     title={visuallyCollapsed ? "Portfolio Settings" : undefined}
                     onClick={onMobileClose}

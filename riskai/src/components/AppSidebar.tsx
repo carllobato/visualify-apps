@@ -129,7 +129,7 @@ const GLOBAL_NAV: { href: string; label: string; icon: "home" }[] = [
 const PORTFOLIO_NAV = (portfolioId: string) => [
   { href: riskaiPath(`/portfolios/${portfolioId}`), label: "Portfolio Overview", icon: "portfolio" as const },
   { href: riskaiPath(`/portfolios/${portfolioId}/projects`), label: "Projects", icon: "projects" as const },
-  { href: riskaiPath(`/portfolios/${portfolioId}/settings`), label: "Portfolio Settings", icon: "cog" as const },
+  { href: riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`), label: "Portfolio Settings", icon: "cog" as const },
 ];
 
 const PROJECT_NAV = (projectId: string) => [

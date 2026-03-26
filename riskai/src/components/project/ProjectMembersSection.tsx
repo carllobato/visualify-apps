@@ -9,7 +9,6 @@ import type {
   ProjectMemberWithProfileRow,
 } from "@/types/projectMembers";
 import {
-  Badge,
   Button,
   Callout,
   Card,
@@ -17,8 +16,6 @@ import {
   CardHeader,
   FieldError,
   HelperText,
-  Input,
-  Label,
   Table,
   TableBody,
   TableCell,
@@ -28,7 +25,23 @@ import {
 } from "@visualify/design-system";
 import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 import { ProjectMemberPermissionHints } from "@/components/project/ProjectMemberPermissionHints";
-import { projectSettingsSelectClass } from "@/components/project/projectSettingsDsFormClasses";
+import {
+  ADD_MEMBER_ROLE_PLACEHOLDER_LABEL,
+  ADD_MEMBER_ROLE_VALIDATION_ERROR,
+  MEMBERS_ACTIONS_COLUMN_WIDTH,
+  MEMBERS_NAME_COLUMN_WIDTH,
+  MEMBERS_ROLE_COLUMN_WIDTH,
+  membersActionsSlotInnerClass,
+  membersActionsSlotOuterClass,
+  membersAddMemberCardCellClass,
+  membersAddMemberCardCellClassEmail,
+  membersAddMemberCardCellClassRole,
+  membersAddMemberCardGridClass,
+  membersAddMemberRoleSelectClass,
+  membersTableCurrentUserRowClass,
+  projectSettingsInputClass,
+  projectSettingsSelectClass,
+} from "@/components/project/projectSettingsDsFormClasses";
 
 type Viewer = {
   currentUserId: string;
@@ -112,8 +125,10 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [roleSemantics, setRoleSemantics] = useState<Record<ProjectMemberRole, string> | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const [addFirstName, setAddFirstName] = useState("");
+  const [addSurname, setAddSurname] = useState("");
   const [addEmail, setAddEmail] = useState("");
-  const [addRole, setAddRole] = useState<ProjectMemberRole>("editor");
+  const [addRole, setAddRole] = useState<ProjectMemberRole | "">("");
   const [addError, setAddError] = useState<string | null>(null);
   const [rowActionError, setRowActionError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -156,6 +171,16 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const canRemove = viewer?.canRemoveMembers ?? false;
   const showRowActions = canChangeRole || canRemove;
 
+  const membersRows = useMemo(() => {
+    const uid = viewer?.currentUserId;
+    if (!uid) return members;
+    return [...members].sort((a, b) => {
+      const aSelf = a.user_id === uid ? 0 : 1;
+      const bSelf = b.user_id === uid ? 0 : 1;
+      return aSelf - bSelf;
+    });
+  }, [members, viewer?.currentUserId]);
+
   const roleSemanticsTooltip = useMemo(() => {
     const fallback: Record<ProjectMemberRole, string> = {
       owner: "Full access",
@@ -169,9 +194,19 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const onAdd = async () => {
     setAddError(null);
     setRowActionError(null);
+    const fn = addFirstName.trim();
+    const sn = addSurname.trim();
     const email = addEmail.trim();
+    if (!fn || !sn) {
+      setAddError("Enter first name and surname.");
+      return;
+    }
     if (!email) {
       setAddError("Enter an email address.");
+      return;
+    }
+    if (addRole === "") {
+      setAddError(ADD_MEMBER_ROLE_VALIDATION_ERROR);
       return;
     }
     setPendingId("__add__");
@@ -180,10 +215,14 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: addRole }),
+        body: JSON.stringify({ email, role: addRole, first_name: fn, surname: sn }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string; message?: string };
 
+      if (res.status === 400 && data?.error === "NAME_MISMATCH") {
+        setAddError(data.message ?? "Name does not match the profile for this email.");
+        return;
+      }
       if (res.status === 404 && data?.error === "USER_NOT_FOUND") {
         setAddError(data.message ?? "User not found. They need to sign up first.");
         return;
@@ -201,7 +240,10 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         return;
       }
 
+      setAddFirstName("");
+      setAddSurname("");
       setAddEmail("");
+      setAddRole("");
       await load();
     } finally {
       setPendingId(null);
@@ -279,164 +321,217 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
       <Card className="mb-4">
         <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
           <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">
-            Project members
+            Project Team
           </h2>
         </CardHeader>
         <CardBody className="!px-4 !py-3">
-        {listError ? (
-          <Callout status="danger" className="mb-3" role="alert">
-            {listError}
-          </Callout>
-        ) : null}
+          {listError ? (
+            <Callout status="danger" className="mb-3" role="alert">
+              {listError}
+            </Callout>
+          ) : null}
 
-        {rowActionError ? (
-          <Callout status="warning" className="mb-3" role="alert">
-            {rowActionError}
-          </Callout>
-        ) : null}
+          {rowActionError ? (
+            <Callout status="warning" className="mb-3" role="alert">
+              {rowActionError}
+            </Callout>
+          ) : null}
 
-        {loading ? (
-          <LoadingPlaceholderCompact label="Loading members" />
-        ) : (
-          <div className="-mx-1 overflow-x-auto">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell>Name</TableHeaderCell>
-                  <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>
-                    <span className="inline-flex items-center gap-1.5 pl-3">
-                      <span>Role</span>
-                      <span className="group relative inline-flex">
-                        <button
-                          type="button"
-                          className="inline-flex h-4 w-4 items-center justify-center text-[12px] leading-none text-[var(--ds-text-muted)]"
-                          aria-label={roleSemanticsTooltip}
-                        >
-                          ⓘ
-                        </button>
-                        <span
-                          role="tooltip"
-                          className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-56 -translate-x-1/2 whitespace-pre-line rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-2 py-1.5 text-[10px] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block"
-                        >
-                          {roleSemanticsTooltip}
+          {loading ? (
+            <LoadingPlaceholderCompact label="Loading members" />
+          ) : (
+            <div className="-mx-1 overflow-x-auto">
+              <Table className="table-fixed">
+                <colgroup>
+                  <col style={{ width: MEMBERS_NAME_COLUMN_WIDTH }} />
+                  <col />
+                  <col style={{ width: MEMBERS_ROLE_COLUMN_WIDTH }} />
+                  {showRowActions ? <col style={{ width: MEMBERS_ACTIONS_COLUMN_WIDTH }} /> : null}
+                </colgroup>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Name</TableHeaderCell>
+                    <TableHeaderCell>Email</TableHeaderCell>
+                    <TableHeaderCell>
+                      <span className="inline-flex items-center gap-1.5 pl-3">
+                        <span>Role</span>
+                        <span className="group relative inline-flex">
+                          <button
+                            type="button"
+                            className="inline-flex h-4 w-4 items-center justify-center text-[12px] leading-none text-[var(--ds-text-muted)]"
+                            aria-label={roleSemanticsTooltip}
+                          >
+                            ⓘ
+                          </button>
+                          <span
+                            role="tooltip"
+                            className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-56 -translate-x-1/2 whitespace-pre-line rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-2 py-1.5 text-[10px] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block"
+                          >
+                            {roleSemanticsTooltip}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                  </TableHeaderCell>
-                  {showRowActions ? (
-                    <TableHeaderCell className="text-right">Actions</TableHeaderCell>
-                  ) : null}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {members.map((m) => {
-                  const normalizedProfile = normalizeResolvedProfile(m, profiles);
-                  const displayName = computeDisplayName(normalizedProfile, m.email, m.user_id);
-                  const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
-                  const isSelf = viewer?.currentUserId === m.user_id;
-                  const busy = pendingId === m.id;
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell className="text-[var(--ds-text-primary)]">{displayName}</TableCell>
-                      <TableCell className="text-[var(--ds-text-secondary)]">{displayEmail}</TableCell>
-                      <TableCell>
-                        {canChangeRole && !isSelf ? (
-                          <select
-                            className={projectSettingsSelectClass(false, "sm")}
-                            value={m.role}
-                            disabled={busy}
-                            aria-label={`Role for ${displayName}`}
-                            onChange={(e) => {
-                              const next = e.target.value as ProjectMemberRole | string;
-                              if (!isStandardProjectRole(next)) return;
-                              if (next !== m.role) void onRoleChange(m, next);
-                            }}
-                          >
-                            {!isStandardProjectRole(m.role) && (
-                              <option value={m.role}>
-                                {m.role} (current)
-                              </option>
-                            )}
-                            {ROLE_OPTIONS.map(({ value, label }) => (
-                              <option key={value} value={value}>
-                                {label}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <span className="inline-flex h-9 w-full items-center px-3 py-1 capitalize text-[var(--ds-text-primary)]">
-                            {m.role}
-                          </span>
-                        )}
-                      </TableCell>
-                      {showRowActions ? (
-                        <TableCell className="text-right">
-                          {canRemove && !isSelf ? (
-                            <span className="inline-flex w-full justify-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                disabled={busy}
-                                className="ds-action-danger"
-                                onClick={() => void onRemove(m)}
-                              >
-                                Remove
-                              </Button>
-                            </span>
+                    </TableHeaderCell>
+                    {showRowActions ? (
+                      <TableHeaderCell className="!text-center">
+                        <span className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-secondary)]">
+                          Actions
+                        </span>
+                      </TableHeaderCell>
+                    ) : null}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {membersRows.map((m) => {
+                    const normalizedProfile = normalizeResolvedProfile(m, profiles);
+                    const displayName = computeDisplayName(normalizedProfile, m.email, m.user_id);
+                    const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
+                    const isSelf = viewer?.currentUserId === m.user_id;
+                    const busy = pendingId === m.id;
+                    return (
+                      <TableRow
+                        key={m.id}
+                        className={isSelf ? membersTableCurrentUserRowClass : ""}
+                      >
+                        <TableCell className="text-[var(--ds-text-primary)]">{displayName}</TableCell>
+                        <TableCell className="text-[var(--ds-text-secondary)]">{displayEmail}</TableCell>
+                        <TableCell>
+                          {canChangeRole && !isSelf ? (
+                            <select
+                              className={projectSettingsSelectClass(false, "sm")}
+                              value={m.role}
+                              disabled={busy}
+                              aria-label={`Role for ${displayName}`}
+                              onChange={(e) => {
+                                const next = e.target.value as ProjectMemberRole | string;
+                                if (!isStandardProjectRole(next)) return;
+                                if (next !== m.role) void onRoleChange(m, next);
+                              }}
+                            >
+                              {!isStandardProjectRole(m.role) && (
+                                <option value={m.role}>
+                                  {m.role} (current)
+                                </option>
+                              )}
+                              {ROLE_OPTIONS.map(({ value, label }) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
                           ) : (
-                            <span className="inline-flex w-full justify-end text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">—</span>
+                            <span className="inline-flex h-9 w-full items-center px-3 py-1 capitalize text-[var(--ds-text-primary)]">
+                              {m.role}
+                            </span>
                           )}
                         </TableCell>
-                      ) : null}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            {members.length === 0 && !listError && (
-              <HelperText className="!mt-2">No members yet.</HelperText>
-            )}
-          </div>
-        )}
+                        {showRowActions ? (
+                          <TableCell>
+                            <div className={membersActionsSlotOuterClass}>
+                              <div className={membersActionsSlotInnerClass}>
+                                {canRemove && !isSelf ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={busy}
+                                    className="ds-action-danger"
+                                    onClick={() => void onRemove(m)}
+                                  >
+                                    Remove
+                                  </Button>
+                                ) : (
+                                  <span className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                                    —
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              {membersRows.length === 0 && !listError && (
+                <HelperText className="!mt-2">No members yet.</HelperText>
+              )}
+            </div>
+          )}
 
-        {viewer ? (
-          <ProjectMemberPermissionHints
-            resource="project"
-            canInviteMembers={viewer.canInviteMembers}
-            canChangeMemberRoles={viewer.canChangeMemberRoles}
-          />
-        ) : null}
+          {viewer ? (
+            <ProjectMemberPermissionHints
+              resource="project"
+              canInviteMembers={viewer.canInviteMembers}
+              canChangeMemberRoles={viewer.canChangeMemberRoles}
+            />
+          ) : null}
         </CardBody>
       </Card>
+
       {canInvite && (
         <Card className="mb-4">
           <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
             <h3 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Add member</h3>
           </CardHeader>
-          <CardBody className="!pl-4 !pr-3 !py-3 space-y-3">
-            {addError ? (
-              <FieldError className="!mt-0">{addError}</FieldError>
-            ) : null}
-            <div className="grid gap-2 sm:grid-cols-[35.4375rem_13rem_auto] sm:items-end">
-              <div className="min-w-0 w-full">
-                <Input
-                  id="member-email"
+          <CardBody className="!px-4 !py-3 space-y-3">
+            {addError ? <FieldError className="!mt-0">{addError}</FieldError> : null}
+            <div className={membersAddMemberCardGridClass}>
+              <div className={membersAddMemberCardCellClass}>
+                <div className="flex w-full flex-row gap-2 items-end">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="project-member-first-name"
+                      type="text"
+                      autoComplete="off"
+                      aria-label="First name"
+                      className={projectSettingsInputClass(false)}
+                      value={addFirstName}
+                      onChange={(e) => setAddFirstName(e.target.value)}
+                      placeholder="First name"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="project-member-surname"
+                      type="text"
+                      autoComplete="off"
+                      aria-label="Surname"
+                      className={projectSettingsInputClass(false)}
+                      value={addSurname}
+                      onChange={(e) => setAddSurname(e.target.value)}
+                      placeholder="Surname"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className={membersAddMemberCardCellClassEmail}>
+                <input
+                  id="project-member-email"
                   type="email"
                   autoComplete="off"
+                  aria-label="Email"
+                  className={projectSettingsInputClass(false)}
                   value={addEmail}
                   onChange={(e) => setAddEmail(e.target.value)}
                   placeholder="name@company.com"
                 />
               </div>
-              <div className="w-full sm:w-52">
+              <div className={membersAddMemberCardCellClassRole}>
                 <select
-                  id="member-role"
-                  className={projectSettingsSelectClass(false, "sm")}
+                  id="project-member-role"
+                  className={membersAddMemberRoleSelectClass(addRole !== "")}
+                  aria-label="Role"
                   value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as ProjectMemberRole)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAddRole(v === "" ? "" : (v as ProjectMemberRole));
+                  }}
                 >
+                  <option value="" disabled>
+                    {ADD_MEMBER_ROLE_PLACEHOLDER_LABEL}
+                  </option>
                   {ROLE_OPTIONS.map(({ value, label }) => (
                     <option key={value} value={value}>
                       {label}
@@ -444,18 +539,22 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                   ))}
                 </select>
               </div>
-              <span className="inline-flex w-full justify-end pr-3">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="ds-action-success"
-                  onClick={() => void onAdd()}
-                  disabled={pendingId === "__add__"}
-                >
-                  Add
-                </Button>
-              </span>
+              <div className={membersAddMemberCardCellClass}>
+                <div className={membersActionsSlotOuterClass}>
+                  <div className={membersActionsSlotInnerClass}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="ds-action-success"
+                      onClick={() => void onAdd()}
+                      disabled={pendingId === "__add__"}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </CardBody>
         </Card>

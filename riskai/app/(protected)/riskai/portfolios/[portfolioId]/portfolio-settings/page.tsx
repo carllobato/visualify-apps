@@ -1,4 +1,3 @@
-import { RegisterPageHeaderTitle } from "@/components/RegisterPageHeaderTitle";
 import { redirect } from "next/navigation";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
@@ -35,7 +34,6 @@ export default async function PortfolioSettingsPage({
 
   return (
     <>
-      <RegisterPageHeaderTitle titleSuffix="Settings" />
       <PortfolioSettingsContent
         portfolioId={portfolioId}
         memberCapabilities={memberCapabilities}

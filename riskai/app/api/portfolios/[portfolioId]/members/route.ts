@@ -197,9 +197,14 @@ export async function POST(
     return portfolioInviteTraceResponse({ error: "Permission denied" }, 403);
   }
 
-  let body: { email?: unknown; role?: unknown };
+  let body: { email?: unknown; role?: unknown; first_name?: unknown; surname?: unknown };
   try {
-    body = (await request.json()) as { email?: unknown; role?: unknown };
+    body = (await request.json()) as {
+      email?: unknown;
+      role?: unknown;
+      first_name?: unknown;
+      surname?: unknown;
+    };
   } catch {
     return portfolioInviteTraceResponse({ error: "Invalid JSON" }, 400);
   }
@@ -207,6 +212,11 @@ export async function POST(
   const email = typeof body.email === "string" ? body.email.trim() : "";
   if (!email) {
     return portfolioInviteTraceResponse({ error: "Email is required" }, 400);
+  }
+  const firstName = typeof body.first_name === "string" ? body.first_name.trim() : "";
+  const surname = typeof body.surname === "string" ? body.surname.trim() : "";
+  if (!firstName || !surname) {
+    return portfolioInviteTraceResponse({ error: "First name and surname are required" }, 400);
   }
   if (!isRole(body.role)) {
     return portfolioInviteTraceResponse({ error: "Invalid role" }, 400);
@@ -270,6 +280,18 @@ export async function POST(
   }
 
   const newUserId = typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
+
+  const norm = (v: unknown) => (v == null || v === "" ? "" : String(v).trim().toLowerCase());
+  if (norm(firstName) !== norm(match.first_name) || norm(surname) !== norm(match.surname)) {
+    return portfolioInviteTraceResponse(
+      {
+        error: "NAME_MISMATCH",
+        message: "Name does not match the profile for this email.",
+      },
+      400
+    );
+  }
+
   const profileRow = {
     id: newUserId,
     already_member: match.already_member === true,

@@ -138,8 +138,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/riskai/portfolios/:portfolioId/settings",
+        destination: "/riskai/portfolios/:portfolioId/portfolio-settings",
+        permanent: true,
+      },
+      {
         source: "/riskai/portfolios/:portfolioId/admin",
-        destination: "/riskai/portfolios/:portfolioId/settings",
+        destination: "/riskai/portfolios/:portfolioId/portfolio-settings",
         permanent: true,
       },
       {

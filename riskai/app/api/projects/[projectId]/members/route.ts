@@ -180,9 +180,14 @@ export async function POST(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  let body: { email?: unknown; role?: unknown };
+  let body: { email?: unknown; role?: unknown; first_name?: unknown; surname?: unknown };
   try {
-    body = (await request.json()) as { email?: unknown; role?: unknown };
+    body = (await request.json()) as {
+      email?: unknown;
+      role?: unknown;
+      first_name?: unknown;
+      surname?: unknown;
+    };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -190,6 +195,11 @@ export async function POST(
   const email = typeof body.email === "string" ? body.email.trim() : "";
   if (!email) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  }
+  const firstName = typeof body.first_name === "string" ? body.first_name.trim() : "";
+  const surname = typeof body.surname === "string" ? body.surname.trim() : "";
+  if (!firstName || !surname) {
+    return NextResponse.json({ error: "First name and surname are required" }, { status: 400 });
   }
   if (!isRole(body.role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -225,6 +235,18 @@ export async function POST(
   }
 
   const newUserId = typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
+
+  const norm = (v: unknown) => (v == null || v === "" ? "" : String(v).trim().toLowerCase());
+  if (norm(firstName) !== norm(match.first_name) || norm(surname) !== norm(match.surname)) {
+    return NextResponse.json(
+      {
+        error: "NAME_MISMATCH",
+        message: "Name does not match the profile for this email.",
+      },
+      { status: 400 }
+    );
+  }
+
   const profileRow = {
     id: newUserId,
     already_member: match.already_member === true,

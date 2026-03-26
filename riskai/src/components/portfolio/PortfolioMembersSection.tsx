@@ -7,16 +7,40 @@ import type {
   PortfolioMemberRole,
   PortfolioMemberWithProfileRow,
 } from "@/types/portfolioMembers";
-import { MemberSectionPermissionHints } from "@/components/settings/MemberSectionPermissionHints";
 import {
-  settingsCardClass,
-  settingsInputClass,
-  settingsLabelClass,
-  settingsMemberAddButtonClass,
-  settingsSectionTitleClass,
-} from "@/components/settings/settingsFieldClasses";
-import { Callout } from "@visualify/design-system";
+  Button,
+  Callout,
+  Card,
+  CardBody,
+  CardHeader,
+  FieldError,
+  HelperText,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@visualify/design-system";
 import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
+import { ProjectMemberPermissionHints } from "@/components/project/ProjectMemberPermissionHints";
+import {
+  ADD_MEMBER_ROLE_PLACEHOLDER_LABEL,
+  ADD_MEMBER_ROLE_VALIDATION_ERROR,
+  MEMBERS_ACTIONS_COLUMN_WIDTH,
+  MEMBERS_NAME_COLUMN_WIDTH,
+  MEMBERS_ROLE_COLUMN_WIDTH,
+  membersActionsSlotInnerClass,
+  membersActionsSlotOuterClass,
+  membersAddMemberCardCellClass,
+  membersAddMemberCardCellClassEmail,
+  membersAddMemberCardCellClassRole,
+  membersAddMemberCardGridClass,
+  membersAddMemberRoleSelectClass,
+  membersTableCurrentUserRowClass,
+  projectSettingsInputClass,
+  projectSettingsSelectClass,
+} from "@/components/project/projectSettingsDsFormClasses";
 
 type Viewer = {
   currentUserId: string;
@@ -54,7 +78,7 @@ function normalizeResolvedProfile(
   return resolveProfile(m, profilesMap);
 }
 
-/** Primary label: trimmed first+surname, else server `member.email`, else profile email, else company, else placeholder. */
+/** 1) first + surname 2) server `member.email` 3) profile email 4) company 5) invited placeholder */
 function computeDisplayName(
   profile: ProfileDisplayRow | undefined,
   topLevelEmail: string | null | undefined,
@@ -102,8 +126,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
     null
   );
   const [listError, setListError] = useState<string | null>(null);
+  const [addFirstName, setAddFirstName] = useState("");
+  const [addSurname, setAddSurname] = useState("");
   const [addEmail, setAddEmail] = useState("");
-  const [addRole, setAddRole] = useState<PortfolioMemberRole>("editor");
+  const [addRole, setAddRole] = useState<PortfolioMemberRole | "">("");
   const [addError, setAddError] = useState<string | null>(null);
   const [rowActionError, setRowActionError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -149,29 +175,44 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
   const canRemove = viewer?.canRemoveMembers ?? false;
   const showRowActions = canChangeRole || canRemove;
 
-  const semanticsLine = useMemo(() => {
-    if (!roleSemantics) return null;
-    return (
-      <p className="text-xs text-[var(--ds-text-muted)] mt-2">
-        {ROLE_OPTIONS.map(({ value }) => (
-          <span key={value} className="mr-3">
-            <span className="font-medium text-[var(--ds-text-secondary)] capitalize">
-              {value}
-            </span>
-            {": "}
-            {roleSemantics[value]}
-          </span>
-        ))}
-      </p>
-    );
+  const membersRows = useMemo(() => {
+    const uid = viewer?.currentUserId;
+    if (!uid) return members;
+    return [...members].sort((a, b) => {
+      const aSelf = a.user_id === uid ? 0 : 1;
+      const bSelf = b.user_id === uid ? 0 : 1;
+      return aSelf - bSelf;
+    });
+  }, [members, viewer?.currentUserId]);
+
+  const roleSemanticsTooltip = useMemo(() => {
+    const fallback: Record<PortfolioMemberRole, string> = {
+      owner: "Edit portfolio details, invite, and manage member roles",
+      editor: "Invite members; cannot edit portfolio details or manage roles",
+      viewer: "View settings and members only",
+    };
+    const semantics = roleSemantics ?? fallback;
+    return ROLE_OPTIONS.map(
+      ({ value }) => `${value[0].toUpperCase()}${value.slice(1)}: ${semantics[value]}`
+    ).join("\n");
   }, [roleSemantics]);
 
   const onAdd = async () => {
     setAddError(null);
     setRowActionError(null);
+    const fn = addFirstName.trim();
+    const sn = addSurname.trim();
     const email = addEmail.trim();
+    if (!fn || !sn) {
+      setAddError("Enter first name and surname.");
+      return;
+    }
     if (!email) {
       setAddError("Enter an email address.");
+      return;
+    }
+    if (addRole === "") {
+      setAddError(ADD_MEMBER_ROLE_VALIDATION_ERROR);
       return;
     }
     setPendingId("__add__");
@@ -180,10 +221,14 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: addRole }),
+        body: JSON.stringify({ email, role: addRole, first_name: fn, surname: sn }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string; message?: string };
 
+      if (res.status === 400 && data?.error === "NAME_MISMATCH") {
+        setAddError(data.message ?? "Name does not match the profile for this email.");
+        return;
+      }
       if (res.status === 404 && data?.error === "USER_NOT_FOUND") {
         setAddError(data.message ?? "User not found. They need to sign up first.");
         return;
@@ -201,7 +246,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         return;
       }
 
+      setAddFirstName("");
+      setAddSurname("");
       setAddEmail("");
+      setAddRole("");
       await load();
     } finally {
       setPendingId(null);
@@ -275,178 +323,248 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
   };
 
   return (
-    <section className={settingsCardClass + " mb-4"}>
-      <h2 className={settingsSectionTitleClass}>Portfolio members</h2>
+    <>
+      <Card className="mb-4">
+        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
+          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">
+            Team Members
+          </h2>
+        </CardHeader>
+        <CardBody className="!px-4 !py-3">
+          {listError ? (
+            <Callout status="danger" className="mb-3" role="alert">
+              {listError}
+            </Callout>
+          ) : null}
 
-      {semanticsLine}
+          {rowActionError ? (
+            <Callout status="warning" className="mb-3" role="alert">
+              {rowActionError}
+            </Callout>
+          ) : null}
 
-      {listError && (
-        <Callout status="danger" role="alert" className="mb-3 text-[length:var(--ds-text-sm)]">
-          {listError}
-        </Callout>
-      )}
-
-      {rowActionError && (
-        <Callout status="warning" role="alert" className="mb-3 text-[length:var(--ds-text-sm)]">
-          {rowActionError}
-        </Callout>
-      )}
-
-      {loading ? (
-        <LoadingPlaceholderCompact label="Loading members" />
-      ) : (
-        <div className="overflow-x-auto -mx-1">
-          <table className="min-w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-[var(--ds-border)] text-[var(--ds-text-secondary)]">
-                <th className="py-2 pr-3 font-medium">First name</th>
-                <th className="py-2 pr-3 font-medium">Surname</th>
-                <th className="py-2 pr-3 font-medium">Email</th>
-                <th className="py-2 pr-3 font-medium">Role</th>
-                {showRowActions && <th className="py-2 pr-0 font-medium text-right">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((m) => {
-                const normalizedProfile = normalizeResolvedProfile(m, profiles);
-                const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
-                const isSelf = viewer?.currentUserId === m.user_id;
-                const busy = pendingId === m.id;
-                const rowLabel = computeDisplayName(normalizedProfile, m.email, m.user_id);
-                const fullName = [normalizedProfile?.first_name, normalizedProfile?.surname]
-                  .filter(Boolean)
-                  .join(" ")
-                  .trim();
-                const hasNameParts = fullName.length > 0;
-                const identityFallback = rowLabel;
-                const fn = hasNameParts
-                  ? normalizedProfile?.first_name?.trim() || "—"
-                  : identityFallback;
-                const sn = hasNameParts ? normalizedProfile?.surname?.trim() || "—" : "—";
-                return (
-                  <tr key={m.id} className="border-b border-[var(--ds-border-subtle)]">
-                    <td className="py-2 pr-3 text-[var(--ds-text-primary)]">{fn}</td>
-                    <td className="py-2 pr-3 text-[var(--ds-text-primary)]">{sn}</td>
-                    <td className="py-2 pr-3 text-[var(--ds-text-secondary)]">
-                      {displayEmail}
-                    </td>
-                    <td className="py-2 pr-3">
-                      {canChangeRole && !isSelf ? (
-                        <select
-                          className={settingsInputClass + " h-9 py-1"}
-                          value={m.role}
-                          disabled={busy}
-                          aria-label={`Role for ${rowLabel}`}
-                          onChange={(e) => {
-                            const next = e.target.value as PortfolioMemberRole | string;
-                            if (!isStandardPortfolioRole(next)) return;
-                            if (next !== m.role) void onRoleChange(m, next);
-                          }}
-                        >
-                          {!isStandardPortfolioRole(m.role) && (
-                            <option value={m.role}>
-                              {m.role} (current)
-                            </option>
-                          )}
-                          {ROLE_OPTIONS.map(({ value, label }) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="capitalize text-[var(--ds-text-primary)]">{m.role}</span>
-                      )}
-                    </td>
-                    {showRowActions && (
-                      <td className="py-2 pl-2 text-right">
-                        {canRemove && !isSelf ? (
+          {loading ? (
+            <LoadingPlaceholderCompact label="Loading members" />
+          ) : (
+            <div className="-mx-1 overflow-x-auto">
+              <Table className="table-fixed">
+                <colgroup>
+                  <col style={{ width: MEMBERS_NAME_COLUMN_WIDTH }} />
+                  <col />
+                  <col style={{ width: MEMBERS_ROLE_COLUMN_WIDTH }} />
+                  {showRowActions ? <col style={{ width: MEMBERS_ACTIONS_COLUMN_WIDTH }} /> : null}
+                </colgroup>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Name</TableHeaderCell>
+                    <TableHeaderCell>Email</TableHeaderCell>
+                    <TableHeaderCell>
+                      <span className="inline-flex items-center gap-1.5 pl-3">
+                        <span>Role</span>
+                        <span className="group relative inline-flex">
                           <button
                             type="button"
-                            disabled={busy}
-                            onClick={() => void onRemove(m)}
-                            className="text-[length:var(--ds-text-sm)] text-[var(--ds-status-danger-fg)] hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex h-4 w-4 items-center justify-center text-[12px] leading-none text-[var(--ds-text-muted)]"
+                            aria-label={roleSemanticsTooltip}
                           >
-                            Remove
+                            ⓘ
                           </button>
-                        ) : (
-                          <span className="text-[var(--ds-text-muted)] text-xs">—</span>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {members.length === 0 && !listError && (
-            <p className="mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">No members yet.</p>
+                          <span
+                            role="tooltip"
+                            className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-56 -translate-x-1/2 whitespace-pre-line rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-2 py-1.5 text-[10px] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block"
+                          >
+                            {roleSemanticsTooltip}
+                          </span>
+                        </span>
+                      </span>
+                    </TableHeaderCell>
+                    {showRowActions ? (
+                      <TableHeaderCell className="!text-center">
+                        <span className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-secondary)]">
+                          Actions
+                        </span>
+                      </TableHeaderCell>
+                    ) : null}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {membersRows.map((m) => {
+                    const normalizedProfile = normalizeResolvedProfile(m, profiles);
+                    const displayName = computeDisplayName(normalizedProfile, m.email, m.user_id);
+                    const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
+                    const isSelf = viewer?.currentUserId === m.user_id;
+                    const busy = pendingId === m.id;
+                    return (
+                      <TableRow
+                        key={m.id}
+                        className={isSelf ? membersTableCurrentUserRowClass : ""}
+                      >
+                        <TableCell className="text-[var(--ds-text-primary)]">{displayName}</TableCell>
+                        <TableCell className="text-[var(--ds-text-secondary)]">{displayEmail}</TableCell>
+                        <TableCell>
+                          {canChangeRole && !isSelf ? (
+                            <select
+                              className={projectSettingsSelectClass(false, "sm")}
+                              value={m.role}
+                              disabled={busy}
+                              aria-label={`Role for ${displayName}`}
+                              onChange={(e) => {
+                                const next = e.target.value as PortfolioMemberRole | string;
+                                if (!isStandardPortfolioRole(next)) return;
+                                if (next !== m.role) void onRoleChange(m, next);
+                              }}
+                            >
+                              {!isStandardPortfolioRole(m.role) && (
+                                <option value={m.role}>
+                                  {m.role} (current)
+                                </option>
+                              )}
+                              {ROLE_OPTIONS.map(({ value, label }) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="inline-flex h-9 w-full items-center px-3 py-1 capitalize text-[var(--ds-text-primary)]">
+                              {m.role}
+                            </span>
+                          )}
+                        </TableCell>
+                        {showRowActions ? (
+                          <TableCell>
+                            <div className={membersActionsSlotOuterClass}>
+                              <div className={membersActionsSlotInnerClass}>
+                                {canRemove && !isSelf ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={busy}
+                                    className="ds-action-danger"
+                                    onClick={() => void onRemove(m)}
+                                  >
+                                    Remove
+                                  </Button>
+                                ) : (
+                                  <span className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                                    —
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                        ) : null}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              {membersRows.length === 0 && !listError && (
+                <HelperText className="!mt-2">No members yet.</HelperText>
+              )}
+            </div>
           )}
-        </div>
-      )}
+
+          {viewer ? (
+            <ProjectMemberPermissionHints
+              resource="portfolio"
+              canInviteMembers={viewer.canInviteMembers}
+              canChangeMemberRoles={viewer.canChangeMemberRoles}
+            />
+          ) : null}
+        </CardBody>
+      </Card>
 
       {canInvite && (
-        <div className="mt-4 pt-4 border-t border-[var(--ds-border)] space-y-3">
-          <p className="text-sm font-medium text-[var(--ds-text-primary)]">Add member</p>
-          <p className="text-xs text-[var(--ds-text-muted)]">
-            Enter the email of an existing RiskAI user (they must have signed up already).
-          </p>
-          {addError && (
-            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
-              {addError}
-            </Callout>
-          )}
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-            <div className="flex-1 min-w-0">
-              <label htmlFor="portfolio-member-email" className={settingsLabelClass}>
-                Email
-              </label>
-              <input
-                id="portfolio-member-email"
-                type="email"
-                autoComplete="off"
-                value={addEmail}
-                onChange={(e) => setAddEmail(e.target.value)}
-                className={settingsInputClass}
-                placeholder="name@company.com"
-              />
-            </div>
-            <div className="w-full sm:w-40">
-              <label htmlFor="portfolio-member-role" className={settingsLabelClass}>
-                Role
-              </label>
-              <select
-                id="portfolio-member-role"
-                className={settingsInputClass}
-                value={addRole}
-                onChange={(e) => setAddRole(e.target.value as PortfolioMemberRole)}
-              >
-                {ROLE_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
+        <Card className="mb-4">
+          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+            <h3 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Add member</h3>
+          </CardHeader>
+          <CardBody className="!px-4 !py-3 space-y-3">
+            {addError ? <FieldError className="!mt-0">{addError}</FieldError> : null}
+            <div className={membersAddMemberCardGridClass}>
+              <div className={membersAddMemberCardCellClass}>
+                <div className="flex w-full flex-row gap-2 items-end">
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="portfolio-member-first-name"
+                      type="text"
+                      autoComplete="off"
+                      aria-label="First name"
+                      className={projectSettingsInputClass(false)}
+                      value={addFirstName}
+                      onChange={(e) => setAddFirstName(e.target.value)}
+                      placeholder="First name"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <input
+                      id="portfolio-member-surname"
+                      type="text"
+                      autoComplete="off"
+                      aria-label="Surname"
+                      className={projectSettingsInputClass(false)}
+                      value={addSurname}
+                      onChange={(e) => setAddSurname(e.target.value)}
+                      placeholder="Surname"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className={membersAddMemberCardCellClassEmail}>
+                <input
+                  id="portfolio-member-email"
+                  type="email"
+                  autoComplete="off"
+                  aria-label="Email"
+                  className={projectSettingsInputClass(false)}
+                  value={addEmail}
+                  onChange={(e) => setAddEmail(e.target.value)}
+                  placeholder="name@company.com"
+                />
+              </div>
+              <div className={membersAddMemberCardCellClassRole}>
+                <select
+                  id="portfolio-member-role"
+                  className={membersAddMemberRoleSelectClass(addRole !== "")}
+                  aria-label="Role"
+                  value={addRole}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAddRole(v === "" ? "" : (v as PortfolioMemberRole));
+                  }}
+                >
+                  <option value="" disabled>
+                    {ADD_MEMBER_ROLE_PLACEHOLDER_LABEL}
                   </option>
-                ))}
-              </select>
+                  {ROLE_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={membersAddMemberCardCellClass}>
+                <div className={membersActionsSlotOuterClass}>
+                  <div className={membersActionsSlotInnerClass}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="ds-action-success"
+                      onClick={() => void onAdd()}
+                      disabled={pendingId === "__add__"}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => void onAdd()}
-              disabled={pendingId === "__add__"}
-              className={settingsMemberAddButtonClass}
-            >
-              Add
-            </button>
-          </div>
-        </div>
+          </CardBody>
+        </Card>
       )}
-
-      {viewer && (
-        <MemberSectionPermissionHints
-          resource="portfolio"
-          canInviteMembers={viewer.canInviteMembers}
-          canChangeMemberRoles={viewer.canChangeMemberRoles}
-        />
-      )}
-    </section>
+    </>
   );
 }
