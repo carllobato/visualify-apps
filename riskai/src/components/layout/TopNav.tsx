@@ -97,14 +97,14 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
   const headerSurface =
     variant === "glass"
       ? "border-b border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-elevated)_92%,var(--ds-background))] shadow-[var(--ds-shadow-sm)] transition-[background-color,border-color] duration-[250ms] ease-in-out"
-      : "border-b border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-[var(--ds-shadow-sm)]";
+      : "ds-app-top-nav";
 
   const menuItemClass =
     "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-2)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
     "hover:bg-[var(--ds-surface-hover)] focus-visible:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
   return (
-    <header className={`flex h-14 shrink-0 items-center justify-between gap-[var(--ds-space-3)] px-[var(--ds-space-4)] ${headerSurface}`}>
+    <header className={`flex h-14 shrink-0 items-center justify-between gap-[var(--ds-space-3)] px-[var(--ds-space-2)] ${headerSurface}`}>
       <div className="flex min-w-0 items-center gap-[var(--ds-space-3)]">
         {onMenuClick ? (
           <Button

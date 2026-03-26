@@ -142,10 +142,8 @@ export function NavBar() {
 
   const logoClassName = "text-lg font-semibold text-[var(--ds-text-primary)] no-underline shrink-0 hover:opacity-80 transition-opacity";
   const navLinkClassName = (isActive: boolean) =>
-    "inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium no-underline transition-colors " +
-    (isActive
-      ? "bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] underline underline-offset-4"
-      : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]");
+    "ds-nav-link inline-flex items-center gap-1.5 px-3 py-2 text-sm no-underline " +
+    (isActive ? "ds-nav-link--active" : "");
 
   return (
     <nav className="sticky top-0 z-50 flex items-center gap-6 px-6 py-3 border-b border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-sm">

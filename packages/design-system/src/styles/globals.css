@@ -1,31 +1,49 @@
 :root {
-  --ds-background: #f7f8fa;
-  --ds-foreground: #0f172a;
+  /* Canonical palette (source of truth for product + /design-system) */
+  --ds-bg: #ffffff;
+  --ds-surface: #f7f7f8;
+  --ds-surface-subtle: #efeff1;
 
-  --ds-card: rgba(255, 255, 255, 0.78);
-  --ds-card-foreground: #0f172a;
+  --ds-text-secondary: #5f6368;
+  --ds-text-tertiary: #9aa0a6;
 
-  --ds-muted: #eef2f7;
-  --ds-muted-foreground: #6b7280;
+  --ds-border: #e6e6e8;
 
-  --ds-border: rgba(15, 23, 42, 0.08);
+  --ds-primary: #3b82f6;
+  --ds-primary-hover: #2563eb;
+  --ds-primary-subtle: #eff6ff;
+  --ds-primary-text: #ffffff;
+
+  --ds-danger: #dc4c4c;
+  --ds-danger-subtle: #fdecec;
+  --ds-warning: #d97706;
+  --ds-warning-subtle: #fff4e5;
+  --ds-success: #2f9e6f;
+  --ds-success-subtle: #eaf7f0;
+
+  /* Existing names — map to canonical tokens */
+  --ds-background: var(--ds-bg);
+  --ds-foreground: #111111;
+  --ds-muted: var(--ds-surface);
+  --ds-muted-foreground: var(--ds-text-tertiary);
+  --ds-card: var(--ds-surface);
+  --ds-card-foreground: var(--ds-foreground);
+
   --ds-border-subtle: color-mix(in oklab, var(--ds-border) 52%, transparent);
   --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 36%, var(--ds-surface-default));
-  --ds-primary-foreground: #ffffff;
-
-  --ds-success: #1f9d55;
-  --ds-warning: #d97706;
-  --ds-danger: #dc2626;
+  /* Neutral hover affordance (inputs, ghost controls, tabs — no blue tint) */
+  --ds-control-border-hover: color-mix(in oklab, var(--ds-text-primary) 20%, var(--ds-border));
+  --ds-input-bg-hover: color-mix(in oklab, var(--ds-muted) 26%, var(--ds-surface-inset));
+  --ds-primary-foreground: var(--ds-primary-text);
 
   --ds-text-primary: var(--ds-foreground);
-  --ds-text-secondary: color-mix(in oklab, var(--ds-foreground) 72%, var(--ds-muted-foreground));
-  --ds-text-muted: var(--ds-muted-foreground);
+  --ds-text-muted: var(--ds-text-tertiary);
   --ds-text-inverse: #ffffff;
 
   --ds-surface-default: var(--ds-background);
   --ds-surface-muted: var(--ds-muted);
   --ds-surface-elevated: var(--ds-card);
-  --ds-surface-inset: color-mix(in oklab, var(--ds-muted) 60%, var(--ds-card));
+  --ds-surface-inset: var(--ds-surface-subtle);
 
   --ds-status-success: var(--ds-success);
   --ds-status-success-bg: color-mix(in oklab, var(--ds-status-success) 18%, var(--ds-surface-default));
@@ -83,12 +101,12 @@
   --ds-status-neutral-strong-border: color-mix(in oklab, var(--ds-status-neutral) 62%, var(--ds-text-primary));
 
   /* Semantic risk levels & alert meanings (RiskAI): low / watch / high / critical / emerging / volatile / neutral */
-  --ds-risk-low: #16a34a;
-  --ds-risk-medium: #ca8a04;
-  --ds-risk-high: #dc2626;
-  --ds-risk-critical: #991b1b;
-  --ds-risk-emerging: #2563eb;
-  --ds-risk-volatile: #ea580c;
+  --ds-risk-low: #2f9e6f;
+  --ds-risk-medium: #d97706;
+  --ds-risk-high: #dc4c4c;
+  --ds-risk-critical: #b91c1c;
+  --ds-risk-emerging: #3b82f6;
+  --ds-risk-volatile: #6b7280;
   --ds-risk-neutral: color-mix(in oklab, var(--ds-text-primary) 28%, var(--ds-text-muted));
 
   --ds-risk-low-bg: color-mix(in oklab, var(--ds-risk-low) 18%, var(--ds-surface-default));
@@ -133,11 +151,22 @@
   --ds-radius-xl: 32px;
 
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --ds-shadow-md: 0 12px 40px rgba(15, 23, 42, 0.08);
-  --ds-shadow-lg: 0 24px 60px rgba(15, 23, 42, 0.12);
+  --ds-shadow-md: 0 12px 40px rgba(17, 17, 17, 0.08);
+  --ds-shadow-lg: 0 24px 60px rgba(17, 17, 17, 0.12);
+
+  /* Floating menus / popovers — derived from existing surfaces; no new palette hex */
+  --ds-surface-floating: color-mix(in oklab, var(--ds-surface) 64%, var(--ds-surface-subtle));
+  --ds-border-floating: color-mix(in oklab, var(--ds-text-primary) 10%, var(--ds-border));
+  --ds-border-floating-width: 0.5px;
+  --ds-border-menu-divider: color-mix(in oklab, var(--ds-border) 78%, transparent);
+  /* Full inset layer — readable step from floating panel (Tailwind hover:bg on items must not override; see rules below) */
+  --ds-menu-item-hover-bg: var(--ds-surface-inset);
+  --ds-shadow-floating:
+    0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 5%, transparent),
+    0 12px 32px -10px color-mix(in oklab, var(--ds-scrim-ink) 12%, transparent);
 
   /* Ink for scrims, shadows, vignettes (independent of semantic text colour) */
-  --ds-scrim-ink: #0f172a;
+  --ds-scrim-ink: #111111;
   /* Modal / drawer backdrop — single system app-wide */
   --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 50%, transparent);
   /* Marketing / photo washes behind glass (login hero) */
@@ -164,9 +193,8 @@
     transparent 0%,
     color-mix(in oklab, var(--ds-scrim-ink) 22%, transparent) 100%
   );
-  /* RiskAI brand accent — primary actions use brand */
-  --ds-brand-accent: #d96c32;
-  --ds-primary: var(--ds-brand-accent);
+  /* Legacy name — primary actions; keep aligned with --ds-primary */
+  --ds-brand-accent: var(--ds-primary);
   /* Focus / scroll target highlight */
   --ds-focus-highlight-bg: color-mix(in oklab, var(--ds-status-warning) 20%, transparent);
   --ds-focus-highlight-outline: color-mix(in oklab, var(--ds-status-warning) 60%, transparent);
@@ -178,6 +206,14 @@
   --ds-elevation-tile-hover: 0 3px 12px color-mix(in oklab, var(--ds-scrim-ink) 5.5%, transparent);
   /* Modal panels (legal, etc.) */
   --ds-shadow-modal-panel: 0 25px 50px -12px color-mix(in oklab, var(--ds-scrim-ink) 20%, transparent);
+  /* App shell top header (subtle frosted structural layer) */
+  --ds-app-header-height: 3.5rem; /* matches TopNav h-14 (56px) */
+  /* Premium-but-quiet glass: slightly clearer read-through with restrained blur. */
+  --ds-app-top-nav-bg: color-mix(in oklab, var(--ds-surface) 42%, transparent);
+  --ds-app-top-nav-border: rgba(0, 0, 0, 0.1);
+  --ds-app-top-nav-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  --ds-app-top-nav-blur: 10px;
+  --ds-app-sidebar-bg: color-mix(in oklab, var(--ds-surface) 56%, var(--ds-bg));
 
   --ds-space-1: 4px;
   --ds-space-2: 8px;
@@ -203,10 +239,10 @@
   --ds-transition-base: 220ms ease;
 
   --ds-chart-series-1: var(--ds-primary);
-  --ds-chart-series-2: #1d4ed8;
+  --ds-chart-series-2: var(--ds-primary-hover);
   --ds-chart-series-3: #0f766e;
   --ds-chart-series-4: #334155;
-  --ds-chart-series-5: #16a34a;
+  --ds-chart-series-5: var(--ds-success);
   --ds-chart-series-6: #7c3aed;
   --ds-chart-grid: color-mix(in oklab, var(--ds-border) 56%, transparent);
   --ds-chart-axis: color-mix(in oklab, var(--ds-muted-foreground) 72%, var(--ds-foreground));
@@ -243,29 +279,48 @@
 }
 
 [data-theme="dark"] {
-  --ds-background: #0b1220;
-  --ds-foreground: #e5e7eb;
+  --ds-bg: #0e0e10;
+  --ds-surface: #1a1a1d;
+  --ds-surface-subtle: #26262a;
 
-  --ds-card: rgba(15, 23, 42, 0.7);
-  --ds-card-foreground: #e5e7eb;
+  --ds-text-secondary: #a1a1aa;
+  --ds-text-tertiary: #6b7280;
 
-  --ds-muted: #111827;
-  --ds-muted-foreground: #9ca3af;
+  --ds-border: #2f2f34;
 
-  --ds-border: rgba(255, 255, 255, 0.08);
+  --ds-primary: #3b82f6;
+  --ds-primary-hover: #2563eb;
+  --ds-primary-subtle: color-mix(in oklab, var(--ds-primary) 18%, var(--ds-surface));
+  --ds-primary-text: #ffffff;
+
+  --ds-danger: #dc4c4c;
+  --ds-danger-subtle: color-mix(in oklab, var(--ds-danger) 16%, var(--ds-bg));
+  --ds-warning: #d97706;
+  --ds-warning-subtle: color-mix(in oklab, var(--ds-warning) 16%, var(--ds-bg));
+  --ds-success: #2f9e6f;
+  --ds-success-subtle: color-mix(in oklab, var(--ds-success) 16%, var(--ds-bg));
+
+  --ds-background: var(--ds-bg);
+  --ds-foreground: #f5f5f5;
+  --ds-muted: var(--ds-surface);
+  --ds-muted-foreground: var(--ds-text-tertiary);
+  --ds-card: var(--ds-surface);
+  --ds-card-foreground: var(--ds-foreground);
+
   --ds-border-subtle: color-mix(in oklab, var(--ds-border) 58%, transparent);
   --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 44%, var(--ds-surface-default));
-  --ds-primary-foreground: #ffffff;
+  --ds-control-border-hover: color-mix(in oklab, var(--ds-text-primary) 24%, var(--ds-border));
+  --ds-input-bg-hover: color-mix(in oklab, var(--ds-muted) 32%, var(--ds-surface-inset));
+  --ds-primary-foreground: var(--ds-primary-text);
 
   --ds-text-primary: var(--ds-foreground);
-  --ds-text-secondary: color-mix(in oklab, var(--ds-foreground) 78%, var(--ds-muted-foreground));
-  --ds-text-muted: var(--ds-muted-foreground);
+  --ds-text-muted: var(--ds-text-tertiary);
   --ds-text-inverse: #ffffff;
 
   --ds-surface-default: var(--ds-background);
   --ds-surface-muted: var(--ds-muted);
   --ds-surface-elevated: var(--ds-card);
-  --ds-surface-inset: color-mix(in oklab, var(--ds-muted) 60%, var(--ds-card));
+  --ds-surface-inset: var(--ds-surface-subtle);
 
   --ds-status-success: var(--ds-success);
   --ds-status-success-bg: color-mix(in oklab, var(--ds-status-success) 22%, var(--ds-surface-default));
@@ -322,12 +377,12 @@
   --ds-status-neutral-strong-fg: var(--ds-text-inverse);
   --ds-status-neutral-strong-border: color-mix(in oklab, var(--ds-status-neutral) 64%, var(--ds-text-primary));
 
-  --ds-risk-low: #4ade80;
-  --ds-risk-medium: #fbbf24;
-  --ds-risk-high: #f87171;
-  --ds-risk-critical: #ef4444;
+  --ds-risk-low: #3db87e;
+  --ds-risk-medium: #e6a23c;
+  --ds-risk-high: #e85d5d;
+  --ds-risk-critical: #e11d48;
   --ds-risk-emerging: #60a5fa;
-  --ds-risk-volatile: #fb923c;
+  --ds-risk-volatile: #9ca3af;
   --ds-risk-neutral: color-mix(in oklab, var(--ds-text-primary) 20%, var(--ds-text-muted));
 
   --ds-risk-low-bg: color-mix(in oklab, var(--ds-risk-low) 22%, var(--ds-surface-default));
@@ -370,7 +425,16 @@
   --ds-shadow-md: 0 12px 40px rgba(0, 0, 0, 0.28);
   --ds-shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.36);
 
-  --ds-scrim-ink: #000000;
+  --ds-surface-floating: color-mix(in oklab, var(--ds-surface) 58%, var(--ds-surface-subtle));
+  --ds-border-floating: color-mix(in oklab, var(--ds-text-primary) 12%, var(--ds-border));
+  --ds-border-floating-width: 0.5px;
+  --ds-border-menu-divider: color-mix(in oklab, var(--ds-border) 88%, transparent);
+  --ds-menu-item-hover-bg: var(--ds-surface-inset);
+  --ds-shadow-floating:
+    0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 22%, transparent),
+    0 14px 36px -12px color-mix(in oklab, var(--ds-scrim-ink) 42%, transparent);
+
+  --ds-scrim-ink: #0e0e10;
   --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 58%, transparent);
   --ds-backdrop-photo-light: color-mix(in oklab, var(--ds-text-inverse) 48%, transparent);
   --ds-backdrop-photo-dark: color-mix(in oklab, var(--ds-scrim-ink) 80%, transparent);
@@ -392,8 +456,7 @@
     transparent 0%,
     color-mix(in oklab, var(--ds-scrim-ink) 22%, transparent) 100%
   );
-  --ds-brand-accent: #d96c32;
-  --ds-primary: var(--ds-brand-accent);
+  --ds-brand-accent: var(--ds-primary);
   --ds-focus-highlight-bg: color-mix(in oklab, var(--ds-status-warning) 22%, transparent);
   --ds-focus-highlight-outline: color-mix(in oklab, var(--ds-status-warning) 64%, transparent);
   --ds-control-strong-border-hover: color-mix(in oklab, var(--ds-text-inverse) 25%, transparent);
@@ -401,12 +464,17 @@
   --ds-elevation-tile: 0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 20%, transparent);
   --ds-elevation-tile-hover: 0 4px 16px color-mix(in oklab, var(--ds-scrim-ink) 28%, transparent);
   --ds-shadow-modal-panel: 0 25px 50px -12px color-mix(in oklab, var(--ds-scrim-ink) 55%, transparent);
+  --ds-app-top-nav-bg: color-mix(in oklab, var(--ds-surface) 40%, transparent);
+  --ds-app-top-nav-border: rgba(255, 255, 255, 0.12);
+  --ds-app-top-nav-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --ds-app-top-nav-blur: 10px;
+  --ds-app-sidebar-bg: color-mix(in oklab, var(--ds-surface) 52%, var(--ds-bg));
 
   --ds-chart-series-1: var(--ds-primary);
-  --ds-chart-series-2: #60a5fa;
+  --ds-chart-series-2: var(--ds-primary-hover);
   --ds-chart-series-3: #2dd4bf;
   --ds-chart-series-4: #64748b;
-  --ds-chart-series-5: #4ade80;
+  --ds-chart-series-5: var(--ds-success);
   --ds-chart-series-6: #a78bfa;
   --ds-chart-grid: color-mix(in oklab, var(--ds-border) 66%, transparent);
   --ds-chart-axis: color-mix(in oklab, var(--ds-muted-foreground) 84%, var(--ds-foreground));
@@ -416,7 +484,7 @@
   --ds-chart-annotation: color-mix(in oklab, var(--ds-muted-foreground) 82%, var(--ds-foreground));
   --ds-chart-insight-positive: color-mix(in oklab, var(--ds-success) 82%, var(--ds-foreground));
   --ds-chart-insight-negative: color-mix(in oklab, var(--ds-danger) 82%, var(--ds-foreground));
-  --ds-chart-emphasis: #60a5fa;
+  --ds-chart-emphasis: var(--ds-primary);
   --ds-chart-muted-series: color-mix(in oklab, var(--ds-muted-foreground) 30%, var(--ds-muted));
   --ds-chart-line-width: 2px;
   --ds-chart-point-radius: 3px;
@@ -457,4 +525,215 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+/* Interactive controls — pointer; disabled uses not-allowed (see Button for disabled:hover locks) */
+button:not(:disabled):not([disabled]),
+input[type="button"]:not(:disabled):not([disabled]),
+input[type="submit"]:not(:disabled):not([disabled]),
+input[type="reset"]:not(:disabled):not([disabled]),
+input[type="checkbox"]:not(:disabled):not([disabled]),
+input[type="radio"]:not(:disabled):not([disabled]),
+input[type="file"]:not(:disabled):not([disabled]),
+input[type="range"]:not(:disabled):not([disabled]),
+select:not(:disabled):not([disabled]),
+label[for],
+summary,
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+button[disabled],
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
+/* Muted inline links — use class `ds-text-link-muted` (optionally with text size utilities) */
+.ds-text-link-muted {
+  cursor: pointer;
+  color: var(--ds-text-secondary);
+  text-underline-offset: 2px;
+  transition:
+    color var(--ds-transition-fast),
+    text-decoration-color var(--ds-transition-fast),
+    text-decoration-thickness var(--ds-transition-fast);
+}
+.ds-text-link-muted:hover {
+  color: var(--ds-text-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--ds-text-primary) 32%, transparent);
+  text-decoration-thickness: 1px;
+}
+
+/* Primary navigation links — minimal active state (text-led; optional left rail for vertical lists) */
+.ds-nav-link {
+  border-radius: 0;
+  background-color: transparent;
+  font-weight: 500;
+  color: var(--ds-text-secondary);
+  text-decoration: none;
+  transition:
+    color var(--ds-transition-fast),
+    background-color var(--ds-transition-fast),
+    border-color var(--ds-transition-fast);
+}
+.ds-nav-link svg {
+  color: var(--ds-text-muted);
+  transition: color var(--ds-transition-fast);
+}
+.ds-nav-link:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+.ds-nav-link:hover:not(.ds-nav-link--active):not(.ds-nav-link--disabled) {
+  color: var(--ds-text-primary);
+  background-color: var(--ds-surface-subtle);
+}
+.ds-nav-link:hover:not(.ds-nav-link--active):not(.ds-nav-link--disabled) svg {
+  color: var(--ds-text-primary);
+}
+.ds-nav-link--active {
+  font-weight: 600;
+  color: var(--ds-text-primary);
+}
+.ds-nav-link--active svg {
+  color: var(--ds-text-primary);
+}
+.ds-nav-link--rail {
+  border-left: 2px solid transparent;
+}
+.ds-nav-link--active.ds-nav-link--rail {
+  border-left-color: color-mix(in oklab, var(--ds-text-primary) 50%, transparent);
+}
+.ds-nav-link--disabled {
+  cursor: not-allowed;
+  color: var(--ds-text-muted);
+  background-color: transparent;
+}
+.ds-nav-link--disabled svg {
+  color: var(--ds-text-muted);
+}
+.ds-nav-link--disabled:hover {
+  color: var(--ds-text-muted);
+  background-color: transparent;
+}
+
+/* Floating dropdown panels — intentional elevation above page (menus, listbox dropdowns, opt-in popovers) */
+[role="menu"],
+ul[role="listbox"],
+.ds-floating-panel {
+  background-color: var(--ds-surface-floating);
+  border-style: solid;
+  border-width: var(--ds-border-floating-width);
+  border-color: var(--ds-border-floating);
+  box-shadow: var(--ds-shadow-floating);
+}
+
+[role="menu"] [role="separator"] {
+  border-color: var(--ds-border-menu-divider);
+}
+
+ul[role="listbox"] li.border-t {
+  border-top-color: var(--ds-border-menu-divider);
+}
+
+/* !important: menu rows often set Tailwind hover:bg-[var(--ds-surface-hover)]; this token must win */
+[role="menu"] [role="menuitem"]:hover,
+[role="menu"] [role="menuitem"]:focus-visible {
+  background-color: var(--ds-menu-item-hover-bg) !important;
+}
+
+ul[role="listbox"] button:hover,
+ul[role="listbox"] button:focus-visible {
+  background-color: var(--ds-menu-item-hover-bg) !important;
+}
+
+/* App shell — primary top bar, secondary sidebar, main canvas, legal footer (token-led hierarchy) */
+.ds-app-shell {
+  background-color: var(--ds-bg);
+  color: var(--ds-text-primary);
+}
+
+/* Do not offset the full shell body; keep main canvas flush so content can pass under fixed header. */
+.ds-app-shell-body {
+  padding-top: 0;
+}
+
+.ds-app-top-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  /* Semi-transparent fill so backdrop blur is visible; layer hint helps compositing */
+  background-color: var(--ds-app-top-nav-bg);
+  border-bottom: 1px solid var(--ds-app-top-nav-border);
+  box-shadow: var(--ds-app-top-nav-shadow);
+  transform: translateZ(0);
+  -webkit-backdrop-filter: blur(var(--ds-app-top-nav-blur));
+  backdrop-filter: blur(var(--ds-app-top-nav-blur));
+}
+
+.ds-app-sidebar {
+  background-color: var(--ds-app-sidebar-bg);
+  border-right: 1px solid var(--ds-border);
+}
+
+.ds-app-main {
+  background-color: var(--ds-bg);
+}
+
+.ds-site-footer {
+  background-color: var(--ds-bg);
+}
+
+/* Sidebar chrome primitives (layout shell) */
+.ds-sidebar-right-divider {
+  border-right: 1px solid var(--ds-border);
+}
+
+.ds-sidebar-collapse-btn {
+  color: var(--ds-text-secondary);
+}
+.ds-sidebar-collapse-btn svg {
+  color: var(--ds-text-muted);
+}
+.ds-sidebar-collapse-btn:hover:not(:disabled):not([disabled]) {
+  background-color: transparent !important;
+  color: var(--ds-text-primary) !important;
+}
+.ds-sidebar-collapse-btn:hover:not(:disabled):not([disabled]) svg {
+  color: var(--ds-text-primary);
+}
+
+/* Sidebar hover-peek shell: keep elevation without changing divider thickness */
+.ds-sidebar-peek {
+  box-shadow: var(--ds-shadow-md);
+}
+
+/* Sidebar section headers — shared typography and subtle contrast */
+.ds-sidebar-section-header {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+  font-weight: 500;
+  color: color-mix(in oklab, var(--ds-text-secondary) 88%, var(--ds-text-muted));
+}
+
+.ds-sidebar-section-header-label {
+  color: inherit;
+}
+
+/* Legal footer content spans full width of the footer (no content max-width cap) */
+.ds-site-footer-inner {
+  width: 100%;
+  max-width: none;
 }

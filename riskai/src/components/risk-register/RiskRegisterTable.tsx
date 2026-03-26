@@ -217,7 +217,7 @@ function FilterPopover({
   return (
     <div
       ref={popoverRef}
-      className="absolute left-0 top-full z-50 mt-1 min-w-[140px] max-w-[220px] rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-elevated)] py-2 shadow-[var(--ds-shadow-sm)]"
+      className="ds-floating-panel absolute left-0 top-full z-50 mt-1 min-w-[140px] max-w-[220px] rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-elevated)] py-2 shadow-[var(--ds-shadow-sm)]"
       role="dialog"
       aria-label={`Filter by ${column}`}
     >

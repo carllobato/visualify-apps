@@ -245,12 +245,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const navTransition = "duration-200 ease-out";
 
   const linkClass = (active: boolean, disabled?: boolean) =>
-    "flex min-w-0 items-center gap-0 rounded-[var(--ds-radius-md)] border-l-[3px] py-2 pl-3 pr-3 text-[length:var(--ds-text-sm)] font-medium no-underline transition-[background-color,border-color,color] " +
+    "ds-nav-link ds-nav-link--rail flex min-w-0 items-center gap-0 py-2 pl-3 pr-3 text-[length:var(--ds-text-sm)] no-underline " +
     (disabled
-      ? "cursor-not-allowed border-l-transparent text-[var(--ds-text-muted)] [&_svg]:text-[var(--ds-text-muted)]"
+      ? "ds-nav-link--disabled cursor-not-allowed"
       : active
-        ? "border-l-[var(--ds-status-neutral-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] [&_svg]:text-[var(--ds-text-primary)]"
-        : "border-l-transparent text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-inset)] hover:text-[var(--ds-text-primary)] [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]");
+        ? "ds-nav-link--active"
+        : "");
 
   /** Width, opacity, and margin animate together; margin replaces gap so spacing doesn’t jump. */
   const navLabelClass =
@@ -265,8 +265,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const sectionHeader = (label: string, isFirst = false) => (
     <div
       className={
-        "relative px-3 pb-2 pt-6 text-[length:var(--ds-text-xs)] font-semibold uppercase tracking-[0.14em] text-[var(--ds-text-muted)] first:pt-2 " +
-        (!isFirst ? "mt-2" : "")
+        "ds-sidebar-section-header relative px-3 pb-1 pt-4 first:pt-1 " +
+        (!isFirst ? "mt-1" : "")
       }
     >
       {visuallyCollapsed ? (
@@ -277,9 +277,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       ) : null}
       <span
         className={
-          "relative z-10 block overflow-hidden whitespace-nowrap uppercase transition-[max-width,opacity] " +
+          "ds-sidebar-section-header-label relative z-10 block overflow-hidden whitespace-nowrap transition-[max-width,opacity] " +
           navTransition +
-          " text-[var(--ds-text-muted)] " +
+          " " +
           (visuallyCollapsed ? "max-w-0 opacity-0" : "max-w-[min(12rem,100%)] opacity-100")
         }
         aria-hidden={visuallyCollapsed}
@@ -319,9 +319,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <aside
         className={
-          "fixed bottom-0 left-0 top-14 z-50 flex flex-col border-r-2 border-[var(--ds-border)] bg-[var(--ds-surface-muted)] transition-[transform,width] duration-200 ease-out will-change-[width] md:static md:top-auto md:z-0 md:h-full " +
+          "ds-app-sidebar fixed bottom-0 left-0 top-[var(--ds-app-header-height)] z-50 flex flex-col transition-[transform,width] duration-200 ease-out will-change-[width] md:static md:top-auto md:z-0 md:mt-[var(--ds-app-header-height)] md:h-[calc(100vh-var(--ds-app-header-height))] " +
           widthClass +
-          (collapsed && hoverPeek ? " shadow-[var(--ds-shadow-md)] ring-1 ring-[var(--ds-status-neutral-subtle-border)]" : "") +
+          (collapsed && hoverPeek ? " ds-sidebar-peek" : "") +
           (mobileOpen ? " translate-x-0" : " -translate-x-full md:translate-x-0")
         }
         onMouseEnter={handleAsidePointerEnter}
@@ -462,12 +462,16 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           ) : null}
         </nav>
 
-        <div className="flex min-h-12 shrink-0 items-center border-t border-[var(--ds-status-neutral-subtle-border)] px-[var(--ds-space-2)] py-[var(--ds-space-2)]">
+        <div className="relative flex min-h-12 shrink-0 items-center px-[var(--ds-space-2)] py-[var(--ds-space-2)]">
+          <div
+            className="pointer-events-none absolute left-[var(--ds-space-2)] right-[var(--ds-space-2)] top-0 h-px bg-[var(--ds-border)]"
+            aria-hidden
+          />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="!h-auto w-full min-w-0 !justify-start !gap-0 rounded-[var(--ds-radius-md)] px-3 py-1 font-medium text-[var(--ds-text-secondary)] hover:!bg-[var(--ds-surface-inset)] hover:!text-[var(--ds-text-primary)] [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]"
+            className="ds-sidebar-collapse-btn !h-auto w-full min-w-0 !justify-start !gap-0 rounded-[var(--ds-radius-md)] px-3 py-1 font-medium"
             aria-pressed={!collapsed}
             title={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
             aria-label={collapsed ? "Pin sidebar open" : "Collapse sidebar"}

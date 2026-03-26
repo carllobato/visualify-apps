@@ -18,10 +18,10 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-[var(--ds-radius-md)] font-medium " +
+    "inline-flex cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] font-medium " +
     "transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 " +
     "focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
-    "disabled:pointer-events-none disabled:opacity-[0.38]";
+    "disabled:cursor-not-allowed disabled:opacity-[0.38]";
   const sizes: Record<NonNullable<ButtonProps["size"]>, string> = {
     sm: "h-8 px-3 text-[length:var(--ds-text-sm)]",
     md: "h-9 px-4 text-[length:var(--ds-text-sm)]",
@@ -30,13 +30,16 @@ export function Button({
   const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
     primary:
       "bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] shadow-[var(--ds-shadow-sm)] " +
-      "hover:brightness-[1.07] active:brightness-[0.97] disabled:shadow-none",
+      "hover:bg-[var(--ds-primary-hover)] active:brightness-[0.97] disabled:shadow-none " +
+      "disabled:hover:bg-[var(--ds-primary)] disabled:hover:brightness-100 disabled:active:brightness-100",
     secondary:
       "border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] text-[var(--ds-text-primary)] " +
-      "hover:bg-[var(--ds-surface-muted)]",
+      "hover:border-[var(--ds-control-border-hover)] hover:bg-[var(--ds-surface-hover)] " +
+      "disabled:hover:border-[var(--ds-border)] disabled:hover:bg-[var(--ds-surface-elevated)]",
     ghost:
       "bg-transparent text-[var(--ds-text-secondary)] " +
-      "hover:bg-[color-mix(in_oklab,var(--ds-muted)_48%,transparent)]",
+      "hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] " +
+      "disabled:hover:bg-transparent disabled:hover:text-[var(--ds-text-secondary)]",
   };
 
   return (

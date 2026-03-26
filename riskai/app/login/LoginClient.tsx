@@ -199,33 +199,37 @@ export function LoginClient() {
 
   const handleSubmit = tab === "signin" ? handleSignIn : handleSignUp;
 
-  const legalLinkClass =
-    "cursor-pointer text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] underline-offset-2 transition-colors hover:text-[var(--ds-text-primary)] hover:underline";
+  const legalLinkClass = "ds-text-link-muted text-[length:var(--ds-text-xs)]";
 
   return (
     <div className="w-full">
-      <Tabs className="mb-4 flex w-full !bg-transparent border-[var(--ds-border-subtle)] [&_button]:min-w-0 [&_button]:flex-1 [&_button[aria-selected=true]]:!bg-transparent [&_button[aria-selected=true]]:shadow-none [&_button[aria-selected=true]]:font-semibold">
-        <Tab
-          type="button"
-          active={tab === "signin"}
-          onClick={() => {
-            if (tab !== "signin") resetFormState();
-            setTab("signin");
-          }}
-        >
-          Sign in
-        </Tab>
-        <Tab
-          type="button"
-          active={tab === "signup"}
-          onClick={() => {
-            if (tab !== "signup") resetFormState();
-            setTab("signup");
-          }}
-        >
-          Sign up
-        </Tab>
-      </Tabs>
+      <div className="mb-4 w-full">
+        <div className="flex justify-center">
+          <Tabs className="max-w-full shrink-0">
+            <Tab
+              type="button"
+              active={tab === "signin"}
+              onClick={() => {
+                if (tab !== "signin") resetFormState();
+                setTab("signin");
+              }}
+            >
+              Sign in
+            </Tab>
+            <Tab
+              type="button"
+              active={tab === "signup"}
+              onClick={() => {
+                if (tab !== "signup") resetFormState();
+                setTab("signup");
+              }}
+            >
+              Sign up
+            </Tab>
+          </Tabs>
+        </div>
+        <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
@@ -284,7 +288,7 @@ export function LoginClient() {
                   <div>
                     <Link
                       href="/forgot-password"
-                      className="cursor-pointer text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] transition-colors hover:text-[var(--ds-text-primary)]"
+                      className="ds-text-link-muted text-[length:var(--ds-text-xs)]"
                     >
                       Trouble signing in?
                     </Link>
@@ -295,28 +299,41 @@ export function LoginClient() {
           </div>
         </div>
 
-        <Button type="submit" variant="primary" disabled={loading} className="relative mt-1 w-full">
-          {loading ? (
-            <span className="flex min-h-[1.25rem] w-full items-center justify-center">Please wait…</span>
-          ) : (
-            <>
-              <span
-                className={`flex min-h-[1.25rem] w-full items-center justify-center ${tabCrossfadeClass} ${
-                  tab === "signin" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-                }`}
-              >
-                Continue to RiskAI
+        <div className="flex justify-center pt-1">
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading}
+            className="relative max-w-full min-w-0 whitespace-normal text-center"
+          >
+            {loading ? (
+              <span className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass}`}>
+                Please wait…
               </span>
-              <span
-                className={`flex min-h-[1.25rem] w-full items-center justify-center ${tabCrossfadeClass} ${
-                  tab === "signup" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-                }`}
-              >
-                Sign up
-              </span>
-            </>
-          )}
-        </Button>
+            ) : (
+              <>
+                <span
+                  className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
+                    tab === "signin"
+                      ? "relative"
+                      : "pointer-events-none absolute inset-0 opacity-0"
+                  }`}
+                >
+                  Continue to RiskAI
+                </span>
+                <span
+                  className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
+                    tab === "signup"
+                      ? "relative"
+                      : "pointer-events-none absolute inset-0 opacity-0"
+                  }`}
+                >
+                  Sign up
+                </span>
+              </>
+            )}
+          </Button>
+        </div>
         <div className="relative mt-2">
           <p
             className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${

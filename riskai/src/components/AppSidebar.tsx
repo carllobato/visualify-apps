@@ -141,10 +141,8 @@ const PROJECT_NAV = (projectId: string) => [
 ];
 
 const linkClassName = (isActive: boolean) =>
-  "flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-medium no-underline transition-colors " +
-  (isActive
-    ? "bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)]"
-    : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]");
+  "ds-nav-link ds-nav-link--rail flex items-center gap-2 w-full px-3 py-2 text-sm no-underline " +
+  (isActive ? "ds-nav-link--active" : "");
 
 const sectionLabelClassName = "px-3 pt-6 pb-2 text-xs font-semibold uppercase tracking-wider text-[var(--ds-text-muted)]";
 
@@ -228,9 +226,9 @@ export function AppSidebar() {
   }, []);
 
   return (
-    <aside className="sticky top-0 self-start flex h-screen flex-col w-56 overflow-hidden border-r border-[var(--ds-border)] bg-[var(--ds-surface-muted)] dark:bg-[var(--ds-background)] shrink-0">
+    <aside className="ds-app-sidebar sticky top-0 self-start flex h-screen w-56 shrink-0 flex-col overflow-hidden">
       {/* Logo - height and background match page header (61px), grey bar */}
-      <div className="h-[61px] flex items-center px-4 border-b border-[var(--ds-border)] bg-[var(--ds-surface-muted)] shrink-0">
+      <div className="h-[61px] shrink-0 border-b border-[var(--ds-border)] px-4 flex items-center">
         {useFullPageLinks ? (
           <a href={homeHref} className="text-lg font-semibold text-[var(--ds-text-primary)] no-underline hover:opacity-80 transition-opacity">
             RiskAI
@@ -310,7 +308,7 @@ export function AppSidebar() {
       </nav>
 
       {/* Bottom: theme + user - grey to match top bar */}
-      <div className="p-2 border-t border-[var(--ds-border)] bg-[var(--ds-surface-muted)] flex flex-col gap-1">
+      <div className="flex flex-col gap-1 border-t border-[var(--ds-border)] p-2">
         {mounted ? (
           <button
             type="button"
