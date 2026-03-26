@@ -8,6 +8,7 @@
   --ds-text-tertiary: #9aa0a6;
 
   --ds-border: #e6e6e8;
+  --ds-border-width: 1px;
 
   --ds-primary: #3b82f6;
   --ds-primary-hover: #2563eb;
@@ -276,6 +277,12 @@
   --ds-chart-label-size: 0.6875rem;
   --ds-chart-annotation-size: 0.625rem;
   --ds-chart-kpi-size: 1.75rem;
+
+  /* Scrollbars */
+  --ds-scrollbar-size: 10px;
+  --ds-scrollbar-thumb: color-mix(in oklab, var(--ds-text-primary) 20%, var(--ds-surface-subtle));
+  --ds-scrollbar-thumb-hover: color-mix(in oklab, var(--ds-text-primary) 28%, var(--ds-surface-subtle));
+  --ds-scrollbar-track: var(--ds-surface-default);
 }
 
 [data-theme="dark"] {
@@ -287,6 +294,7 @@
   --ds-text-tertiary: #6b7280;
 
   --ds-border: #2f2f34;
+  --ds-border-width: 1px;
 
   --ds-primary: #3b82f6;
   --ds-primary-hover: #2563eb;
@@ -508,6 +516,12 @@
   --ds-chart-label-size: 0.6875rem;
   --ds-chart-annotation-size: 0.625rem;
   --ds-chart-kpi-size: 1.75rem;
+
+  /* Scrollbars */
+  --ds-scrollbar-size: 10px;
+  --ds-scrollbar-thumb: color-mix(in oklab, var(--ds-text-primary) 30%, var(--ds-surface-subtle));
+  --ds-scrollbar-thumb-hover: color-mix(in oklab, var(--ds-text-primary) 38%, var(--ds-surface-subtle));
+  --ds-scrollbar-track: var(--ds-surface-default);
 }
 
 html {
@@ -521,6 +535,27 @@ body {
   font-family: var(--ds-font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scrollbar-color: var(--ds-scrollbar-thumb) var(--ds-scrollbar-track);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: var(--ds-scrollbar-size);
+  height: var(--ds-scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--ds-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--ds-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid var(--ds-scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ds-scrollbar-thumb-hover);
 }
 
 * {
@@ -571,6 +606,23 @@ textarea:disabled {
   text-decoration: underline;
   text-decoration-color: color-mix(in oklab, var(--ds-text-primary) 32%, transparent);
   text-decoration-thickness: 1px;
+}
+
+/* Semantic ghost-action accents for lightweight row/form actions */
+.ds-action-danger {
+  color: var(--ds-status-danger-fg) !important;
+}
+.ds-action-danger:hover:not(:disabled):not([disabled]) {
+  color: var(--ds-status-danger-fg) !important;
+  background-color: color-mix(in oklab, var(--ds-status-danger) 12%, transparent) !important;
+}
+
+.ds-action-success {
+  color: var(--ds-status-success-fg) !important;
+}
+.ds-action-success:hover:not(:disabled):not([disabled]) {
+  color: var(--ds-status-success-fg) !important;
+  background-color: color-mix(in oklab, var(--ds-status-success) 12%, transparent) !important;
 }
 
 /* Primary navigation links — minimal active state (text-led; optional left rail for vertical lists) */
@@ -736,4 +788,9 @@ ul[role="listbox"] button:focus-visible {
 .ds-site-footer-inner {
   width: 100%;
   max-width: none;
+}
+
+/* Page header title separators use regular weight for a slimmer pipe glyph. */
+.ds-page-header-separator {
+  font-weight: 400;
 }

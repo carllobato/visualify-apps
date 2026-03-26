@@ -11,7 +11,7 @@ const linkClass =
   "rounded-[var(--ds-radius-sm)]";
 
 const titleSeparatorClass =
-  "shrink-0 px-[var(--ds-space-2)] font-semibold text-[length:var(--ds-text-xl)] text-[var(--ds-text-muted)]";
+  "ds-page-header-separator shrink-0 px-[var(--ds-space-2)] text-[length:var(--ds-text-xl)] text-[var(--ds-text-muted)]";
 
 type PageHeaderProps = {
   projectId: string;

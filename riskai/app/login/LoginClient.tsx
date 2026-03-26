@@ -19,6 +19,30 @@ const tabCollapseGridClass = `grid overflow-hidden transition-[grid-template-row
 /** Toggle to show the Google / Microsoft row again. */
 const SHOW_SOCIAL_LOGIN = false;
 
+function formatAuthError(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+
+  if (typeof err === "object" && err !== null) {
+    const maybeStatus = "status" in err ? (err as { status?: unknown }).status : undefined;
+    const maybeMessage = "message" in err ? (err as { message?: unknown }).message : undefined;
+
+    if (typeof maybeMessage === "string" && maybeMessage.trim()) {
+      if (maybeStatus === 504 || maybeMessage.includes("504")) {
+        return "Supabase auth timed out (504). Please retry in a moment.";
+      }
+      return maybeMessage;
+    }
+
+    if (maybeStatus === 504) {
+      return "Supabase auth timed out (504). Please retry in a moment.";
+    }
+  }
+
+  return "Login failed due to an unexpected error. Please try again.";
+}
+
 function IconGoogle({ className }: { className?: string }) {
   return (
     <svg className={`pointer-events-none ${className ?? ""}`} viewBox="0 0 24 24" aria-hidden width={18} height={18}>
@@ -165,12 +189,12 @@ export function LoginClient() {
         password,
       });
       if (err) {
-        setError(err.message);
+        setError(formatAuthError(err));
         return;
       }
       redirectAfterAuth();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }
@@ -186,12 +210,12 @@ export function LoginClient() {
         password,
       });
       if (err) {
-        setError(err.message);
+        setError(formatAuthError(err));
         return;
       }
       redirectAfterAuth();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }

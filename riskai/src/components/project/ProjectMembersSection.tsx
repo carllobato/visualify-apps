@@ -156,19 +156,14 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const canRemove = viewer?.canRemoveMembers ?? false;
   const showRowActions = canChangeRole || canRemove;
 
-  const semanticsLine = useMemo(() => {
-    if (!roleSemantics) return null;
-    return (
-      <HelperText className="!mt-2">
-        {ROLE_OPTIONS.map(({ value }) => (
-          <span key={value} className="mr-3">
-            <span className="font-medium capitalize text-[var(--ds-text-primary)]">{value}</span>
-            {": "}
-            {roleSemantics[value]}
-          </span>
-        ))}
-      </HelperText>
-    );
+  const roleSemanticsTooltip = useMemo(() => {
+    const fallback: Record<ProjectMemberRole, string> = {
+      owner: "Full access",
+      editor: "Can view settings, edit project details, invite members",
+      viewer: "View only",
+    };
+    const semantics = roleSemantics ?? fallback;
+    return ROLE_OPTIONS.map(({ value }) => `${value[0].toUpperCase()}${value.slice(1)}: ${semantics[value]}`).join("\n");
   }, [roleSemantics]);
 
   const onAdd = async () => {
@@ -280,15 +275,14 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   };
 
   return (
-    <Card className="mb-4">
-      <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
-        <h2 className="m-0 text-[length:var(--ds-text-base)] font-semibold leading-6 text-[var(--ds-text-primary)]">
-          Project members
-        </h2>
-      </CardHeader>
-      <CardBody className="!px-4 !py-3">
-        {semanticsLine}
-
+    <>
+      <Card className="mb-4">
+        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
+          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">
+            Project members
+          </h2>
+        </CardHeader>
+        <CardBody className="!px-4 !py-3">
         {listError ? (
           <Callout status="danger" className="mb-3" role="alert">
             {listError}
@@ -310,7 +304,26 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                 <TableRow>
                   <TableHeaderCell>Name</TableHeaderCell>
                   <TableHeaderCell>Email</TableHeaderCell>
-                  <TableHeaderCell>Role</TableHeaderCell>
+                  <TableHeaderCell>
+                    <span className="inline-flex items-center gap-1.5 pl-3">
+                      <span>Role</span>
+                      <span className="group relative inline-flex">
+                        <button
+                          type="button"
+                          className="inline-flex h-4 w-4 items-center justify-center text-[12px] leading-none text-[var(--ds-text-muted)]"
+                          aria-label={roleSemanticsTooltip}
+                        >
+                          ⓘ
+                        </button>
+                        <span
+                          role="tooltip"
+                          className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-56 -translate-x-1/2 whitespace-pre-line rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-2 py-1.5 text-[10px] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block"
+                        >
+                          {roleSemanticsTooltip}
+                        </span>
+                      </span>
+                    </span>
+                  </TableHeaderCell>
                   {showRowActions ? (
                     <TableHeaderCell className="text-right">Actions</TableHeaderCell>
                   ) : null}
@@ -352,24 +365,28 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                             ))}
                           </select>
                         ) : (
-                          <span className="capitalize text-[var(--ds-text-primary)]">{m.role}</span>
+                          <span className="inline-flex h-9 w-full items-center px-3 py-1 capitalize text-[var(--ds-text-primary)]">
+                            {m.role}
+                          </span>
                         )}
                       </TableCell>
                       {showRowActions ? (
                         <TableCell className="text-right">
                           {canRemove && !isSelf ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy}
-                              className="!text-[var(--ds-status-danger-fg)] hover:!bg-[color-mix(in_oklab,var(--ds-status-danger)_12%,transparent)]"
-                              onClick={() => void onRemove(m)}
-                            >
-                              Remove
-                            </Button>
+                            <span className="inline-flex w-full justify-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={busy}
+                                className="ds-action-danger"
+                                onClick={() => void onRemove(m)}
+                              >
+                                Remove
+                              </Button>
+                            </span>
                           ) : (
-                            <span className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">—</span>
+                            <span className="inline-flex w-full justify-end text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">—</span>
                           )}
                         </TableCell>
                       ) : null}
@@ -384,18 +401,26 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        {canInvite && (
-          <div className="mt-4 space-y-3 border-t border-[var(--ds-border-subtle)] pt-4">
-            <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Add member</p>
-            <HelperText className="!m-0">
-              Enter the email of an existing RiskAI user (they must have signed up already).
-            </HelperText>
+        {viewer ? (
+          <ProjectMemberPermissionHints
+            resource="project"
+            canInviteMembers={viewer.canInviteMembers}
+            canChangeMemberRoles={viewer.canChangeMemberRoles}
+          />
+        ) : null}
+        </CardBody>
+      </Card>
+      {canInvite && (
+        <Card className="mb-4">
+          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+            <h3 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Add member</h3>
+          </CardHeader>
+          <CardBody className="!pl-4 !pr-3 !py-3 space-y-3">
             {addError ? (
               <FieldError className="!mt-0">{addError}</FieldError>
             ) : null}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1">
-                <Label htmlFor="member-email">Email</Label>
+            <div className="grid gap-2 sm:grid-cols-[35.4375rem_13rem_auto] sm:items-end">
+              <div className="min-w-0 w-full">
                 <Input
                   id="member-email"
                   type="email"
@@ -405,11 +430,10 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                   placeholder="name@company.com"
                 />
               </div>
-              <div className="w-full sm:w-40">
-                <Label htmlFor="member-role">Role</Label>
+              <div className="w-full sm:w-52">
                 <select
                   id="member-role"
-                  className={projectSettingsSelectClass(false)}
+                  className={projectSettingsSelectClass(false, "sm")}
                   value={addRole}
                   onChange={(e) => setAddRole(e.target.value as ProjectMemberRole)}
                 >
@@ -420,21 +444,22 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                   ))}
                 </select>
               </div>
-              <Button type="button" onClick={() => void onAdd()} disabled={pendingId === "__add__"}>
-                Add
-              </Button>
+              <span className="inline-flex w-full justify-end pr-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ds-action-success"
+                  onClick={() => void onAdd()}
+                  disabled={pendingId === "__add__"}
+                >
+                  Add
+                </Button>
+              </span>
             </div>
-          </div>
-        )}
-
-        {viewer ? (
-          <ProjectMemberPermissionHints
-            resource="project"
-            canInviteMembers={viewer.canInviteMembers}
-            canChangeMemberRoles={viewer.canChangeMemberRoles}
-          />
-        ) : null}
-      </CardBody>
-    </Card>
+          </CardBody>
+        </Card>
+      )}
+    </>
   );
 }

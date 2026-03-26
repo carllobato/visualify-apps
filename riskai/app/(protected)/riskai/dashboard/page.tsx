@@ -97,6 +97,16 @@ export default async function DashboardPage() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href={riskaiPath("/onboarding/portfolio")}
+                aria-label="Create a new portfolio"
+                className="group flex h-14 items-center justify-between gap-3 rounded-lg border border-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] border-dashed bg-[var(--ds-surface-elevated)] px-[1.125rem] text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-tile)] outline-none transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-px hover:border-[var(--ds-risk-low-border)] hover:bg-[var(--ds-risk-low-soft-bg)] hover:shadow-[var(--ds-elevation-tile-hover)] dark:border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_40%,transparent)] dark:hover:border-[var(--ds-risk-low-border)] dark:hover:bg-[color-mix(in_oklab,var(--ds-risk-low)_14%,var(--ds-surface-default))] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]"
+              >
+                <span className="font-medium">New portfolio</span>
+                <span className="ml-2 text-sm text-[var(--ds-text-muted)]">Create portfolio +</span>
+              </Link>
+            </li>
           </ul>
         )}
       </section>

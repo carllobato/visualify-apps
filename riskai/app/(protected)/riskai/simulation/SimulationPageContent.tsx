@@ -180,6 +180,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
 
   const [reportingSnapshotRow, setReportingSnapshotRow] = useState<SimulationSnapshotRow>(null);
   const reportingDbRow = reportingSnapshotRow as SimulationSnapshotRowDb | null;
+  const [latestSnapshotRow, setLatestSnapshotRow] = useState<SimulationSnapshotRow>(null);
   const [setReportingModalOpen, setSetReportingModalOpen] = useState(false);
   const [reportingNote, setReportingNote] = useState("");
   const [reportingMonthYear, setReportingMonthYear] = useState(() => toMonthYearKey(new Date()));
@@ -249,6 +250,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       lastSimulationBootstrapProjectId = projectIdWeAreLoading;
       setLastRun(null);
       setSnapshotForProject(null);
+      setLatestSnapshotRow(null);
       clearRef.current();
     } else {
       const sim = simulationRef.current;
@@ -273,14 +275,15 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
         if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
         const hasSnapshot = !!(snapshot?.created_at);
         setSnapshotForProject({ projectId: projectIdWeAreLoading, hasSnapshot });
+        setLatestSnapshotRow(snapshot ?? null);
         if (hasSnapshot && snapshot) {
           setLastRun(snapshot.created_at ?? null);
-          hydrateRef.current(snapshot);
         }
       })
       .catch((err) => {
         if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
         setSnapshotForProject({ projectId: projectIdWeAreLoading, hasSnapshot: false });
+        setLatestSnapshotRow(null);
         console.error("[simulation] load snapshot", err);
       });
   }, [gateChecked, projectContext, urlProjectId, effectiveProjectId]);
@@ -320,6 +323,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     (snapshotForProject?.projectId === effectiveProjectId && !snapshotForProject?.hasSnapshot) ||
     (effectiveProjectId == null && !(snapshotForProject?.hasSnapshot ?? false));
   const loadingSnapshot = effectiveProjectId != null && snapshotForProject?.projectId !== effectiveProjectId;
+  const showChooseRunAction = currentProjectHasSnapshot && !hasData && !loadingSnapshot;
 
   // Prefer project-specific context for display; fall back to gate (global) context
   const displayContext = useMemo(
@@ -552,6 +556,58 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                 Go to Run Data
               </Link>
             )}
+          </div>
+        </Card>
+      )}
+
+      {showChooseRunAction && (
+        <Card variant="inset" className="mt-0 p-6 text-center">
+          <p className="m-0 font-medium text-[var(--ds-text-primary)]">
+            This project has an existing simulation run.
+          </p>
+          <p className="mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+            Choose whether to run a new simulation now or load the latest saved run.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <Button
+              type="button"
+              onClick={async () => {
+                if (simulationReadOnly) return;
+                try {
+                  const result = await runSimulation(10000, effectiveProjectId ?? undefined);
+                  if (!result.ran && result.blockReason === "invalid") {
+                    setRunBlockedInvalidCount(result.invalidCount);
+                    return;
+                  }
+                  if (result.ran) {
+                    const now = new Date().toISOString();
+                    setLastRun(now);
+                    setSnapshotForProject({
+                      projectId: effectiveProjectId ?? "legacy",
+                      hasSnapshot: true,
+                    });
+                  }
+                } catch {
+                  // Snapshot insert failed; do not update timestamp
+                }
+              }}
+              disabled={simulationReadOnly || hasDraftRisks || invalidRunnableCount > 0}
+              variant="secondary"
+            >
+              Re-run simulation
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!latestSnapshotRow) return;
+                hydrateRef.current(latestSnapshotRow);
+                if (latestSnapshotRow?.created_at) setLastRun(latestSnapshotRow.created_at);
+              }}
+              disabled={!latestSnapshotRow}
+              variant="secondary"
+            >
+              Load last run
+            </Button>
           </div>
         </Card>
       )}

@@ -24,6 +24,7 @@ import {
 } from "@/lib/projectContext";
 import { ProjectExcelUploadSection } from "@/components/project/ProjectExcelUploadSection";
 import { ProjectMembersSection } from "@/components/project/ProjectMembersSection";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { DEFAULT_PROJECT_ID } from "@/lib/db/risks";
 import { RiskDetailModal } from "@/components/risk-register/RiskDetailModal";
@@ -41,9 +42,19 @@ import {
   FieldError,
   HelperText,
   Label,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+  Tabs,
 } from "@visualify/design-system";
 import {
+  projectSettingsFieldWidthClass,
   projectSettingsInputClass,
+  projectSettingsNumberInputClass,
   projectSettingsReadOnlyFieldClass,
   projectSettingsSelectClass,
 } from "@/components/project/projectSettingsDsFormClasses";
@@ -143,18 +154,27 @@ const FIRST_INVALID_FIELD_ORDER = [
   "scheduleContingency_weeks",
 ] as const;
 
+const FIELD_TAB_MAP: Partial<Record<(typeof FIRST_INVALID_FIELD_ORDER)[number], ProjectSettingsTab>> = {
+  projectName: "overview",
+  projectValue_input: "parameters",
+  contingencyValue_input: "parameters",
+  plannedDuration_months: "parameters",
+  targetCompletionDate: "parameters",
+  scheduleContingency_weeks: "parameters",
+};
+
 const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
 
+function formatGroupedNumber(value: number): string {
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 }).format(value);
+}
+
 export type ProjectInformationPageProps = { projectId?: string | null };
+type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive";
 
 export default function ProjectInformationPage({ projectId }: ProjectInformationPageProps = {}) {
   const projectPermissions = useProjectPermissions();
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
-  useEffect(() => {
-    if (!projectId || !setPageHeaderExtras) return;
-    setPageHeaderExtras({ titleSuffix: "Project Settings", end: null });
-    return () => setPageHeaderExtras(null);
-  }, [projectId, setPageHeaderExtras]);
   const settingsReadOnly =
     Boolean(projectId) &&
     (projectPermissions == null || !projectPermissions.canEditProjectMetadata);
@@ -168,6 +188,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const [saved, setSaved] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showArchivedReviewModal, setShowArchivedReviewModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("overview");
   const [validation, setValidation] = useState<Record<string, string>>({});
   const router = useRouter();
   const { risks, updateRisk, restoreArchivedRisk } = useRiskRegister();
@@ -256,18 +277,21 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     [saved]
   );
 
-  const validationErrors = getValidationErrors(form, rawNumericFields);
-  const isFormValid = Object.keys(validationErrors).length === 0;
-
   const onSave = useCallback(() => {
     if (settingsReadOnly) return;
     const err = getValidationErrors(form, rawNumericFields);
     setValidation(err);
     if (Object.keys(err).length > 0) {
       const firstKey = FIRST_INVALID_FIELD_ORDER.find((k) => err[k]);
-      const ref = firstKey ? fieldRefsRef.current[firstKey]?.current : null;
-      ref?.scrollIntoView({ behavior: "smooth", block: "center" });
-      ref?.focus();
+      if (firstKey) {
+        const targetTab = FIELD_TAB_MAP[firstKey];
+        if (targetTab && targetTab !== activeTab) setActiveTab(targetTab);
+      }
+      setTimeout(() => {
+        const ref = firstKey ? fieldRefsRef.current[firstKey]?.current : null;
+        ref?.scrollIntoView({ behavior: "smooth", block: "center" });
+        ref?.focus();
+      }, 0);
       return;
     }
     const parsed = parseProjectContext(form);
@@ -303,7 +327,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           .catch(() => {});
       }
     }
-  }, [form, rawNumericFields, projectId, router, settingsReadOnly]);
+  }, [activeTab, form, rawNumericFields, projectId, router, settingsReadOnly]);
 
   const onClear = useCallback(() => {
     if (settingsReadOnly) return;
@@ -319,14 +343,34 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const approvedBudgetInUnit =
     form.projectValue_input + form.contingencyValue_input;
   const showEquivalentInM = form.financialUnit !== "MILLIONS";
+  const financialUnitShortLabel =
+    form.financialUnit === "THOUSANDS" ? "k" : form.financialUnit === "BILLIONS" ? "b" : "m";
+  const headerActions = useMemo(
+    () => (
+      <div className="flex items-center gap-2">
+        {!settingsReadOnly && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => setShowClearConfirm(true)}>
+            Clear
+          </Button>
+        )}
+        <Button type="button" variant="primary" onClick={onSave} disabled={settingsReadOnly}>
+          Save
+        </Button>
+      </div>
+    ),
+    [onSave, settingsReadOnly]
+  );
+
+  useEffect(() => {
+    if (!projectId || !setPageHeaderExtras) return;
+    setPageHeaderExtras({ titleSuffix: "Project Settings", end: headerActions });
+    return () => setPageHeaderExtras(null);
+  }, [headerActions, projectId, setPageHeaderExtras]);
 
   const readOnlyChrome = settingsReadOnly ? ` ${projectSettingsReadOnlyFieldClass}` : "";
 
   return (
-    <main className="w-full px-4 sm:px-6 py-10">
-      <h1 className="mb-1 text-[length:var(--ds-text-2xl)] font-semibold text-[var(--ds-text-primary)]">
-        Project Home
-      </h1>
+    <main className="w-full px-4 py-6 sm:px-6">
       {settingsReadOnly && (
         <Callout
           status="info"
@@ -337,298 +381,341 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         </Callout>
       )}
 
-      {/* 1) Details */}
-      <Card className="mb-4">
-        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Details</h2>
-        </CardHeader>
-        <CardBody className="!px-4 !py-3 space-y-2.5">
-          <div>
-            <Label htmlFor="projectName" className="!mb-1">
-              Name <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
-            </Label>
-            <input
-              ref={projectNameRef}
-              id="projectName"
-              type="text"
-              value={form.projectName}
-              readOnly={settingsReadOnly}
-              onChange={(e) => update("projectName", e.target.value)}
-              aria-invalid={!!validation.projectName}
-              className={projectSettingsInputClass(!!validation.projectName) + readOnlyChrome}
-              placeholder="e.g. Northgate Rail Upgrade"
-            />
-            {validation.projectName ? (
-              <FieldError className="!mt-1">{validation.projectName}</FieldError>
-            ) : null}
-          </div>
-          <div>
-            <Label htmlFor="location" className="!mb-1">
-              Location (optional)
-            </Label>
-            <input
-              id="location"
-              type="text"
-              value={form.location ?? ""}
-              readOnly={settingsReadOnly}
-              onChange={(e) => update("location", e.target.value)}
-              className={projectSettingsInputClass(false) + readOnlyChrome}
-              placeholder="e.g. Sydney, NSW"
-            />
-          </div>
-          <div>
-            <Label htmlFor="currency" className="!mb-1">
-              Currency
-            </Label>
-            <select
-              id="currency"
-              value={form.currency}
-              disabled={settingsReadOnly}
-              onChange={(e) => update("currency", e.target.value as ProjectCurrency)}
-              className={projectSettingsSelectClass(false) + readOnlyChrome}
-              aria-label="Currency"
-            >
-              {CURRENCY_OPTIONS.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </CardBody>
-      </Card>
-
-      {projectId ? <ProjectMembersSection projectId={projectId} /> : null}
-
-      {/* 2) Financial Context */}
-      <Card className="mb-4">
-        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Financial Context</h2>
-        </CardHeader>
-        <CardBody className="!px-4 !py-3 space-y-2.5">
-          <div>
-            <Label htmlFor="financialUnit" className="!mb-1">
-              Unit
-            </Label>
-            <select
-              id="financialUnit"
-              value={form.financialUnit}
-              disabled={settingsReadOnly}
-              onChange={(e) => update("financialUnit", e.target.value as FinancialUnit)}
-              className={projectSettingsSelectClass(false) + readOnlyChrome}
-              aria-label="Financial unit"
-            >
-              {FINANCIAL_UNIT_OPTIONS.map(({ value, label }) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="projectValue_input" className="!mb-1">
-              Value (in selected unit) <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
-            </Label>
-            <input
-              ref={projectValueRef}
-              id="projectValue_input"
-              type="number"
-              min={0}
-              readOnly={settingsReadOnly}
-              step={form.financialUnit === "BILLIONS" || form.financialUnit === "MILLIONS" ? 0.1 : 1}
-              value={form.projectValue_input === 0 ? "" : form.projectValue_input}
-              onChange={(e) =>
-                update("projectValue_input", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))
-              }
-              aria-invalid={!!validation.projectValue_input}
-              className={projectSettingsInputClass(!!validation.projectValue_input) + readOnlyChrome}
-              placeholder={form.financialUnit === "BILLIONS" ? "e.g. 2.5" : form.financialUnit === "MILLIONS" ? "e.g. 217" : "e.g. 500000"}
-            />
-            {validation.projectValue_input ? (
-              <FieldError className="!mt-1">{validation.projectValue_input}</FieldError>
-            ) : null}
-          </div>
-          <div>
-            <Label htmlFor="contingencyValue_input" className="!mb-1">
-              Contingency Value (in selected unit){" "}
-              <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
-            </Label>
-            <input
-              ref={contingencyValueRef}
-              id="contingencyValue_input"
-              type="number"
-              min={0}
-              readOnly={settingsReadOnly}
-              step={form.financialUnit === "BILLIONS" || form.financialUnit === "MILLIONS" ? 0.1 : 1}
-              value={rawNumericFields.contingencyValue_input ?? (form.contingencyValue_input === 0 ? "" : String(form.contingencyValue_input))}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const num = Number(raw);
-                const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, num) : 0);
-                update("contingencyValue_input", safe, raw);
-              }}
-              aria-invalid={!!validation.contingencyValue_input}
-              className={projectSettingsInputClass(!!validation.contingencyValue_input) + readOnlyChrome}
-              placeholder={form.financialUnit === "BILLIONS" ? "e.g. 0.25" : form.financialUnit === "MILLIONS" ? "e.g. 22" : "e.g. 50000"}
-            />
-            {validation.contingencyValue_input ? (
-              <FieldError className="!mt-1">{validation.contingencyValue_input}</FieldError>
-            ) : null}
-          </div>
-          <HelperText className="!mb-0 !mt-1.5">
-            Risks remain at face value; unit only affects display.
-          </HelperText>
-          <Callout
-            status="neutral"
-            className="!mt-2 !border-[var(--ds-border-subtle)] !px-3 !py-2 text-[length:var(--ds-text-xs)]"
-          >
-            <p className="m-0 mb-0.5 text-xs font-medium text-[var(--ds-text-primary)]">Derived</p>
-            <p className="m-0 text-[var(--ds-text-secondary)]">
-              Contingency %: {mounted && contingencyPct != null ? `${contingencyPct.toFixed(1)}%` : "—"} · Approved
-              budget (in selected unit): {mounted ? approvedBudgetInUnit : "—"}
-            </p>
-            {showEquivalentInM && (
-              <p className="mt-1 mb-0 text-[var(--ds-text-secondary)]">
-                Equivalent in $m: Value = {formatMoneyMillions(form.projectValue_m)} · Contingency ={" "}
-                {formatMoneyMillions(form.contingencyValue_m)} · Approved budget ={" "}
-                {formatMoneyMillions(form.approvedBudget_m)}
-              </p>
-            )}
-          </Callout>
-        </CardBody>
-      </Card>
-
-      {/* 3) Schedule Context */}
-      <Card className="mb-4">
-        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Schedule Context</h2>
-        </CardHeader>
-        <CardBody className="!px-4 !py-3 space-y-2.5">
-          <div>
-            <Label htmlFor="plannedDuration_months" className="!mb-1">
-              Planned duration (months) <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
-            </Label>
-            <input
-              ref={plannedDurationRef}
-              id="plannedDuration_months"
-              type="number"
-              min={0}
-              max={MAX_MONTHS}
-              readOnly={settingsReadOnly}
-              step={1}
-              value={rawNumericFields.plannedDuration_months ?? (form.plannedDuration_months === 0 ? "" : String(form.plannedDuration_months))}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const num = Number(raw);
-                const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, Math.min(MAX_MONTHS, Math.floor(num))) : 0);
-                update("plannedDuration_months", safe, raw);
-              }}
-              aria-invalid={!!validation.plannedDuration_months}
-              className={projectSettingsInputClass(!!validation.plannedDuration_months) + readOnlyChrome}
-              placeholder="e.g. 24"
-            />
-            {validation.plannedDuration_months ? (
-              <FieldError className="!mt-1">{validation.plannedDuration_months}</FieldError>
-            ) : null}
-          </div>
-          <div>
-            <Label htmlFor="targetCompletionDate" className="!mb-1">
-              Target completion date <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
-            </Label>
-            <input
-              ref={targetCompletionDateRef}
-              id="targetCompletionDate"
-              type="date"
-              value={form.targetCompletionDate}
-              readOnly={settingsReadOnly}
-              onChange={(e) => update("targetCompletionDate", e.target.value)}
-              aria-invalid={!!validation.targetCompletionDate}
-              className={projectSettingsInputClass(!!validation.targetCompletionDate) + readOnlyChrome}
-            />
-            {validation.targetCompletionDate ? (
-              <FieldError className="!mt-1">{validation.targetCompletionDate}</FieldError>
-            ) : null}
-          </div>
-          <div>
-            <Label htmlFor="scheduleContingency_weeks" className="!mb-1">
-              Schedule contingency (weeks) <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
-            </Label>
-            <input
-              ref={scheduleContingencyRef}
-              id="scheduleContingency_weeks"
-              type="number"
-              min={0}
-              max={MAX_WEEKS}
-              readOnly={settingsReadOnly}
-              step={1}
-              value={rawNumericFields.scheduleContingency_weeks ?? (form.scheduleContingency_weeks === 0 ? "" : String(form.scheduleContingency_weeks))}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const num = Number(raw);
-                const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, Math.min(MAX_WEEKS, Math.floor(num))) : 0);
-                update("scheduleContingency_weeks", safe, raw);
-              }}
-              aria-invalid={!!validation.scheduleContingency_weeks}
-              className={projectSettingsInputClass(!!validation.scheduleContingency_weeks) + readOnlyChrome}
-              placeholder="e.g. 4"
-            />
-            {validation.scheduleContingency_weeks ? (
-              <FieldError className="!mt-1">{validation.scheduleContingency_weeks}</FieldError>
-            ) : null}
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* 4) Risk Appetite */}
-      <Card className="mb-4">
-        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Risk Appetite</h2>
-        </CardHeader>
-        <CardBody className="!px-4 !py-3">
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Risk appetite">
-            {RISK_APPETITE_OPTIONS.map(({ value, label }) => (
-              <Button
-                key={value}
-                type="button"
-                size="sm"
-                variant={form.riskAppetite === value ? "primary" : "secondary"}
-                disabled={settingsReadOnly}
-                onClick={() => update("riskAppetite", value)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* 5) Archived risks */}
-      <Card className="mb-4">
-        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Archived risks</h2>
-        </CardHeader>
-        <CardBody className="!px-4 !py-3">
-          <HelperText className="!mb-2 !mt-0">
-            Open a window to review and edit archived risks one by one (Previous / Next).
-          </HelperText>
-          <Button type="button" variant="secondary" onClick={() => setShowArchivedReviewModal(true)}>
-            Review archived risks
-          </Button>
-        </CardBody>
-      </Card>
-
-      {!riskUiReadOnly && <ProjectExcelUploadSection />}
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button type="button" variant="primary" onClick={onSave} disabled={!isFormValid || settingsReadOnly}>
-          Save
-        </Button>
-        {!settingsReadOnly && (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setShowClearConfirm(true)}>
-            Clear
-          </Button>
-        )}
+      <div className="mb-4 border-b border-[var(--ds-border)]">
+        <Tabs>
+          <Tab active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>
+            Overview
+          </Tab>
+          <Tab active={activeTab === "parameters"} onClick={() => setActiveTab("parameters")}>
+            Parameters
+          </Tab>
+          <Tab active={activeTab === "team"} onClick={() => setActiveTab("team")}>
+            Team
+          </Tab>
+          <Tab active={activeTab === "files"} onClick={() => setActiveTab("files")}>
+            Files
+          </Tab>
+          <Tab active={activeTab === "archive"} onClick={() => setActiveTab("archive")}>
+            Archive
+          </Tab>
+        </Tabs>
       </div>
+
+      {activeTab === "overview" && (
+        <Card className="mb-4">
+          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Project details</h2>
+          </CardHeader>
+          <CardBody className="!px-4 !py-3">
+            <div className="max-w-2xl space-y-3">
+            <div className={projectSettingsFieldWidthClass("sm")}>
+              <Label htmlFor="projectName" className="!mb-1">
+                Name <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+              </Label>
+              <input
+                ref={projectNameRef}
+                id="projectName"
+                type="text"
+                value={form.projectName}
+                readOnly={settingsReadOnly}
+                onChange={(e) => update("projectName", e.target.value)}
+                aria-invalid={!!validation.projectName}
+                className={projectSettingsInputClass(!!validation.projectName) + readOnlyChrome}
+                placeholder="e.g. Northgate Rail Upgrade"
+              />
+              {validation.projectName ? <FieldError className="!mt-1">{validation.projectName}</FieldError> : null}
+            </div>
+            <div className={projectSettingsFieldWidthClass("sm")}>
+              <Label htmlFor="location" className="!mb-1">
+                Location (optional)
+              </Label>
+              <input
+                id="location"
+                type="text"
+                value={form.location ?? ""}
+                readOnly={settingsReadOnly}
+                onChange={(e) => update("location", e.target.value)}
+                className={projectSettingsInputClass(false) + readOnlyChrome}
+                placeholder="e.g. Sydney, NSW"
+              />
+            </div>
+            <div className={projectSettingsFieldWidthClass("xsm")}>
+              <Label htmlFor="currency" className="!mb-1">
+                Currency
+              </Label>
+              <select
+                id="currency"
+                value={form.currency}
+                disabled={settingsReadOnly}
+                onChange={(e) => update("currency", e.target.value as ProjectCurrency)}
+                className={projectSettingsSelectClass(false, "sm") + readOnlyChrome}
+                aria-label="Currency"
+              >
+                {CURRENCY_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={projectSettingsFieldWidthClass("xsm")}>
+              <Label htmlFor="financialUnit" className="!mb-1">
+                Unit
+              </Label>
+              <select
+                id="financialUnit"
+                value={form.financialUnit}
+                disabled={settingsReadOnly}
+                onChange={(e) => update("financialUnit", e.target.value as FinancialUnit)}
+                className={projectSettingsSelectClass(false) + readOnlyChrome}
+                aria-label="Financial unit"
+              >
+                {FINANCIAL_UNIT_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {activeTab === "parameters" && (
+        <>
+          <Card className="mb-4">
+            <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Financial Context</h2>
+            </CardHeader>
+            <CardBody className="!px-4 !py-3 space-y-2.5">
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="projectValue_input" className="!mb-1">
+                  Project Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <input
+                  ref={projectValueRef}
+                  id="projectValue_input"
+                  type="text"
+                  inputMode="decimal"
+                  readOnly={settingsReadOnly}
+                  value={
+                    form.projectValue_input === 0
+                      ? ""
+                      : `$ ${formatGroupedNumber(form.projectValue_input)} ${financialUnitShortLabel}`
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, "");
+                    const num = Number(raw);
+                    update("projectValue_input", raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, num) : 0));
+                  }}
+                  aria-invalid={!!validation.projectValue_input}
+                  className={projectSettingsInputClass(!!validation.projectValue_input) + readOnlyChrome}
+                  placeholder={form.financialUnit === "BILLIONS" ? "e.g. 2.5" : form.financialUnit === "MILLIONS" ? "e.g. 217" : "e.g. 500000"}
+                />
+                {validation.projectValue_input ? <FieldError className="!mt-1">{validation.projectValue_input}</FieldError> : null}
+              </div>
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="contingencyValue_input" className="!mb-1">
+                  Contingency Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <input
+                  ref={contingencyValueRef}
+                  id="contingencyValue_input"
+                  type="text"
+                  inputMode="decimal"
+                  readOnly={settingsReadOnly}
+                  value={
+                    (rawNumericFields.contingencyValue_input ??
+                      (form.contingencyValue_input === 0 ? "" : String(form.contingencyValue_input))) === ""
+                      ? ""
+                      : `$ ${formatGroupedNumber(form.contingencyValue_input)} ${financialUnitShortLabel}`
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, "");
+                    const num = Number(raw);
+                    const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, num) : 0);
+                    update("contingencyValue_input", safe, raw);
+                  }}
+                  aria-invalid={!!validation.contingencyValue_input}
+                  className={projectSettingsInputClass(!!validation.contingencyValue_input) + readOnlyChrome}
+                  placeholder={form.financialUnit === "BILLIONS" ? "e.g. 0.25" : form.financialUnit === "MILLIONS" ? "e.g. 22" : "e.g. 50000"}
+                />
+                {validation.contingencyValue_input ? <FieldError className="!mt-1">{validation.contingencyValue_input}</FieldError> : null}
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="mb-4">
+            <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Schedule Context</h2>
+            </CardHeader>
+            <CardBody className="!px-4 !py-3 space-y-2.5">
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="plannedDuration_months" className="!mb-1">
+                  Planned duration <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <input
+                  ref={plannedDurationRef}
+                  id="plannedDuration_months"
+                  type="text"
+                  inputMode="numeric"
+                  readOnly={settingsReadOnly}
+                  value={
+                    (rawNumericFields.plannedDuration_months ??
+                      (form.plannedDuration_months === 0 ? "" : String(form.plannedDuration_months))) === ""
+                      ? ""
+                      : `${formatGroupedNumber(form.plannedDuration_months)} months`
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    const num = Number(raw);
+                    const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, Math.min(MAX_MONTHS, Math.floor(num))) : 0);
+                    update("plannedDuration_months", safe, raw);
+                  }}
+                  aria-invalid={!!validation.plannedDuration_months}
+                  className={projectSettingsNumberInputClass(!!validation.plannedDuration_months) + readOnlyChrome}
+                  placeholder="e.g. 24 months"
+                />
+                {validation.plannedDuration_months ? <FieldError className="!mt-1">{validation.plannedDuration_months}</FieldError> : null}
+              </div>
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="targetCompletionDate" className="!mb-1">
+                  Target completion date <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <input
+                  ref={targetCompletionDateRef}
+                  id="targetCompletionDate"
+                  type="date"
+                  value={form.targetCompletionDate}
+                  readOnly={settingsReadOnly}
+                  onChange={(e) => update("targetCompletionDate", e.target.value)}
+                  aria-invalid={!!validation.targetCompletionDate}
+                  className={projectSettingsInputClass(!!validation.targetCompletionDate) + readOnlyChrome}
+                />
+                {validation.targetCompletionDate ? <FieldError className="!mt-1">{validation.targetCompletionDate}</FieldError> : null}
+              </div>
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="scheduleContingency_weeks" className="!mb-1">
+                  Schedule contingency <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <input
+                  ref={scheduleContingencyRef}
+                  id="scheduleContingency_weeks"
+                  type="text"
+                  inputMode="numeric"
+                  readOnly={settingsReadOnly}
+                  value={
+                    (rawNumericFields.scheduleContingency_weeks ??
+                      (form.scheduleContingency_weeks === 0 ? "" : String(form.scheduleContingency_weeks))) === ""
+                      ? ""
+                      : `${formatGroupedNumber(form.scheduleContingency_weeks)} weeks`
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9]/g, "");
+                    const num = Number(raw);
+                    const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, Math.min(MAX_WEEKS, Math.floor(num))) : 0);
+                    update("scheduleContingency_weeks", safe, raw);
+                  }}
+                  aria-invalid={!!validation.scheduleContingency_weeks}
+                  className={projectSettingsNumberInputClass(!!validation.scheduleContingency_weeks) + readOnlyChrome}
+                  placeholder="e.g. 4 weeks"
+                />
+                {validation.scheduleContingency_weeks ? <FieldError className="!mt-1">{validation.scheduleContingency_weeks}</FieldError> : null}
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="mb-4">
+            <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Risk Appetite</h2>
+            </CardHeader>
+            <CardBody className="!px-4 !py-3">
+              <div className={projectSettingsFieldWidthClass("md")}>
+                <div
+                  className="inline-flex flex-wrap gap-1 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)] p-1"
+                  role="radiogroup"
+                  aria-label="Risk appetite"
+                >
+                  {RISK_APPETITE_OPTIONS.map(({ value, label }) => {
+                    const active = form.riskAppetite === value;
+                    return (
+                      <Button
+                        key={value}
+                        type="button"
+                        variant={active ? "primary" : "ghost"}
+                        size="sm"
+                        disabled={settingsReadOnly}
+                        onClick={() => update("riskAppetite", value)}
+                        role="radio"
+                        aria-checked={active}
+                        className="min-w-12 rounded-[var(--ds-radius-sm)] shadow-none"
+                      >
+                        {label}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </>
+      )}
+
+      {activeTab === "team" &&
+        (projectId ? (
+          <ProjectMembersSection projectId={projectId} />
+        ) : (
+          <EmptyState className="mb-4" message="Project members are available once a project is selected." />
+        ))}
+
+      {activeTab === "files" &&
+        (riskUiReadOnly ? (
+          <EmptyState className="mb-4" message="You have view-only access. File uploads are available to editors." />
+        ) : (
+          <ProjectExcelUploadSection />
+        ))}
+
+      {activeTab === "archive" && (
+        <Card className="mb-4">
+          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Register of archived risks</h2>
+          </CardHeader>
+          <CardBody className="!px-4 !py-3">
+            <HelperText className="!mb-2 !mt-0">Review archived risks one by one (Previous / Next) in the detail modal.</HelperText>
+            {archivedRisks.length > 0 ? (
+              <div className="-mx-1 overflow-x-auto">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Risk #</TableHeaderCell>
+                      <TableHeaderCell>Title</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {archivedRisks.map((risk) => (
+                      <TableRow key={risk.id}>
+                        <TableCell>{risk.riskNumber ?? "—"}</TableCell>
+                        <TableCell className="text-[var(--ds-text-primary)]">{risk.title || "Untitled risk"}</TableCell>
+                        <TableCell className="capitalize text-[var(--ds-text-secondary)]">{risk.status}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <EmptyState message="No archived risks yet." />
+            )}
+            <div className="mt-3">
+              <Button type="button" variant="secondary" onClick={() => setShowArchivedReviewModal(true)} disabled={archivedRisks.length === 0}>
+                Review archived risks
+              </Button>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       {saved && (
         <Callout
           status="success"

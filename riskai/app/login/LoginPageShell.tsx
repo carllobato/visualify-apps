@@ -9,7 +9,7 @@ export function LoginPageShell() {
     <main className="w-full max-w-md shrink-0">
       <Card
         variant="default"
-        className="w-full border-2 border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
+        className="w-full [border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
       >
         <CardContent className="px-5 py-5">
           <h1 className="mb-4 text-center text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">

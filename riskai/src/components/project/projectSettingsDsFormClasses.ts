@@ -20,6 +20,13 @@ export function projectSettingsInputClass(invalid: boolean): string {
   );
 }
 
+export function projectSettingsNumberInputClass(invalid: boolean): string {
+  return (
+    projectSettingsInputClass(invalid) +
+    " [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+  );
+}
+
 export function projectSettingsSelectClass(invalid: boolean, height: "md" | "sm" = "md"): string {
   const h = height === "sm" ? "h-9 py-1" : "h-10 py-2";
   const invalidClass = invalid
@@ -32,6 +39,13 @@ export function projectSettingsSelectClass(invalid: boolean, height: "md" | "sm"
     "disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] disabled:text-[var(--ds-text-muted)] " +
     invalidClass
   );
+}
+
+/** Shared field width presets for compact settings layouts. */
+export function projectSettingsFieldWidthClass(width: "md" | "sm" | "xsm"): string {
+  if (width === "xsm") return "max-w-48";
+  if (width === "sm") return "max-w-xs";
+  return "max-w-xl";
 }
 
 /** Read-only / permission-locked fields (mirrors disabled surface). */
