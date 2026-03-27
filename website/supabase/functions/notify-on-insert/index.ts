@@ -82,12 +82,22 @@ function buildInvitationEmail(params: {
     "Powered by Visualify",
   ].join("\n");
   const html = `
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;width:100%;background-color:#f4f4f5;">
+      <!doctype html>
+      <html lang="en">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="x-apple-disable-message-reformatting" />
+        <meta name="color-scheme" content="light only" />
+        <meta name="supported-color-schemes" content="light only" />
+      </head>
+      <body bgcolor="#f4f4f5" style="margin:0;padding:0;background-color:#f4f4f5;color:#1f1f1f;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f4f4f5" style="margin:0;padding:0;width:100%;background-color:#f4f4f5;">
         <tr>
-          <td align="center" style="padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;">
+          <td align="center" bgcolor="#f4f4f5" style="padding:24px 12px;background-color:#f4f4f5;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;">
               <tr>
-                <td style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:14px;padding:24px;">
+                <td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:14px;padding:24px;">
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                     <tr>
                       <td style="font-size:16px;line-height:24px;font-weight:600;color:#1f1f1f;padding:0 0 14px 0;">
@@ -119,12 +129,22 @@ function buildInvitationEmail(params: {
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                           <tr>
                             <td align="center" bgcolor="#A5573D" style="border-radius:10px;background-color:#A5573D;">
+                              <!--[if mso]>
+                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(params.inviteLink)}" style="height:42px;v-text-anchor:middle;width:190px;" arcsize="14%" stroke="f" fillcolor="#A5573D">
+                                <w:anchorlock/>
+                                <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:700;">
+                                  Accept invitation
+                                </center>
+                              </v:roundrect>
+                              <![endif]-->
+                              <!--[if !mso]><!-- -->
                               <a
                                 href="${escapeHtml(params.inviteLink)}"
                                 style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;"
                               >
                                 Accept invitation
                               </a>
+                              <!--<![endif]-->
                             </td>
                           </tr>
                         </table>
@@ -132,7 +152,7 @@ function buildInvitationEmail(params: {
                     </tr>
                     <tr>
                       <td style="padding:0 0 16px 0;">
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#f8f8f8;border:1px solid #e6e6e8;border-radius:10px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f8f8f8" style="width:100%;background-color:#f8f8f8;border:1px solid #e6e6e8;border-radius:10px;">
                           <tr>
                             <td style="padding:10px 12px;">
                               <div style="font-size:13px;line-height:18px;color:#555555;padding:0 0 6px 0;">
@@ -163,6 +183,8 @@ function buildInvitationEmail(params: {
           </td>
         </tr>
       </table>
+      </body>
+      </html>
     `;
   return { text, html };
 }

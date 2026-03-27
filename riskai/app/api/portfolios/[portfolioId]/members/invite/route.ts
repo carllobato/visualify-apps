@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  invitePortfolioUserByEmail,
+  createVisualifyPortfolioInvitationAndInvite,
   InviteToPortfolioError,
 } from "@/lib/auth/portfolioInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
@@ -17,14 +17,6 @@ function isRole(v: unknown): v is PortfolioMemberRole {
   return typeof v === "string" && (ROLES as string[]).includes(v);
 }
 
-function isAlreadyRegisteredMessage(lower: string): boolean {
-  return (
-    lower.includes("already registered") ||
-    lower.includes("already been registered") ||
-    lower.includes("user already registered")
-  );
-}
-
 function isMissingServiceRoleMessage(raw: string): boolean {
   const lower = raw.toLowerCase();
   return (
@@ -34,9 +26,26 @@ function isMissingServiceRoleMessage(raw: string): boolean {
   );
 }
 
+function logPortfolioInviteDiagnostic(payload: {
+  portfolioId: string;
+  code: string;
+  phase?: string;
+}) {
+  const line = {
+    scope: "riskai:portfolio-invite",
+    ...payload,
+    at: new Date().toISOString(),
+  };
+  if (process.env.NODE_ENV === "development") {
+    console.warn(line);
+  } else {
+    console.error(line);
+  }
+}
+
 /**
  * POST /api/portfolios/[portfolioId]/members/invite
- * Sends an account invitation email for non-registered users.
+ * Record a pending invitation (outbound email via webhook).
  */
 export async function POST(
   request: Request,
@@ -86,6 +95,7 @@ export async function POST(
   if (!isRole(body.role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
+  const role = body.role;
 
   const { data: found, error: rpcErr } = await supabase.rpc(
     "riskai_find_profile_by_email_for_portfolio",
@@ -128,13 +138,22 @@ export async function POST(
   }
 
   try {
-    await invitePortfolioUserByEmail({
+    await createVisualifyPortfolioInvitationAndInvite({
+      portfolioId,
       email,
       firstName,
       surname,
+      role,
+      invitedByUserId: user.id,
     });
   } catch (e) {
     if (e instanceof InviteToPortfolioError) {
+      logPortfolioInviteDiagnostic({
+        portfolioId,
+        code: e.code,
+        phase: e.phase,
+      });
+
       if (e.code === "SERVICE_ROLE_UNAVAILABLE") {
         return NextResponse.json(
           {
@@ -145,14 +164,14 @@ export async function POST(
           { status: 503 }
         );
       }
-      const lower = e.message.toLowerCase();
-      if (isAlreadyRegisteredMessage(lower)) {
+
+      if (e.code === "INVITATION_DB_FAILED") {
         return NextResponse.json(
           {
-            error: "USER_ALREADY_EXISTS",
-            message: "An account already exists for this email. Use Add member.",
+            error: "INVITATION_DB_FAILED",
+            message: "Could not save the invitation. Try again or contact support.",
           },
-          { status: 409 }
+          { status: 500 }
         );
       }
 
@@ -174,16 +193,6 @@ export async function POST(
             "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
         },
         { status: 503 }
-      );
-    }
-    const lower = raw.toLowerCase();
-    if (isAlreadyRegisteredMessage(lower)) {
-      return NextResponse.json(
-        {
-          error: "USER_ALREADY_EXISTS",
-          message: "An account already exists for this email. Use Add member.",
-        },
-        { status: 409 }
       );
     }
     return NextResponse.json(

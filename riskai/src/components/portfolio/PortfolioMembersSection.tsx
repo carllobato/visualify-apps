@@ -649,7 +649,7 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                   Send invitation
                 </Button>
                 <HelperText className="!mt-0 sm:flex-1 sm:min-w-[12rem]">
-                  Sends a sign-up email. After they register, add them to this portfolio with the role you selected.
+                  Sends an invitation email to join this portfolio with the role you selected.
                 </HelperText>
               </div>
             ) : null}

@@ -80,7 +80,6 @@ async function handleAccept(request: Request) {
     .from("visualify_invitations")
     .select("id, resource_type, resource_id, email, role, expires_at, status, auth_user_id")
     .eq("invite_token", rawToken)
-    .eq("resource_type", "project")
     .maybeSingle();
 
   if (fetchErr) {
@@ -93,7 +92,10 @@ async function handleAccept(request: Request) {
 
   if (row.status === "accepted") {
     if (row.auth_user_id === user.id) {
-      return NextResponse.json({ ok: true, project_id: row.resource_id });
+      if (row.resource_type === "portfolio") {
+        return NextResponse.json({ ok: true, resource_type: "portfolio", portfolio_id: row.resource_id });
+      }
+      return NextResponse.json({ ok: true, resource_type: "project", project_id: row.resource_id });
     }
     return NextResponse.json({ error: "INVITATION_ALREADY_USED" }, { status: 409 });
   }
@@ -118,10 +120,13 @@ async function handleAccept(request: Request) {
 
   const nowIso = new Date().toISOString();
 
+  const membershipTable = row.resource_type === "portfolio" ? "portfolio_members" : "project_members";
+  const membershipResourceColumn = row.resource_type === "portfolio" ? "portfolio_id" : "project_id";
+
   const { data: existingMember, error: memberLookupErr } = await admin
-    .from("project_members")
+    .from(membershipTable)
     .select("id")
-    .eq("project_id", row.resource_id)
+    .eq(membershipResourceColumn, row.resource_id)
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -130,8 +135,8 @@ async function handleAccept(request: Request) {
   }
 
   if (!existingMember) {
-    const { error: insErr } = await admin.from("project_members").insert({
-      project_id: row.resource_id,
+    const { error: insErr } = await admin.from(membershipTable).insert({
+      [membershipResourceColumn]: row.resource_id,
       user_id: user.id,
       role: row.role,
     });
@@ -164,17 +169,23 @@ async function handleAccept(request: Request) {
       .maybeSingle();
 
     if (again?.status === "accepted" && again.auth_user_id === user.id) {
-      return NextResponse.json({ ok: true, project_id: again.resource_id });
+      if (row.resource_type === "portfolio") {
+        return NextResponse.json({ ok: true, resource_type: "portfolio", portfolio_id: again.resource_id });
+      }
+      return NextResponse.json({ ok: true, resource_type: "project", project_id: again.resource_id });
     }
 
     return NextResponse.json({ error: "CONFLICT" }, { status: 409 });
   }
 
-  return NextResponse.json({ ok: true, project_id: row.resource_id });
+  if (row.resource_type === "portfolio") {
+    return NextResponse.json({ ok: true, resource_type: "portfolio", portfolio_id: row.resource_id });
+  }
+  return NextResponse.json({ ok: true, resource_type: "project", project_id: row.resource_id });
 }
 
 /**
- * GET /api/invitations/accept?invite_token=… — Accept a pending project invitation (session cookie).
+ * GET /api/invitations/accept?invite_token=… — Accept a pending invitation (session cookie).
  */
 export async function GET(request: Request) {
   return handleAccept(request);
