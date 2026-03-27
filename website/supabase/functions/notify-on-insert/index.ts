@@ -82,43 +82,87 @@ function buildInvitationEmail(params: {
     "Powered by Visualify",
   ].join("\n");
   const html = `
-      <div style="margin:0;padding:20px;background-color:#f7f7f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;">
-          <tr>
-            <td style="padding:0;">
-              <div style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:16px;padding:24px;">
-                <div style="font-size:16px;line-height:24px;font-weight:600;color:#111111;margin:0 0 14px 0;">Visualify | Risk AI</div>
-                <div style="height:1px;background-color:#e6e6e8;margin:0 0 14px 0;"></div>
-                <div style="font-size:24px;line-height:30px;font-weight:600;color:#111111;margin:0 0 14px 0;">You've been invited</div>
-                <p style="margin:0 0 10px 0;font-size:16px;line-height:24px;color:#111111;">Hi ${escapeHtml(greetingName)},</p>
-                <p style="margin:0 0 20px 0;font-size:16px;line-height:24px;color:#5f6368;">
-                  ${escapeHtml(params.inviterDisplayName)} has invited you to join
-                  <span style="font-weight:600;color:#111111;">${escapeHtml(params.projectName)}</span>
-                  in Visualify | Risk AI.
-                </p>
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px 0;">
-                  <tr>
-                    <td style="border-radius:10px;background-color:#3b82f6;">
-                      <a
-                        href="${escapeHtml(params.inviteLink)}"
-                        style="display:inline-block;padding:10px 16px;font-size:14px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;"
-                      >
-                        Accept invitation
-                      </a>
-                    </td>
-                  </tr>
-                </table>
-                <div style="margin:0 0 16px 0;padding:10px 12px;background-color:#f7f7f8;border:1px solid #e6e6e8;border-radius:10px;">
-                  <div style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5f6368;">If the button does not work, use this link:</div>
-                  <a href="${escapeHtml(params.inviteLink)}" style="font-size:13px;line-height:18px;color:#3b82f6;word-break:break-all;text-decoration:underline;">${escapeHtml(params.inviteLink)}</a>
-                </div>
-                <p style="margin:0 0 14px 0;font-size:13px;line-height:18px;color:#5f6368;">This invitation will expire in 7 days.</p>
-                <div style="padding-top:12px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#9aa0a6;">Powered by Visualify</div>
-              </div>
-            </td>
-          </tr>
-        </table>
-      </div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0;padding:0;width:100%;background-color:#f4f4f5;">
+        <tr>
+          <td align="center" style="padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;">
+              <tr>
+                <td style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:14px;padding:24px;">
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                    <tr>
+                      <td style="font-size:16px;line-height:24px;font-weight:600;color:#1f1f1f;padding:0 0 14px 0;">
+                        Visualify | Risk AI
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="border-top:1px solid #e6e6e8;font-size:0;line-height:0;height:0;padding:0 0 14px 0;">&nbsp;</td>
+                    </tr>
+                    <tr>
+                      <td style="font-size:24px;line-height:30px;font-weight:700;color:#1f1f1f;padding:0 0 14px 0;">
+                        You've been invited
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="font-size:16px;line-height:24px;color:#1f1f1f;padding:0 0 10px 0;">
+                        Hi ${escapeHtml(greetingName)},
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="font-size:16px;line-height:24px;color:#333333;padding:0 0 20px 0;">
+                        ${escapeHtml(params.inviterDisplayName)} has invited you to join
+                        <span style="font-weight:700;color:#1f1f1f;">${escapeHtml(params.projectName)}</span>
+                        in Visualify | Risk AI.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0 0 20px 0;">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                          <tr>
+                            <td align="center" bgcolor="#A5573D" style="border-radius:10px;background-color:#A5573D;">
+                              <a
+                                href="${escapeHtml(params.inviteLink)}"
+                                style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;"
+                              >
+                                Accept invitation
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:0 0 16px 0;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background-color:#f8f8f8;border:1px solid #e6e6e8;border-radius:10px;">
+                          <tr>
+                            <td style="padding:10px 12px;">
+                              <div style="font-size:13px;line-height:18px;color:#555555;padding:0 0 6px 0;">
+                                If the button does not work, use this link:
+                              </div>
+                              <a href="${escapeHtml(params.inviteLink)}" style="font-size:13px;line-height:18px;color:#A5573D;word-break:break-all;text-decoration:underline;">
+                                ${escapeHtml(params.inviteLink)}
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="font-size:13px;line-height:18px;color:#555555;padding:0 0 14px 0;">
+                        This invitation will expire in 7 days.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding-top:12px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#888888;">
+                        Powered by Visualify
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
     `;
   return { text, html };
 }

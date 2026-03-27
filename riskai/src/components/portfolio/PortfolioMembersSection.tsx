@@ -131,6 +131,7 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
   const [addEmail, setAddEmail] = useState("");
   const [addRole, setAddRole] = useState<PortfolioMemberRole | "">("");
   const [addError, setAddError] = useState<string | null>(null);
+  const [inviteOptionAvailable, setInviteOptionAvailable] = useState(false);
   const [rowActionError, setRowActionError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
@@ -197,8 +198,68 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
     ).join("\n");
   }, [roleSemantics]);
 
+  const clearInviteOption = () => setInviteOptionAvailable(false);
+
+  const onSendInvite = async () => {
+    setAddError(null);
+    setRowActionError(null);
+    const fn = addFirstName.trim();
+    const sn = addSurname.trim();
+    const email = addEmail.trim();
+    if (!fn || !sn) {
+      setAddError("Enter first name and surname.");
+      return;
+    }
+    if (!email) {
+      setAddError("Enter an email address.");
+      return;
+    }
+    if (addRole === "") {
+      setAddError(ADD_MEMBER_ROLE_VALIDATION_ERROR);
+      return;
+    }
+    setPendingId("__invite__");
+    try {
+      const res = await fetch(`/api/portfolios/${portfolioId}/members/invite`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role: addRole, first_name: fn, surname: sn }),
+      });
+      const data = (await res.json().catch(() => null)) as { error?: string; message?: string };
+
+      if (res.status === 409 && data?.error === "USER_ALREADY_EXISTS") {
+        setAddError(data.message ?? "An account already exists for this email. Use Add member.");
+        setInviteOptionAvailable(false);
+        return;
+      }
+      if (res.status === 503 && data?.error === "INVITE_NOT_CONFIGURED") {
+        setAddError(data.message ?? "Invitations are not configured on the server.");
+        return;
+      }
+      if (res.status === 403 && data?.error === "PERMISSION_DENIED") {
+        setAddError(data.message ?? "Permission denied.");
+        return;
+      }
+      if (!res.ok) {
+        setAddError(data?.message ?? data?.error ?? "Could not send invitation.");
+        return;
+      }
+
+      setAddFirstName("");
+      setAddSurname("");
+      setAddEmail("");
+      setAddRole("");
+      setInviteOptionAvailable(false);
+      await load();
+    } finally {
+      setPendingId(null);
+    }
+  };
+
   const onAdd = async () => {
     setAddError(null);
+    setInviteOptionAvailable(false);
     setRowActionError(null);
     const fn = addFirstName.trim();
     const sn = addSurname.trim();
@@ -230,7 +291,11 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         return;
       }
       if (res.status === 404 && data?.error === "USER_NOT_FOUND") {
-        setAddError(data.message ?? "User not found. They need to sign up first.");
+        setAddError(
+          data.message ??
+            "No account found for this email. Send an invitation so they can sign up, or ask them to register first."
+        );
+        setInviteOptionAvailable(true);
         return;
       }
       if (res.status === 409 && data?.error === "DUPLICATE_MEMBER") {
@@ -482,7 +547,6 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
             <h3 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Add member</h3>
           </CardHeader>
           <CardBody className="!px-4 !py-3 space-y-3">
-            {addError ? <FieldError className="!mt-0">{addError}</FieldError> : null}
             <div className={membersAddMemberCardGridClass}>
               <div className={membersAddMemberCardCellClass}>
                 <div className="flex w-full flex-row gap-2 items-end">
@@ -494,7 +558,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                       aria-label="First name"
                       className={projectSettingsInputClass(false)}
                       value={addFirstName}
-                      onChange={(e) => setAddFirstName(e.target.value)}
+                      onChange={(e) => {
+                        setAddFirstName(e.target.value);
+                        clearInviteOption();
+                      }}
                       placeholder="First name"
                     />
                   </div>
@@ -506,7 +573,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                       aria-label="Surname"
                       className={projectSettingsInputClass(false)}
                       value={addSurname}
-                      onChange={(e) => setAddSurname(e.target.value)}
+                      onChange={(e) => {
+                        setAddSurname(e.target.value);
+                        clearInviteOption();
+                      }}
                       placeholder="Surname"
                     />
                   </div>
@@ -520,7 +590,10 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                   aria-label="Email"
                   className={projectSettingsInputClass(false)}
                   value={addEmail}
-                  onChange={(e) => setAddEmail(e.target.value)}
+                  onChange={(e) => {
+                    setAddEmail(e.target.value);
+                    clearInviteOption();
+                  }}
                   placeholder="name@company.com"
                 />
               </div>
@@ -533,6 +606,7 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                   onChange={(e) => {
                     const v = e.target.value;
                     setAddRole(v === "" ? "" : (v as PortfolioMemberRole));
+                    clearInviteOption();
                   }}
                 >
                   <option value="" disabled>
@@ -554,7 +628,7 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                       size="sm"
                       className="ds-action-success"
                       onClick={() => void onAdd()}
-                      disabled={pendingId === "__add__"}
+                      disabled={pendingId === "__add__" || pendingId === "__invite__"}
                     >
                       Add
                     </Button>
@@ -562,6 +636,23 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                 </div>
               </div>
             </div>
+            {addError ? <FieldError className="!mt-0">{addError}</FieldError> : null}
+            {inviteOptionAvailable && addError ? (
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void onSendInvite()}
+                  disabled={pendingId === "__invite__" || pendingId === "__add__"}
+                >
+                  Send invitation
+                </Button>
+                <HelperText className="!mt-0 sm:flex-1 sm:min-w-[12rem]">
+                  Sends a sign-up email. After they register, add them to this portfolio with the role you selected.
+                </HelperText>
+              </div>
+            ) : null}
           </CardBody>
         </Card>
       )}

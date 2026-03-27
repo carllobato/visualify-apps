@@ -93,7 +93,8 @@ export const MEMBERS_ROLE_COLUMN_WIDTH = "14.3125rem";
  */
 export const membersAddMemberCardGridClass = [
   "-mx-1 grid grid-cols-1 gap-y-2",
-  `sm:grid-cols-[${MEMBERS_NAME_COLUMN_WIDTH}_minmax(0,1fr)_${MEMBERS_ROLE_COLUMN_WIDTH}_${MEMBERS_ACTIONS_COLUMN_WIDTH}]`,
+  // Keep this as a literal Tailwind class so production builds don't purge it.
+  "sm:grid-cols-[20rem_minmax(0,1fr)_14.3125rem_6.25rem]",
   "sm:gap-x-0 sm:gap-y-0 sm:items-end",
 ].join(" ");
 
