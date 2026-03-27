@@ -31,7 +31,26 @@ async function sendResendEmail(params: {
   subject: string;
   text: string;
   html: string;
+  /** TEMP: log payload right before Resend (invitation inspection only). Remove after debugging. */
+  logInvitationInspection?: boolean;
 }): Promise<{ ok: boolean; status: number; body: string }> {
+  if (params.logInvitationInspection) {
+    const h = params.html;
+    console.log("[notify-on-insert] TEMP invitation send inspection", {
+      subject: params.subject,
+      recipient: params.to,
+      htmlFirst1500: h.slice(0, 1500),
+      containsScriptTag: /<script/i.test(h),
+      contains__next: h.includes("__next"),
+      containsDataTheme: h.includes("data-theme"),
+      /** Next / app-shell style markers (should be absent for clean email HTML) */
+      containsAppLayoutMarkers:
+        h.includes("__NEXT_DATA") ||
+        h.includes("next/static") ||
+        h.includes("next/font") ||
+        h.includes("data-nextjs"),
+    });
+  }
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -91,16 +110,16 @@ function buildInvitationEmail(params: {
         <meta name="color-scheme" content="light only" />
         <meta name="supported-color-schemes" content="light only" />
       </head>
-      <body bgcolor="#f4f4f5" style="margin:0;padding:0;background-color:#f4f4f5;color:#1f1f1f;">
-      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f4f4f5" style="margin:0;padding:0;width:100%;background-color:#f4f4f5;">
+      <body bgcolor="#f7f7f8" style="margin:0;padding:0;background-color:#f7f7f8;color:#111111;-webkit-font-smoothing:antialiased;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f7f7f8" style="margin:0;padding:0;width:100%;background-color:#f7f7f8;">
         <tr>
-          <td align="center" bgcolor="#f4f4f5" style="padding:24px 12px;background-color:#f4f4f5;font-family:Arial,'Segoe UI',Helvetica,sans-serif;">
+          <td align="center" bgcolor="#f7f7f8" style="padding:24px 12px;background-color:#f7f7f8;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
             <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;">
               <tr>
-                <td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:14px;padding:24px;">
+                <td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:16px;padding:24px;">
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                     <tr>
-                      <td style="font-size:16px;line-height:24px;font-weight:600;color:#1f1f1f;padding:0 0 14px 0;">
+                      <td style="font-size:16px;line-height:24px;font-weight:600;color:#111111;padding:0 0 14px 0;">
                         Visualify | Risk AI
                       </td>
                     </tr>
@@ -108,19 +127,19 @@ function buildInvitationEmail(params: {
                       <td style="border-top:1px solid #e6e6e8;font-size:0;line-height:0;height:0;padding:0 0 14px 0;">&nbsp;</td>
                     </tr>
                     <tr>
-                      <td style="font-size:24px;line-height:30px;font-weight:700;color:#1f1f1f;padding:0 0 14px 0;">
+                      <td style="font-size:24px;line-height:30px;font-weight:700;color:#111111;padding:0 0 14px 0;">
                         You've been invited
                       </td>
                     </tr>
                     <tr>
-                      <td style="font-size:16px;line-height:24px;color:#1f1f1f;padding:0 0 10px 0;">
+                      <td style="font-size:16px;line-height:24px;color:#111111;padding:0 0 10px 0;">
                         Hi ${escapeHtml(greetingName)},
                       </td>
                     </tr>
                     <tr>
-                      <td style="font-size:16px;line-height:24px;color:#333333;padding:0 0 20px 0;">
+                      <td style="font-size:16px;line-height:24px;color:#5f6368;padding:0 0 20px 0;">
                         ${escapeHtml(params.inviterDisplayName)} has invited you to join
-                        <span style="font-weight:700;color:#1f1f1f;">${escapeHtml(params.projectName)}</span>
+                        <span style="font-weight:700;color:#111111;">${escapeHtml(params.projectName)}</span>
                         in Visualify | Risk AI.
                       </td>
                     </tr>
@@ -128,11 +147,11 @@ function buildInvitationEmail(params: {
                       <td style="padding:0 0 20px 0;">
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                           <tr>
-                            <td align="center" bgcolor="#A5573D" style="border-radius:10px;background-color:#A5573D;">
+                            <td align="center" bgcolor="#3b82f6" style="border-radius:10px;background-color:#3b82f6;">
                               <!--[if mso]>
-                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(params.inviteLink)}" style="height:42px;v-text-anchor:middle;width:190px;" arcsize="14%" stroke="f" fillcolor="#A5573D">
+                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(params.inviteLink)}" style="height:42px;v-text-anchor:middle;width:190px;" arcsize="14%" stroke="f" fillcolor="#3b82f6">
                                 <w:anchorlock/>
-                                <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:700;">
+                                <center style="color:#ffffff;font-family:Inter,ui-sans-serif,sans-serif;font-size:14px;font-weight:600;">
                                   Accept invitation
                                 </center>
                               </v:roundrect>
@@ -140,7 +159,7 @@ function buildInvitationEmail(params: {
                               <!--[if !mso]><!-- -->
                               <a
                                 href="${escapeHtml(params.inviteLink)}"
-                                style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;"
+                                style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;"
                               >
                                 Accept invitation
                               </a>
@@ -152,13 +171,13 @@ function buildInvitationEmail(params: {
                     </tr>
                     <tr>
                       <td style="padding:0 0 16px 0;">
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f8f8f8" style="width:100%;background-color:#f8f8f8;border:1px solid #e6e6e8;border-radius:10px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f7f7f8" style="width:100%;background-color:#f7f7f8;border:1px solid #e6e6e8;border-radius:10px;">
                           <tr>
                             <td style="padding:10px 12px;">
-                              <div style="font-size:13px;line-height:18px;color:#555555;padding:0 0 6px 0;">
+                              <div style="font-size:13px;line-height:18px;color:#5f6368;padding:0 0 6px 0;">
                                 If the button does not work, use this link:
                               </div>
-                              <a href="${escapeHtml(params.inviteLink)}" style="font-size:13px;line-height:18px;color:#A5573D;word-break:break-all;text-decoration:underline;">
+                              <a href="${escapeHtml(params.inviteLink)}" style="font-size:13px;line-height:18px;color:#3b82f6;word-break:break-all;text-decoration:underline;">
                                 ${escapeHtml(params.inviteLink)}
                               </a>
                             </td>
@@ -167,12 +186,12 @@ function buildInvitationEmail(params: {
                       </td>
                     </tr>
                     <tr>
-                      <td style="font-size:13px;line-height:18px;color:#555555;padding:0 0 14px 0;">
+                      <td style="font-size:13px;line-height:18px;color:#5f6368;padding:0 0 14px 0;">
                         This invitation will expire in 7 days.
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding-top:12px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#888888;">
+                      <td style="padding-top:12px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#9aa0a6;">
                         Powered by Visualify
                       </td>
                     </tr>
@@ -367,6 +386,7 @@ Deno.serve(async (req) => {
       subject,
       text,
       html,
+      logInvitationInspection: table === "visualify_invitations",
     });
     if (!result.ok) {
       console.warn("[notify-on-insert] Resend error", result.status, result.body);
