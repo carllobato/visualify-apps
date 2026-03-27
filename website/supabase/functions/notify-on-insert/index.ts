@@ -82,37 +82,38 @@ function buildInvitationEmail(params: {
     "Powered by Visualify",
   ].join("\n");
   const html = `
-      <div style="margin:0;padding:24px;background-color:#f7f7f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+      <div style="margin:0;padding:20px;background-color:#f7f7f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;">
           <tr>
             <td style="padding:0;">
-              <div style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:12px;padding:28px;">
-                <div style="font-size:18px;line-height:24px;font-weight:700;color:#111111;margin:0 0 20px 0;">Visualify | Risk AI</div>
-                <div style="font-size:28px;line-height:34px;font-weight:700;color:#111111;margin:0 0 18px 0;">You've been invited</div>
-                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;color:#111111;">Hi ${escapeHtml(greetingName)},</p>
-                <p style="margin:0 0 24px 0;font-size:16px;line-height:24px;color:#5f6368;">
+              <div style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:16px;padding:24px;">
+                <div style="font-size:16px;line-height:24px;font-weight:600;color:#111111;margin:0 0 14px 0;">Visualify | Risk AI</div>
+                <div style="height:1px;background-color:#e6e6e8;margin:0 0 14px 0;"></div>
+                <div style="font-size:24px;line-height:30px;font-weight:600;color:#111111;margin:0 0 14px 0;">You've been invited</div>
+                <p style="margin:0 0 10px 0;font-size:16px;line-height:24px;color:#111111;">Hi ${escapeHtml(greetingName)},</p>
+                <p style="margin:0 0 20px 0;font-size:16px;line-height:24px;color:#5f6368;">
                   ${escapeHtml(params.inviterDisplayName)} has invited you to join
                   <span style="font-weight:600;color:#111111;">${escapeHtml(params.projectName)}</span>
                   in Visualify | Risk AI.
                 </p>
-                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px 0;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 20px 0;">
                   <tr>
-                    <td style="border-radius:8px;background-color:#3b82f6;">
+                    <td style="border-radius:10px;background-color:#3b82f6;">
                       <a
                         href="${escapeHtml(params.inviteLink)}"
-                        style="display:inline-block;padding:12px 20px;font-size:15px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;"
+                        style="display:inline-block;padding:10px 16px;font-size:14px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;"
                       >
                         Accept invitation
                       </a>
                     </td>
                   </tr>
                 </table>
-                <div style="margin:0 0 20px 0;padding:12px 14px;background-color:#f7f7f8;border:1px solid #e6e6e8;border-radius:8px;">
+                <div style="margin:0 0 16px 0;padding:10px 12px;background-color:#f7f7f8;border:1px solid #e6e6e8;border-radius:10px;">
                   <div style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5f6368;">If the button does not work, use this link:</div>
                   <a href="${escapeHtml(params.inviteLink)}" style="font-size:13px;line-height:18px;color:#3b82f6;word-break:break-all;text-decoration:underline;">${escapeHtml(params.inviteLink)}</a>
                 </div>
-                <p style="margin:0 0 18px 0;font-size:13px;line-height:18px;color:#5f6368;">This invitation will expire in 7 days.</p>
-                <div style="padding-top:14px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#9aa0a6;">Powered by Visualify</div>
+                <p style="margin:0 0 14px 0;font-size:13px;line-height:18px;color:#5f6368;">This invitation will expire in 7 days.</p>
+                <div style="padding-top:12px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#9aa0a6;">Powered by Visualify</div>
               </div>
             </td>
           </tr>
