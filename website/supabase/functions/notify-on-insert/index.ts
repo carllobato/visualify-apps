@@ -51,18 +51,102 @@ async function sendResendEmail(params: {
   return { ok: res.ok, status: res.status, body };
 }
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function buildInvitationEmail(params: {
+  firstName: string;
+  projectName: string;
+  inviterDisplayName: string;
+  inviteLink: string;
+}): { text: string; html: string } {
+  const greetingName = params.firstName || "there";
+  const text = [
+    "Visualify | Risk AI",
+    "",
+    "You've been invited",
+    "",
+    `Hi ${greetingName},`,
+    "",
+    `${params.inviterDisplayName} has invited you to join ${params.projectName} in Visualify | Risk AI.`,
+    "",
+    "Accept invitation:",
+    params.inviteLink,
+    "",
+    "If the button does not work, copy and paste this link into your browser:",
+    params.inviteLink,
+    "",
+    "This invitation will expire in 7 days.",
+    "",
+    "Powered by Visualify",
+  ].join("\n");
+  const html = `
+      <div style="margin:0;padding:24px;background-color:#f7f7f8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#111111;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;">
+          <tr>
+            <td style="padding:0;">
+              <div style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:12px;padding:28px;">
+                <div style="font-size:18px;line-height:24px;font-weight:700;color:#111111;margin:0 0 20px 0;">Visualify | Risk AI</div>
+                <div style="font-size:28px;line-height:34px;font-weight:700;color:#111111;margin:0 0 18px 0;">You've been invited</div>
+                <p style="margin:0 0 12px 0;font-size:16px;line-height:24px;color:#111111;">Hi ${escapeHtml(greetingName)},</p>
+                <p style="margin:0 0 24px 0;font-size:16px;line-height:24px;color:#5f6368;">
+                  ${escapeHtml(params.inviterDisplayName)} has invited you to join
+                  <span style="font-weight:600;color:#111111;">${escapeHtml(params.projectName)}</span>
+                  in Visualify | Risk AI.
+                </p>
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px 0;">
+                  <tr>
+                    <td style="border-radius:8px;background-color:#3b82f6;">
+                      <a
+                        href="${escapeHtml(params.inviteLink)}"
+                        style="display:inline-block;padding:12px 20px;font-size:15px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;"
+                      >
+                        Accept invitation
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <div style="margin:0 0 20px 0;padding:12px 14px;background-color:#f7f7f8;border:1px solid #e6e6e8;border-radius:8px;">
+                  <div style="margin:0 0 6px 0;font-size:13px;line-height:18px;color:#5f6368;">If the button does not work, use this link:</div>
+                  <a href="${escapeHtml(params.inviteLink)}" style="font-size:13px;line-height:18px;color:#3b82f6;word-break:break-all;text-decoration:underline;">${escapeHtml(params.inviteLink)}</a>
+                </div>
+                <p style="margin:0 0 18px 0;font-size:13px;line-height:18px;color:#5f6368;">This invitation will expire in 7 days.</p>
+                <div style="padding-top:14px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#9aa0a6;">Powered by Visualify</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+  return { text, html };
+}
+
 Deno.serve(async (req) => {
-  if (req.method !== "POST") {
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    if (url.searchParams.get("preview") === "visualify_invitations") {
+      const firstName = url.searchParams.get("first_name")?.trim() || "";
+      const projectName = url.searchParams.get("project_name")?.trim() || "your project";
+      const inviterDisplayName = url.searchParams.get("inviter_display_name")?.trim() || "a team member";
+      const inviteLink =
+        url.searchParams.get("invite_link")?.trim() || "https://app.riskai.com.au/invite?invite_token=demo-token";
+      const preview = buildInvitationEmail({
+        firstName,
+        projectName,
+        inviterDisplayName,
+        inviteLink,
+      });
+      return new Response(preview.html, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
     return new Response("Method Not Allowed", { status: 405 });
   }
 
-  const webhookSecret = Deno.env.get("WEBHOOK_SECRET")?.trim();
-  const auth = req.headers.get("authorization");
-  if (!webhookSecret || auth !== `Bearer ${webhookSecret}`) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+  if (req.method !== "POST") {
+    return new Response("Method Not Allowed", { status: 405 });
   }
 
   let payload: WebhookInsertPayload;
@@ -98,6 +182,7 @@ Deno.serve(async (req) => {
     Deno.env.get("CONTACT_FROM_EMAIL")?.trim() || "Visualify <onboarding@resend.dev>";
   const notifyTo = Deno.env.get("NOTIFY_TO_EMAIL")?.trim() || NOTIFY_TO_DEFAULT;
 
+  let to = notifyTo;
   let subject: string;
   let replyTo: string;
   let text: string;
@@ -151,6 +236,46 @@ Deno.serve(async (req) => {
     html = `<p><strong>Name:</strong> ${escapeHtml(name || "—")}</p><p><strong>Email:</strong> ${escapeHtml(email)}</p>${
       company ? `<p><strong>Company:</strong> ${escapeHtml(company)}</p>` : ""
     }<p><strong>Message:</strong></p><p style="white-space:pre-wrap">${escapeHtml(message)}</p>`;
+  } else if (table === "visualify_invitations") {
+    const status = String(record.status ?? "").trim().toLowerCase();
+    if (status !== "pending") {
+      return new Response(JSON.stringify({ ok: true, skipped: "not_pending" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const email = String(record.email ?? "").trim().toLowerCase();
+    const firstName = String(record.first_name ?? "").trim();
+    const projectName = String(record.project_name ?? "").trim() || "your project";
+    const inviterDisplayName = String(record.inviter_display_name ?? "").trim() || "a team member";
+    const inviteToken = String(record.invite_token ?? "").trim();
+    const riskaiOrigin = Deno.env.get("RISKAI_APP_ORIGIN")?.trim();
+    const invitationReplyTo =
+      Deno.env.get("CONTACT_FROM_EMAIL")?.trim() ||
+      Deno.env.get("NOTIFY_TO_EMAIL")?.trim() ||
+      NOTIFY_TO_DEFAULT;
+
+    if (!email || !inviteToken || !riskaiOrigin) {
+      console.warn("[notify-on-insert] invitation row missing required fields");
+      return new Response(JSON.stringify({ ok: true, skipped: "incomplete_invitation" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const inviteLink = `${riskaiOrigin.replace(/\/+$/, "")}/invite?invite_token=${encodeURIComponent(inviteToken)}`;
+    to = email;
+    replyTo = invitationReplyTo;
+    subject = `You're invited to join ${projectName}`;
+    const invitationEmail = buildInvitationEmail({
+      firstName,
+      projectName,
+      inviterDisplayName,
+      inviteLink,
+    });
+    text = invitationEmail.text;
+    html = invitationEmail.html;
   } else {
     return new Response(JSON.stringify({ ok: true, skipped: "unknown_table" }), {
       status: 200,
@@ -158,22 +283,38 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (!to || !isValidEmail(to)) {
+    console.error("[notify-on-insert] INVALID EMAIL:", to);
+    return new Response(
+      JSON.stringify({ ok: true, skipped: "invalid_to_email", to }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   try {
     const result = await sendResendEmail({
       apiKey,
       from,
-      to: notifyTo,
+      to,
       replyTo,
       subject,
       text,
       html,
     });
     if (!result.ok) {
-      console.warn("[notify-on-insert] Resend error", result.status, result.body.slice(0, 500));
-      return new Response(JSON.stringify({ ok: false, error: "resend_failed", status: result.status }), {
-        status: 502,
-        headers: { "Content-Type": "application/json" },
-      });
+      console.warn("[notify-on-insert] Resend error", result.status, result.body);
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "resend_failed",
+          status: result.status,
+          resend_body: result.body,
+        }),
+        {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,

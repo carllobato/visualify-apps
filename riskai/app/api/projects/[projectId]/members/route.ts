@@ -228,7 +228,8 @@ export async function POST(
     return NextResponse.json(
       {
         error: "USER_NOT_FOUND",
-        message: "User not found. They need to sign up first.",
+        message:
+          "No account found for this email. Send an invitation so they can sign up and join this project, or ask them to register first.",
       },
       { status: 404 }
     );

@@ -38,17 +38,20 @@ function RagDot({ status }: { status: ProjectTilePayload["ragStatus"] }) {
   );
 }
 
-/** Shared shell for dashboard project row tiles (project + new-project). Fixed height so rows align. */
+/** Shared shell for dashboard project row tiles. Fixed height so rows align. */
 export const PROJECT_TILE_LINK_CLASSES =
   "group flex h-14 items-center justify-between gap-3 self-start rounded-lg border border-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] bg-[var(--ds-surface-elevated)] px-[1.125rem] shadow-[var(--ds-elevation-tile)] outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--ds-border)_80%,transparent)] hover:shadow-[var(--ds-elevation-tile-hover)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]";
+
+/**
+ * Create-project tile only: full class string (do not merge with PROJECT_TILE_LINK_CLASSES — Tailwind
+ * can resolve conflicting bg-* utilities in stylesheet order, not className order).
+ */
+const NEW_PROJECT_TILE_LINK_CLASSES =
+  "group flex h-14 items-center justify-between gap-3 self-start rounded-lg border border-dashed border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] bg-[var(--ds-background)] px-[1.125rem] shadow-none outline-none transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-px hover:border-[var(--ds-risk-low-border)] hover:bg-[var(--ds-risk-low-soft-bg)] hover:shadow-none dark:border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] dark:bg-[var(--ds-background)] dark:hover:border-[var(--ds-risk-low-border)] dark:hover:bg-[color-mix(in_oklab,var(--ds-risk-low)_14%,var(--ds-surface-default))] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]";
 
 export type ProjectTileProps = {
   payload: ProjectTilePayload;
 };
-
-/** Distinct from project rows: dashed frame, tinted fill, emerald hover. */
-const NEW_PROJECT_TILE_EXTRA_CLASSES =
-  "border-dashed border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_60%,transparent)] hover:border-[var(--ds-risk-low-border)] hover:bg-[var(--ds-risk-low-soft-bg)] dark:border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_40%,transparent)] dark:hover:border-[var(--ds-risk-low-border)] dark:hover:bg-[color-mix(in_oklab,var(--ds-risk-low)_14%,var(--ds-surface-default))]";
 
 export type NewProjectTileProps = {
   /** Default portfolio for `/create-project` when the user has several. */
@@ -56,7 +59,7 @@ export type NewProjectTileProps = {
 };
 
 /**
- * Create-project tile: dashed card; + aligned right like the RAG dot on project rows.
+ * Create-project tile: dashed frame on page background; + aligned right like the RAG dot on project rows.
  */
 export function NewProjectTile({ portfolioId = null }: NewProjectTileProps) {
   const href =
@@ -67,7 +70,7 @@ export function NewProjectTile({ portfolioId = null }: NewProjectTileProps) {
   return (
     <Link
       href={href}
-      className={`${PROJECT_TILE_LINK_CLASSES} ${NEW_PROJECT_TILE_EXTRA_CLASSES}`}
+      className={NEW_PROJECT_TILE_LINK_CLASSES}
       aria-label="Create a new project"
     >
       <span className="min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight tracking-tight text-[var(--ds-text-primary)]">
