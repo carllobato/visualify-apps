@@ -12,7 +12,11 @@ async function fetchProjectNameForInvitation(
   admin: SupabaseClient,
   projectId: string
 ): Promise<string> {
-  const { data, error } = await admin.from("projects").select("name").eq("id", projectId).maybeSingle();
+  const { data, error } = await admin
+    .from("visualify_projects")
+    .select("name")
+    .eq("id", projectId)
+    .maybeSingle();
   if (error || data == null) return FALLBACK_PROJECT_NAME;
   const name = typeof data.name === "string" ? data.name.trim() : "";
   return name || FALLBACK_PROJECT_NAME;

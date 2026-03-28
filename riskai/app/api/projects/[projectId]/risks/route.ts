@@ -88,7 +88,7 @@ export async function GET(
 
   const supabase = await supabaseServerClient();
   const { data, error } = await supabase
-    .from("risks")
+    .from("riskai_risks")
     .select(RISK_DB_SELECT_COLUMNS)
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
@@ -142,7 +142,7 @@ export async function PUT(
 
   const supabase = await supabaseServerClient();
   const { data: existingRows, error: listErr } = await supabase
-    .from("risks")
+    .from("riskai_risks")
     .select("id")
     .eq("project_id", projectId);
 
@@ -156,7 +156,7 @@ export async function PUT(
 
   if (rows.length > 0) {
     const { data: upsertedRows, error: upsertError } = await supabase
-      .from("risks")
+      .from("riskai_risks")
       .upsert(rows, { onConflict: "id" })
       .select(RISK_DB_SELECT_COLUMNS);
 
@@ -190,7 +190,7 @@ export async function PUT(
     if (orphanIds.length > 0) {
       const now = new Date().toISOString();
       const { error: archErr } = await supabase
-        .from("risks")
+        .from("riskai_risks")
         .update({ status: RISK_STATUS_ARCHIVED_LOOKUP, updated_at: now })
         .in("id", orphanIds)
         .eq("project_id", projectId);
@@ -205,7 +205,7 @@ export async function PUT(
   if (orphanIds.length > 0) {
     const now = new Date().toISOString();
     const { error: archErr } = await supabase
-      .from("risks")
+      .from("riskai_risks")
       .update({ status: RISK_STATUS_ARCHIVED_LOOKUP, updated_at: now })
       .in("id", orphanIds)
       .eq("project_id", projectId);

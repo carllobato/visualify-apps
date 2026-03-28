@@ -4,7 +4,7 @@ export type UserMetadata = Record<string, unknown> | undefined;
 
 export type AccountProfileFields = {
   first_name?: string | null;
-  /** `public.profiles.surname` */
+  /** `public.visualify_profiles.surname` */
   surname?: string | null;
   /** Legacy metadata / forms only */
   last_name?: string | null;
@@ -39,7 +39,7 @@ function mergedSurname(
 }
 
 /**
- * Same bar as Settings: first name, surname, and company required (`public.profiles` and/or legacy metadata).
+ * Same bar as Settings: first name, surname, and company required (`public.visualify_profiles` and/or legacy metadata).
  */
 export function isOnboardingProfileComplete(
   meta: UserMetadata,

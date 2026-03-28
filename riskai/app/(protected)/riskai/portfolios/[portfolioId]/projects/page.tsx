@@ -16,7 +16,7 @@ export default async function PortfolioProjectsPage({
   const supabase = await supabaseServerClient();
 
   const { data: portfolio, error: portfolioError } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("id, name")
     .eq("id", portfolioId)
     .single();
@@ -26,7 +26,7 @@ export default async function PortfolioProjectsPage({
   }
 
   const { data: projects, error: projectsError } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("id, name, created_at")
     .eq("portfolio_id", portfolioId)
     .order("created_at", { ascending: true });

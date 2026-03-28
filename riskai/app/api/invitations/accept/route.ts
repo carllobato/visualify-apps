@@ -121,7 +121,8 @@ async function handleAccept(request: Request) {
 
   const nowIso = new Date().toISOString();
 
-  const membershipTable = row.resource_type === "portfolio" ? "portfolio_members" : "project_members";
+  const membershipTable =
+    row.resource_type === "portfolio" ? "visualify_portfolio_members" : "visualify_project_members";
   const membershipResourceColumn = row.resource_type === "portfolio" ? "portfolio_id" : "project_id";
 
   const { data: existingMember, error: memberLookupErr } = await admin
@@ -149,7 +150,7 @@ async function handleAccept(request: Request) {
 
   if (row.resource_type === "project") {
     const { data: projectRow, error: projectErr } = await admin
-      .from("projects")
+      .from("visualify_projects")
       .select("portfolio_id")
       .eq("id", row.resource_id)
       .maybeSingle();
@@ -165,7 +166,7 @@ async function handleAccept(request: Request) {
     const portfolioId = projectRow.portfolio_id;
     if (portfolioId) {
       const { data: existingPortfolioMember, error: pmLookupErr } = await admin
-        .from("portfolio_members")
+        .from("visualify_portfolio_members")
         .select("id")
         .eq("portfolio_id", portfolioId)
         .eq("user_id", user.id)
@@ -176,7 +177,7 @@ async function handleAccept(request: Request) {
       }
 
       if (!existingPortfolioMember) {
-        const { error: pmInsErr } = await admin.from("portfolio_members").insert({
+        const { error: pmInsErr } = await admin.from("visualify_portfolio_members").insert({
           portfolio_id: portfolioId,
           user_id: user.id,
           role: "viewer",

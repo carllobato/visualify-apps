@@ -15,7 +15,7 @@ export default async function PortfolioLayout({
   const supabase = await supabaseServerClient();
 
   const { data: portfolio, error } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("id, name")
     .eq("id", portfolioId)
     .single();

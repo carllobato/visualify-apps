@@ -51,7 +51,7 @@ export async function assertPortfolioAdminAccess(
   userId: string
 ): Promise<AssertPortfolioAdminResult> {
   const { data: portfolio, error: portfolioError } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("id, name, description, owner_user_id, product_id, created_at, updated_at")
     .eq("id", portfolioId)
     .single();
@@ -73,7 +73,7 @@ export async function assertPortfolioAdminAccess(
   const isTableOwner = portfolio.owner_user_id === userId;
 
   const { data: membership } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("role")
     .eq("portfolio_id", portfolioId)
     .eq("user_id", userId)
@@ -108,7 +108,7 @@ export async function getAccessiblePortfolios(
   userId: string
 ): Promise<GetAccessiblePortfoliosResult> {
   const { data: portfolios, error } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("id, name, created_at, owner_user_id")
     .order("created_at", { ascending: true });
 
@@ -117,7 +117,7 @@ export async function getAccessiblePortfolios(
   }
 
   const { data: memberships } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("portfolio_id")
     .eq("user_id", userId);
 
@@ -158,7 +158,7 @@ export async function getAccessibleProjects(
   accessiblePortfolioIds: string[]
 ): Promise<GetAccessibleProjectsResult> {
   const { data: ownedProjects, error: ownedError } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("id, name, created_at")
     .eq("owner_user_id", userId)
     .order("created_at", { ascending: true });
@@ -168,7 +168,7 @@ export async function getAccessibleProjects(
   }
 
   const { data: memberRows, error: memberError } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("project_id")
     .eq("user_id", userId);
 
@@ -183,7 +183,7 @@ export async function getAccessibleProjects(
   let memberProjects: { id: string; name: string | null; created_at: string | null }[] = [];
   if (memberProjectIds.length > 0) {
     const { data, error: mpError } = await supabase
-      .from("projects")
+      .from("visualify_projects")
       .select("id, name, created_at")
       .in("id", memberProjectIds)
       .order("created_at", { ascending: true });
@@ -197,7 +197,7 @@ export async function getAccessibleProjects(
   let sharedProjects: { id: string; name: string | null; created_at: string | null }[] = [];
   if (accessiblePortfolioIds.length > 0) {
     const { data, error: sharedError } = await supabase
-      .from("projects")
+      .from("visualify_projects")
       .select("id, name, created_at")
       .in("portfolio_id", accessiblePortfolioIds)
       .order("created_at", { ascending: true });

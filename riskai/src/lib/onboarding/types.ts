@@ -1,6 +1,6 @@
 /**
  * Onboarding metadata keys (Supabase `user.user_metadata`).
- * Name + company in `public.profiles`; optional job title (`role`) + step flags in metadata.
+ * Name + company in `public.visualify_profiles`; optional job title (`role`) + step flags in metadata.
  * Keep step IDs stable so guided tours / checklists can layer on later.
  */
 export const OnboardingMetaKey = {
@@ -21,7 +21,7 @@ export type OnboardingStepId = "profile" | "portfolio" | "dashboard";
 
 /**
  * Shape of a portfolio row insert on the server. `product_id` is always the RiskAI
- * product from `public.products` (key = 'riskai'); clients do not send it.
+ * product from `public.visualify_products` (key = 'riskai'); clients do not send it.
  */
 export type OnboardingPortfolioInsertPayload = {
   name: string;

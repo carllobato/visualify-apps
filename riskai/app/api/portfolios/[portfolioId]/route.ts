@@ -90,7 +90,7 @@ export async function PATCH(
   if (description !== undefined) updates.description = description;
 
   const { error } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .update(updates)
     .eq("id", portfolioId);
 

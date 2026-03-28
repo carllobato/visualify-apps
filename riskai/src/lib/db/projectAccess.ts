@@ -21,7 +21,7 @@ export async function getProjectIfAccessible(
 ): Promise<ProjectRow | null> {
   const supabase = await supabaseServerClient();
   const { data, error } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("id, name, created_at")
     .eq("id", projectId)
     .single();
@@ -40,7 +40,7 @@ export async function getProjectAccessForUser(
 ): Promise<ProjectAccessBundle | null> {
   const supabase = await supabaseServerClient();
   const { data, error } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("id, name, created_at, owner_user_id, portfolio_id")
     .eq("id", projectId)
     .single();
@@ -48,7 +48,7 @@ export async function getProjectAccessForUser(
   if (error || !data) return null;
 
   const { data: memberRow } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", userId)
@@ -95,7 +95,7 @@ export async function getProjectIfOwned(
 ): Promise<ProjectRow | null> {
   const supabase = await supabaseServerClient();
   const { data, error } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("id, name, created_at")
     .eq("id", projectId)
     .eq("owner_user_id", userId)

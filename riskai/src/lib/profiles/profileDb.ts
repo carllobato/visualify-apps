@@ -1,8 +1,8 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { OnboardingMetaKey } from "@/lib/onboarding/types";
 
-/** `public.profiles` — id matches `auth.users.id`. Job title (`role`) stays in `user_metadata.role`. */
-export const USER_PROFILE_TABLE = "profiles";
+/** `public.visualify_profiles` — id matches `auth.users.id`. Job title (`role`) stays in `user_metadata.role`. */
+export const USER_PROFILE_TABLE = "visualify_profiles";
 
 /** PostgREST / DB error when the table is missing from the API (narrow — avoids silent fallback on RLS errors). */
 function isUserProfileTableUnavailable(message: string): boolean {
@@ -11,12 +11,14 @@ function isUserProfileTableUnavailable(message: string): boolean {
     m.includes("schema cache") ||
     m.includes("pgrst205") ||
     (m.includes("could not find the table") &&
-      (m.includes("users") || m.includes("profiles"))) ||
+      (m.includes("users") || m.includes("profiles") || m.includes("visualify_profiles"))) ||
     ((m.includes("relation") && m.includes("does not exist")) &&
       (m.includes("public.users") ||
         m.includes('"users"') ||
         m.includes("public.profiles") ||
-        m.includes('"profiles"')))
+        m.includes("public.visualify_profiles") ||
+        m.includes('"profiles"') ||
+        m.includes('"visualify_profiles"')))
   );
 }
 
@@ -51,7 +53,7 @@ export type PublicProfileRow = {
   email: string | null;
   company: string | null;
   user_type: string | null;
-  /** Always from auth metadata in the app; not read from `public.profiles`. */
+  /** Always from auth metadata in the app; not read from `public.visualify_profiles`. */
   role: string | null;
 };
 
@@ -76,7 +78,7 @@ export async function fetchPublicProfile(
 }
 
 /**
- * Audit label when only user id and optional `profiles` row exist (e.g. reporting "locked by").
+ * Audit label when only user id and optional profile row exist (e.g. reporting "locked by").
  * Aligns with {@link formatTriggeredByLabel} name/company rules where profile fields exist.
  */
 export function formatProfileAuditLabel(
@@ -98,7 +100,7 @@ export function formatProfileAuditLabel(
 }
 
 /**
- * Persist name / company in `public.profiles`; role + onboarding flag in auth metadata.
+ * Persist name / company in `public.visualify_profiles`; role + onboarding flag in auth metadata.
  */
 export async function upsertPublicProfile(
   supabase: SupabaseClient,
@@ -143,7 +145,7 @@ export async function upsertPublicProfile(
   return { error: null };
 }
 
-/** “Triggered by” label; prefers `public.profiles` row, falls back to legacy `user_metadata`. */
+/** “Triggered by” label; prefers `public.visualify_profiles` row, falls back to legacy `user_metadata`. */
 export function formatTriggeredByLabel(user: User, profile: PublicProfileRow | null): string {
   const meta = user.user_metadata as Record<string, unknown> | undefined;
   const first = (profile?.first_name ?? (meta?.first_name as string | undefined))?.trim();

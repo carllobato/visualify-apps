@@ -14,7 +14,7 @@ async function fetchPortfolioNameForInvitation(
   portfolioId: string
 ): Promise<string> {
   const { data, error } = await admin
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("name")
     .eq("id", portfolioId)
     .maybeSingle();

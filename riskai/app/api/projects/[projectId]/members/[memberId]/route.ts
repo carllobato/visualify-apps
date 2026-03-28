@@ -58,7 +58,7 @@ export async function PATCH(
   const nextRole = body.role;
 
   const { data: row, error: fetchErr } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("id, user_id, role, project_id")
     .eq("id", memberId)
     .eq("project_id", projectId)
@@ -92,7 +92,7 @@ export async function PATCH(
   }
 
   const { data: updated, error: updErr } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .update({ role: nextRole })
     .eq("id", memberId)
     .eq("project_id", projectId)
@@ -142,7 +142,7 @@ export async function DELETE(
   }
 
   const { data: row, error: fetchErr } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("id, user_id, role")
     .eq("id", memberId)
     .eq("project_id", projectId)
@@ -164,7 +164,7 @@ export async function DELETE(
   }
 
   const { error: delErr } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .delete()
     .eq("id", memberId)
     .eq("project_id", projectId);

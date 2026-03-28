@@ -58,7 +58,7 @@ export async function getProjectTilePayloads(
 
   const [risksRes, snapshotsRes] = await Promise.all([
     supabase
-      .from("risks")
+      .from("riskai_risks")
       .select("project_id, status, post_probability, post_cost_ml, post_time_ml, mitigation_description")
       .in("project_id", ids),
     supabase.from("riskai_simulation_snapshots").select("project_id, created_at").in("project_id", ids),

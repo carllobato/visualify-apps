@@ -21,7 +21,7 @@ export async function GET() {
 
   const supabase = await supabaseServerClient();
   const { data: projects, error } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("id, name, created_at")
     .order("created_at", { ascending: true });
 
@@ -53,7 +53,7 @@ async function resolveCreatablePortfolioIdForUser(
   }
 
   const { data: ownedPortfolios, error: ownedErr } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("id, created_at")
     .eq("owner_user_id", userId)
     .order("created_at", { ascending: true });
@@ -63,7 +63,7 @@ async function resolveCreatablePortfolioIdForUser(
   }
 
   const { data: editableMemberships, error: memberErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("portfolio_id, created_at")
     .eq("user_id", userId)
     .in("role", ["owner", "editor", "admin"])
@@ -74,7 +74,7 @@ async function resolveCreatablePortfolioIdForUser(
   }
 
   const { data: viewerMemberships, error: viewerErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("portfolio_id")
     .eq("user_id", userId)
     .limit(1);
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
 
   const supabase = await supabaseServerClient();
   const { data, error } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .insert({
       owner_user_id: user.id,
       name,
