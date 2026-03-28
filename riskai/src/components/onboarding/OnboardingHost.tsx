@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchPublicProfile } from "@/lib/profiles/profileDb";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { isOnboardingProfileComplete, isOnboardingWizardComplete } from "@/lib/onboarding/guards";
@@ -12,18 +12,6 @@ import { PortfolioSetupModal } from "./PortfolioSetupModal";
 import { ProfileSetupModal } from "./ProfileSetupModal";
 import { ProjectOnboardingSetupModal } from "./ProjectOnboardingSetupModal";
 import { riskaiPath } from "@/lib/routes";
-
-type PortfolioRow = { id: string; name: string };
-
-async function fetchPortfolios(): Promise<PortfolioRow[]> {
-  try {
-    const res = await fetch("/api/portfolios", { cache: "no-store" });
-    const data = (await res.json()) as { portfolios?: PortfolioRow[] };
-    return Array.isArray(data.portfolios) ? data.portfolios : [];
-  } catch {
-    return [];
-  }
-}
 
 async function fetchProjects(): Promise<{ id: string }[]> {
   try {
@@ -36,12 +24,16 @@ async function fetchProjects(): Promise<{ id: string }[]> {
 }
 
 /**
- * Central place for first-run onboarding UI. Flow: profile → portfolio name → (optional portfolio
- * details if named) or add project if skipped → project setup → dashboard.
+ * Central place for first-run onboarding UI. MVP: profile completion only (first name, surname,
+ * company, role). Portfolio/project modals remain mounted but are not opened automatically.
  */
 export function OnboardingHost() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  /** Stays true after `invite_accepted=1` until the user navigates to a different pathname. */
+  const inviteAcceptedSuppressRef = useRef(false);
+  const prevPathnameRef = useRef<string | null>(null);
   const [profileGateTick, setProfileGateTick] = useState(0);
   const [ready, setReady] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -83,33 +75,18 @@ export function OnboardingHost() {
     [router],
   );
 
-  const openStepsAfterProfile = useCallback(
-    async (meta: Record<string, unknown> | undefined) => {
-      const supabase = supabaseBrowserClient();
-      const portfolios = await fetchPortfolios();
-      const projects = await fetchProjects();
-
-      if (projects.length > 0) {
-        await markWizardCompleteIfHasProjects(supabase, projects.length, meta);
-        return;
-      }
-
-      if (portfolios.length === 0) {
-        setShowPortfolioModal(true);
-        return;
-      }
-
-      setAddProjectPortfolioId(portfolios[0]!.id);
-      setShowAddProjectModal(true);
-    },
-    [markWizardCompleteIfHasProjects],
-  );
-
   useEffect(() => {
     const bump = () => setProfileGateTick((n) => n + 1);
     window.addEventListener(ACCOUNT_PROFILE_UPDATED_EVENT, bump);
     return () => window.removeEventListener(ACCOUNT_PROFILE_UPDATED_EVENT, bump);
   }, []);
+
+  useEffect(() => {
+    if (prevPathnameRef.current !== null && prevPathnameRef.current !== pathname) {
+      inviteAcceptedSuppressRef.current = false;
+    }
+    prevPathnameRef.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,6 +99,15 @@ export function OnboardingHost() {
         if (!cancelled) setReady(true);
         return;
       }
+
+      if (searchParams.get("invite_accepted") === "1") {
+        inviteAcceptedSuppressRef.current = true;
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("invite_accepted");
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname);
+      }
+
       const meta = user.user_metadata as Record<string, unknown> | undefined;
       const profileRow = await fetchPublicProfile(supabase, user.id);
 
@@ -170,6 +156,17 @@ export function OnboardingHost() {
 
       setShowProfileModal(false);
 
+      if (inviteAcceptedSuppressRef.current) {
+        setPortfolioPostCreateBridge(null);
+        setAddProjectResume(null);
+        setShowPortfolioModal(false);
+        setShowPortfolioDetailModal(false);
+        setShowAddProjectModal(false);
+        setShowProjectSetupModal(false);
+        setReady(true);
+        return;
+      }
+
       if (isOnboardingWizardComplete(meta)) {
         setReady(true);
         return;
@@ -178,41 +175,18 @@ export function OnboardingHost() {
       const projects = await fetchProjects();
       if (projects.length > 0) {
         await markWizardCompleteIfHasProjects(supabase, projects.length, meta);
-        setReady(true);
-        return;
       }
-
-      const portfolios = await fetchPortfolios();
-      if (portfolios.length === 0) {
-        setPortfolioPostCreateBridge(null);
-        setAddProjectResume(null);
-        setShowPortfolioModal(true);
-        setReady(true);
-        return;
-      }
-
-      setPortfolioPostCreateBridge(null);
-      setAddProjectResume(null);
-      setAddProjectEnteredFromDetail(false);
-      setAddProjectPortfolioId(portfolios[0]!.id);
-      setShowAddProjectModal(true);
       setReady(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, [markWizardCompleteIfHasProjects, pathname, profileGateTick]);
+  }, [markWizardCompleteIfHasProjects, pathname, profileGateTick, router, searchParams]);
 
-  const onProfileComplete = useCallback(async () => {
-    const supabase = supabaseBrowserClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const meta = user?.user_metadata as Record<string, unknown> | undefined;
-    await openStepsAfterProfile(meta);
+  const onProfileComplete = useCallback(() => {
     setShowProfileModal(false);
     router.refresh();
-  }, [openStepsAfterProfile, router]);
+  }, [router]);
 
   const onBackFromPortfolioToProfile = useCallback(() => {
     setShowPortfolioModal(false);

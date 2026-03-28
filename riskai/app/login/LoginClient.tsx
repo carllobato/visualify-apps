@@ -155,13 +155,20 @@ function LoginSocialProviders({
 export function LoginClient() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? DASHBOARD_PATH;
+  const inviteTokenRaw = searchParams.get("invite_token");
+  const inviteToken = typeof inviteTokenRaw === "string" ? inviteTokenRaw.trim() : "";
+  const modeRaw = searchParams.get("mode");
+  const initialTab: LoginTabId =
+    typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "signup" ? "signup" : "signin";
 
-  const [tab, setTab] = useState<LoginTabId>("signin");
+  const [tab, setTab] = useState<LoginTabId>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Sign up succeeded but no session yet (e.g. confirm email) — show check-your-email UI */
+  const [signUpAwaitingEmail, setSignUpAwaitingEmail] = useState(false);
 
   const resetFormState = () => {
     setError(null);
@@ -175,6 +182,10 @@ export function LoginClient() {
   }, [searchParams]);
 
   const redirectAfterAuth = () => {
+    if (inviteToken) {
+      window.location.href = `/invite?invite_token=${encodeURIComponent(inviteToken)}`;
+      return;
+    }
     const path = next.startsWith("/") && !next.startsWith("//") ? next : DASHBOARD_PATH;
     window.location.href = path;
   };
@@ -203,17 +214,30 @@ export function LoginClient() {
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
     resetFormState();
+    setSignUpAwaitingEmail(false);
     setLoading(true);
     try {
-      const { error: err } = await supabaseBrowserClient().auth.signUp({
+      const origin = window.location.origin;
+      /** Allowlisted URL for Supabase (must match dashboard redirect allow list). */
+      const emailRedirectTo = `${origin}/auth/confirm`;
+
+      const { data, error: err } = await supabaseBrowserClient().auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo,
+          data: inviteToken ? { riskai_invite_token: inviteToken } : {},
+        },
       });
       if (err) {
         setError(formatAuthError(err));
         return;
       }
-      redirectAfterAuth();
+      if (data.session) {
+        redirectAfterAuth();
+        return;
+      }
+      setSignUpAwaitingEmail(true);
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -235,6 +259,7 @@ export function LoginClient() {
               active={tab === "signin"}
               onClick={() => {
                 if (tab !== "signin") resetFormState();
+                setSignUpAwaitingEmail(false);
                 setTab("signin");
               }}
             >
@@ -245,6 +270,7 @@ export function LoginClient() {
               active={tab === "signup"}
               onClick={() => {
                 if (tab !== "signup") resetFormState();
+                setSignUpAwaitingEmail(false);
                 setTab("signup");
               }}
             >
@@ -255,128 +281,166 @@ export function LoginClient() {
         <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div>
-          <Label htmlFor="login-email">Email</Label>
-          <Input
-            id="login-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            required
-            autoComplete="email"
-            disabled={loading}
-          />
-        </div>
-        <div>
-          <Label htmlFor="login-password">Password</Label>
-          <div className="relative">
-            <Input
-              id="login-password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pr-14"
-              required
-              autoComplete={tab === "signin" ? "current-password" : "new-password"}
-              disabled={loading}
-              minLength={6}
-            />
+      {tab === "signup" && signUpAwaitingEmail ? (
+        <div className="space-y-4" role="status" aria-live="polite">
+          <Callout status="success" className="text-center text-[length:var(--ds-text-sm)]">
+            <p className="font-medium text-[var(--ds-text-primary)]">Check your email</p>
+            <p className="mt-1.5 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+              We sent a confirmation link to{" "}
+              <span className="break-all font-medium text-[var(--ds-text-primary)]">{email}</span>. Open it to finish
+              signing up{inviteToken ? " and accept your invitation" : ""}. If you do not see it, check your spam folder.
+            </p>
+          </Callout>
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 min-h-0 -translate-y-1/2 px-2 py-1"
-              onClick={() => setShowPassword((v) => !v)}
-              disabled={loading}
-              aria-pressed={showPassword}
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setSignUpAwaitingEmail(false);
+                setPassword("");
+              }}
             >
-              {showPassword ? "Hide" : "Show"}
+              Use a different email
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                resetFormState();
+                setSignUpAwaitingEmail(false);
+                setTab("signin");
+              }}
+            >
+              Back to sign in
             </Button>
           </div>
         </div>
-
-        <div
-          className={`${tabCollapseGridClass} ${error ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-          aria-hidden={!error}
-        >
-          <div className="min-h-0 overflow-hidden">
-            {error ? (
-              <div className="space-y-1.5 text-center">
-                <Callout status="danger" role="alert" className="text-center text-[length:var(--ds-text-sm)]">
-                  {error}
-                </Callout>
-                {tab === "signin" && (
-                  <div>
-                    <Link
-                      href="/forgot-password"
-                      className="ds-text-link-muted text-[length:var(--ds-text-xs)]"
-                    >
-                      Trouble signing in?
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ) : null}
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <Label htmlFor="login-email">Email</Label>
+            <Input
+              id="login-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+              disabled={loading}
+            />
           </div>
-        </div>
+          <div>
+            <Label htmlFor="login-password">Password</Label>
+            <div className="relative">
+              <Input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-14"
+                required
+                autoComplete={tab === "signin" ? "current-password" : "new-password"}
+                disabled={loading}
+                minLength={6}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-1 top-1/2 min-h-0 -translate-y-1/2 px-2 py-1"
+                onClick={() => setShowPassword((v) => !v)}
+                disabled={loading}
+                aria-pressed={showPassword}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </Button>
+            </div>
+          </div>
 
-        <div className="flex justify-center pt-1">
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={loading}
-            className="relative max-w-full min-w-0 whitespace-normal text-center"
+          <div
+            className={`${tabCollapseGridClass} ${error ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+            aria-hidden={!error}
           >
-            {loading ? (
-              <span className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass}`}>
-                Please wait…
-              </span>
-            ) : (
-              <>
-                <span
-                  className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
-                    tab === "signin"
-                      ? "relative"
-                      : "pointer-events-none absolute inset-0 opacity-0"
-                  }`}
-                >
-                  Continue
+            <div className="min-h-0 overflow-hidden">
+              {error ? (
+                <div className="space-y-1.5 text-center">
+                  <Callout status="danger" role="alert" className="text-center text-[length:var(--ds-text-sm)]">
+                    {error}
+                  </Callout>
+                  {tab === "signin" && (
+                    <div>
+                      <Link
+                        href="/forgot-password"
+                        className="ds-text-link-muted text-[length:var(--ds-text-xs)]"
+                      >
+                        Trouble signing in?
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex justify-center pt-1">
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={loading}
+              className="relative max-w-full min-w-0 whitespace-normal text-center"
+            >
+              {loading ? (
+                <span className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass}`}>
+                  Please wait…
                 </span>
-                <span
-                  className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
-                    tab === "signup"
-                      ? "relative"
-                      : "pointer-events-none absolute inset-0 opacity-0"
-                  }`}
-                >
-                  Sign up
-                </span>
-              </>
-            )}
-          </Button>
-        </div>
-        <div className="relative mt-2">
-          <p
-            className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
-              tab === "signin" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-            }`}
-            aria-hidden={tab !== "signin"}
-          >
-            Secure login | Your data is protected
-          </p>
-          <p
-            className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
-              tab === "signup" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-            }`}
-            aria-hidden={tab !== "signup"}
-          >
-            Secure sign up | Your data is protected
-          </p>
-        </div>
-      </form>
+              ) : (
+                <>
+                  <span
+                    className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
+                      tab === "signin"
+                        ? "relative"
+                        : "pointer-events-none absolute inset-0 opacity-0"
+                    }`}
+                  >
+                    Continue
+                  </span>
+                  <span
+                    className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
+                      tab === "signup"
+                        ? "relative"
+                        : "pointer-events-none absolute inset-0 opacity-0"
+                    }`}
+                  >
+                    Sign up
+                  </span>
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="relative mt-2">
+            <p
+              className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
+                tab === "signin" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
+              }`}
+              aria-hidden={tab !== "signin"}
+            >
+              Secure login | Your data is protected
+            </p>
+            <p
+              className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
+                tab === "signup" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
+              }`}
+              aria-hidden={tab !== "signup"}
+            >
+              Secure sign up | Your data is protected
+            </p>
+          </div>
+        </form>
+      )}
 
       {SHOW_SOCIAL_LOGIN ? (
         <LoginSocialProviders

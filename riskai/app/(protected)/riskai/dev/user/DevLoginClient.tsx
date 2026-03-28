@@ -15,9 +15,14 @@ export default function DevLoginClient() {
     setStatus(null);
     setError(null);
     try {
+      const origin = window.location.origin;
       const { error: err } = await supabaseBrowserClient().auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${origin}/auth/confirm`,
+          data: {},
+        },
       });
       if (err) {
         setError(err.message);

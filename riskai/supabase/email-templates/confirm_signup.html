@@ -1,0 +1,145 @@
+<!--
+  Supabase Auth → Confirm signup (HTML body)
+
+  Dashboard: Authentication → Email Templates → Confirm signup
+  Subject (suggested): Confirm your Visualify | Risk AI account
+
+  Link uses YOUR domain (Authentication → URL Configuration → Site URL), then this app calls Supabase `verifyOtp`.
+
+  Allow in “Redirect URLs”:
+  - https://<app-host>/auth/confirm**
+  (and http://localhost:… equivalents for dev)
+
+  Confirm link uses type=signup (password sign-up); if verification fails, try type=email in the template.
+
+  Sign-up passes invite context via user_metadata key `riskai_invite_token` (see LoginClient), surfaced here as .Data.
+
+  Template variables: https://supabase.com/docs/guides/auth/auth-email-templates
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light only" />
+  </head>
+  <body
+    bgcolor="#f7f7f8"
+    style="margin:0;padding:0;background-color:#f7f7f8;color:#111111;-webkit-font-smoothing:antialiased;"
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellspacing="0"
+      cellpadding="0"
+      border="0"
+      bgcolor="#f7f7f8"
+      style="margin:0;padding:0;width:100%;background-color:#f7f7f8;"
+    >
+      <tr>
+        <td
+          align="center"
+          bgcolor="#f7f7f8"
+          style="padding:24px 12px;background-color:#f7f7f8;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
+        >
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;">
+            <tr>
+              <td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e6e6e8;border-radius:16px;padding:24px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                  <tr>
+                    <td style="font-size:16px;line-height:24px;font-weight:600;color:#111111;padding:0 0 14px 0;">
+                      Visualify | Risk AI
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="border-top:1px solid #e6e6e8;font-size:0;line-height:0;height:0;padding:0 0 14px 0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:24px;line-height:30px;font-weight:700;color:#111111;padding:0 0 14px 0;">
+                      Confirm your email
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:16px;line-height:24px;color:#111111;padding:0 0 10px 0;">Hi there,</td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:16px;line-height:24px;color:#5f6368;padding:0 0 20px 0;">
+                      Thanks for signing up. Confirm your email address
+                      <span style="font-weight:700;color:#111111;">{{ .Email }}</span>
+                      to finish creating your Visualify | Risk AI account.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 0 20px 0;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                        <tr>
+                          <td align="center" bgcolor="#3b82f6" style="border-radius:10px;background-color:#3b82f6;">
+                            <!--[if mso]>
+                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}" style="height:42px;v-text-anchor:middle;width:220px;" arcsize="14%" stroke="f" fillcolor="#3b82f6">
+                              <w:anchorlock/>
+                              <center style="color:#ffffff;font-family:Inter,ui-sans-serif,sans-serif;font-size:14px;font-weight:600;">
+                                Confirm email
+                              </center>
+                            </v:roundrect>
+                            <![endif]-->
+                            <!--[if !mso]><!-- -->
+                            <a
+                              href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}"
+                              style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;"
+                            >
+                              Confirm email
+                            </a>
+                            <!--<![endif]-->
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 0 16px 0;">
+                      <table
+                        role="presentation"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                        bgcolor="#f7f7f8"
+                        style="width:100%;background-color:#f7f7f8;border:1px solid #e6e6e8;border-radius:10px;"
+                      >
+                        <tr>
+                          <td style="padding:10px 12px;">
+                            <div style="font-size:13px;line-height:18px;color:#5f6368;padding:0 0 6px 0;">
+                              If the button does not work, use this link:
+                            </div>
+                            <a
+                              href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}"
+                              style="font-size:13px;line-height:18px;color:#3b82f6;word-break:break-all;text-decoration:underline;"
+                            >
+                              {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="font-size:13px;line-height:18px;color:#5f6368;padding:0 0 14px 0;">
+                      If you did not create an account, you can ignore this message.
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding-top:12px;border-top:1px solid #e6e6e8;font-size:12px;line-height:16px;color:#9aa0a6;">
+                      Powered by Visualify
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -5,10 +5,11 @@ import { supabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
-function isUuidToken(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value.trim()
-  );
+/** Matches `visualify_invitations.invite_token` (hex text, e.g. SHA-256) and legacy UUID tokens. */
+function isValidInviteToken(value: string): boolean {
+  const t = value.trim();
+  if (/^[0-9a-f]{64}$/i.test(t)) return true;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t);
 }
 
 function isPostgresUniqueViolation(err: unknown): boolean {
@@ -46,7 +47,7 @@ async function handleAccept(request: Request) {
   if (!rawToken) {
     return NextResponse.json({ error: "invite_token is required" }, { status: 400 });
   }
-  if (!isUuidToken(rawToken)) {
+  if (!isValidInviteToken(rawToken)) {
     return NextResponse.json({ error: "INVALID_INVITATION" }, { status: 400 });
   }
 
@@ -143,6 +144,48 @@ async function handleAccept(request: Request) {
 
     if (insErr && !isPostgresUniqueViolation(insErr)) {
       return NextResponse.json({ error: "Could not add project membership." }, { status: 500 });
+    }
+  }
+
+  if (row.resource_type === "project") {
+    const { data: projectRow, error: projectErr } = await admin
+      .from("projects")
+      .select("portfolio_id")
+      .eq("id", row.resource_id)
+      .maybeSingle();
+
+    if (projectErr) {
+      return NextResponse.json({ error: "Could not load project for portfolio access." }, { status: 500 });
+    }
+
+    if (!projectRow) {
+      return NextResponse.json({ error: "Project not found for invitation." }, { status: 500 });
+    }
+
+    const portfolioId = projectRow.portfolio_id;
+    if (portfolioId) {
+      const { data: existingPortfolioMember, error: pmLookupErr } = await admin
+        .from("portfolio_members")
+        .select("id")
+        .eq("portfolio_id", portfolioId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (pmLookupErr) {
+        return NextResponse.json({ error: "Could not verify portfolio membership." }, { status: 500 });
+      }
+
+      if (!existingPortfolioMember) {
+        const { error: pmInsErr } = await admin.from("portfolio_members").insert({
+          portfolio_id: portfolioId,
+          user_id: user.id,
+          role: "viewer",
+        });
+
+        if (pmInsErr && !isPostgresUniqueViolation(pmInsErr)) {
+          return NextResponse.json({ error: "Could not add portfolio membership." }, { status: 500 });
+        }
+      }
     }
   }
 
