@@ -54,7 +54,7 @@ export async function GET(
   }
 
   const { data: members, error: mErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("id, portfolio_id, user_id, role, created_at")
     .eq("portfolio_id", portfolioId)
     .order("created_at", { ascending: true });
@@ -89,7 +89,7 @@ export async function GET(
 
   if (memberUserIds.length > 0) {
     const { data: profileRows, error: profilesErr } = await supabase
-      .from("profiles")
+      .from("visualify_profiles")
       .select("id, email, first_name, surname, company")
       .in("id", memberUserIds);
 
@@ -317,7 +317,7 @@ export async function POST(
   }
 
   const { data: inserted, error: insErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .insert(insertPayload)
     .select("id, portfolio_id, user_id, role, created_at")
     .single();

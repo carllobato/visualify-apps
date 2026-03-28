@@ -35,7 +35,7 @@ export async function getProjectMembersViewerContext(
   userId: string
 ): Promise<ProjectMembersViewerContext | null> {
   const { data: project, error: pErr } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("owner_user_id")
     .eq("id", projectId)
     .single();
@@ -45,7 +45,7 @@ export async function getProjectMembersViewerContext(
   const ownerUserId = project.owner_user_id as string;
 
   const { data: memberRow } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("role")
     .eq("project_id", projectId)
     .eq("user_id", userId)
@@ -74,7 +74,7 @@ export async function countProjectOwners(
   projectId: string
 ): Promise<number> {
   const { count, error } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("*", { count: "exact", head: true })
     .eq("project_id", projectId)
     .eq("role", "owner");

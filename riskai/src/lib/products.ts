@@ -4,7 +4,7 @@ let cachedRiskAIProductId: string | null = null;
 let riskAIProductIdPromise: Promise<string> | null = null;
 
 /**
- * Resolves the RiskAI catalog row in `public.products` (key = `riskai`).
+ * Resolves the RiskAI catalog row in `public.visualify_products` (key = `riskai`).
  * Cached per Node process; concurrent callers share one in-flight query.
  */
 export async function getRiskAIProductId(supabase: SupabaseClient): Promise<string> {
@@ -17,7 +17,7 @@ export async function getRiskAIProductId(supabase: SupabaseClient): Promise<stri
 
   riskAIProductIdPromise = (async () => {
     const { data, error } = await supabase
-      .from("products")
+      .from("visualify_products")
       .select("id")
       .eq("key", "riskai")
       .single();

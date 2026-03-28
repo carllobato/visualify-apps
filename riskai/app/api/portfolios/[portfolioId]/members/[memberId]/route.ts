@@ -52,7 +52,7 @@ export async function PATCH(
   const nextRole = body.role;
 
   const { data: row, error: fetchErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("id, user_id, role, portfolio_id")
     .eq("id", memberId)
     .eq("portfolio_id", portfolioId)
@@ -86,7 +86,7 @@ export async function PATCH(
   }
 
   const { data: updated, error: updErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .update({ role: nextRole })
     .eq("id", memberId)
     .eq("portfolio_id", portfolioId)
@@ -131,7 +131,7 @@ export async function DELETE(
   }
 
   const { data: row, error: fetchErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("id, user_id, role")
     .eq("id", memberId)
     .eq("portfolio_id", portfolioId)
@@ -153,7 +153,7 @@ export async function DELETE(
   }
 
   const { error: delErr } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .delete()
     .eq("id", memberId)
     .eq("portfolio_id", portfolioId);

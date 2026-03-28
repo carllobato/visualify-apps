@@ -14,7 +14,7 @@ const CACHE_HEADERS = {
 
 /**
  * POST /api/portfolios — Create a portfolio owned by the current user (RLS: owner_user_id = auth.uid()).
- * Always attaches the RiskAI product from `public.products` (key = 'riskai'); `product_id` is never omitted.
+ * Always attaches the RiskAI product from `public.visualify_products` (key = 'riskai'); `product_id` is never omitted.
  */
 export async function POST(request: Request) {
   const user = await requireUser();
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     productId = await getRiskAIProductId(supabase);
   } catch {
     return NextResponse.json(
-      { error: "RiskAI product not found in products table" },
+      { error: "RiskAI product not found in visualify_products table" },
       { status: 500 }
     );
   }
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   };
 
   const { data, error } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .insert(insertPayload)
     .select("id, name, created_at")
     .single();

@@ -51,11 +51,11 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  // Load members without embedding `profiles`: PostgREST only exposes embeds for FKs present
-  // in the live DB schema cache (e.g. user_id → profiles). If user_id still references
-  // auth.users, embed fails; batch-fetch profiles below instead.
+  // Load members without embedding profiles: PostgREST only exposes embeds for FKs present
+  // in the live DB schema cache (e.g. user_id → visualify_profiles). If user_id still references
+  // auth.users, embed fails; batch-fetch profile rows below instead.
   const { data: members, error: mErr } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .select("id, project_id, user_id, role, created_at, updated_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
@@ -83,7 +83,7 @@ export async function GET(
 
   if (memberUserIds.length > 0) {
     const { data: profileRows, error: profilesErr } = await supabase
-      .from("profiles")
+      .from("visualify_profiles")
       .select("id, email, first_name, surname, company")
       .in("id", memberUserIds);
 
@@ -263,7 +263,7 @@ export async function POST(
   }
 
   const { data: inserted, error: insErr } = await supabase
-    .from("project_members")
+    .from("visualify_project_members")
     .insert({
       project_id: projectId,
       user_id: newUserId,

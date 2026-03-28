@@ -186,7 +186,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     let cancelled = false;
     const requestedId = projectIdFromUrl;
     supabase
-      .from("projects")
+      .from("visualify_projects")
       .select("portfolio_id")
       .eq("id", requestedId)
       .single()

@@ -51,14 +51,14 @@ export default async function ProjectLayout({
   let portfolioName: string | null = null;
   const supabase = await supabaseServerClient();
   const { data: projectRow } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .select("portfolio_id")
     .eq("id", projectId)
     .single();
   if (projectRow?.portfolio_id) {
     portfolioId = projectRow.portfolio_id;
     const { data: portfolio } = await supabase
-      .from("portfolios")
+      .from("visualify_portfolios")
       .select("name")
       .eq("id", projectRow.portfolio_id)
       .single();

@@ -69,7 +69,7 @@ export async function getPortfolioMembersViewerContext(
   userId: string
 ): Promise<PortfolioMembersViewerContext | null> {
   const { data: portfolio, error: pErr } = await supabase
-    .from("portfolios")
+    .from("visualify_portfolios")
     .select("owner_user_id")
     .eq("id", portfolioId)
     .single();
@@ -80,7 +80,7 @@ export async function getPortfolioMembersViewerContext(
   const isTableOwner = ownerUserId === userId;
 
   const { data: memberRow } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("role")
     .eq("portfolio_id", portfolioId)
     .eq("user_id", userId)
@@ -107,7 +107,7 @@ export async function countPortfolioOwners(
   portfolioId: string
 ): Promise<number> {
   const { count, error } = await supabase
-    .from("portfolio_members")
+    .from("visualify_portfolio_members")
     .select("*", { count: "exact", head: true })
     .eq("portfolio_id", portfolioId)
     .eq("role", "owner");

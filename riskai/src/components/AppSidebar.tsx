@@ -190,7 +190,7 @@ export function AppSidebar() {
     }
     let cancelled = false;
     supabaseBrowserClient()
-      .from("projects")
+      .from("visualify_projects")
       .select("portfolio_id")
       .eq("id", projectId)
       .single()

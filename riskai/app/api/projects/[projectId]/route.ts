@@ -84,7 +84,7 @@ export async function PATCH(
 
   const supabase = await supabaseServerClient();
   const { error } = await supabase
-    .from("projects")
+    .from("visualify_projects")
     .update({ name })
     .eq("id", projectId);
 
