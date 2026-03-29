@@ -33,9 +33,9 @@ export function Button({
       "hover:bg-[var(--ds-primary-hover)] active:brightness-[0.97] disabled:shadow-none " +
       "disabled:hover:bg-[var(--ds-primary)] disabled:hover:brightness-100 disabled:active:brightness-100",
     secondary:
-      "border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] text-[var(--ds-text-primary)] " +
+      "border border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] text-[var(--ds-text-primary)] " +
       "hover:border-[var(--ds-control-border-hover)] hover:bg-[var(--ds-surface-hover)] " +
-      "disabled:hover:border-[var(--ds-border)] disabled:hover:bg-[var(--ds-surface-elevated)]",
+      "disabled:hover:border-[var(--ds-border-subtle)] disabled:hover:bg-[var(--ds-surface)]",
     ghost:
       "bg-transparent text-[var(--ds-text-secondary)] " +
       "hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] " +

@@ -30,6 +30,43 @@ type PointDatum = { key: string; value: number };
 type ScatterDatum = { key: string; x: number; y: number };
 type SparkDatum = number[];
 
+/** Shared demo datasets for ChartShowcase and dashboard block examples. */
+export const chartShowcasePieData: PieDatum[] = [
+  { key: "A", value: 35 },
+  { key: "B", value: 25 },
+  { key: "C", value: 20 },
+  { key: "D", value: 12 },
+  { key: "E", value: 8 },
+];
+
+export const chartShowcaseColumnData: ColumnDatum[] = [
+  { key: "Jan", value: 42 },
+  { key: "Feb", value: 68 },
+  { key: "Mar", value: 55 },
+  { key: "Apr", value: 82 },
+  { key: "May", value: 48 },
+  { key: "Jun", value: 72 },
+];
+
+export const chartShowcaseBarData: ColumnDatum[] = [
+  { key: "North", value: 88 },
+  { key: "South", value: 72 },
+  { key: "East", value: 64 },
+  { key: "West", value: 52 },
+  { key: "Central", value: 38 },
+];
+
+export const chartShowcaseLineData: PointDatum[] = [
+  { key: "P1", value: 8 },
+  { key: "P2", value: 22 },
+  { key: "P3", value: 18 },
+  { key: "P4", value: 32 },
+  { key: "P5", value: 28 },
+  { key: "P6", value: 38 },
+  { key: "P7", value: 34 },
+  { key: "P8", value: 42 },
+];
+
 const SERIES_VARS = [
   "var(--ds-chart-series-1)",
   "var(--ds-chart-series-2)",
@@ -197,7 +234,7 @@ function ChartFrame({
   );
 }
 
-function PieChartPrimitive({
+export function PieChartPrimitive({
   title,
   data,
   insight,
@@ -246,7 +283,7 @@ function PieChartPrimitive({
   );
 }
 
-function DonutChartPrimitive({
+export function DonutChartPrimitive({
   title,
   data,
   insight,
@@ -309,7 +346,7 @@ function DonutChartPrimitive({
   );
 }
 
-function ColumnChartPrimitive({
+export function ColumnChartPrimitive({
   title,
   data,
   insight,
@@ -365,7 +402,7 @@ function ColumnChartPrimitive({
   );
 }
 
-function BarChartPrimitive({
+export function BarChartPrimitive({
   title,
   data,
   insight,
@@ -405,7 +442,7 @@ function BarChartPrimitive({
   );
 }
 
-function LineChartPrimitive({
+export function LineChartPrimitive({
   title,
   data,
   insight,
@@ -731,41 +768,6 @@ function ChartInteractionRow({
 export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
   const areaGradientId = `${uniqueId}-area-gradient`;
   const areaInteractionGradientId = `${uniqueId}-area-gradient-interaction`;
-  const pieData: PieDatum[] = [
-    { key: "A", value: 35 },
-    { key: "B", value: 25 },
-    { key: "C", value: 20 },
-    { key: "D", value: 12 },
-    { key: "E", value: 8 },
-  ];
-
-  const columnData: ColumnDatum[] = [
-    { key: "Jan", value: 42 },
-    { key: "Feb", value: 68 },
-    { key: "Mar", value: 55 },
-    { key: "Apr", value: 82 },
-    { key: "May", value: 48 },
-    { key: "Jun", value: 72 },
-  ];
-
-  const barData: ColumnDatum[] = [
-    { key: "North", value: 88 },
-    { key: "South", value: 72 },
-    { key: "East", value: 64 },
-    { key: "West", value: 52 },
-    { key: "Central", value: 38 },
-  ];
-
-  const lineData: PointDatum[] = [
-    { key: "P1", value: 8 },
-    { key: "P2", value: 22 },
-    { key: "P3", value: 18 },
-    { key: "P4", value: 32 },
-    { key: "P5", value: 28 },
-    { key: "P6", value: 38 },
-    { key: "P7", value: 34 },
-    { key: "P8", value: 42 },
-  ];
 
   const scatterData: ScatterDatum[] = [
     { key: "A", x: 12, y: 62 },
@@ -789,11 +791,11 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
 
       <ChartInteractionRow
         label="Pie"
-        base={<PieChartPrimitive title="Pie" data={pieData} insight="Distribution" status="neutral" variant="default" />}
+        base={<PieChartPrimitive title="Pie" data={chartShowcasePieData} insight="Distribution" status="neutral" variant="default" />}
         interaction={
           <PieChartPrimitive
             title="Pie"
-            data={pieData}
+            data={chartShowcasePieData}
             insight="Hovered: C slice"
             status="neutral"
             variant="distribution"
@@ -808,7 +810,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         base={
           <DonutChartPrimitive
             title="Donut"
-            data={pieData}
+            data={chartShowcasePieData}
             insight="Focus segment"
             status="positive"
             showDelta
@@ -819,7 +821,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         interaction={
           <DonutChartPrimitive
             title="Donut"
-            data={pieData}
+            data={chartShowcasePieData}
             insight="Hovered: B segment"
             status="positive"
             showDelta
@@ -836,7 +838,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         base={
           <ColumnChartPrimitive
             title="Column"
-            data={columnData}
+            data={chartShowcaseColumnData}
             insight="Comparison"
             status="neutral"
             showDelta
@@ -847,7 +849,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         interaction={
           <ColumnChartPrimitive
             title="Column"
-            data={columnData}
+            data={chartShowcaseColumnData}
             insight="Hovered: Apr"
             status="neutral"
             showDelta
@@ -861,11 +863,11 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
 
       <ChartInteractionRow
         label="Bar"
-        base={<BarChartPrimitive title="Bar" data={barData} insight="Lead region" status="positive" showDelta delta="+16" variant="default" />}
+        base={<BarChartPrimitive title="Bar" data={chartShowcaseBarData} insight="Lead region" status="positive" showDelta delta="+16" variant="default" />}
         interaction={
           <BarChartPrimitive
             title="Bar"
-            data={barData}
+            data={chartShowcaseBarData}
             insight="Hovered: East"
             status="positive"
             showDelta
@@ -882,7 +884,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         base={
           <LineChartPrimitive
             title="Line"
-            data={lineData}
+            data={chartShowcaseLineData}
             insight="Momentum"
             status="positive"
             showDelta
@@ -893,7 +895,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         interaction={
           <LineChartPrimitive
             title="Line"
-            data={lineData}
+            data={chartShowcaseLineData}
             insight="Hovered: P5"
             status="positive"
             showDelta
@@ -911,7 +913,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
           <AreaChartPrimitive
             gradientId={areaGradientId}
             title="Area"
-            data={lineData}
+            data={chartShowcaseLineData}
             insight="Baseline shift"
             status="negative"
             showDelta
@@ -923,7 +925,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
           <AreaChartPrimitive
             gradientId={areaInteractionGradientId}
             title="Area"
-            data={lineData}
+            data={chartShowcaseLineData}
             insight="Hovered: P6"
             status="negative"
             showDelta
@@ -984,7 +986,7 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         base={
           <ComboChartPrimitive
             title="Combo (line + column)"
-            data={barData}
+            data={chartShowcaseColumnData}
             insight="Overlay"
             status="positive"
             showDelta
@@ -995,14 +997,14 @@ export function ChartShowcase({ uniqueId }: { uniqueId: string }) {
         interaction={
           <ComboChartPrimitive
             title="Combo (line + column)"
-            data={barData}
-            insight="Hovered: West bar"
+            data={chartShowcaseColumnData}
+            insight="Hovered: Apr"
             status="positive"
             showDelta
             delta="+4%"
             variant="comparison"
             highlightIndex={3}
-            hoverCard={{ label: "West", value: "52", delta: "margin 22%", status: "neutral" }}
+            hoverCard={{ label: "Apr", value: "82", delta: "margin 22%", status: "neutral" }}
           />
         }
       />

@@ -136,20 +136,31 @@ type SidebarProps = {
   onMobileClose: () => void;
 };
 
+/** Brief delay before expanding the collapsed rail so cursor passes don’t flash the panel open. */
+const SIDEBAR_HOVER_OPEN_DELAY_MS = 250;
+
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   /** When rail is collapsed, hover temporarily expands labels/width (desktop hover). */
   const [hoverPeek, setHoverPeek] = useState(false);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hoverEnterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!collapsed) setHoverPeek(false);
+    if (!collapsed) {
+      setHoverPeek(false);
+      if (hoverEnterTimerRef.current) {
+        clearTimeout(hoverEnterTimerRef.current);
+        hoverEnterTimerRef.current = null;
+      }
+    }
   }, [collapsed]);
 
   useEffect(
     () => () => {
       if (hoverLeaveTimerRef.current) clearTimeout(hoverLeaveTimerRef.current);
+      if (hoverEnterTimerRef.current) clearTimeout(hoverEnterTimerRef.current);
     },
     []
   );
@@ -243,7 +254,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const projectSettingsActive =
     projectNavBase != null && pathname.startsWith(`${projectNavBase}/settings`);
 
-  const navTransition = "duration-200 ease-out";
+  const navTransition = "duration-[400ms] ease-out";
 
   const linkClass = (active: boolean, disabled?: boolean) =>
     "ds-nav-link ds-nav-link--rail flex min-w-0 items-center gap-0 py-2 pl-3 pr-3 text-[length:var(--ds-text-sm)] no-underline " +
@@ -297,10 +308,22 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       clearTimeout(hoverLeaveTimerRef.current);
       hoverLeaveTimerRef.current = null;
     }
-    if (collapsed) setHoverPeek(true);
+    if (!collapsed) return;
+    if (hoverEnterTimerRef.current) {
+      clearTimeout(hoverEnterTimerRef.current);
+      hoverEnterTimerRef.current = null;
+    }
+    hoverEnterTimerRef.current = setTimeout(() => {
+      setHoverPeek(true);
+      hoverEnterTimerRef.current = null;
+    }, SIDEBAR_HOVER_OPEN_DELAY_MS);
   };
 
   const handleAsidePointerLeave = () => {
+    if (hoverEnterTimerRef.current) {
+      clearTimeout(hoverEnterTimerRef.current);
+      hoverEnterTimerRef.current = null;
+    }
     hoverLeaveTimerRef.current = setTimeout(() => {
       setHoverPeek(false);
       hoverLeaveTimerRef.current = null;
@@ -320,7 +343,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <aside
         className={
-          "ds-app-sidebar fixed bottom-0 left-0 top-[var(--ds-app-header-height)] z-50 flex flex-col transition-[transform,width] duration-200 ease-out will-change-[width] md:static md:top-auto md:z-0 md:mt-[var(--ds-app-header-height)] md:h-[calc(100vh-var(--ds-app-header-height))] " +
+          "ds-app-sidebar fixed bottom-0 left-0 top-[var(--ds-app-header-height)] z-50 flex flex-col transition-[transform,width] duration-[400ms] ease-out will-change-[width] md:static md:top-auto md:z-0 md:mt-[var(--ds-app-header-height)] md:h-[calc(100vh-var(--ds-app-header-height))] " +
           widthClass +
           (collapsed && hoverPeek ? " ds-sidebar-peek" : "") +
           (mobileOpen ? " translate-x-0" : " -translate-x-full md:translate-x-0")

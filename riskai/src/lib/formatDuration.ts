@@ -26,3 +26,27 @@ export function formatDurationDays(days: number | undefined): string {
   const weeks = days / 7;
   return `${weeks.toFixed(1)} weeks`;
 }
+
+/**
+ * Whole days only (rounded), same phrasing as sub-14-day branch of {@link formatDurationDays}.
+ * Use for schedule contingency totals so they stay in the same units as deltas like "10 days buffer".
+ */
+export function formatDurationWholeDays(days: number): string {
+  if (!Number.isFinite(days) || days < 0) return "—";
+  const n = Math.round(days);
+  if (n === 0) return "0 days";
+  return n === 1 ? "1 day" : `${n.toLocaleString()} days`;
+}
+
+/**
+ * Short labels for narrow UI (e.g. Gantt overlays). Same thresholds as {@link formatDurationDays}.
+ */
+export function formatDurationDaysBarLabel(days: number): string {
+  if (!Number.isFinite(days) || days < 0) return "—";
+  if (days < DAYS_THRESHOLD_WEEKS) {
+    const n = Math.round(days);
+    return n === 1 ? "1 d" : `${n.toLocaleString()} d`;
+  }
+  const weeks = days / 7;
+  return `${weeks.toFixed(1)} wk`;
+}

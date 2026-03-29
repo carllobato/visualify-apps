@@ -52,6 +52,7 @@ import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.type
 const CHART_HEIGHT = 300;
 const CHART_MARGIN = { top: 10, right: 16, left: 8, bottom: 28 };
 const DISTRIBUTION_BIN_COUNT = 28;
+const SIMULATION_TOP_RISKS_COUNT = 5;
 
 /** Offset (px) to shift label left/right from the line so two labels on same row don't clash. */
 const REF_LINE_LABEL_OFFSET_X = 8;
@@ -188,7 +189,7 @@ function smoothBarPctTime(
 export type SimulationSectionBaseline = {
   targetPNumeric: number;
   targetPLabel: string;
-  /** For cost: approved budget in dollars. For time: planned duration in days. */
+  /** For cost: approved budget in dollars. For time: fallback reference in days when `contingencyTimeDays` is omitted (planned duration); simulation time axis is risk delay days only. */
   approvedValue: number;
 };
 
@@ -216,12 +217,17 @@ export type SimulationSectionProps = {
   costCdf?: CostCdfPoint[] | null;
   /** Time CDF for current P / delta (precomputed by page). */
   timeCdf?: TimeCdfPoint[] | null;
-  /** Label for "top 10" table when using proxy (e.g. "Top Cost Drivers (proxy)"). */
+  /** Extra label appended to the top-risks table title (e.g. "Top Cost Drivers (proxy)"). */
   tableSubtitle?: string | null;
   /** Format cost (dollars) for display in project unit (e.g. $m). If omitted, uses raw $ formatting. */
   formatCostValue?: (dollars: number) => string;
   /** For cost mode: contingency value in dollars. When provided, first tile = P at contingency; third tile = (cost at target P) − contingency. */
   contingencyValueDollars?: number | null;
+  /**
+   * For time mode: schedule contingency in days (risk delay buffer). Same units as simulation time samples.
+   * When provided, first tile = P at this delay; second tile = (time at target P) − contingency days.
+   */
+  contingencyTimeDays?: number | null;
   /** Optional href for "Target P-Value" / settings link (debug only). When provided, used instead of /project. */
   settingsHref?: string | null;
 };
@@ -731,11 +737,18 @@ function TimeChart({
   targetPNumeric,
   targetPLabel,
   isDebug,
+  currentPTime,
+  currentPLabel,
+  deltaToTargetP,
 }: {
   results: TimeResults;
   targetPNumeric: number;
   targetPLabel: string;
   isDebug?: boolean;
+  /** Delay (days) at current P; vertical reference on chart (matches cost chart current line). */
+  currentPTime?: number | null;
+  currentPLabel?: string | null;
+  deltaToTargetP?: number | null;
 }) {
   const { samples, summary, iterationCount } = results;
   const timeSamples = useMemo(() => samples ?? [], [samples]);
@@ -787,6 +800,22 @@ function TimeChart({
     return data;
   }, [smoothData, deciles]);
 
+  /** Interpolate smoothPct at a given time from chart data (same role as cost chart). */
+  const interpolateSmoothPctAtTime = useMemo(() => {
+    return (data: { time: number; smoothPct?: number }[], timeVal: number): number => {
+      if (data.length === 0) return 0;
+      const sorted = [...data].sort((a, b) => a.time - b.time);
+      if (timeVal <= sorted[0]!.time) return sorted[0]!.smoothPct ?? 0;
+      if (timeVal >= sorted[sorted.length - 1]!.time) return sorted[sorted.length - 1]!.smoothPct ?? 0;
+      let i = 0;
+      while (i < sorted.length - 1 && sorted[i + 1]!.time < timeVal) i++;
+      const a = sorted[i]!;
+      const b = sorted[i + 1]!;
+      const t = (timeVal - a.time) / (b.time - a.time);
+      return (a.smoothPct ?? 0) + t * ((b.smoothPct ?? 0) - (a.smoothPct ?? 0));
+    };
+  }, []);
+
   const decileCrossings = useMemo(() => {
     if (chartData.length === 0 || deciles.length === 0) return [];
     const sorted = [...chartData].sort((a, b) => a.time - b.time);
@@ -814,16 +843,71 @@ function TimeChart({
     [deciles, targetPNumeric]
   );
 
+  const ragBand = useMemo(() => {
+    if (
+      currentPTime == null ||
+      !Number.isFinite(currentPTime) ||
+      targetLineX == null ||
+      !Number.isFinite(targetLineX) ||
+      deltaToTargetP == null
+    )
+      return null;
+    const x1 = Math.min(currentPTime, targetLineX);
+    const x2 = Math.max(currentPTime, targetLineX);
+    const color =
+      deltaToTargetP > 0 ? RAG_BAND_NEGATIVE : deltaToTargetP < 0 ? RAG_BAND_POSITIVE : RAG_BAND_NEUTRAL;
+    const targetAtLeft = targetLineX <= currentPTime;
+    return { x1, x2, color, targetAtLeft };
+  }, [currentPTime, targetLineX, deltaToTargetP]);
+
+  const chartDataWithRagBand = useMemo(() => {
+    const interp = interpolateSmoothPctAtTime;
+    if (!ragBand) {
+      return chartData.map((p) => ({ ...p, ragBandPct: null as number | null }));
+    }
+    const { x1, x2 } = ragBand;
+    const withBand = chartData.map((p) => ({
+      ...p,
+      ragBandPct: p.time >= x1 && p.time <= x2 ? (p.smoothPct ?? 0) : null as number | null,
+    }));
+    const hasTime = (t: number) => withBand.some((p) => Math.abs(p.time - t) < 1e-6);
+    const points: { time: number; barPct: number; smoothPct: number; ragBandPct: number | null }[] = [...withBand];
+    if (!hasTime(x1)) {
+      points.push({ time: x1, barPct: 0, smoothPct: interp(chartData, x1), ragBandPct: interp(chartData, x1) });
+    }
+    if (!hasTime(x2)) {
+      points.push({ time: x2, barPct: 0, smoothPct: interp(chartData, x2), ragBandPct: interp(chartData, x2) });
+    }
+    return points.sort((a, b) => a.time - b.time);
+  }, [chartData, ragBand, interpolateSmoothPctAtTime]);
+
   const targetLineCurveY = useMemo(() => {
+    if (targetLineX == null || !Number.isFinite(targetLineX) || chartData.length === 0) return null;
     const crossing = decileCrossings.find((c) => c.p === targetPNumeric);
-    return crossing?.y ?? null;
-  }, [decileCrossings, targetPNumeric]);
+    if (crossing) return crossing.y;
+    const sorted = [...chartData].sort((a, b) => a.time - b.time);
+    const timeMin = sorted[0]!.time;
+    const timeMax = sorted[sorted.length - 1]!.time;
+    if (targetLineX < timeMin || targetLineX > timeMax) return null;
+    return interpolateSmoothPctAtTime(chartData, targetLineX);
+  }, [chartData, decileCrossings, targetLineX, targetPNumeric, interpolateSmoothPctAtTime]);
+
+  const currentScheduleCurvePoint = useMemo(() => {
+    if (currentPTime == null || !Number.isFinite(currentPTime) || chartData.length === 0) return null;
+    const sorted = [...chartData].sort((a, b) => a.time - b.time);
+    const timeMin = sorted[0]!.time;
+    const timeMax = sorted[sorted.length - 1]!.time;
+    if (currentPTime < timeMin || currentPTime > timeMax) return null;
+    const y = interpolateSmoothPctAtTime(chartData, currentPTime);
+    return { x: currentPTime, y };
+  }, [chartData, currentPTime, interpolateSmoothPctAtTime]);
 
   const tooltipValidTimes = useMemo(() => {
     const times = decileCrossings.map((c) => c.x);
     if (targetLineX != null && Number.isFinite(targetLineX)) times.push(targetLineX);
+    if (currentPTime != null && Number.isFinite(currentPTime)) times.push(currentPTime);
     return times;
-  }, [decileCrossings, targetLineX]);
+  }, [decileCrossings, targetLineX, currentPTime]);
 
   const tooltipMarkers = useMemo(() => {
     const list: { pLabel: string; time: number }[] = decileCrossings.map((c) => ({
@@ -833,8 +917,14 @@ function TimeChart({
     if (targetLineX != null && Number.isFinite(targetLineX) && targetPLabel) {
       list.push({ pLabel: `Target (${targetPLabel})`, time: targetLineX });
     }
+    if (currentPTime != null && Number.isFinite(currentPTime) && currentPLabel) {
+      list.push({
+        pLabel: currentPLabel ? `Current Schedule Position (${currentPLabel})` : "Current Schedule Position",
+        time: currentPTime,
+      });
+    }
     return list;
-  }, [decileCrossings, targetLineX, targetPLabel]);
+  }, [decileCrossings, targetLineX, targetPLabel, currentPTime, currentPLabel]);
 
   const timeRange = useMemo(() => {
     if (chartData.length === 0) return 1;
@@ -874,6 +964,7 @@ function TimeChart({
   const activeTimeDotIndex = useMemo(() => {
     if (activeTime == null || decileCrossingsVisible.length === 0) return -1;
     if (targetLineX != null && Number.isFinite(targetLineX) && Math.abs(activeTime - targetLineX) < 1e-9) return -1;
+    if (currentPTime != null && Number.isFinite(currentPTime) && Math.abs(activeTime - currentPTime) < 1e-9) return -1;
     let bestIdx = 0;
     let bestDist = Math.abs(decileCrossingsVisible[0]!.x - activeTime);
     for (let i = 1; i < decileCrossingsVisible.length; i++) {
@@ -884,7 +975,7 @@ function TimeChart({
       }
     }
     return bestIdx;
-  }, [activeTime, decileCrossingsVisible, targetLineX]);
+  }, [activeTime, decileCrossingsVisible, targetLineX, currentPTime]);
 
   const yMax = useMemo(() => {
     if (smoothData.length === 0) return 5;
@@ -915,7 +1006,7 @@ function TimeChart({
         ) : (
           <div className="h-full overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={CHART_MARGIN}>
+            <ComposedChart data={chartDataWithRagBand} margin={CHART_MARGIN}>
               <XAxis
                 type="number"
                 dataKey="time"
@@ -975,6 +1066,25 @@ function TimeChart({
                   <stop offset="0%" stopColor="var(--ds-primary)" stopOpacity={0.18} />
                   <stop offset="100%" stopColor="var(--ds-primary)" stopOpacity={0.02} />
                 </linearGradient>
+                {ragBand && (
+                  <linearGradient id="timeChartRagFill" x1="0" y1="0" x2="1" y2="0">
+                    {(() => {
+                      const isGreen = ragBand.color === RAG_BAND_POSITIVE;
+                      const darkerAtLeft = isGreen ? !ragBand.targetAtLeft : ragBand.targetAtLeft;
+                      return darkerAtLeft ? (
+                        <>
+                          <stop offset="0%" stopColor={ragBand.color} stopOpacity={0.28} />
+                          <stop offset="100%" stopColor={ragBand.color} stopOpacity={0.08} />
+                        </>
+                      ) : (
+                        <>
+                          <stop offset="0%" stopColor={ragBand.color} stopOpacity={0.08} />
+                          <stop offset="100%" stopColor={ragBand.color} stopOpacity={0.28} />
+                        </>
+                      );
+                    })()}
+                  </linearGradient>
+                )}
               </defs>
               <Area
                 type="natural"
@@ -987,6 +1097,19 @@ function TimeChart({
                 activeDot={false}
                 isAnimationActive={false}
               />
+              {ragBand && (
+                <Area
+                  type="natural"
+                  dataKey="ragBandPct"
+                  stroke="none"
+                  fill="url(#timeChartRagFill)"
+                  fillOpacity={1}
+                  dot={false}
+                  activeDot={false}
+                  isAnimationActive={false}
+                  connectNulls={false}
+                />
+              )}
               {decileCrossingsVisible.map((c) => {
                 const activeP =
                   activeTimeDotIndex >= 0 ? decileCrossingsVisible[activeTimeDotIndex]?.p : undefined;
@@ -1003,6 +1126,23 @@ function TimeChart({
                   />
                 );
               })}
+              {currentScheduleCurvePoint && (
+                <ReferenceDot
+                  key="current-schedule"
+                  x={currentScheduleCurvePoint.x}
+                  y={currentScheduleCurvePoint.y}
+                  r={
+                    activeTime != null &&
+                    currentPTime != null &&
+                    Math.abs(activeTime - currentPTime) < 1e-9
+                      ? 4.5
+                      : 2.75
+                  }
+                  fill="color-mix(in oklab, var(--ds-chart-annotation) 72%, var(--ds-muted-foreground))"
+                  stroke="var(--ds-surface-default)"
+                  strokeWidth={1.25}
+                />
+              )}
               {targetLineX != null && Number.isFinite(targetLineX) && targetPLabel && (
                 <ReferenceLine
                   segment={
@@ -1015,13 +1155,61 @@ function TimeChart({
                   strokeWidth={1.75}
                   strokeOpacity={1}
                   label={{
-                    value: `Target (${targetPLabel})`,
-                    position: "insideTop",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    fill: "var(--ds-text-secondary)",
+                    content: (p: LabelProps) => (
+                      <RefLineLabelBottom
+                        value={`Target (${targetPLabel})`}
+                        fontWeight={500}
+                        offsetX={deltaToTargetP != null && deltaToTargetP > 0 ? REF_LINE_LABEL_OFFSET_X : -REF_LINE_LABEL_OFFSET_X}
+                        viewBox={p.viewBox}
+                        x={p.x as number | undefined}
+                        fill="var(--ds-text-secondary)"
+                      />
+                    ),
                   }}
                 />
+              )}
+              {currentPTime != null && Number.isFinite(currentPTime) && currentPLabel && (
+                currentScheduleCurvePoint ? (
+                  <ReferenceLine
+                    segment={[{ x: currentPTime, y: 0 }, { x: currentPTime, y: currentScheduleCurvePoint.y }]}
+                    stroke="var(--ds-chart-annotation)"
+                    strokeWidth={1.25}
+                    strokeOpacity={0.62}
+                    strokeDasharray="4 4"
+                    label={{
+                      content: (p: LabelProps) => (
+                        <RefLineLabelBottom
+                          value={currentPLabel ? `Current Schedule Position (${currentPLabel})` : "Current Schedule Position"}
+                          fontWeight={500}
+                          offsetX={deltaToTargetP != null && deltaToTargetP > 0 ? -REF_LINE_LABEL_OFFSET_X : REF_LINE_LABEL_OFFSET_X}
+                          viewBox={p.viewBox}
+                          x={p.x as number | undefined}
+                          fill="var(--ds-text-muted)"
+                        />
+                      ),
+                    }}
+                  />
+                ) : (
+                  <ReferenceLine
+                    x={currentPTime}
+                    stroke="var(--ds-chart-annotation)"
+                    strokeWidth={1.25}
+                    strokeOpacity={0.62}
+                    strokeDasharray="4 4"
+                    label={{
+                      content: (p: LabelProps) => (
+                        <RefLineLabelBottom
+                          value={currentPLabel ? `Current Schedule Position (${currentPLabel})` : "Current Schedule Position"}
+                          fontWeight={500}
+                          offsetX={deltaToTargetP != null && deltaToTargetP > 0 ? -REF_LINE_LABEL_OFFSET_X : REF_LINE_LABEL_OFFSET_X}
+                          viewBox={p.viewBox}
+                          x={p.x as number | undefined}
+                          fill="var(--ds-text-muted)"
+                        />
+                      ),
+                    }}
+                  />
+                )
               )}
             </ComposedChart>
           </ResponsiveContainer>
@@ -1033,11 +1221,27 @@ function TimeChart({
 }
 
 export function SimulationSection(props: SimulationSectionProps) {
-  const { title, mode, baseline, results, isDebug, costCdf, timeCdf, tableSubtitle, formatCostValue, contingencyValueDollars, settingsHref } = props;
+  const {
+    title,
+    mode,
+    baseline,
+    results,
+    isDebug,
+    costCdf,
+    timeCdf,
+    tableSubtitle,
+    formatCostValue,
+    contingencyValueDollars,
+    contingencyTimeDays,
+    settingsHref,
+  } = props;
   const { targetPNumeric, targetPLabel, approvedValue } = baseline;
   const formatCostDisplay = formatCostValue ?? formatCost;
 
-  /** First tile: cost mode with contingency = P at contingency value; else P at approved budget. Time mode = P at planned duration. */
+  /**
+   * First tile: cost = P at contingency $ when provided, else at approved budget.
+   * Time = P at schedule contingency (delay days) when provided, else at planned duration fallback — both on the risk-delay / incremental cost CDF.
+   */
   const currentPValue = useMemo(() => {
     if (mode === "cost" && costCdf?.length) {
       const costValue = contingencyValueDollars != null && Number.isFinite(contingencyValueDollars)
@@ -1048,12 +1252,16 @@ export function SimulationSection(props: SimulationSectionProps) {
       return p != null ? Math.round(p) : null;
     }
     if (mode === "time" && timeCdf?.length) {
-      if (approvedValue <= 0) return null;
-      const p = percentileAtTime(timeCdf, approvedValue);
+      const refDays =
+        contingencyTimeDays != null && Number.isFinite(contingencyTimeDays)
+          ? contingencyTimeDays
+          : approvedValue;
+      if (refDays <= 0) return null;
+      const p = percentileAtTime(timeCdf, refDays);
       return p != null ? Math.round(p) : null;
     }
     return null;
-  }, [mode, costCdf, timeCdf, approvedValue, contingencyValueDollars]);
+  }, [mode, costCdf, timeCdf, approvedValue, contingencyValueDollars, contingencyTimeDays]);
 
   /** Cost ($) or time (days) at the target P percentile. */
   const valueAtTargetP = useMemo(() => {
@@ -1066,12 +1274,22 @@ export function SimulationSection(props: SimulationSectionProps) {
     return null;
   }, [mode, costCdf, timeCdf, targetPNumeric]);
 
-  /** Delta to Target P-Value: target P value (sum) less current contingency. Cost mode only when contingency is set. */
+  /**
+   * Cost: (cost at target P) − contingency $.
+   * Time: (risk delay days at target P) − schedule contingency days. Same units as simulation outputs.
+   */
   const deltaToTargetP = useMemo(() => {
-    if (mode !== "cost" || valueAtTargetP == null || contingencyValueDollars == null || !Number.isFinite(contingencyValueDollars))
-      return null;
-    return valueAtTargetP - contingencyValueDollars;
-  }, [mode, valueAtTargetP, contingencyValueDollars]);
+    if (valueAtTargetP == null) return null;
+    if (mode === "cost") {
+      if (contingencyValueDollars == null || !Number.isFinite(contingencyValueDollars)) return null;
+      return valueAtTargetP - contingencyValueDollars;
+    }
+    if (mode === "time") {
+      if (contingencyTimeDays == null || !Number.isFinite(contingencyTimeDays)) return null;
+      return valueAtTargetP - contingencyTimeDays;
+    }
+    return null;
+  }, [mode, valueAtTargetP, contingencyValueDollars, contingencyTimeDays]);
 
   /** Cost at current P (for vertical line on cost chart). */
   const costAtCurrentP = useMemo(() => {
@@ -1079,24 +1297,37 @@ export function SimulationSection(props: SimulationSectionProps) {
     return costAtPercentile(costCdf, currentPValue);
   }, [mode, currentPValue, costCdf]);
 
+  /** Risk delay (days) at current P (for vertical line on time chart; mirrors costAtCurrentP). */
+  const timeAtCurrentP = useMemo(() => {
+    if (mode !== "time" || currentPValue == null || !timeCdf?.length) return null;
+    return timeAtPercentile(timeCdf, currentPValue);
+  }, [mode, currentPValue, timeCdf]);
+
   const costResults = mode === "cost" ? (results as CostResults) : null;
   const timeResults = mode === "time" ? (results as TimeResults) : null;
 
-  const top10 = useMemo(() => {
+  const topRisks = useMemo(() => {
     const r = mode === "cost" ? costResults : timeResults;
     if (!r?.risks?.length) return [];
     if (mode === "cost") {
-      return [...r.risks].sort((a, b) => (b.simMeanCost ?? b.expectedCost) - (a.simMeanCost ?? a.expectedCost)).slice(0, 10);
+      return [...r.risks]
+        .sort((a, b) => (b.simMeanCost ?? b.expectedCost) - (a.simMeanCost ?? a.expectedCost))
+        .slice(0, SIMULATION_TOP_RISKS_COUNT);
     }
-    return [...r.risks].sort((a, b) => (b.simMeanDays ?? b.expectedDays) - (a.simMeanDays ?? a.expectedDays)).slice(0, 10);
+    return [...r.risks]
+      .sort((a, b) => (b.simMeanDays ?? b.expectedDays) - (a.simMeanDays ?? a.expectedDays))
+      .slice(0, SIMULATION_TOP_RISKS_COUNT);
   }, [mode, costResults, timeResults]);
 
-  const tableLabel = mode === "cost" ? "Top 10 Cost Risks" : "Top 10 Time Risks";
+  const tableLabel = mode === "cost" ? "Top 5 Cost Risks" : "Top 5 Time Risks";
   const tableLabelDisplay = tableSubtitle ? `${tableLabel} (${tableSubtitle})` : tableLabel;
 
   return (
-    <Card variant="inset" className="overflow-hidden">
-      <CardHeader className="border-b border-[var(--ds-border)] px-4 py-3">
+    <Card
+      variant="inset"
+      className="overflow-hidden text-[var(--ds-text-secondary)] transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]"
+    >
+      <CardHeader className="border-b border-[var(--ds-border-subtle)] px-4 py-3">
         <CardTitle className="text-[length:var(--ds-text-base)]">{title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 p-4">
@@ -1116,7 +1347,9 @@ export function SimulationSection(props: SimulationSectionProps) {
             )}
             {mode === "time" && (
               <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
-                Confidence at planned duration
+                {contingencyTimeDays != null && Number.isFinite(contingencyTimeDays)
+                  ? "Confidence within schedule contingency (risk delay)"
+                  : "Planned duration as reference (chart is risk delay, not programme length)"}
               </div>
             )}
             </CardContent>
@@ -1128,13 +1361,13 @@ export function SimulationSection(props: SimulationSectionProps) {
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
-                {mode === "cost"
-                  ? (deltaToTargetP != null
-                      ? formatCostDisplay(Math.abs(deltaToTargetP))
-                      : "—")
-                  : (valueAtTargetP != null ? formatDurationDays(valueAtTargetP) : "—")}
+                {deltaToTargetP != null
+                  ? mode === "cost"
+                    ? formatCostDisplay(Math.abs(deltaToTargetP))
+                    : formatDurationDays(Math.abs(deltaToTargetP))
+                  : "—"}
               </span>
-              {mode === "cost" && deltaToTargetP != null && (
+              {deltaToTargetP != null && (
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full border border-[var(--ds-border)]"
                   title={deltaToTargetP > 0 ? "Shortfall" : deltaToTargetP < 0 ? "Headroom" : "On target"}
@@ -1173,11 +1406,29 @@ export function SimulationSection(props: SimulationSectionProps) {
                 )}
               </div>
             ) : null}
-            {mode === "time" && (
+            {mode === "time" &&
+            ((contingencyTimeDays != null && deltaToTargetP != null) ||
+              (contingencyTimeDays != null && isDebug) ||
+              (contingencyTimeDays == null && isDebug)) ? (
               <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
-                {valueAtTargetP != null ? "Duration at target P percentile" : "Time at target confidence level"}
+                {contingencyTimeDays != null && deltaToTargetP != null ? (
+                  deltaToTargetP > 0
+                    ? `Below ${targetPLabel} Target`
+                    : deltaToTargetP < 0
+                      ? `Target ${targetPLabel} achieved`
+                      : `Target ${targetPLabel} achieved`
+                ) : contingencyTimeDays != null && isDebug ? (
+                  <>
+                    Schedule contingency vs{" "}
+                    <Link href={settingsHref ?? riskaiPath("/projects")} className="text-[var(--ds-text-secondary)] underline hover:text-[var(--ds-text-primary)]">
+                      Target P-Value ({targetPLabel})
+                    </Link>
+                  </>
+                ) : (
+                  "Set schedule contingency in project settings to compare delay at target P"
+                )}
               </div>
-            )}
+            ) : null}
             </CardContent>
           </Card>
         </div>
@@ -1199,6 +1450,9 @@ export function SimulationSection(props: SimulationSectionProps) {
             targetPNumeric={targetPNumeric}
             targetPLabel={targetPLabel}
             isDebug={isDebug}
+            currentPTime={timeAtCurrentP}
+            currentPLabel={currentPValue != null ? `P${currentPValue}` : null}
+            deltaToTargetP={deltaToTargetP}
           />
         )}
 
@@ -1220,14 +1474,14 @@ export function SimulationSection(props: SimulationSectionProps) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {top10.length === 0 ? (
+                {topRisks.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="py-4 text-center text-[var(--ds-text-muted)]">
                       No risks in simulation
                     </TableCell>
                   </TableRow>
                 ) : (
-                  top10.map((risk, i) => (
+                  topRisks.map((risk, i) => (
                     <TableRow
                       key={risk.id}
                       className="hover:bg-[color-mix(in_oklab,var(--ds-muted)_35%,transparent)]"

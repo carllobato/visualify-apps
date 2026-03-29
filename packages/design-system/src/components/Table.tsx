@@ -12,7 +12,7 @@ export function Table({ className = "", ...props }: TableProps) {
 }
 
 export function TableHead({ className = "", ...props }: TableSectionProps) {
-  const base = "border-b border-[var(--ds-border)]";
+  const base = "border-b border-[var(--ds-border-subtle)]";
   return <thead className={`${base} ${className}`} {...props} />;
 }
 

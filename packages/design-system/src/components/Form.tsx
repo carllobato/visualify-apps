@@ -13,7 +13,7 @@ export function Label({ className = "", ...props }: LabelProps) {
 function fieldClass(invalid?: boolean) {
   const invalidClass = invalid
     ? "border-2 border-[var(--ds-status-danger-border)] focus-visible:outline-[var(--ds-status-danger)]"
-    : "border-2 border-[var(--ds-border)] focus-visible:outline-[var(--ds-primary)] " +
+    : "border border-[var(--ds-border-subtle)] focus-visible:outline-[var(--ds-primary)] " +
         "enabled:hover:border-[var(--ds-control-border-hover)] enabled:hover:bg-[var(--ds-input-bg-hover)]";
 
   return (

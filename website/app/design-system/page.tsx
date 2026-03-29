@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { CSSProperties, ReactNode } from "react";
 import {
   Badge,
+  BarChartPrimitive,
   Button,
   Callout,
   Card,
@@ -10,10 +11,20 @@ import {
   CardHeader,
   CardTitle,
   ChartShowcase,
+  ColumnChartPrimitive,
+  DonutChartPrimitive,
   FieldError,
   HelperText,
   Input,
   Label,
+  LineChartPrimitive,
+  PieChartPrimitive,
+  DashboardTile,
+  DashboardTileDelta,
+  DashboardTileKpi,
+  DashboardTileStatus,
+  StatBlock,
+  StatusBlock,
   Tab,
   Table,
   TableBody,
@@ -23,6 +34,10 @@ import {
   TableRow,
   Tabs,
   Textarea,
+  chartShowcaseBarData,
+  chartShowcaseColumnData,
+  chartShowcaseLineData,
+  chartShowcasePieData,
 } from "@visualify/design-system";
 import { ThemePreviewShell } from "./theme-preview-shell";
 
@@ -31,6 +46,30 @@ export const metadata: Metadata = {
   description: "Internal reference for shared Visualify styling tokens and components.",
   robots: { index: false, follow: false },
 };
+
+/** Colour tokens used by chart primitives and the Dashboard “Chart type cards” (Pie, Donut, Bar, Column, Line). */
+const chartColorSwatches: { token: string; label: string; style: CSSProperties }[] = [
+  { token: "--ds-chart-series-1", label: "Series 1", style: { backgroundColor: "var(--ds-chart-series-1)" } },
+  { token: "--ds-chart-series-2", label: "Series 2", style: { backgroundColor: "var(--ds-chart-series-2)" } },
+  { token: "--ds-chart-series-3", label: "Series 3", style: { backgroundColor: "var(--ds-chart-series-3)" } },
+  { token: "--ds-chart-series-4", label: "Series 4", style: { backgroundColor: "var(--ds-chart-series-4)" } },
+  { token: "--ds-chart-series-5", label: "Series 5", style: { backgroundColor: "var(--ds-chart-series-5)" } },
+  { token: "--ds-chart-series-6", label: "Series 6", style: { backgroundColor: "var(--ds-chart-series-6)" } },
+  { token: "--ds-chart-emphasis", label: "Emphasis (monochrome highlight)", style: { backgroundColor: "var(--ds-chart-emphasis)" } },
+  { token: "--ds-chart-muted-series", label: "Muted series", style: { backgroundColor: "var(--ds-chart-muted-series)" } },
+  { token: "--ds-chart-insight-positive", label: "Insight positive", style: { backgroundColor: "var(--ds-chart-insight-positive)" } },
+  { token: "--ds-chart-insight-negative", label: "Insight negative", style: { backgroundColor: "var(--ds-chart-insight-negative)" } },
+  { token: "--ds-chart-annotation", label: "Annotation / neutral insight", style: { backgroundColor: "var(--ds-chart-annotation)" } },
+  { token: "--ds-chart-grid", label: "Grid lines", style: { backgroundColor: "var(--ds-chart-grid)" } },
+  { token: "--ds-chart-axis", label: "Axis & labels", style: { backgroundColor: "var(--ds-chart-axis)" } },
+  { token: "--ds-chart-surface", label: "Plot surface", style: { backgroundColor: "var(--ds-chart-surface)" } },
+  { token: "--ds-chart-panel", label: "Panel fill", style: { backgroundColor: "var(--ds-chart-panel)" } },
+  {
+    token: "--ds-chart-panel-border",
+    label: "Panel border",
+    style: { border: "2px solid var(--ds-chart-panel-border)", backgroundColor: "var(--ds-surface-default)" },
+  },
+];
 
 const colorSwatches: { token: string; label: string; style: CSSProperties }[] = [
   { token: "--ds-primary", label: "Primary", style: { backgroundColor: "var(--ds-primary)" } },
@@ -438,6 +477,383 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         </div>
       </Section>
 
+      <Section
+        title="Dashboard Blocks"
+        description="Reference layouts for dashboards: KPI tiles, section panels, chart shells, KPI+mini-chart, and percentile summaries. Card primitives and tokens only—no chart library."
+      >
+        <div className="space-y-[var(--ds-space-8)]">
+          {/* —— Tiles —— */}
+          <div className="space-y-4">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-[0.06em] text-[var(--ds-text-muted)]">
+              Tiles
+            </p>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-[var(--ds-space-4)]">
+              {/* Stat */}
+              <DashboardTileKpi
+                label="Contingency value"
+                value="$4.2M"
+                helperText="Baseline contingency budget"
+              />
+
+              {/* Status */}
+              <DashboardTileStatus label="Overall status" value="On Track" tone="success" />
+
+              {/* Delta */}
+              <DashboardTileDelta label="Funding gap" value="$2.4M required" tone="unfavorable" />
+
+              {/* Insight */}
+              <DashboardTile>
+                <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                  Key insight
+                </p>
+                <p className="m-0 mt-2 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                  Top three cost risks account for most of the simulated exposure. Closing data gaps on the remaining
+                  drivers would tighten confidence in this view.
+                </p>
+              </DashboardTile>
+            </div>
+
+            {/* Section Panel */}
+            <Card variant="inset" className="overflow-hidden">
+              <CardHeader className="border-b border-[var(--ds-border)] px-[var(--ds-dashboard-section-header-padding-x)] py-[var(--ds-dashboard-section-header-padding-y)]">
+                <CardTitle className="text-[length:var(--ds-text-base)]">Baseline</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 p-[var(--ds-dashboard-section-body-padding)]">
+                <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                  Placeholder body: grouped metrics or controls for this dashboard section.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-[var(--ds-space-3)]">
+                  <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-[var(--ds-dashboard-summary-cell-padding)]">
+                    <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      Block A
+                    </p>
+                    <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">—</p>
+                  </div>
+                  <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-[var(--ds-dashboard-summary-cell-padding)]">
+                    <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      Block B
+                    </p>
+                    <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">—</p>
+                  </div>
+                  <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-[var(--ds-dashboard-summary-cell-padding)]">
+                    <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      Block C
+                    </p>
+                    <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">—</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* —— Chart blocks —— */}
+          <div className="space-y-4">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-[0.06em] text-[var(--ds-text-muted)]">
+              Chart blocks
+            </p>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:gap-[var(--ds-space-4)]">
+              {/* Chart Panel Block */}
+              <Card className="overflow-hidden xl:col-span-2">
+                <CardContent className="p-[var(--ds-chart-panel-padding)]">
+                  <div className="mb-[var(--ds-chart-header-gap)]">
+                    <p className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+                      Cost distribution
+                    </p>
+                  </div>
+                  <div className="h-72 w-full overflow-hidden rounded-[var(--ds-radius-sm)] border border-[var(--ds-chart-panel-border)] bg-[var(--ds-chart-surface)] p-[var(--ds-chart-panel-padding)]">
+                    <div className="flex h-full items-center justify-center">
+                      <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">Chart area</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Chart + KPI Block */}
+              <Card className="overflow-hidden">
+                <CardContent className="p-[var(--ds-chart-panel-padding)]">
+                  <div className="mb-[var(--ds-chart-header-gap)]">
+                    <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      Net exposure
+                    </div>
+                    <div className="mt-1 text-[length:var(--ds-text-lg)] font-semibold tabular-nums leading-snug text-[var(--ds-text-primary)]">
+                      4.2k
+                    </div>
+                  </div>
+                  <div className="h-32 w-full overflow-hidden rounded-[var(--ds-radius-sm)] border border-[var(--ds-chart-panel-border)] bg-[var(--ds-chart-surface)] p-[var(--ds-chart-panel-padding)]">
+                    <div className="flex h-full items-center justify-center">
+                      <p className="m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">Chart area</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* —— Summary blocks —— */}
+          <div className="space-y-4">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-[0.06em] text-[var(--ds-text-muted)]">
+              Summary blocks
+            </p>
+            {/* Percentile Summary Block */}
+            <Card>
+              <CardHeader className="border-b border-[var(--ds-border)] px-[var(--ds-dashboard-section-header-padding-x)] py-[var(--ds-dashboard-section-header-padding-y)]">
+                <CardTitle className="text-[length:var(--ds-text-base)]">Percentiles</CardTitle>
+              </CardHeader>
+              <CardContent className="p-[var(--ds-dashboard-section-body-padding)]">
+                <div className="grid grid-cols-2 gap-[var(--ds-space-3)] sm:grid-cols-3 lg:grid-cols-6">
+                  {(
+                    [
+                      { label: "P10", value: "$1.1M" },
+                      { label: "P25", value: "$1.8M" },
+                      { label: "P50", value: "$2.4M" },
+                      { label: "P75", value: "$3.1M" },
+                      { label: "P90", value: "$3.9M" },
+                      { label: "P99", value: "$5.2M" },
+                    ] as const
+                  ).map((cell) => (
+                    <div
+                      key={cell.label}
+                      className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)] p-[var(--ds-dashboard-summary-cell-padding)]"
+                    >
+                      <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                        {cell.label}
+                      </div>
+                      <div className="mt-0.5 text-[length:var(--ds-text-lg)] font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                        {cell.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* —— Example cards —— */}
+          <div className="space-y-4">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-[0.06em] text-[var(--ds-text-muted)]">
+              Example cards
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-[var(--ds-space-4)]">
+              {/* A. Positive delta */}
+              <DashboardTileDelta label="Funding position" value="$1.2M surplus" tone="favorable" />
+
+              {/* B. Negative delta */}
+              <DashboardTileDelta label="Schedule position" value="18 days required" tone="unfavorable" />
+
+              {/* C. Neutral status */}
+              <DashboardTileStatus label="Data confidence" value="Moderate" tone="neutral" />
+
+              {/* D. Warning status */}
+              <DashboardTileStatus label="Programme health" value="At Risk" tone="warning" />
+
+              {/* E. KPI with helper */}
+              <DashboardTileKpi
+                label="Target confidence"
+                value="P80"
+                helperText="Approved reporting threshold"
+              />
+
+              {/* F. Narrative insight */}
+              <DashboardTile>
+                <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                  Executive readout
+                </p>
+                <p className="m-0 mt-2 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                  Exposure is concentrated in two workstreams.
+                </p>
+                <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                  Schedule risk is elevated relative to last month.
+                </p>
+              </DashboardTile>
+
+              {/* G. Mini ranked list */}
+              <Card className="overflow-hidden">
+                <CardHeader className="border-b border-[var(--ds-border)] px-[var(--ds-dashboard-section-header-padding-x)] py-[var(--ds-dashboard-section-header-padding-y)]">
+                  <CardTitle className="text-[length:var(--ds-text-base)]">Top drivers</CardTitle>
+                </CardHeader>
+                <CardContent className="p-[var(--ds-dashboard-section-body-padding)]">
+                  <ul className="m-0 list-none space-y-2.5 p-0">
+                    <li className="flex items-center gap-3 border-b border-[var(--ds-border-subtle)] pb-2.5 last:border-b-0 last:pb-0">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-surface-muted)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]"
+                        aria-hidden
+                      >
+                        1
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
+                        Interface scope
+                      </span>
+                      <span className="shrink-0 text-[length:var(--ds-text-sm)] font-medium tabular-nums text-[var(--ds-text-primary)]">
+                        $2.1M
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-3 border-b border-[var(--ds-border-subtle)] pb-2.5 last:border-b-0 last:pb-0">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-surface-muted)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]"
+                        aria-hidden
+                      >
+                        2
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
+                        Third-party delivery
+                      </span>
+                      <span className="shrink-0 text-[length:var(--ds-text-sm)] font-medium tabular-nums text-[var(--ds-text-primary)]">
+                        $1.4M
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-3">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ds-surface-muted)] text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]"
+                        aria-hidden
+                      >
+                        3
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
+                        Integration testing
+                      </span>
+                      <span className="shrink-0 text-[length:var(--ds-text-sm)] font-medium tabular-nums text-[var(--ds-text-primary)]">
+                        $0.9M
+                      </span>
+                    </li>
+                  </ul>
+                </CardContent>
+              </Card>
+
+              {/* H. Compact table */}
+              <Card className="overflow-hidden md:col-span-2 xl:col-span-3">
+                <CardHeader className="border-b border-[var(--ds-border)] px-[var(--ds-dashboard-section-header-padding-x)] py-[var(--ds-dashboard-section-header-padding-y)]">
+                  <CardTitle className="text-[length:var(--ds-text-base)]">Risk summary</CardTitle>
+                </CardHeader>
+                <CardContent className="overflow-x-auto p-[var(--ds-dashboard-section-body-padding)]">
+                  <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
+                    <Table className="text-[length:var(--ds-dashboard-table-compact-font-size)]">
+                      <TableHead>
+                        <TableRow>
+                          <TableHeadCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-left normal-case tracking-normal">
+                            Risk
+                          </TableHeadCell>
+                          <TableHeadCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-left normal-case tracking-normal">
+                            Severity
+                          </TableHeadCell>
+                          <TableHeadCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-right normal-case tracking-normal">
+                            Exposure
+                          </TableHeadCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-[var(--ds-text-primary)]">
+                            Data migration
+                          </TableCell>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-[var(--ds-text-secondary)]">
+                            High
+                          </TableCell>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-right font-medium tabular-nums text-[var(--ds-text-primary)]">
+                            $3.2M
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-[var(--ds-text-primary)]">
+                            Vendor delay
+                          </TableCell>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-[var(--ds-text-secondary)]">
+                            Medium
+                          </TableCell>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-right font-medium tabular-nums text-[var(--ds-text-primary)]">
+                            $1.1M
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-[var(--ds-text-primary)]">
+                            Regulatory review
+                          </TableCell>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-[var(--ds-text-secondary)]">
+                            Low
+                          </TableCell>
+                          <TableCell className="py-[var(--ds-dashboard-table-compact-cell-padding-y)] px-[var(--ds-dashboard-table-compact-cell-padding-x)] text-right font-medium tabular-nums text-[var(--ds-text-primary)]">
+                            $0.4M
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* —— Chart type cards —— */}
+          <div className="space-y-4">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-[0.06em] text-[var(--ds-text-muted)]">
+              Chart type cards
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 xl:gap-[var(--ds-space-4)]">
+              <Card className="overflow-hidden">
+                <CardContent className="p-4">
+                  <PieChartPrimitive
+                    title="Pie"
+                    data={chartShowcasePieData}
+                    insight="By segment"
+                    status="neutral"
+                    colorMode="categorical"
+                    variant="distribution"
+                  />
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-4">
+                  <DonutChartPrimitive
+                    title="Donut"
+                    data={chartShowcasePieData}
+                    insight="Focus segment"
+                    status="neutral"
+                    colorMode="categorical"
+                    variant="distribution"
+                    highlightIndex={1}
+                  />
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-4">
+                  <BarChartPrimitive
+                    title="Bar"
+                    data={chartShowcaseBarData}
+                    insight="Regions"
+                    status="neutral"
+                    colorMode="categorical"
+                    variant="comparison"
+                  />
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-4">
+                  <ColumnChartPrimitive
+                    title="Column"
+                    data={chartShowcaseColumnData}
+                    insight="Monthly"
+                    status="neutral"
+                    colorMode="categorical"
+                    variant="comparison"
+                  />
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden">
+                <CardContent className="p-4">
+                  <LineChartPrimitive
+                    title="Line"
+                    data={chartShowcaseLineData}
+                    insight="Trend"
+                    status="positive"
+                    colorMode="categorical"
+                    variant="comparison"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </Section>
+
       <Section title="Table primitives" description="Clean headers, consistent row borders, and compact realistic data examples.">
         <div className="space-y-4">
           <Card variant="elevated">
@@ -759,6 +1175,31 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
             </CardContent>
           </Card>
         </div>
+      </Section>
+
+      <Section
+        title="Chart colours"
+        description="Global CSS custom properties for categorical series, plot chrome, and insight accents. These power the Dashboard chart type cards (Pie, Donut, Bar, Column, Line) and ChartShowcase primitives."
+      >
+        <Card variant="elevated">
+          <CardHeader>
+            <CardTitle>Tokens</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {chartColorSwatches.map((item) => (
+              <div
+                key={item.token}
+                className="grid grid-cols-[auto_1fr] items-center gap-3 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 shadow-[var(--ds-shadow-sm)] dark:shadow-none"
+              >
+                <div className="h-8 w-8 shrink-0 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]" style={item.style} />
+                <div className="min-w-0">
+                  <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">{item.label}</p>
+                  <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{item.token}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </Section>
 
       <Section title="Charts" description="Shared chart defaults and semantic chart token usage."><ChartShowcase uniqueId={`${idPrefix}-charts`} /></Section>

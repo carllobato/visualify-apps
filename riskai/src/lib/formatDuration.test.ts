@@ -4,7 +4,7 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { formatDurationDays } from "./formatDuration";
+import { formatDurationDays, formatDurationDaysBarLabel, formatDurationWholeDays } from "./formatDuration";
 
 describe("formatDurationDays", () => {
   it("10 days displays as '10 days' (not 1 week)", () => {
@@ -27,5 +27,33 @@ describe("formatDurationDays", () => {
   it("undefined/NaN returns dash", () => {
     assert.strictEqual(formatDurationDays(undefined), "—");
     assert.strictEqual(formatDurationDays(NaN), "—");
+  });
+});
+
+describe("formatDurationDaysBarLabel", () => {
+  it("uses wk for 14+ days", () => {
+    assert.strictEqual(formatDurationDaysBarLabel(88), "12.6 wk");
+  });
+
+  it("uses d under 14 days", () => {
+    assert.strictEqual(formatDurationDaysBarLabel(10), "10 d");
+    assert.strictEqual(formatDurationDaysBarLabel(1), "1 d");
+  });
+});
+
+describe("formatDurationWholeDays", () => {
+  it("large values stay as days (not weeks)", () => {
+    assert.strictEqual(formatDurationWholeDays(88), "88 days");
+  });
+
+  it("matches sub-14 wording", () => {
+    assert.strictEqual(formatDurationWholeDays(10), "10 days");
+    assert.strictEqual(formatDurationWholeDays(1), "1 day");
+    assert.strictEqual(formatDurationWholeDays(0), "0 days");
+  });
+
+  it("invalid returns dash", () => {
+    assert.strictEqual(formatDurationWholeDays(NaN), "—");
+    assert.strictEqual(formatDurationWholeDays(-1), "—");
   });
 });

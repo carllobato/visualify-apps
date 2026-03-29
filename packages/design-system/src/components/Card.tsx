@@ -8,17 +8,17 @@ type CardProps = DivProps & {
 
 export function Card({ className = "", variant = "default", ...props }: CardProps) {
   const base =
-    "overflow-hidden rounded-[var(--ds-radius-md)] border text-[var(--ds-text-primary)]";
+    "overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] text-[var(--ds-text-primary)]";
   const variants: Record<NonNullable<CardProps["variant"]>, string> = {
-    default: "border-[var(--ds-border)] bg-[var(--ds-surface-default)]",
-    elevated: "border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-[var(--ds-shadow-sm)]",
-    inset: "border-[var(--ds-border)] bg-[var(--ds-surface-inset)]",
+    default: "bg-[var(--ds-surface)] shadow-[var(--ds-elevation-tile)]",
+    elevated: "bg-[var(--ds-surface)] shadow-[var(--ds-shadow-sm)]",
+    inset: "bg-[var(--ds-surface-muted)] shadow-none",
   };
   return <div className={`${base} ${variants[variant]} ${className}`} {...props} />;
 }
 
 export function CardHeader({ className = "", ...props }: DivProps) {
-  const base = "border-b border-[var(--ds-border)] px-5 py-4";
+  const base = "border-b border-[var(--ds-border-subtle)] px-5 py-4";
   return <div className={`${base} ${className}`} {...props} />;
 }
 
@@ -28,7 +28,7 @@ export function CardContent({ className = "", ...props }: DivProps) {
 }
 
 export function CardFooter({ className = "", ...props }: DivProps) {
-  const base = "border-t border-[var(--ds-border)] px-5 py-4";
+  const base = "border-t border-[var(--ds-border-subtle)] px-5 py-4";
   return <div className={`${base} ${className}`} {...props} />;
 }
 
