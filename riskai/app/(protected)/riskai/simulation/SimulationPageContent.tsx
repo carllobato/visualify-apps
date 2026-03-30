@@ -367,10 +367,13 @@ function ProjectValueContingencyMetricCard({
     : `Cost bars not shown. Project value ${projectValueDisplay}.`;
 
   const ganttHeadlineTrackHeightStyle: React.CSSProperties = {
+    // minHeight: if `cqw`/clamp is unsupported, invalid `height` must not collapse the track (mobile Safari / older browsers).
+    minHeight: "0.75rem",
     height: `clamp(0.75rem, calc(${BASELINE_DONUT_RING_THICKNESS_FRAC * 2.2} * min(24rem, max(6rem, 22cqw))), 2.75rem)`,
     minWidth: 0,
   };
   const ganttTrackHeightStyle: React.CSSProperties = {
+    minHeight: "0.5rem",
     height: `clamp(0.5rem, calc(${BASELINE_DONUT_RING_THICKNESS_FRAC * 1.4} * min(24rem, max(6rem, 22cqw))), 1.75rem)`,
     minWidth: 0,
   };
@@ -403,11 +406,11 @@ function ProjectValueContingencyMetricCard({
   return (
     <Card
       variant="inset"
-      className="flex h-full min-h-0 w-full min-w-0 flex-col border-0 text-[var(--ds-text-secondary)]"
+      className="flex w-full min-w-0 flex-col border-0 text-[var(--ds-text-secondary)]"
     >
-      <CardContent className="flex min-h-0 w-full min-w-0 flex-1 flex-col p-4">
+      <CardContent className="flex w-full min-w-0 flex-col p-4">
         <div
-          className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3"
+          className="flex w-full min-w-0 flex-col gap-3"
           role="group"
           aria-label="Project value and cost contingency"
           onPointerLeave={(e) => {
@@ -448,11 +451,11 @@ function ProjectValueContingencyMetricCard({
             ) : null}
           </div>
           <div
-            className={`flex min-h-0 w-full min-w-0 flex-1 flex-col ${breakdownOpen ? "gap-3" : "gap-0"}`}
+            className={`flex w-full min-w-0 flex-col ${breakdownOpen ? "gap-3" : "gap-0"}`}
           >
             {pvOk ? (
               <div
-                className={`flex w-full max-w-full min-h-0 min-w-0 flex-col gap-2.5${breakdownOpen ? " flex-1 sm:min-h-[5.25rem]" : ""}`}
+                className={`flex w-full max-w-full min-w-0 flex-col gap-2.5${breakdownOpen ? " sm:min-h-[5.25rem]" : ""}`}
                 role="img"
                 aria-label={`${chartSummary}`}
               >
@@ -988,10 +991,13 @@ function ScheduleDurationContingencyGanttCard({
 
   /** Bar track height scales with this card column width (`container-type: inline-size` on the grid column wrapper). */
   const ganttHeadlineTrackHeightStyle: React.CSSProperties = {
+    // minHeight: if `cqw`/clamp is unsupported, invalid `height` must not collapse the track (mobile Safari / older browsers).
+    minHeight: "0.75rem",
     height: `clamp(0.75rem, calc(${BASELINE_DONUT_RING_THICKNESS_FRAC * 2.2} * min(24rem, max(6rem, 22cqw))), 2.75rem)`,
     minWidth: 0,
   };
   const ganttTrackHeightStyle: React.CSSProperties = {
+    minHeight: "0.5rem",
     height: `clamp(0.5rem, calc(${BASELINE_DONUT_RING_THICKNESS_FRAC * 1.4} * min(24rem, max(6rem, 22cqw))), 1.75rem)`,
     minWidth: 0,
   };
@@ -1057,11 +1063,11 @@ function ScheduleDurationContingencyGanttCard({
   return (
     <Card
       variant="inset"
-      className="flex h-full min-h-0 w-full min-w-0 flex-col border-0 text-[var(--ds-text-secondary)]"
+      className="flex w-full min-w-0 flex-col border-0 text-[var(--ds-text-secondary)]"
     >
-      <CardContent className="flex min-h-0 w-full min-w-0 flex-1 flex-col p-4">
+      <CardContent className="flex w-full min-w-0 flex-col p-4">
         <div
-          className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3"
+          className="flex w-full min-w-0 flex-col gap-3"
           role="group"
           aria-label="Planned duration and schedule contingency"
           onPointerLeave={(e) => {
@@ -1102,11 +1108,11 @@ function ScheduleDurationContingencyGanttCard({
             ) : null}
           </div>
           <div
-            className={`flex min-h-0 w-full min-w-0 flex-1 flex-col ${breakdownOpen ? "gap-3" : "gap-0"}`}
+            className={`flex w-full min-w-0 flex-col ${breakdownOpen ? "gap-3" : "gap-0"}`}
           >
             {plannedOk ? (
               <div
-                className={`flex w-full max-w-full min-h-0 min-w-0 flex-col gap-2.5${breakdownOpen ? " flex-1 sm:min-h-[5.25rem]" : ""}`}
+                className={`flex w-full max-w-full min-w-0 flex-col gap-2.5${breakdownOpen ? " sm:min-h-[5.25rem]" : ""}`}
                 role="img"
                 aria-label={`${chartSummary} Forecast completion ${forecastCompletionDateDisplay}.`}
               >
@@ -2393,9 +2399,9 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
               }
               primaryClassName="!text-[length:var(--ds-text-2xl)] sm:!text-[length:var(--ds-text-3xl)]"
             />
-            <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 lg:items-stretch">
+            <div className="grid w-full min-w-0 grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2 lg:items-start">
               <div
-                className="flex min-h-0 min-w-0 w-full flex-col lg:h-full"
+                className="flex min-h-0 min-w-0 w-full flex-col"
                 style={{ containerType: "inline-size" }}
               >
                 <ProjectValueContingencyMetricCard
@@ -2412,7 +2418,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                 />
               </div>
               <div
-                className="flex min-h-0 min-w-0 w-full flex-col lg:h-full"
+                className="flex min-h-0 min-w-0 w-full flex-col"
                 style={{ containerType: "inline-size" }}
               >
                 <ScheduleDurationContingencyGanttCard
