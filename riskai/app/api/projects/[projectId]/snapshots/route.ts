@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
+import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -147,6 +148,47 @@ export async function POST(
     }
 
     return NextResponse.json({ snapshot: data }, { status: 201 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Server error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ projectId: string }> }
+) {
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+
+  const { projectId } = await context.params;
+  if (!projectId) {
+    return NextResponse.json({ error: "Project ID required" }, { status: 400 });
+  }
+
+  const access = await getProjectAccessForUser(projectId, user.id);
+  if (!access) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  }
+  if (!access.permissions.canEditContent) {
+    return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+  }
+
+  try {
+    // Use service-role client after project permission checks so clear truly removes
+    // all project snapshots (including runs created by other collaborators).
+    const supabase = supabaseAdminClient();
+    const { data, error } = await supabase
+      .from("riskai_simulation_snapshots")
+      .delete()
+      .eq("project_id", projectId)
+      .select("id");
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ deletedCount: data?.length ?? 0 }, { status: 200 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Server error";
     return NextResponse.json({ error: message }, { status: 500 });

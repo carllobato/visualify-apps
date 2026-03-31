@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import Link from "next/link";
 import {
   Button,
   Callout,
@@ -10,6 +9,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  DashboardTileKpi,
   Label,
   Table,
   TableBody,
@@ -22,12 +22,14 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import {
-  getLatestSnapshot,
+  clearProjectSnapshots,
+  getLatestLockedSnapshot,
+  getSnapshotById,
   setSnapshotAsReportingVersion,
   type SimulationSnapshotRow,
   type SimulationSnapshotRowDb,
 } from "@/lib/db/snapshots";
-import { listRisks, DEFAULT_PROJECT_ID } from "@/lib/db/risks";
+import { listRisks } from "@/lib/db/risks";
 import { fetchPublicProfile, formatTriggeredByLabel } from "@/lib/profiles/profileDb";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
@@ -70,13 +72,16 @@ import {
   type StatusPositionTone,
 } from "@/components/dashboard/StatusPositionCard";
 import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.types";
+import type { Risk } from "@/domain/risk/risk.schema";
+import { probability01FromScale } from "@/domain/risk/risk.logic";
 import {
   isRiskStatusArchived,
   isRiskStatusClosed,
   isRiskStatusDraft,
+  isRiskStatusExcludedFromSimulation,
 } from "@/domain/risk/riskFieldSemantics";
 
-const DISTRIBUTION_BIN_COUNT = 28;
+const DISTRIBUTION_BIN_COUNT = 100;
 
 /** Stable empty array for snapshot risks to avoid new [] identity every render. */
 const EMPTY_SNAPSHOT_RISKS: SimulationRiskSnapshot[] = [];
@@ -84,6 +89,89 @@ const EMPTY_SNAPSHOT_RISKS: SimulationRiskSnapshot[] = [];
 function formatDash<T>(value: T | undefined | null, formatter: (v: T) => string): string {
   if (value == null || (typeof value === "number" && !Number.isFinite(value))) return "—";
   return formatter(value as T);
+}
+
+/** Aligns with `getEffectiveRiskInputs` / Monte Carlo: full post-mitigation = mitigation text + post cost + post time ML. */
+function hasFullPostMitigation(risk: Risk): boolean {
+  const hasMitigation = Boolean(risk.mitigation?.trim());
+  const postCost = risk.postMitigationCostML;
+  const postTime = risk.postMitigationTimeML;
+  return (
+    hasMitigation &&
+    typeof postCost === "number" &&
+    Number.isFinite(postCost) &&
+    postCost >= 0 &&
+    typeof postTime === "number" &&
+    Number.isFinite(postTime) &&
+    postTime >= 0
+  );
+}
+
+function isPresentNum(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0;
+}
+
+/** Schedule cap matches `monteCarlo` / simulation. */
+const MITIGATION_SCHEDULE_CAP_DAYS = 30;
+
+function costMLPre(risk: Risk): number {
+  const preCost = risk.preMitigationCostML;
+  if (isPresentNum(preCost)) return preCost;
+  const c = risk.inherentRating?.consequence;
+  const cons = typeof c === "number" ? c : Number(c);
+  if (!Number.isFinite(cons)) return 0;
+  const cc = Math.max(1, Math.min(5, Math.round(cons)));
+  const map: Record<number, number> = {
+    1: 25_000,
+    2: 100_000,
+    3: 300_000,
+    4: 750_000,
+    5: 1_500_000,
+  };
+  return map[cc] ?? 0;
+}
+
+function costMLPost(risk: Risk): number {
+  const postCost = risk.postMitigationCostML;
+  if (isPresentNum(postCost)) return postCost;
+  return costMLPre(risk);
+}
+
+function timeMLPre(risk: Risk): number {
+  const preTime = risk.preMitigationTimeML;
+  if (isPresentNum(preTime)) return Math.min(preTime, MITIGATION_SCHEDULE_CAP_DAYS);
+  return 0;
+}
+
+function timeMLPost(risk: Risk, timePre: number): number {
+  const postTime = risk.postMitigationTimeML;
+  if (isPresentNum(postTime)) return Math.min(postTime, MITIGATION_SCHEDULE_CAP_DAYS);
+  return timePre;
+}
+
+function probPre(risk: Risk): number {
+  if (
+    typeof risk.probability === "number" &&
+    Number.isFinite(risk.probability) &&
+    risk.probability >= 0 &&
+    risk.probability <= 1
+  ) {
+    return risk.probability;
+  }
+  return probability01FromScale(risk.inherentRating.probability);
+}
+
+function probPost(risk: Risk): number {
+  if (!hasFullPostMitigation(risk)) return probPre(risk);
+  if (
+    typeof risk.probability === "number" &&
+    Number.isFinite(risk.probability) &&
+    risk.probability >= 0 &&
+    risk.probability <= 1
+  ) {
+    return risk.probability;
+  }
+  return probability01FromScale(risk.residualRating.probability);
 }
 
 /** Parse risk appetite e.g. "P80" -> 80. */
@@ -107,43 +195,48 @@ type CostGanttHover =
 /** Treat near-zero cost deltas as matched for RAG (floating dollars). */
 const COST_CONTINGENCY_GAP_EPS = 0.01;
 
-function forecastCostValueClassFromGap(gapDollars: number | null): string {
-  if (gapDollars == null || !Number.isFinite(gapDollars)) return "text-[var(--ds-text-muted)]";
-  if (gapDollars > COST_CONTINGENCY_GAP_EPS) return "text-[var(--ds-status-danger-fg)]";
-  if (gapDollars < -COST_CONTINGENCY_GAP_EPS) return "text-[var(--ds-status-success-fg)]";
-  return "text-[var(--ds-status-warning-fg)]";
+type LineSeverity = "on" | "risk" | "off";
+
+function forecastValueClass(
+  gapPositive: boolean | null,
+  lineSeverity: LineSeverity | null,
+): string {
+  if (gapPositive == null) return "text-[var(--ds-text-muted)]";
+  if (gapPositive) return "text-[var(--ds-status-danger-fg)]";
+  if (lineSeverity === "risk") return "text-[var(--ds-status-warning-fg)]";
+  return "text-[var(--ds-status-success-fg)]";
 }
 
-function forecastCostRagFromGap(gapDollars: number | null): {
-  bandClass: string;
-  dotClass: string;
-  a11y: string;
-} {
-  if (gapDollars == null || !Number.isFinite(gapDollars)) {
+function forecastRag(
+  gapPositive: boolean | null,
+  lineSeverity: LineSeverity | null,
+  context: "cost" | "schedule",
+): { bandClass: string; dotClass: string; a11y: string } {
+  if (gapPositive == null) {
     return {
       bandClass: "bg-[var(--ds-border)]",
       dotClass: "bg-[var(--ds-text-muted)]",
-      a11y: "RAG not available: run or complete simulation to rate forecast cost versus contingency.",
+      a11y: `RAG not available: run or complete simulation to rate forecast ${context} versus contingency.`,
     };
   }
-  if (gapDollars > COST_CONTINGENCY_GAP_EPS) {
+  if (gapPositive) {
     return {
       bandClass: "bg-[var(--ds-status-danger)]",
       dotClass: "bg-[var(--ds-status-danger)]",
-      a11y: "Red RAG: simulated cost at target P exceeds current contingency allowance.",
+      a11y: `Red RAG: ${context === "cost" ? "simulated cost at target P exceeds current contingency allowance" : "contingency shortfall versus current allowance at target P"}.`,
     };
   }
-  if (gapDollars < -COST_CONTINGENCY_GAP_EPS) {
+  if (lineSeverity === "risk") {
     return {
-      bandClass: "bg-[var(--ds-status-success)]",
-      dotClass: "bg-[var(--ds-status-success)]",
-      a11y: "Green RAG: contingency headroom versus simulated cost at target P.",
+      bandClass: "bg-[var(--ds-status-warning)]",
+      dotClass: "bg-[var(--ds-status-warning)]",
+      a11y: `Amber RAG: ${context} within tolerance but close to target threshold.`,
     };
   }
   return {
-    bandClass: "bg-[var(--ds-status-warning)]",
-    dotClass: "bg-[var(--ds-status-warning)]",
-    a11y: "Amber RAG: simulated cost at target P matches current contingency.",
+    bandClass: "bg-[var(--ds-status-success)]",
+    dotClass: "bg-[var(--ds-status-success)]",
+    a11y: `Green RAG: ${context === "cost" ? "contingency headroom versus simulated cost at target P" : "contingency surplus at target P"}.`,
   };
 }
 
@@ -162,6 +255,7 @@ function ProjectValueContingencyMetricCard({
   costGapDisplay,
   simulatedTotalCostDollars,
   costContingencyGapDollars,
+  costLineSeverity,
   breakdownOpen,
   setBreakdownOpen,
 }: {
@@ -176,6 +270,7 @@ function ProjectValueContingencyMetricCard({
   simulatedTotalCostDollars: number | null;
   /** Simulated cost at target P minus contingency (dollars); drives footer RAG vs Cost position tile. */
   costContingencyGapDollars: number | null;
+  costLineSeverity: LineSeverity | null;
   breakdownOpen: boolean;
   setBreakdownOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
@@ -388,8 +483,12 @@ function ProjectValueContingencyMetricCard({
   const ganttBarLabelClassName =
     "pointer-events-none absolute inset-y-0 z-[1] flex min-w-0 flex-col justify-center overflow-hidden px-1 text-[length:var(--ds-text-xs)] font-semibold leading-none tabular-nums text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]";
 
-  const forecastCostValueClass = forecastCostValueClassFromGap(costContingencyGapDollars);
-  const forecastCostRag = forecastCostRagFromGap(costContingencyGapDollars);
+  const costGapPositive: boolean | null =
+    costContingencyGapDollars != null && Number.isFinite(costContingencyGapDollars)
+      ? costContingencyGapDollars > COST_CONTINGENCY_GAP_EPS
+      : null;
+  const forecastCostValueClass = forecastValueClass(costGapPositive, costLineSeverity);
+  const forecastCostRag = forecastRag(costGapPositive, costLineSeverity, "cost");
 
   const ganttRowHeaderClass =
     "mb-1 flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5";
@@ -414,8 +513,10 @@ function ProjectValueContingencyMetricCard({
           role="group"
           aria-label="Project value and cost contingency"
           onPointerLeave={(e) => {
-            const next = e.relatedTarget as Node | null;
-            if (!next || !e.currentTarget.contains(next)) setGanttHover(null);
+            const next = e.relatedTarget;
+            if (!(next instanceof Node) || !e.currentTarget.contains(next)) {
+              setGanttHover(null);
+            }
           }}
         >
           <div className="flex w-full items-start justify-between gap-2">
@@ -803,6 +904,7 @@ function ScheduleDurationContingencyGanttCard({
   targetPLabel,
   scheduleVsContingencyText: _scheduleVsContingencyText,
   forecastCompletionDateDisplay,
+  timeLineSeverity,
   breakdownOpen,
   setBreakdownOpen,
 }: {
@@ -815,6 +917,7 @@ function ScheduleDurationContingencyGanttCard({
   scheduleVsContingencyText: string;
   /** Target completion date shifted by (risk delay at P − schedule contingency days), formatted. */
   forecastCompletionDateDisplay: string;
+  timeLineSeverity: LineSeverity | null;
   breakdownOpen: boolean;
   setBreakdownOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
@@ -1012,41 +1115,12 @@ function ScheduleDurationContingencyGanttCard({
   const ganttBarLabelClassName =
     "pointer-events-none absolute inset-y-0 z-[1] flex min-w-0 flex-col justify-center overflow-hidden px-1 text-[length:var(--ds-text-xs)] font-semibold leading-none tabular-nums text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]";
 
-  const forecastCompletionValueClass = (() => {
-    if (contingencyGapDays == null || !Number.isFinite(contingencyGapDays)) return "text-[var(--ds-text-muted)]";
-    if (contingencyGapDays > 0) return "text-[var(--ds-status-danger-fg)]";
-    if (contingencyGapDays < 0) return "text-[var(--ds-status-success-fg)]";
-    return "text-[var(--ds-status-warning-fg)]";
-  })();
-
-  const forecastCompletionRag: { bandClass: string; dotClass: string; a11y: string } = (() => {
-    if (contingencyGapDays == null || !Number.isFinite(contingencyGapDays)) {
-      return {
-        bandClass: "bg-[var(--ds-border)]",
-        dotClass: "bg-[var(--ds-text-muted)]",
-        a11y: "RAG not available: run or complete simulation to rate forecast versus contingency.",
-      };
-    }
-    if (contingencyGapDays > 0) {
-      return {
-        bandClass: "bg-[var(--ds-status-danger)]",
-        dotClass: "bg-[var(--ds-status-danger)]",
-        a11y: "Red RAG: contingency shortfall versus current allowance at target P.",
-      };
-    }
-    if (contingencyGapDays < 0) {
-      return {
-        bandClass: "bg-[var(--ds-status-success)]",
-        dotClass: "bg-[var(--ds-status-success)]",
-        a11y: "Green RAG: contingency surplus at target P.",
-      };
-    }
-    return {
-      bandClass: "bg-[var(--ds-status-warning)]",
-      dotClass: "bg-[var(--ds-status-warning)]",
-      a11y: "Amber RAG: matched to current contingency at target P.",
-    };
-  })();
+  const schedGapPositive: boolean | null =
+    contingencyGapDays != null && Number.isFinite(contingencyGapDays)
+      ? contingencyGapDays > 0
+      : null;
+  const forecastCompletionValueClass = forecastValueClass(schedGapPositive, timeLineSeverity);
+  const forecastCompletionRag = forecastRag(schedGapPositive, timeLineSeverity, "schedule");
 
   const ganttRowHeaderClass =
     "mb-1 flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5";
@@ -1071,8 +1145,10 @@ function ScheduleDurationContingencyGanttCard({
           role="group"
           aria-label="Planned duration and schedule contingency"
           onPointerLeave={(e) => {
-            const next = e.relatedTarget as Node | null;
-            if (!next || !e.currentTarget.contains(next)) setGanttHover(null);
+            const next = e.relatedTarget;
+            if (!(next instanceof Node) || !e.currentTarget.contains(next)) {
+              setGanttHover(null);
+            }
           }}
         >
           <div className="flex w-full items-start justify-between gap-2">
@@ -1450,17 +1526,7 @@ function overallStatusToTone(status: string): StatusPositionTone {
   return "neutral";
 }
 
-const linkSecondaryClassName =
-  "inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)] no-underline transition-all duration-150 hover:bg-[var(--ds-surface-muted)]";
-
 const ACTIVE_PROJECT_KEY = "activeProjectId";
-
-/**
- * `app/(protected)/template.tsx` remounts pages on client navigation while the risk-register
- * store persists. Without this, every simulation mount clears the store and refetches even for
- * the same project — visible as a wipe → “Loading…” → charts popping back in.
- */
-let lastSimulationBootstrapProjectId: string | undefined;
 
 /** Build YYYY-MM for a given date. */
 function toMonthYearKey(d: Date): string {
@@ -1520,11 +1586,8 @@ type ProjectPositionMetricChip = {
   id: string;
   label: string;
   value: string;
-  signal: "favorable" | "unfavorable";
+  signal: "favorable" | "warning" | "unfavorable";
 };
-
-/** After load: we know whether this project has a snapshot. Only show results when hasSnapshot is true. */
-type SnapshotState = { projectId: string; hasSnapshot: boolean } | null;
 
 export default function SimulationPage({ projectId: urlProjectId }: SimulationPageProps = {}) {
   const router = useRouter();
@@ -1532,10 +1595,10 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const { risks, simulation, runSimulation, clearSimulationHistory, hasDraftRisks, invalidRunnableCount, setRisks, hydrateSimulationFromDbSnapshot } = useRiskRegister();
   const [lastRun, setLastRun] = useState<string | null>(null);
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
+  const [snapshotPersistWarning, setSnapshotPersistWarning] = useState<string | null>(null);
   const [projectContext, setProjectContext] = useState<ReturnType<typeof loadProjectContext>>(null);
   const [gateChecked, setGateChecked] = useState(false);
-  /** If non-null and projectId matches current project: hasSnapshot true = show results, false = show Run simulation only. */
-  const [snapshotForProject, setSnapshotForProject] = useState<SnapshotState>(null);
+  const [initializingProjectRun, setInitializingProjectRun] = useState(true);
   const effectiveProjectIdRef = useRef<string | undefined>(undefined);
   const hydrateRef = useRef(hydrateSimulationFromDbSnapshot);
   hydrateRef.current = hydrateSimulationFromDbSnapshot;
@@ -1543,17 +1606,13 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   clearRef.current = clearSimulationHistory;
   const setRisksRef = useRef(setRisks);
   setRisksRef.current = setRisks;
-  const simulationRef = useRef(simulation);
-  simulationRef.current = simulation;
+  const hasInitializedForProjectRef = useRef<string | null>(null);
 
   const [activeProjectIdFromStorage, setActiveProjectIdFromStorage] = useState<string | null>(null);
   const projectIdFromPath = useMemo(() => projectIdFromAppPathname(pathname), [pathname]);
-  /** UUID for DB/API: URL or storage when in project routes; in legacy mode use DEFAULT_PROJECT_ID (projectContext.projectName is a display name, not a UUID). */
+  /** UUID for DB/API: URL segment, parsed pathname, or activeProjectId from storage — never a default project. */
   const effectiveProjectId =
-    urlProjectId ??
-    projectIdFromPath ??
-    activeProjectIdFromStorage ??
-    (projectContext ? DEFAULT_PROJECT_ID : undefined);
+    urlProjectId ?? projectIdFromPath ?? activeProjectIdFromStorage ?? undefined;
   effectiveProjectIdRef.current = effectiveProjectId;
 
   const projectPerms = useProjectPermissions();
@@ -1562,19 +1621,33 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     Boolean(urlProjectId) &&
     (projectPerms == null || !projectPerms.canEditContent);
 
-  const [reportingSnapshotRow, setReportingSnapshotRow] = useState<SimulationSnapshotRow>(null);
-  const reportingDbRow = reportingSnapshotRow as SimulationSnapshotRowDb | null;
-  const [latestSnapshotRow, setLatestSnapshotRow] = useState<SimulationSnapshotRow>(null);
+  /** Latest snapshot explicitly locked for reporting — the only DB snapshot this page loads on init. */
+  const [lockedSnapshotRow, setLockedSnapshotRow] = useState<SimulationSnapshotRow>(null);
+  /** Latest saved row after a successful Run Simulation in this session (unlocked runs included). Cleared on project change / clear history. */
+  const [sessionLatestSavedSnapshotRow, setSessionLatestSavedSnapshotRow] =
+    useState<SimulationSnapshotRow>(null);
+  const reportingDbRow = lockedSnapshotRow as SimulationSnapshotRowDb | null;
+  const [loadingLatestReportedRun, setLoadingLatestReportedRun] = useState(false);
   const [setReportingModalOpen, setSetReportingModalOpen] = useState(false);
   const [reportingNote, setReportingNote] = useState("");
   const [reportingMonthYear, setReportingMonthYear] = useState(() => toMonthYearKey(new Date()));
   const [setReportingSaving, setSetReportingSaving] = useState(false);
   const [triggeredBy, setTriggeredBy] = useState<string | null>(null);
   const [driversView, setDriversView] = useState<"cost" | "schedule">("cost");
+  const [mitigationImpactView, setMitigationImpactView] = useState<"cost" | "schedule">("cost");
   /** Shared expand/collapse for Cost & contingency and Duration & schedule contingency breakdown rows. */
-  const [projectPositionBreakdownOpen, setProjectPositionBreakdownOpen] = useState(true);
+  const [projectPositionBreakdownOpen, setProjectPositionBreakdownOpen] = useState(false);
 
   const reportingMonthYearOptions = useMemo(() => getReportingMonthYearOptions(), []);
+
+  // Always clear any persisted in-memory simulation state when this page mounts.
+  // This prevents stale runs from other pages/sessions from rendering before snapshot checks complete.
+  useEffect(() => {
+    clearRef.current();
+    setLastRun(null);
+    setLockedSnapshotRow(null);
+    setSessionLatestSavedSnapshotRow(null);
+  }, []);
 
   useEffect(() => {
     if (invalidRunnableCount === 0) setRunBlockedInvalidCount(null);
@@ -1632,60 +1705,52 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     if (!isProjectContextComplete(projectContext) && !urlProjectId) return;
     if (!effectiveProjectId) return;
     const projectIdWeAreLoading = effectiveProjectId;
-    const projectSwitched = lastSimulationBootstrapProjectId !== projectIdWeAreLoading;
-    if (projectSwitched) {
-      lastSimulationBootstrapProjectId = projectIdWeAreLoading;
-      setLastRun(null);
-      setSnapshotForProject(null);
-      setLatestSnapshotRow(null);
-      clearRef.current();
-    } else {
-      const sim = simulationRef.current;
-      const cur = sim.current;
-      const hasPersistedDbRun = !!(cur?.id && !cur.id.startsWith("sim_"));
-      const hasNeutralRun = (sim.neutral?.iterationCount ?? 0) > 0;
-      if (hasPersistedDbRun || hasNeutralRun) {
-        setSnapshotForProject({ projectId: projectIdWeAreLoading, hasSnapshot: true });
-        if (cur?.timestampIso) setLastRun(cur.timestampIso);
-      } else {
-        setSnapshotForProject({ projectId: projectIdWeAreLoading, hasSnapshot: false });
-      }
+    if (hasInitializedForProjectRef.current === projectIdWeAreLoading) {
+      return;
     }
+    hasInitializedForProjectRef.current = projectIdWeAreLoading;
+    setInitializingProjectRun(true);
+    setLastRun(null);
+    setLockedSnapshotRow(null);
+    setSessionLatestSavedSnapshotRow(null);
+    // Always start from a clean in-memory simulation state on project load; reporting snapshot is fetched for metadata only (no auto-hydrate).
+    clearRef.current();
     listRisks(projectIdWeAreLoading)
       .then((loaded) => {
         if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
         setRisksRef.current(loaded);
       })
       .catch((err) => console.error("[simulation] load risks", err));
-    getLatestSnapshot(projectIdWeAreLoading)
-      .then((snapshot) => {
+    getLatestLockedSnapshot(projectIdWeAreLoading)
+      .then((lockedSnapshot) => {
         if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
-        const hasSnapshot = !!(snapshot?.created_at);
-        setSnapshotForProject({ projectId: projectIdWeAreLoading, hasSnapshot });
-        setLatestSnapshotRow(snapshot ?? null);
-        if (hasSnapshot && snapshot) {
-          setLastRun(snapshot.created_at ?? null);
-        }
+        setLockedSnapshotRow(lockedSnapshot ?? null);
+        setInitializingProjectRun(false);
       })
       .catch((err) => {
         if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
-        setSnapshotForProject({ projectId: projectIdWeAreLoading, hasSnapshot: false });
-        setLatestSnapshotRow(null);
-        console.error("[simulation] load snapshot", err);
+        setLockedSnapshotRow(null);
+        console.error("[simulation] load locked snapshot", err);
+        setInitializingProjectRun(false);
       });
   }, [gateChecked, projectContext, urlProjectId, effectiveProjectId]);
 
+  const hydrateAfterSuccessfulRun = useCallback(async (snapshotProjectId: string, snapshotId: string) => {
+    try {
+      const row = await getSnapshotById(snapshotId, snapshotProjectId);
+      if (!row) return;
+      if (row.created_at) setLastRun(row.created_at);
+      if (row.locked_for_reporting === true) {
+        setLockedSnapshotRow(row);
+      }
+      hydrateRef.current(row, "simulation-run-latest-saved");
+      setSessionLatestSavedSnapshotRow(row);
+    } catch (err) {
+      console.error("[simulation] post-run getSnapshotById", err);
+    }
+  }, []);
+
   const isCurrentRunPersisted = simulation.current?.id && !simulation.current.id.startsWith("sim_");
-  const persistedRunId = simulation.current?.id;
-  useEffect(() => {
-    if (!effectiveProjectId || !persistedRunId || persistedRunId.startsWith("sim_")) return;
-    getLatestSnapshot(effectiveProjectId)
-      .then((row) => {
-        if (row?.id === persistedRunId) setReportingSnapshotRow(row);
-        else setReportingSnapshotRow(null);
-      })
-      .catch(() => setReportingSnapshotRow(null));
-  }, [effectiveProjectId, persistedRunId]);
 
   const analysisState = useMemo(
     () => ({ risks, simulation: { ...simulation } }),
@@ -1701,20 +1766,33 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const snapshotRisks = simulation.current?.risks ?? EMPTY_SNAPSHOT_RISKS;
 
   const hasData = neutralSummary != null;
-  /** Only show results when we've loaded for this project and it has a snapshot; else show Run simulation. Legacy: no effectiveProjectId but hasSnapshot. */
+  const selectedSnapshotId = lockedSnapshotRow?.id ?? null;
+  const sessionLatestSavedId = sessionLatestSavedSnapshotRow?.id ?? null;
   const currentProjectHasSnapshot =
-    (snapshotForProject?.projectId === effectiveProjectId && snapshotForProject?.hasSnapshot) ||
-    (effectiveProjectId == null && (snapshotForProject?.hasSnapshot ?? false));
-  const showResults = currentProjectHasSnapshot && hasData;
-  const showRunOnly =
-    (snapshotForProject?.projectId === effectiveProjectId && !snapshotForProject?.hasSnapshot) ||
-    (effectiveProjectId == null && !(snapshotForProject?.hasSnapshot ?? false));
-  const loadingSnapshot = effectiveProjectId != null && snapshotForProject?.projectId !== effectiveProjectId;
-  const showChooseRunAction = currentProjectHasSnapshot && !hasData && !loadingSnapshot;
+    lockedSnapshotRow != null || sessionLatestSavedSnapshotRow != null;
+  const currentSimulationId = simulation?.current?.id ?? null;
+  const hasMatchingSelectedRun =
+    selectedSnapshotId != null && hasData && currentSimulationId === selectedSnapshotId;
+  const showResults =
+    !initializingProjectRun &&
+    hasData &&
+    currentSimulationId != null &&
+    ((selectedSnapshotId != null && currentSimulationId === selectedSnapshotId) ||
+      (sessionLatestSavedId != null && currentSimulationId === sessionLatestSavedId));
+  const loadingSnapshot = effectiveProjectId != null && initializingProjectRun;
+  /** Entry card: no auto-loaded results; user must run a sim or load the reporting snapshot manually. */
+  const showDefaultSimulationActions =
+    !initializingProjectRun && !showResults && !loadingSnapshot;
+  const isReportingVersion =
+    currentSimulationId != null &&
+    lockedSnapshotRow != null &&
+    currentSimulationId === lockedSnapshotRow.id;
 
-  // Prefer project-specific context for display; fall back to gate (global) context
+  // In project routes, use project-scoped context only (no legacy fallback),
+  // otherwise cards like Overall Position can mix a loaded run with another project's context.
+  // In legacy mode (no effective project id), keep using the gate/global context.
   const displayContext = useMemo(
-    () => loadProjectContext(effectiveProjectId ?? null) ?? projectContext,
+    () => (effectiveProjectId ? loadProjectContext(effectiveProjectId) : projectContext),
     [effectiveProjectId, projectContext]
   );
 
@@ -1823,6 +1901,45 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     [timeSamples, timeSummary, iterationCount, snapshotRisks]
   );
 
+  // Debug: expose what the Simulation page is currently rendering.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const current = simulation.current;
+    const debugViewModel = {
+      effectiveProjectId: effectiveProjectId ?? null,
+      currentSnapshotId: current?.id ?? null,
+      currentTimestampIso: current?.timestampIso ?? null,
+      latestLockedSnapshotId:
+        lockedSnapshotRow && typeof lockedSnapshotRow === "object" ? (lockedSnapshotRow.id ?? null) : null,
+      latestLockedCreatedAt:
+        lockedSnapshotRow && typeof lockedSnapshotRow === "object" ? (lockedSnapshotRow.created_at ?? null) : null,
+      selectedSnapshotId: selectedSnapshotId ?? null,
+      neutralSummary: neutralSummary ?? null,
+      timeSummary: timeSummary ?? null,
+      iterationCount,
+      snapshotRiskCount: snapshotRisks.length,
+      showResults,
+      showDefaultSimulationActions,
+    };
+    (
+      window as Window & {
+        __riskaiSimulationViewModel?: unknown;
+      }
+    ).__riskaiSimulationViewModel = debugViewModel;
+    console.info("[simulation] view model json", JSON.stringify(debugViewModel));
+  }, [
+    effectiveProjectId,
+    iterationCount,
+    lockedSnapshotRow,
+    selectedSnapshotId,
+    neutralSummary,
+    showDefaultSimulationActions,
+    showResults,
+    simulation.current,
+    snapshotRisks.length,
+    timeSummary,
+  ]);
+
   /** Simulated total cost (dollars) at target P from the cost CDF. */
   const simulatedTotalCostAtTargetPDollars = useMemo(() => {
     if (!baseline || !costCdf?.length) return null;
@@ -1898,7 +2015,6 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
    * for executive copy without changing thresholds or inputs.
    */
   const projectPositionMetrics = useMemo(() => {
-    type LineSeverity = "on" | "risk" | "off";
     if (!baseline) {
       return {
         overallStatus: "—" as const,
@@ -1966,10 +2082,72 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     scheduleContingencyDays,
   ]);
 
+  // Debug: isolate Cost Simulation chart inputs and reference lines.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const targetPNumeric = costBaseline?.targetPNumeric ?? null;
+    const targetPLabel = costBaseline?.targetPLabel ?? null;
+    const contingencyValueDollars =
+      displayContext && Number.isFinite(displayContext.contingencyValue_m)
+        ? displayContext.contingencyValue_m * 1e6
+        : null;
+    const approvedValue = costBaseline?.approvedValue ?? null;
+    const refCost =
+      contingencyValueDollars != null && Number.isFinite(contingencyValueDollars)
+        ? contingencyValueDollars
+        : approvedValue;
+    const currentPAtRef =
+      costCdf?.length && refCost != null && refCost > 0
+        ? percentileAtCost(costCdf, refCost)
+        : null;
+    const costAtTargetP =
+      costCdf?.length && targetPNumeric != null
+        ? costAtPercentile(costCdf, targetPNumeric)
+        : null;
+
+    const debug = {
+      snapshotId: simulation.current?.id ?? null,
+      snapshotTimestampIso: simulation.current?.timestampIso ?? null,
+      targetPNumeric,
+      targetPLabel,
+      contingencyValueDollars,
+      approvedValue,
+      refCostForCurrentP: refCost,
+      currentPAtRef,
+      costAtTargetP,
+      neutralSummary: neutralSummary
+        ? {
+            p20Cost: neutralSummary.p20Cost,
+            p50Cost: neutralSummary.p50Cost,
+            p80Cost: neutralSummary.p80Cost,
+            p90Cost: neutralSummary.p90Cost,
+          }
+        : null,
+      cdfPointCount: costCdf?.length ?? 0,
+      cdfFirstPoint: costCdf?.[0] ?? null,
+      cdfLastPoint: costCdf?.[costCdf.length - 1] ?? null,
+    };
+    (
+      window as Window & {
+        __riskaiCostChartDebug?: unknown;
+      }
+    ).__riskaiCostChartDebug = debug;
+    console.info("[simulation] cost chart debug json", JSON.stringify(debug));
+  }, [costBaseline, costCdf, displayContext, neutralSummary, simulation.current]);
+
   const projectPositionExecutiveSummary = useMemo(() => {
     const { overallStatus, costLine, timeLine } = projectPositionMetrics;
     const pLabel = baseline?.targetPLabel ?? "target P";
     const schedModel = projectPositionScheduleGapModel;
+
+    const chipSignal = (
+      line: "on" | "risk" | "off" | null,
+      favorable: boolean,
+    ): "favorable" | "warning" | "unfavorable" => {
+      if (!favorable) return "unfavorable";
+      if (line === "risk") return "warning";
+      return "favorable";
+    };
 
     const buildMetricChips = (): ProjectPositionMetricChip[] => {
       const chips: ProjectPositionMetricChip[] = [];
@@ -1980,14 +2158,14 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
             id: "cost",
             label: "Cost",
             value: `${formatted} required`,
-            signal: "unfavorable",
+            signal: chipSignal(costLine, false),
           });
         } else {
           chips.push({
             id: "cost",
             label: "Cost",
             value: `+${formatted} surplus`,
-            signal: "favorable",
+            signal: chipSignal(costLine, true),
           });
         }
       }
@@ -1997,14 +2175,14 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
             id: "schedule",
             label: "Schedule",
             value: `+${schedModel.formatted} required`,
-            signal: "unfavorable",
+            signal: chipSignal(timeLine, false),
           });
         } else {
           chips.push({
             id: "schedule",
             label: "Schedule",
             value: `+${schedModel.formatted} buffer`,
-            signal: "favorable",
+            signal: chipSignal(timeLine, true),
           });
         }
       }
@@ -2142,6 +2320,113 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const driversActive =
     driversView === "cost" ? driversCostRanked : driversScheduleRanked;
 
+  /**
+   * Mitigation Impact: pre/post expected exposure (p × ML) from register risk inputs.
+   * Read-only; does not alter simulation engine outputs.
+   */
+  const mitigationImpactMetrics = useMemo(() => {
+    const scoped = risks.filter((r) => !isRiskStatusExcludedFromSimulation(r.status));
+    const rows = scoped.map((r) => {
+      const pp = probPre(r);
+      const po = probPost(r);
+      const cp = costMLPre(r);
+      const co = costMLPost(r);
+      const tp = timeMLPre(r);
+      const preCost = pp * cp;
+      const postCost = po * co;
+      const preTime = pp * tp;
+      const postTime = po * timeMLPost(r, tp);
+      return {
+        id: r.id,
+        title: r.title,
+        preCost,
+        postCost,
+        preTime,
+        postTime,
+        reductionCost: preCost - postCost,
+        reductionTime: preTime - postTime,
+        hasMitigation: hasFullPostMitigation(r),
+      };
+    });
+    const totalPreCost = rows.reduce((s, x) => s + x.preCost, 0);
+    const totalPostCost = rows.reduce((s, x) => s + x.postCost, 0);
+    const totalPreTime = rows.reduce((s, x) => s + x.preTime, 0);
+    const totalPostTime = rows.reduce((s, x) => s + x.postTime, 0);
+    const costReduction = totalPreCost - totalPostCost;
+    const timeReduction = totalPreTime - totalPostTime;
+    const costReductionPct = totalPreCost > 0 ? costReduction / totalPreCost : 0;
+    const timeReductionPct = totalPreTime > 0 ? timeReduction / totalPreTime : 0;
+    const hasMitigationData = rows.some((x) => x.hasMitigation);
+    const unmitigatedPreCost = rows.filter((x) => !x.hasMitigation).reduce((s, x) => s + x.preCost, 0);
+    const unmitigatedPreTime = rows.filter((x) => !x.hasMitigation).reduce((s, x) => s + x.preTime, 0);
+    const unmitigatedShareCost = totalPreCost > 0 ? unmitigatedPreCost / totalPreCost : 0;
+    const unmitigatedShareTime = totalPreTime > 0 ? unmitigatedPreTime / totalPreTime : 0;
+    const topWinsCost = [...rows]
+      .filter((x) => x.reductionCost > 0)
+      .sort((a, b) => b.reductionCost - a.reductionCost)
+      .slice(0, 3);
+    const topWinsTime = [...rows]
+      .filter((x) => x.reductionTime > 0)
+      .sort((a, b) => b.reductionTime - a.reductionTime)
+      .slice(0, 3);
+    return {
+      rows,
+      totalPreCost,
+      totalPostCost,
+      totalPreTime,
+      totalPostTime,
+      costReduction,
+      timeReduction,
+      costReductionPct,
+      timeReductionPct,
+      hasMitigationData,
+      unmitigatedShareCost,
+      unmitigatedShareTime,
+      topWinsCost,
+      topWinsTime,
+    };
+  }, [risks]);
+
+  const mitigationImpactDisplay = useMemo(() => {
+    const m = mitigationImpactMetrics;
+    const isCost = mitigationImpactView === "cost";
+    const totalPre = isCost ? m.totalPreCost : m.totalPreTime;
+    const totalPost = isCost ? m.totalPostCost : m.totalPostTime;
+    const reduction = isCost ? m.costReduction : m.timeReduction;
+    const reductionPct = isCost ? m.costReductionPct : m.timeReductionPct;
+    const unmitigatedShare = isCost ? m.unmitigatedShareCost : m.unmitigatedShareTime;
+    const topWins = isCost ? m.topWinsCost : m.topWinsTime;
+    const formatExposure = (v: number) =>
+      isCost
+        ? displayContext
+          ? formatMoneyMillions(v / 1e6)
+          : new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(v)
+        : formatDurationDays(v);
+    const barReductionPct = totalPre > 0 ? Math.min(100, Math.max(0, (reduction / totalPre) * 100)) : 0;
+    const reductionPctLabel =
+      totalPre > 0 && Number.isFinite(reductionPct) ? `${(reductionPct * 100).toFixed(1)}%` : "—";
+    const unmitigatedPctLabel =
+      totalPre > 0 && Number.isFinite(unmitigatedShare) ? `${(unmitigatedShare * 100).toFixed(1)}%` : "—";
+    return {
+      isCost,
+      totalPre,
+      totalPost,
+      reduction,
+      reductionPct,
+      unmitigatedShare,
+      topWins,
+      formatExposure,
+      barReductionPct,
+      reductionPctLabel,
+      unmitigatedPctLabel,
+    };
+  }, [mitigationImpactView, mitigationImpactMetrics, displayContext]);
+
   const simulationHeaderActions = useMemo(
     () => (
       <div className="flex flex-wrap items-center justify-end gap-3">
@@ -2149,19 +2434,28 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
           type="button"
           onClick={async () => {
             if (simulationReadOnly) return;
+            const snapshotProjectId = effectiveProjectId?.trim();
+            if (!snapshotProjectId) {
+              console.error("[simulation] runSimulation skipped: projectId is required for snapshot access");
+              return;
+            }
             try {
-              const result = await runSimulation(10000, effectiveProjectId ?? undefined);
+              setSnapshotPersistWarning(null);
+              const result = await runSimulation(10000, snapshotProjectId);
               if (!result.ran && result.blockReason === "invalid") {
                 setRunBlockedInvalidCount(result.invalidCount);
                 return;
               }
+              if (!result.ran && result.blockReason === "missing_project") {
+                console.error("[simulation] runSimulation blocked:", result.message);
+                return;
+              }
+              if (!result.ran && result.blockReason === "snapshot_persist") {
+                setSnapshotPersistWarning(result.message);
+                return;
+              }
               if (result.ran) {
-                const now = new Date().toISOString();
-                setLastRun(now);
-                setSnapshotForProject({
-                  projectId: effectiveProjectId ?? "legacy",
-                  hasSnapshot: true,
-                });
+                await hydrateAfterSuccessfulRun(snapshotProjectId, result.snapshotId);
               }
             } catch {
               // Snapshot insert failed; do not update timestamp
@@ -2174,7 +2468,22 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
         </Button>
         <Button
           type="button"
-          onClick={() => clearSimulationHistory()}
+          onClick={async () => {
+            const snapshotProjectId = effectiveProjectId?.trim();
+            if (!snapshotProjectId) {
+              console.error("[simulation] clearProjectSnapshots skipped: projectId is required for snapshot access");
+              return;
+            }
+            clearSimulationHistory();
+            try {
+              await clearProjectSnapshots(snapshotProjectId);
+            } catch (err) {
+              console.error("[simulation] clear snapshots", err);
+            }
+            setLastRun(null);
+            setLockedSnapshotRow(null);
+            setSessionLatestSavedSnapshotRow(null);
+          }}
           disabled={simulationReadOnly}
           variant="secondary"
         >
@@ -2200,7 +2509,9 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       hasDraftRisks,
       invalidRunnableCount,
       runSimulation,
+      hydrateAfterSuccessfulRun,
       effectiveProjectId,
+      simulation,
       clearSimulationHistory,
       showResults,
       isCurrentRunPersisted,
@@ -2231,6 +2542,11 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
           Simulation blocked: fix {runBlockedInvalidCount} risk{runBlockedInvalidCount !== 1 ? "s" : ""} to run simulation.
         </Callout>
       )}
+      {snapshotPersistWarning && (
+        <Callout status="danger" className="mt-2 font-medium" role="alert">
+          Could not save run to the database: {snapshotPersistWarning}
+        </Callout>
+      )}
       {simulationReadOnly && (
         <Callout status="info" className="mt-2" role="status">
           View-only access: you cannot run or change simulations for this project.
@@ -2248,29 +2564,40 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
         </Card>
       )}
 
-      {showRunOnly && (
+      {showDefaultSimulationActions && (
         <Card variant="inset" className="mt-0 p-6 text-center">
           <p className="m-0 font-medium text-[var(--ds-text-primary)]">
-            No simulation run for this project yet. Run a simulation to see results.
+            {lockedSnapshotRow
+              ? "Load the last reporting run or run a new simulation."
+              : "Run a simulation to see results."}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
             <Button
               type="button"
               onClick={async () => {
                 if (simulationReadOnly) return;
+                const snapshotProjectId = effectiveProjectId?.trim();
+                if (!snapshotProjectId) {
+                  console.error("[simulation] runSimulation skipped: projectId is required for snapshot access");
+                  return;
+                }
                 try {
-                  const result = await runSimulation(10000, effectiveProjectId ?? undefined);
+                  setSnapshotPersistWarning(null);
+                  const result = await runSimulation(10000, snapshotProjectId);
                   if (!result.ran && result.blockReason === "invalid") {
                     setRunBlockedInvalidCount(result.invalidCount);
                     return;
                   }
+                  if (!result.ran && result.blockReason === "missing_project") {
+                    console.error("[simulation] runSimulation blocked:", result.message);
+                    return;
+                  }
+                  if (!result.ran && result.blockReason === "snapshot_persist") {
+                    setSnapshotPersistWarning(result.message);
+                    return;
+                  }
                   if (result.ran) {
-                    const now = new Date().toISOString();
-                    setLastRun(now);
-                    setSnapshotForProject({
-                      projectId: effectiveProjectId ?? "legacy",
-                      hasSnapshot: true,
-                    });
+                    await hydrateAfterSuccessfulRun(snapshotProjectId, result.snapshotId);
                   }
                 } catch {
                   // Snapshot insert failed; do not update timestamp
@@ -2279,68 +2606,37 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
               disabled={simulationReadOnly || hasDraftRisks || invalidRunnableCount > 0}
               variant="secondary"
             >
-              Run simulation
+              Run Simulation
             </Button>
-            {effectiveProjectId && (
-              <Link
-                href={riskaiPath(`/projects/${effectiveProjectId}/run-data`)}
-                className={linkSecondaryClassName}
+            {lockedSnapshotRow && (
+              <Button
+                type="button"
+                onClick={async () => {
+                  if (loadingLatestReportedRun) return;
+                  const snapshotProjectId = effectiveProjectId?.trim();
+                  if (!snapshotProjectId) {
+                    console.error("[simulation] getLatestLockedSnapshot skipped: projectId is required for snapshot access");
+                    return;
+                  }
+                  setLoadingLatestReportedRun(true);
+                  try {
+                    const row = await getLatestLockedSnapshot(snapshotProjectId);
+                    setLockedSnapshotRow(row ?? null);
+                    if (!row) return;
+                    hydrateRef.current(row, "simulation-load-last-reported");
+                    if (row.created_at) setLastRun(row.created_at);
+                  } catch (err) {
+                    console.error("[simulation] load latest locked snapshot", err);
+                  } finally {
+                    setLoadingLatestReportedRun(false);
+                  }
+                }}
+                disabled={loadingLatestReportedRun}
+                variant="secondary"
               >
-                Go to Run Data
-              </Link>
+                {loadingLatestReportedRun ? "Loading…" : "Load Last Reporting Run"}
+              </Button>
             )}
-          </div>
-        </Card>
-      )}
-
-      {showChooseRunAction && (
-        <Card variant="inset" className="mt-0 p-6 text-center">
-          <p className="m-0 font-medium text-[var(--ds-text-primary)]">
-            This project has an existing simulation run.
-          </p>
-          <p className="mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
-            Choose whether to run a new simulation now or load the latest saved run.
-          </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <Button
-              type="button"
-              onClick={async () => {
-                if (simulationReadOnly) return;
-                try {
-                  const result = await runSimulation(10000, effectiveProjectId ?? undefined);
-                  if (!result.ran && result.blockReason === "invalid") {
-                    setRunBlockedInvalidCount(result.invalidCount);
-                    return;
-                  }
-                  if (result.ran) {
-                    const now = new Date().toISOString();
-                    setLastRun(now);
-                    setSnapshotForProject({
-                      projectId: effectiveProjectId ?? "legacy",
-                      hasSnapshot: true,
-                    });
-                  }
-                } catch {
-                  // Snapshot insert failed; do not update timestamp
-                }
-              }}
-              disabled={simulationReadOnly || hasDraftRisks || invalidRunnableCount > 0}
-              variant="secondary"
-            >
-              Re-run simulation
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                if (!latestSnapshotRow) return;
-                hydrateRef.current(latestSnapshotRow);
-                if (latestSnapshotRow?.created_at) setLastRun(latestSnapshotRow.created_at);
-              }}
-              disabled={!latestSnapshotRow}
-              variant="secondary"
-            >
-              Load last run
-            </Button>
           </div>
         </Card>
       )}
@@ -2372,11 +2668,15 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                       const shell =
                         c.signal === "favorable"
                           ? "bg-[var(--ds-status-success-subtle-bg)]"
-                          : "bg-[var(--ds-status-danger-subtle-bg)]";
+                          : c.signal === "warning"
+                            ? "bg-[var(--ds-status-warning-subtle-bg)]"
+                            : "bg-[var(--ds-status-danger-subtle-bg)]";
                       const valueClass =
                         c.signal === "favorable"
                           ? "text-[var(--ds-status-success-fg)]"
-                          : "text-[var(--ds-status-danger-fg)]";
+                          : c.signal === "warning"
+                            ? "text-[var(--ds-status-warning-fg)]"
+                            : "text-[var(--ds-status-danger-fg)]";
                       return (
                         <span
                           key={c.id}
@@ -2413,6 +2713,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   costGapDisplay={projectPositionCostGapText}
                   simulatedTotalCostDollars={simulatedTotalCostAtTargetPDollars}
                   costContingencyGapDollars={costContingencyGapDollars}
+                  costLineSeverity={projectPositionMetrics.costLine}
                   breakdownOpen={projectPositionBreakdownOpen}
                   setBreakdownOpen={setProjectPositionBreakdownOpen}
                 />
@@ -2428,6 +2729,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   targetPLabel={baseline.targetPLabel}
                   scheduleVsContingencyText={projectPositionScheduleGapText}
                   forecastCompletionDateDisplay={forecastCompletionDateDisplay}
+                  timeLineSeverity={projectPositionMetrics.timeLine}
                   breakdownOpen={projectPositionBreakdownOpen}
                   setBreakdownOpen={setProjectPositionBreakdownOpen}
                 />
@@ -2553,6 +2855,118 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   </TableBody>
                 </Table>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card variant="inset" className="mt-8 overflow-hidden">
+            <CardHeader className="border-b border-[var(--ds-border)] px-4 py-3">
+              <CardTitle className="text-[length:var(--ds-text-base)]">Mitigation Impact</CardTitle>
+              <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                Impact of mitigation actions on total exposure
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4 p-4">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant={mitigationImpactView === "cost" ? "primary" : "secondary"}
+                  onClick={() => setMitigationImpactView("cost")}
+                >
+                  Cost
+                </Button>
+                <Button
+                  type="button"
+                  variant={mitigationImpactView === "schedule" ? "primary" : "secondary"}
+                  onClick={() => setMitigationImpactView("schedule")}
+                >
+                  Schedule
+                </Button>
+              </div>
+              {!mitigationImpactMetrics.hasMitigationData ? (
+                <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                  No mitigation data available
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <DashboardTileKpi
+                      label="Pre-Mitigation Exposure"
+                      value={mitigationImpactDisplay.formatExposure(mitigationImpactDisplay.totalPre)}
+                      density="compact"
+                    />
+                    <DashboardTileKpi
+                      label="Post-Mitigation Exposure"
+                      value={mitigationImpactDisplay.formatExposure(mitigationImpactDisplay.totalPost)}
+                      density="compact"
+                    />
+                    <DashboardTileKpi
+                      label="Reduction"
+                      value={mitigationImpactDisplay.formatExposure(mitigationImpactDisplay.reduction)}
+                      helperText={
+                        mitigationImpactDisplay.reductionPctLabel !== "—"
+                          ? `${mitigationImpactDisplay.reductionPctLabel} of pre-mitigation exposure`
+                          : undefined
+                      }
+                      accent={mitigationImpactDisplay.reduction > 0 ? "success" : "none"}
+                      density="compact"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      Exposure composition
+                    </div>
+                    <div
+                      className="flex h-2 w-full min-w-0 overflow-hidden rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]"
+                      role="img"
+                      aria-label={
+                        mitigationImpactDisplay.isCost
+                          ? `Pre-mitigation cost exposure; reduction ${mitigationImpactDisplay.barReductionPct.toFixed(1)} percent of pre`
+                          : `Pre-mitigation schedule exposure; reduction ${mitigationImpactDisplay.barReductionPct.toFixed(1)} percent of pre`
+                      }
+                    >
+                      <div
+                        className="h-full shrink-0 bg-[var(--ds-status-success)]"
+                        style={{ width: `${mitigationImpactDisplay.barReductionPct}%` }}
+                      />
+                      <div className="min-h-2 min-w-0 flex-1 bg-[var(--ds-surface-muted)]" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-2 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                      Top mitigation wins
+                    </div>
+                    {mitigationImpactDisplay.topWins.length === 0 ? (
+                      <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                        No reductions in this view.
+                      </p>
+                    ) : (
+                      <ul className="m-0 list-none space-y-2 p-0">
+                        {mitigationImpactDisplay.topWins.map((w) => (
+                          <li
+                            key={w.id}
+                            className="flex items-baseline justify-between gap-3 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]"
+                          >
+                            <span className="min-w-0 truncate font-medium" title={w.title}>
+                              {w.title}
+                            </span>
+                            <span className="shrink-0 tabular-nums text-[var(--ds-text-secondary)]">
+                              {mitigationImpactDisplay.isCost
+                                ? mitigationImpactDisplay.formatExposure(w.reductionCost)
+                                : mitigationImpactDisplay.formatExposure(w.reductionTime)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <DashboardTileKpi
+                    label="Unmitigated exposure"
+                    value={mitigationImpactDisplay.unmitigatedPctLabel}
+                    helperText="% of total pre-mitigation exposure from risks with no post-mitigation defined"
+                    density="compact"
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -2736,8 +3150,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                       reportingMonthYear,
                       projectId: effectiveProjectId,
                     });
-                    const row = await getLatestSnapshot(effectiveProjectId);
-                    if (row?.id === snapshotId) setReportingSnapshotRow(row);
+                    const latestLockedRow = await getLatestLockedSnapshot(effectiveProjectId);
+                    setLockedSnapshotRow(latestLockedRow ?? null);
                     setSetReportingModalOpen(false);
                     setReportingNote("");
                     setReportingMonthYear(toMonthYearKey(new Date()));

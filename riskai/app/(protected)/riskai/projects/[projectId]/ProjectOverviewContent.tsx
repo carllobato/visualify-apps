@@ -346,12 +346,14 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const [loadingRisks, setLoadingRisks] = useState(true);
 
   useEffect(() => {
-    if (!projectId) {
+    const pid = projectId?.trim();
+    if (!pid) {
+      console.error("[ProjectOverview] listRisks skipped: projectId is required for risk access");
       setLoadingRisks(false);
       return;
     }
     setLoadingRisks(true);
-    listRisks(projectId)
+    listRisks(pid)
       .then((loaded) => {
         setRisks(loaded);
         setRisksLocal(loaded);
@@ -595,7 +597,6 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     return () => setExtras(null);
   }, [overviewHeaderEnd, setExtras]);
 
-  const runDataHref = projectId ? riskaiPath(`/projects/${projectId}/run-data`) : DASHBOARD_PATH;
   const simulationHref = projectId ? riskaiPath(`/projects/${projectId}/simulation`) : DASHBOARD_PATH;
 
   /** Mean minus appetite line: ≤0 (at/under target) reads favorable. */
@@ -619,9 +620,6 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href={simulationHref} className="no-underline">
               <Button>Go to Simulation</Button>
-            </Link>
-            <Link href={runDataHref} className="no-underline">
-              <Button variant="secondary">Run Data</Button>
             </Link>
           </div>
         </Card>

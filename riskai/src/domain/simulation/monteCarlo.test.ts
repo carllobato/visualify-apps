@@ -39,9 +39,15 @@ describe("getEffectiveRiskInputs", () => {
     assert.strictEqual(getEffectiveRiskInputs(risk), null);
   });
 
-  it("uses post-mitigation when mitigation set and post ML cost/time present", () => {
+  it("uses post-mitigation when mitigationProfile is active and post ML cost/time present", () => {
     const risk = makeRisk({
-      mitigation: "Active mitigation",
+      mitigationProfile: {
+        status: "active",
+        effectiveness: 0.5,
+        confidence: 0.5,
+        reduces: 0.5,
+        lagMonths: 0,
+      },
       inherentRating: buildRating(probabilityPctToScale(60), 3),
       residualRating: buildRating(probabilityPctToScale(40), 3),
       preMitigationCostML: 100_000,
@@ -59,6 +65,8 @@ describe("getEffectiveRiskInputs", () => {
 
   it("falls back to pre-mitigation when post missing", () => {
     const risk = makeRisk({
+      inherentRating: buildRating(2, 3),
+      residualRating: buildRating(4, 3),
       preMitigationCostML: 80_000,
       preMitigationTimeML: 15,
       probability: 0.5,
@@ -71,8 +79,10 @@ describe("getEffectiveRiskInputs", () => {
     assert.strictEqual(out.timeML, 15);
   });
 
-  it("uses explicit probability with pre ML cost/time", () => {
+  it("uses explicit probability with pre ML cost/time when it aligns with pre scale", () => {
     const risk = makeRisk({
+      inherentRating: buildRating(2, 3),
+      residualRating: buildRating(4, 3),
       probability: 0.35,
       preMitigationCostML: 200_000,
       preMitigationTimeML: 25,
@@ -124,9 +134,20 @@ describe("runMonteCarloSimulation", () => {
     assert(result.summary.p90Time >= result.summary.p80Time);
   });
 
-  it("deterministic single risk 100% prob 10 days: all schedule percentiles equal 10", () => {
+  it("deterministic single risk 100% prob 10 days (min=ML=max): all schedule percentiles equal 10", () => {
     const risks: Risk[] = [
-      makeRisk({ id: "d", probability: 1, preMitigationCostML: 0, preMitigationTimeML: 10 }),
+      makeRisk({
+        id: "d",
+        inherentRating: buildRating(5, 3),
+        residualRating: buildRating(1, 3),
+        probability: 1,
+        preMitigationCostMin: 0,
+        preMitigationCostML: 0,
+        preMitigationCostMax: 0,
+        preMitigationTimeMin: 10,
+        preMitigationTimeML: 10,
+        preMitigationTimeMax: 10,
+      }),
     ];
     const result = runMonteCarloSimulation({ risks, iterations: 1000, seed: 99 });
     assert.strictEqual(result.summary.p20Time, 10, "p20Time should be 10");
@@ -135,16 +156,22 @@ describe("runMonteCarloSimulation", () => {
     assert.strictEqual(result.summary.p90Time, 10, "p90Time should be 10");
   });
 
-  it("single risk with 100% probability produces identical samples so percentiles equal the constant", () => {
+  it("single risk with 100% probability and min=ML=max produces identical samples", () => {
     const constantCost = 100_000;
     const constantTimeDays = 10;
     const risks: Risk[] = [
       makeRisk({
         id: "single",
         status: "open",
+        inherentRating: buildRating(5, 3),
+        residualRating: buildRating(1, 3),
         probability: 1,
+        preMitigationCostMin: constantCost,
         preMitigationCostML: constantCost,
+        preMitigationCostMax: constantCost,
+        preMitigationTimeMin: constantTimeDays,
         preMitigationTimeML: constantTimeDays,
+        preMitigationTimeMax: constantTimeDays,
       }),
     ];
     const result = runMonteCarloSimulation({ risks, iterations: 100, seed: 42 });
@@ -161,12 +188,38 @@ describe("runMonteCarloSimulation", () => {
     assert(s.p50Time <= s.p80Time && s.p80Time <= s.p90Time, "time percentiles should be non-decreasing");
   });
 
+  it("triangular distribution produces spread around ML (not point-mass)", () => {
+    const risks: Risk[] = [
+      makeRisk({
+        id: "tri",
+        inherentRating: buildRating(5, 3),
+        residualRating: buildRating(5, 3),
+        probability: 1,
+        preMitigationCostMin: 50_000,
+        preMitigationCostML: 100_000,
+        preMitigationCostMax: 200_000,
+        preMitigationTimeMin: 5,
+        preMitigationTimeML: 10,
+        preMitigationTimeMax: 20,
+      }),
+    ];
+    const result = runMonteCarloSimulation({ risks, iterations: 10_000, seed: 42 });
+    const s = result.summary;
+    assert(s.minCost < s.p50Cost, "min should be less than p50");
+    assert(s.p50Cost < s.maxCost, "p50 should be less than max");
+    assert(s.p20Cost < s.p80Cost, "p20 should be less than p80");
+    assert(s.minCost >= 50_000, "min should be >= triangular min");
+    assert(s.maxCost <= 200_000, "max should be <= triangular max");
+    assert(s.minTime >= 5, "min time should be >= triangular min");
+    assert(s.maxTime <= 20, "max time should be <= triangular max");
+  });
+
   it("post-mitigation exposure is lower than pre-mitigation (P80 cost and time)", () => {
     const preCost = 200_000;
     const preTime = 20;
     const postCost = 100_000;
     const postTime = 10;
-    const iterations = 100;
+    const iterations = 5000;
     const seed = 123;
 
     const riskPreOnly: Risk[] = [
@@ -174,20 +227,34 @@ describe("runMonteCarloSimulation", () => {
         id: "r1",
         status: "open",
         probability: 1,
+        preMitigationCostMin: preCost * 0.8,
         preMitigationCostML: preCost,
+        preMitigationCostMax: preCost * 1.3,
+        preMitigationTimeMin: Math.round(preTime * 0.8),
         preMitigationTimeML: preTime,
+        preMitigationTimeMax: Math.round(preTime * 1.3),
       }),
     ];
     const riskWithPost: Risk[] = [
       makeRisk({
         id: "r1",
         status: "open",
-        mitigation: "Mitigated",
+        mitigationProfile: {
+          status: "active",
+          effectiveness: 0.5,
+          confidence: 0.5,
+          reduces: 0.5,
+          lagMonths: 0,
+        },
         probability: 1,
         preMitigationCostML: preCost,
         preMitigationTimeML: preTime,
+        postMitigationCostMin: postCost * 0.8,
         postMitigationCostML: postCost,
+        postMitigationCostMax: postCost * 1.3,
+        postMitigationTimeMin: Math.round(postTime * 0.8),
         postMitigationTimeML: postTime,
+        postMitigationTimeMax: Math.round(postTime * 1.3),
       }),
     ];
 
@@ -199,11 +266,6 @@ describe("runMonteCarloSimulation", () => {
 
     assert(resultPost.summary.p80Cost < resultPre.summary.p80Cost, "post P80 cost should be lower than pre");
     assert(resultPost.summary.p80Time < resultPre.summary.p80Time, "post P80 time should be lower than pre");
-
-    assert.strictEqual(resultPre.summary.p80Cost, preCost, "pre run: constant cost so P80 = pre cost");
-    assert.strictEqual(resultPre.summary.p80Time, preTime, "pre run: constant time so P80 = pre time");
-    assert.strictEqual(resultPost.summary.p80Cost, postCost, "post run: constant cost so P80 = post cost");
-    assert.strictEqual(resultPost.summary.p80Time, postTime, "post run: constant time so P80 = post time");
   });
 
   it("no NaN or negative in summary percentiles for normal run", () => {

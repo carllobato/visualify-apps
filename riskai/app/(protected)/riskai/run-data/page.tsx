@@ -21,6 +21,7 @@ import { useRiskRegister } from "@/store/risk-register.store";
 import { listRisks } from "@/lib/db/risks";
 import { portfolioMomentumSummary } from "@/domain/risk/risk.logic";
 import {
+  clearProjectSnapshots,
   getLatestSnapshot as getLatestDbSnapshot,
   getLatestLockedSnapshot as getLatestLockedDbSnapshot,
   formatReportMonthLabel,
@@ -51,7 +52,17 @@ import {
 } from "@/lib/profiles/profileDb";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { appliesToExcludesCost, appliesToExcludesTime } from "@/domain/risk/riskFieldSemantics";
+import { loadProjectContext, riskAppetiteToPercent } from "@/lib/projectContext";
+import {
+  appliesToExcludesCost,
+  appliesToExcludesTime,
+  isRiskStatusExcludedFromSimulation,
+  riskLifecycleBucketForRegisterSnapshot,
+} from "@/domain/risk/riskFieldSemantics";
+import {
+  buildSimulationInputAuditRows,
+  summarizeSimulationInputAudit,
+} from "@/lib/runDataSimulationInputAudit";
 
 type ForwardExposurePayload = {
   horizonMonths: number;
@@ -65,6 +76,40 @@ function formatCost(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+type MonitoringRecommendationView = "cost" | "schedule";
+
+type MonitoringRecommendation = {
+  riskId: string;
+  title: string;
+  lifecycleLabel: string;
+  potentialReduction: number;
+  mitigationCost: number | null;
+  efficiency: number | null;
+  confidence: "High" | "Medium" | "Low";
+  recommendation: string;
+};
+
+function interpolateFromAnchors(
+  p20: number | null | undefined,
+  p50: number | null | undefined,
+  p80: number | null | undefined,
+  p90: number | null | undefined,
+  targetPercent: number
+): number | null {
+  const values = [p20, p50, p80, p90];
+  if (!values.every((v) => typeof v === "number" && Number.isFinite(v))) return null;
+  const a20 = p20 as number;
+  const a50 = p50 as number;
+  const a80 = p80 as number;
+  const a90 = p90 as number;
+  const t = Math.max(0, Math.min(100, targetPercent));
+  if (t <= 20) return a20;
+  if (t <= 50) return a20 + ((a50 - a20) * (t - 20)) / 30;
+  if (t <= 80) return a50 + ((a80 - a50) * (t - 50)) / 30;
+  if (t <= 90) return a80 + ((a90 - a80) * (t - 80)) / 10;
+  return a90;
 }
 
 /** Format ISO timestamp for Run Metadata: "15 Mar 2026 — 09:08:37". */
@@ -102,22 +147,18 @@ export type RunDataPageProps = {
  * 1. BASELINE — What inputs were run? (Run Metadata, Risk Register Snapshot)
  * 2. SIMULATION — What did the simulation produce? (Cost/Schedule Distribution)
  * 3. SIMULATION INTEGRITY — Monte Carlo distribution diagnostics (sample size, skew, kurtosis)
- * 4. SIMULATION ASSUMPTIONS — Input quality checks for Monte Carlo readiness
- * 5. CONSISTENCY CHECKS — Cross-section reconciliation checks
- * 6. ANALYSIS — What risks drive the results? (Cost Drivers, Schedule Drivers)
- * 7. EXPOSURE — What exposure does the project carry? (Baseline Exposure)
- * 8. FORWARD LOOKING — How might exposure evolve? (Forecasting)
- * 9. DECISION SUPPORT — What effect do mitigations have? (Mitigation Results, Mitigation Leverage)
+ * 4. SIMULATION INPUT AUDIT — Per-risk engine inputs (snapshot inputs_used or live getEffectiveRiskInputs)
+ * 5. SIMULATION ASSUMPTIONS — Input quality checks for Monte Carlo readiness
+ * 6. CONSISTENCY CHECKS — Cross-section reconciliation checks
+ * 7. ANALYSIS — What risks drive the results? (Cost Drivers, Schedule Drivers)
+ * 8. EXPOSURE — What exposure does the project carry? (Baseline Exposure)
+ * 9. FORWARD LOOKING — How might exposure evolve? (Forecasting)
+ * 10. DECISION SUPPORT — What effect do mitigations have? (Mitigation Results, Mitigation Leverage)
  *
  * Every section supports validation of the data model and calculations; no decorative charts.
  */
 export default function RunDataPage({ projectId, projectName }: RunDataPageProps = {}) {
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
-  useEffect(() => {
-    if (!projectId || !setPageHeaderExtras) return;
-    setPageHeaderExtras({ titleSuffix: "Run Data", end: null });
-    return () => setPageHeaderExtras(null);
-  }, [projectId, setPageHeaderExtras]);
   const { risks, simulation, runSimulation, clearSimulationHistory, hasDraftRisks, invalidRunnableCount, riskForecastsById, forwardPressure, setRisks, hydrateSimulationFromDbSnapshot } = useRiskRegister();
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
   const [snapshotPersistWarning, setSnapshotPersistWarning] = useState<string | null>(null);
@@ -127,10 +168,16 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const [triggeredBy, setTriggeredBy] = useState<string | null>(null);
   const [reportingSnapshotRow, setReportingSnapshotRow] = useState<SimulationSnapshotRow>(null);
   const [reportingLockedByLabel, setReportingLockedByLabel] = useState<string | null>(null);
+  const [sortAuditByPotentialReduction, setSortAuditByPotentialReduction] = useState(false);
+  const [monitoringRecommendationView, setMonitoringRecommendationView] = useState<MonitoringRecommendationView>("cost");
 
   useEffect(() => {
-    if (!projectId) return;
-    listRisks(projectId)
+    const pid = projectId?.trim();
+    if (!pid) {
+      console.error("[run-data] listRisks skipped: projectId is required for risk access");
+      return;
+    }
+    listRisks(pid)
       .then((loaded) => setRisks(loaded))
       .catch((err) => console.error("[run-data] load risks", err));
     // Intentionally depend only on projectId; setRisks identity changes when store state updates and would cause a re-fetch loop.
@@ -229,6 +276,15 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
     });
     return { horizonMonths, result };
   }, [risks]);
+
+  const targetPercent = useMemo(() => {
+    const ctx = loadProjectContext(projectId);
+    return riskAppetiteToPercent(ctx?.riskAppetite);
+  }, [projectId]);
+  const targetScheduleDays = useMemo(() => {
+    const s = neutralMc?.summary;
+    return interpolateFromAnchors(s?.p20Time, s?.p50Time, s?.p80Time, s?.p90Time, targetPercent);
+  }, [neutralMc?.summary, targetPercent]);
 
   /** Neutral baseline result. */
   const selectedResult = forwardExposure.result;
@@ -477,11 +533,8 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       : "Partial";
   }, [baselineSummaryNeutral, neutralMc, current?.risks?.length]);
 
-  /** Risk Register Snapshot: total/status from full register so closed/archived are included (snapshot only contains risks in run, which excludes closed/archived). Risk mix and "in run" count still use snapshot. */
+  /** Risk Register Snapshot: total/status from full register. "Risks in run" and mix use live register rows excluded from MC the same way as the engine (closed/archived), not persisted snapshot length (which can lag after register edits). */
   const snapshotRiskStats = useMemo(() => {
-    const list = current?.risks ?? [];
-    const totalInRun = list.length;
-    const snapshotIds = new Set(list.map((r) => r.id));
     const statusCounts = {
       draft: 0,
       open: 0,
@@ -490,18 +543,14 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       closed: 0,
       archived: 0,
     };
-    const normalizedStatus = (s: string | undefined): keyof typeof statusCounts | null => {
-      if (!s || typeof s !== "string") return null;
-      const lower = s.toLowerCase();
-      return lower in statusCounts ? (lower as keyof typeof statusCounts) : null;
-    };
-    // Status counts from full risk register (so closed/archived are not ignored)
+    // Status counts from full risk register (mitigated synonym + active mitigationProfile; see riskFieldSemantics)
     for (const r of risks) {
-      const status = normalizedStatus(r.status);
-      if (status) statusCounts[status] += 1;
+      const bucket = riskLifecycleBucketForRegisterSnapshot(r);
+      if (bucket) statusCounts[bucket] += 1;
     }
     const total = risks.length;
-    const risksInRun = risks.filter((r) => snapshotIds.has(r.id));
+    const risksInRun = risks.filter((r) => !isRiskStatusExcludedFromSimulation(r.status));
+    const totalInRun = risksInRun.length;
     const hasPreCost = (r: (typeof risks)[number]) =>
       !appliesToExcludesCost(r.appliesTo) &&
       typeof r.preMitigationCostML === "number" &&
@@ -531,7 +580,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         post: { both: postBoth, costOnly: postCostOnly, timeOnly: postTimeOnly },
       },
     };
-  }, [current?.risks, risks]);
+  }, [risks]);
 
   /** Simulation Integrity: distribution diagnostics from neutral MC samples. Population formulas; used only when samples are stored. */
   const simulationIntegrity = useMemo(() => {
@@ -607,11 +656,127 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
   /** Simulation Assumptions: input quality counts for risks in the run (live risk fields). */
   const simulationAssumptionCounts = useMemo(() => {
-    const list = current?.risks ?? [];
-    const snapshotIds = new Set(list.map((r) => r.id));
-    const risksInRun = risks.filter((r) => snapshotIds.has(r.id));
+    const risksInRun = risks.filter((r) => !isRiskStatusExcludedFromSimulation(r.status));
     return computeSimulationAssumptionCounts(risksInRun);
-  }, [current?.risks, risks]);
+  }, [risks]);
+
+  /** Per-risk MC input audit: persisted `inputs_used` when this run matches DB row; else live `getEffectiveRiskInputs`. */
+  const simulationInputAuditRowsRaw = useMemo(() => {
+    const payload =
+      current &&
+      reportingDbRow?.id &&
+      current.id &&
+      reportingDbRow.id === current.id
+        ? reportingDbRow.payload
+        : null;
+    const inputsUsed = payload?.inputs_used?.length ? payload.inputs_used : null;
+    return buildSimulationInputAuditRows(risks, inputsUsed);
+  }, [risks, reportingDbRow?.id, reportingDbRow?.payload, current?.id]);
+
+  const simulationInputAuditSummary = useMemo(
+    () => summarizeSimulationInputAudit(simulationInputAuditRowsRaw),
+    [simulationInputAuditRowsRaw]
+  );
+
+  const monitoringRecommendationDataByView = useMemo(() => {
+    const buildForView = (view: MonitoringRecommendationView) => {
+      const eligibleRows = simulationInputAuditRowsRaw.filter((row) => {
+        const reduction = view === "cost" ? row.potentialReductionCost : row.potentialReductionTime;
+        const hasPositiveReduction = reduction != null && Number.isFinite(reduction) && reduction > 0;
+        return (
+          row.lifecycleLabel === "Monitoring" &&
+          row.included &&
+          row.sourceUsed === "pre" &&
+          !row.flags.postDataIncomplete &&
+          hasPositiveReduction
+        );
+      });
+
+      const ranked = [...eligibleRows].sort((a, b) => {
+        const reductionA = view === "cost" ? a.potentialReductionCost ?? 0 : a.potentialReductionTime ?? 0;
+        const reductionB = view === "cost" ? b.potentialReductionCost ?? 0 : b.potentialReductionTime ?? 0;
+        const reductionDelta = reductionB - reductionA;
+        if (Math.abs(reductionDelta) > 1e-9) return reductionDelta;
+        const effA = view === "cost" ? a.costEfficiency ?? -Infinity : a.timeEfficiency ?? -Infinity;
+        const effB = view === "cost" ? b.costEfficiency ?? -Infinity : b.timeEfficiency ?? -Infinity;
+        if (effB !== effA) return effB - effA;
+        return a.title.localeCompare(b.title, undefined, { sensitivity: "base" });
+      });
+
+      const recommendations: MonitoringRecommendation[] = ranked.slice(0, 5).map((row) => {
+        const hasCriticalFlag =
+          row.flags.probabilityMismatch || row.flags.postDataIncomplete || row.flags.mismatchStatusVsSource;
+        const hasNoFlags =
+          !row.flags.probabilityMismatch && !row.flags.postDataIncomplete && !row.flags.mismatchStatusVsSource;
+        const hasMitigationCost = row.mitigationCost != null;
+        // Admin-only confidence heuristic for prioritisation UI; does not affect simulation maths.
+        const confidence: "High" | "Medium" | "Low" = hasCriticalFlag
+          ? "Low"
+          : hasNoFlags && hasMitigationCost && row.sourceUsed === "pre" && row.included
+            ? "High"
+            : "Medium";
+
+        const recommendation = hasCriticalFlag
+          ? "Validate probability inputs — reduction attractive but input alignment needs review"
+          : !hasMitigationCost
+            ? view === "cost"
+              ? "Review cost first — good cost reduction but mitigation cost missing"
+              : "Review cost first — strong schedule reduction but mitigation cost missing"
+            : view === "cost"
+              ? "Activate now — strong cost reduction with complete mitigation data"
+              : "Activate now — strong schedule reduction with complete mitigation data";
+
+        return {
+          riskId: row.riskId,
+          title: row.title,
+          lifecycleLabel: row.lifecycleLabel,
+          potentialReduction: (view === "cost" ? row.potentialReductionCost : row.potentialReductionTime) as number,
+          mitigationCost: row.mitigationCost,
+          efficiency: view === "cost" ? row.costEfficiency : row.timeEfficiency,
+          confidence,
+          recommendation,
+        };
+      });
+
+      const totalPotentialReduction = eligibleRows.reduce(
+        (sum, row) => sum + (view === "cost" ? row.potentialReductionCost ?? 0 : row.potentialReductionTime ?? 0),
+        0
+      );
+      const efficiencyValues = eligibleRows
+        .map((row) => (view === "cost" ? row.costEfficiency : row.timeEfficiency))
+        .filter((v): v is number => v != null && Number.isFinite(v));
+      const avgEfficiency =
+        efficiencyValues.length > 0
+          ? efficiencyValues.reduce((sum, value) => sum + value, 0) / efficiencyValues.length
+          : null;
+
+      return {
+        eligibleCount: eligibleRows.length,
+        totalPotentialReduction,
+        avgEfficiency,
+        recommendations,
+      };
+    };
+
+    return {
+      cost: buildForView("cost"),
+      schedule: buildForView("schedule"),
+    };
+  }, [simulationInputAuditRowsRaw]);
+
+  const monitoringRecommendationData = monitoringRecommendationDataByView[monitoringRecommendationView];
+
+  const simulationInputAuditRows = useMemo(() => {
+    const r = [...simulationInputAuditRowsRaw];
+    if (sortAuditByPotentialReduction) {
+      r.sort((a, b) => {
+        const pa = a.potentialReductionCost ?? -Infinity;
+        const pb = b.potentialReductionCost ?? -Infinity;
+        return pb - pa;
+      });
+    }
+    return r;
+  }, [simulationInputAuditRowsRaw, sortAuditByPotentialReduction]);
 
   /** Consistency Checks: cross-section reconciliation. Uses existing page data only; no re-run. */
   const CONSISTENCY_EPS_COST = 1;
@@ -619,6 +784,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const consistencyChecks = useMemo((): { check: string; result: string; status: "PASS" | "WARN" | "FAIL" }[] => {
     const statusCounts = snapshotRiskStats.statusCounts;
     const totalRisks = snapshotRiskStats.total;
+    const totalInRun = snapshotRiskStats.totalInRun;
     const sumStatus = statusCounts.draft + statusCounts.open + statusCounts.monitoring + statusCounts.mitigating + statusCounts.closed + statusCounts.archived;
     const preMix = simulationAssumptionCounts.costOnlyProfile + simulationAssumptionCounts.scheduleOnlyProfile + simulationAssumptionCounts.costAndScheduleProfile;
     const postMix = snapshotRiskStats.riskMix.post.both + snapshotRiskStats.riskMix.post.costOnly + snapshotRiskStats.riskMix.post.timeOnly;
@@ -665,19 +831,19 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       });
     }
 
-    // 3. Post-mitigation risk mix reconciles
-    if (totalRisks === 0) {
+    // 3. Post-mitigation risk mix reconciles (mix is from risks in simulation only; closed/archived excluded)
+    if (totalInRun === 0) {
       checks.push({ check: "Post-mitigation risk mix reconciles", result: "Not enough data", status: "WARN" });
-    } else if (postMix === totalRisks) {
+    } else if (postMix === totalInRun) {
       checks.push({
         check: "Post-mitigation risk mix reconciles",
-        result: `${snapshotRiskStats.riskMix.post.both} + ${snapshotRiskStats.riskMix.post.costOnly} + ${snapshotRiskStats.riskMix.post.timeOnly} = ${totalRisks}`,
+        result: `${snapshotRiskStats.riskMix.post.both} + ${snapshotRiskStats.riskMix.post.costOnly} + ${snapshotRiskStats.riskMix.post.timeOnly} = ${totalInRun} (risks in run)`,
         status: "PASS",
       });
     } else {
       checks.push({
         check: "Post-mitigation risk mix reconciles",
-        result: `${postMix} ≠ ${totalRisks}`,
+        result: `${postMix} ≠ ${totalInRun} (risks in run, excl. closed/archived)`,
         status: "FAIL",
       });
     }
@@ -775,24 +941,27 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       }
     }
 
-    // 8. Top 5 share is not less than Top 3 share
+    // 8. Top 5 risk share is not less than Top 3 risk share
     const total = selectedResult?.total ?? 0;
-    const top5 = (selectedResult?.topDrivers ?? []).slice(0, 5);
+    const topDrivers = (selectedResult?.topDrivers ?? []).filter((d) => Number.isFinite(d.total) && d.total > 0);
+    const top5 = topDrivers.slice(0, 5);
+    const top3 = topDrivers.slice(0, 3);
     const top5Sum = top5.reduce((s, d) => s + d.total, 0);
+    const top3Sum = top3.reduce((s, d) => s + d.total, 0);
     const top5SharePct = total > 0 ? (top5Sum / total) * 100 : 0;
-    const top3SharePct = ((selectedResult?.concentration?.top3Share ?? 0) * 100);
+    const top3RiskSharePct = total > 0 ? (top3Sum / total) * 100 : 0;
     if (total <= 0) {
-      checks.push({ check: "Top 5 share ≥ Top 3 share", result: "Not enough data", status: "WARN" });
-    } else if (top5SharePct >= top3SharePct - CONSISTENCY_EPS_RATIO) {
+      checks.push({ check: "Top 5 risk share ≥ Top 3 risk share", result: "Not enough data", status: "WARN" });
+    } else if (top5SharePct >= top3RiskSharePct - CONSISTENCY_EPS_RATIO) {
       checks.push({
-        check: "Top 5 share ≥ Top 3 share",
-        result: `${top5SharePct.toFixed(1)}% ≥ ${top3SharePct.toFixed(1)}%`,
+        check: "Top 5 risk share ≥ Top 3 risk share",
+        result: `${top5SharePct.toFixed(1)}% ≥ ${top3RiskSharePct.toFixed(1)}%`,
         status: "PASS",
       });
     } else {
       checks.push({
-        check: "Top 5 share ≥ Top 3 share",
-        result: `${top5SharePct.toFixed(1)}% < ${top3SharePct.toFixed(1)}%`,
+        check: "Top 5 risk share ≥ Top 3 risk share",
+        result: `${top5SharePct.toFixed(1)}% < ${top3RiskSharePct.toFixed(1)}%`,
         status: "FAIL",
       });
     }
@@ -850,6 +1019,41 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       }
     }
 
+    // 11. Forecast monthly totals reconcile to portfolio total
+    if (!selectedResult || monthly.length === 0) {
+      checks.push({ check: "Forecast monthly totals reconcile", result: "Not enough data", status: "WARN" });
+    } else {
+      const monthlySum = monthly.reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+      const expectedTotal = Number.isFinite(selectedResult.total) ? selectedResult.total : 0;
+      const ok = Math.abs(monthlySum - expectedTotal) <= CONSISTENCY_EPS_COST;
+      checks.push({
+        check: "Forecast monthly totals reconcile",
+        result: `${formatCost(monthlySum)} ${ok ? "=" : "≠"} ${formatCost(expectedTotal)}`,
+        status: ok ? "PASS" : "FAIL",
+      });
+    }
+
+    // 12. Forecast exposure sanity against neutral expected cost (ratio check for scale/unit drift)
+    const neutralExpectedCost = baselineSummaryNeutral?.totalExpectedCost ?? 0;
+    if (!selectedResult || neutralExpectedCost <= 0) {
+      checks.push({
+        check: "Forecast exposure sanity vs expected cost",
+        result: "Not enough data",
+        status: "WARN",
+      });
+    } else {
+      const ratio = selectedResult.total / neutralExpectedCost;
+      const ratioFinite = Number.isFinite(ratio) && ratio > 0;
+      const withinBand = ratioFinite && ratio >= 0.25 && ratio <= 4;
+      checks.push({
+        check: "Forecast exposure sanity vs expected cost",
+        result: ratioFinite
+          ? `${formatCost(selectedResult.total)} / ${formatCost(neutralExpectedCost)} = ${ratio.toFixed(2)}x`
+          : "Invalid ratio",
+        status: withinBand ? "PASS" : "WARN",
+      });
+    }
+
     return checks;
   }, [
     snapshotRiskStats,
@@ -860,6 +1064,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
     forwardExposure,
     neutralMc,
     simulationIntegrity,
+    baselineSummaryNeutral,
   ]);
 
   /** RUN VERDICT: summary outcome from Simulation Warnings + Consistency Checks. Reuses existing outputs only; no duplicate calculation. */
@@ -894,7 +1099,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       counts: { highWarnings, reviewWarnings, passCount, warnCount, failCount },
     };
   }, [consistencyChecks, simulationAssumptionCounts]);
-  const PAGE_CONTAINER = "px-4 py-4 sm:px-5 sm:py-5";
+  const PAGE_CONTAINER = "mt-0 px-4 pb-4 pt-0 sm:px-5 sm:pb-5 sm:pt-0";
   const PAGE_TITLE = "m-0 text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]";
   const PAGE_ACTION_ROW = "mt-4 flex flex-wrap items-center gap-2";
   const CALLOUT_ROW = "min-w-0 basis-full shrink-0 sm:basis-auto";
@@ -905,7 +1110,9 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const RUN_CARD_TITLE = "text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)]";
   const RUN_SUBCARD_TITLE = "text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]";
   const RUN_CARD_BODY = "!px-4 !py-3";
-  const SECTION_GAP = "!mt-4";
+  const SECTION_GAP = "mt-8";
+  const FIRST_SECTION_GAP = "!mt-0";
+  const SMALL_GAP = "mt-4";
   const META_GRID_4 = "grid grid-cols-1 gap-4 text-[length:var(--ds-text-sm)] sm:grid-cols-2 lg:grid-cols-4";
   const META_GROUP = "space-y-2";
   const META_GROUP_TITLE = "text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]";
@@ -965,24 +1172,31 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const CARD_DESC = "m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
   const DRIVER_BLOCK_HEADING =
     "mb-0 shrink-0 text-[length:var(--ds-text-xs)] font-semibold uppercase tracking-[0.06em] text-[var(--ds-text-muted)]";
-
-  return (
-    <main className={PAGE_CONTAINER}>
-      <h1 className={PAGE_TITLE}>Run Data</h1>
-
-      <div className={PAGE_ACTION_ROW}>
+  const simulationActions = useMemo(
+    () => (
+      <>
         <Button
           type="button"
           onClick={async () => {
+            const snapshotProjectId = projectId?.trim();
+            if (!snapshotProjectId) {
+              console.error("[run-data] runSimulation skipped: projectId is required for snapshot access");
+              return;
+            }
             setSnapshotPersistWarning(null);
             setLockedRunPinned(false);
-            const result = await runSimulation(10000, projectId ?? undefined);
+            const result = await runSimulation(10000, snapshotProjectId);
             if (!result.ran && result.blockReason === "invalid") {
               setRunBlockedInvalidCount(result.invalidCount);
               return;
             }
-            if (result.ran && result.snapshotPersistWarning) {
-              setSnapshotPersistWarning(result.snapshotPersistWarning);
+            if (!result.ran && result.blockReason === "missing_project") {
+              console.error("[run-data] runSimulation blocked:", result.message);
+              return;
+            }
+            if (!result.ran && result.blockReason === "snapshot_persist") {
+              setSnapshotPersistWarning(result.message);
+              return;
             }
           }}
           disabled={hasDraftRisks || invalidRunnableCount > 0}
@@ -992,9 +1206,20 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         </Button>
         <Button
           type="button"
-          onClick={() => {
+          onClick={async () => {
+            const snapshotProjectId = projectId?.trim();
+            if (!snapshotProjectId) {
+              console.error("[run-data] clearProjectSnapshots skipped: projectId is required for snapshot access");
+              return;
+            }
             setLockedRunPinned(false);
             clearSimulationHistory();
+            try {
+              await clearProjectSnapshots(snapshotProjectId);
+              setReportingSnapshotRow(null);
+            } catch (err) {
+              console.error("[run-data] clear snapshots", err);
+            }
           }}
           variant="secondary"
         >
@@ -1003,15 +1228,20 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         <Button
           type="button"
           onClick={async () => {
+            const snapshotProjectId = projectId?.trim();
+            if (!snapshotProjectId) {
+              console.error("[run-data] getLatestLockedSnapshot skipped: projectId is required for snapshot access");
+              return;
+            }
             setLockedRunLoadWarning(null);
             setLoadingLockedRun(true);
             try {
-              const row = await getLatestLockedDbSnapshot(projectId ?? undefined);
+              const row = await getLatestLockedDbSnapshot(snapshotProjectId);
               if (!row) {
                 setLockedRunLoadWarning("No locked reporting run found for this project.");
                 return;
               }
-              hydrateSimulationFromDbSnapshot(row);
+              hydrateSimulationFromDbSnapshot(row, "run-data-load-last-locked");
               setReportingSnapshotRow(row);
               setLockedRunPinned(true);
             } catch (e: unknown) {
@@ -1029,6 +1259,39 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         >
           {loadingLockedRun ? "Loading locked run..." : "Load Last Locked Run"}
         </Button>
+      </>
+    ),
+    [
+      clearSimulationHistory,
+      hasDraftRisks,
+      hydrateSimulationFromDbSnapshot,
+      invalidRunnableCount,
+      loadingLockedRun,
+      projectId,
+      runSimulation,
+    ]
+  );
+  const showInlineHeader = !projectId || !setPageHeaderExtras;
+  const pageContainerClass = showInlineHeader ? PAGE_CONTAINER : "mt-0 px-4 pb-4 pt-0 sm:px-5 sm:pb-5 sm:pt-0";
+  const headerActions = useMemo(
+    () => <div className="flex flex-wrap items-center gap-2">{simulationActions}</div>,
+    [simulationActions]
+  );
+  useEffect(() => {
+    if (!projectId || !setPageHeaderExtras) return;
+    setPageHeaderExtras({ titleSuffix: "Run Data", end: headerActions });
+    return () => setPageHeaderExtras(null);
+  }, [headerActions, projectId, setPageHeaderExtras]);
+
+  return (
+    <main className={pageContainerClass}>
+      {showInlineHeader && (
+        <>
+          <h1 className={PAGE_TITLE}>Run Data</h1>
+          <div className={PAGE_ACTION_ROW}>{simulationActions}</div>
+        </>
+      )}
+      <div className={PAGE_ACTION_ROW}>
         {hasDraftRisks && (
           <Callout status="warning" className={`${CALLOUT_ROW} text-[length:var(--ds-text-sm)]`} role="status">
             Review and save all draft risks in the Risk Register before running simulation.
@@ -1058,14 +1321,14 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
 
 
       {!current ? (
-        <Callout status="neutral" className={`${SECTION_GAP} text-[length:var(--ds-text-sm)]`}>
+        <Callout status="neutral" className={`${SMALL_GAP} text-[length:var(--ds-text-sm)]`}>
           No simulation run yet. Add risks in the Risk Register, then run a simulation.
         </Callout>
       ) : (
         <>
           {/* ——— BASELINE: inputs that were run ——— */}
           {/* Run Metadata: run identity, config, status. Source: current (simulation run snapshot). */}
-          <Section className={SECTION_GAP} aria-label="Run metadata">
+          <Section className={FIRST_SECTION_GAP} aria-label="Run metadata">
             <Card className={RUN_SECTION_CARD}>
               <CardHeader className={RUN_CARD_HEADER}>
                 <CardTitle className={RUN_CARD_TITLE}>Run Metadata</CardTitle>
@@ -1539,7 +1802,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 <CardTitle className={RUN_CARD_TITLE}>Simulation Integrity</CardTitle>
                 <p className={`${CARD_DESC} mt-1`}>Monte Carlo distribution diagnostics</p>
                 <p className={`${CARD_DESC} mt-1`}>
-                  Kurtosis is raw (normal ≈ 3), not excess kurtosis. CV = std dev / mean.
+                  Standard deviation shows typical spread around the mean. CV shows relative spread.
+                </p>
+                <p className={`${CARD_DESC} mt-1`}>
+                  Kurtosis is raw (normal ≈ 3), not excess kurtosis. Variance is hidden from the main table because it uses squared units.
                 </p>
               </CardHeader>
               <CardBody className={RUN_CARD_BODY}>
@@ -1551,6 +1817,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     </CardHeader>
                     <CardBody className={RUN_CARD_BODY}>
                   {simulationIntegrity.cost ? (
+                    <>
                     <Table className={DIAG_TABLE}>
                       <TableHead>
                         <TableRow className={DIAG_THEAD_ROW}>
@@ -1569,15 +1836,6 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Mean</TableCell>
                           <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.cost.mean != null && Number.isFinite(simulationIntegrity.cost.mean) ? formatCost(simulationIntegrity.cost.mean) : "—"}
-                          </TableCell>
-                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
-                        </TableRow>
-                        <TableRow className={DIAG_TBODY_ROW}>
-                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Variance</TableCell>
-                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
-                            {simulationIntegrity.cost.variance != null && Number.isFinite(simulationIntegrity.cost.variance)
-                              ? simulationIntegrity.cost.variance.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                              : "—"}
                           </TableCell>
                           <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
                         </TableRow>
@@ -1631,6 +1889,13 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         </TableRow>
                       </TableBody>
                     </Table>
+                    <p className={`${CARD_DESC} mt-2`}>
+                      Variance (technical, squared units):{" "}
+                      {simulationIntegrity.cost.variance != null && Number.isFinite(simulationIntegrity.cost.variance)
+                        ? simulationIntegrity.cost.variance.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                        : "—"}
+                    </p>
+                    </>
                   ) : (
                     <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                       Diagnostics unavailable — sample data not stored for this run.
@@ -1646,6 +1911,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     </CardHeader>
                     <CardBody className={RUN_CARD_BODY}>
                   {simulationIntegrity.schedule ? (
+                    <>
                     <Table className={DIAG_TABLE}>
                       <TableHead>
                         <TableRow className={DIAG_THEAD_ROW}>
@@ -1665,15 +1931,6 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                           <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
                             {simulationIntegrity.schedule.mean != null && Number.isFinite(simulationIntegrity.schedule.mean)
                               ? formatDurationDays(simulationIntegrity.schedule.mean)
-                              : "—"}
-                          </TableCell>
-                          <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
-                        </TableRow>
-                        <TableRow className={DIAG_TBODY_ROW}>
-                          <TableCell className={`${DIAG_TD_LEFT_PR2} pl-0`}>Variance</TableCell>
-                          <TableCell className={DIAG_TD_RIGHT_PX2_NUM}>
-                            {simulationIntegrity.schedule.variance != null && Number.isFinite(simulationIntegrity.schedule.variance)
-                              ? simulationIntegrity.schedule.variance.toLocaleString(undefined, { maximumFractionDigits: 1 })
                               : "—"}
                           </TableCell>
                           <TableCell className={`${DIAG_TD_LEFT_PL2_MUTED} pr-0`}>—</TableCell>
@@ -1734,6 +1991,13 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         </TableRow>
                       </TableBody>
                     </Table>
+                    <p className={`${CARD_DESC} mt-2`}>
+                      Variance (technical, squared units):{" "}
+                      {simulationIntegrity.schedule.variance != null && Number.isFinite(simulationIntegrity.schedule.variance)
+                        ? simulationIntegrity.schedule.variance.toLocaleString(undefined, { maximumFractionDigits: 1 })
+                        : "—"}
+                    </p>
+                    </>
                   ) : (
                     <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                       Diagnostics unavailable — sample data not stored for this run.
@@ -1742,6 +2006,293 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     </CardBody>
                   </Card>
                 </div>
+              </CardBody>
+            </Card>
+          </Section>
+
+          {/* ——— SIMULATION INPUT AUDIT: per-risk engine inputs (snapshot vs live) ——— */}
+          <Section className={SECTION_GAP} aria-label="Simulation input audit">
+            <Card className={RUN_SECTION_CARD}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Top Monitoring Risks to Activate</CardTitle>
+                <p className={`${CARD_DESC} mt-1`}>
+                  Monitoring risks with the strongest modelled reduction if moved to active mitigation.
+                </p>
+              </CardHeader>
+              <CardBody className={RUN_CARD_BODY}>
+                <div className="mb-4 inline-flex rounded-md border border-[var(--ds-border)] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setMonitoringRecommendationView("cost")}
+                    className={`rounded px-3 py-1 text-[length:var(--ds-text-xs)] font-medium ${
+                      monitoringRecommendationView === "cost"
+                        ? "bg-[var(--ds-text-primary)] text-[var(--ds-bg)]"
+                        : "text-[var(--ds-text-secondary)]"
+                    }`}
+                    aria-pressed={monitoringRecommendationView === "cost"}
+                  >
+                    Cost
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMonitoringRecommendationView("schedule")}
+                    className={`rounded px-3 py-1 text-[length:var(--ds-text-xs)] font-medium ${
+                      monitoringRecommendationView === "schedule"
+                        ? "bg-[var(--ds-text-primary)] text-[var(--ds-bg)]"
+                        : "text-[var(--ds-text-secondary)]"
+                    }`}
+                    aria-pressed={monitoringRecommendationView === "schedule"}
+                  >
+                    Schedule
+                  </button>
+                </div>
+                <dl className="mb-4 grid grid-cols-1 gap-3 text-[length:var(--ds-text-sm)] sm:grid-cols-3">
+                  <div className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
+                    <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
+                      Eligible Monitoring Risks
+                    </dt>
+                    <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                      {monitoringRecommendationData.eligibleCount}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
+                    <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
+                      Total Potential Reduction
+                    </dt>
+                    <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                      {monitoringRecommendationView === "cost"
+                        ? formatCost(monitoringRecommendationData.totalPotentialReduction)
+                        : formatDurationDays(monitoringRecommendationData.totalPotentialReduction)}
+                    </dd>
+                  </div>
+                  <div className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
+                    <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
+                      {monitoringRecommendationView === "cost" ? "Avg Cost Efficiency" : "Avg Time Efficiency"}
+                    </dt>
+                    <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                      {monitoringRecommendationData.avgEfficiency != null
+                        ? monitoringRecommendationView === "cost"
+                          ? monitoringRecommendationData.avgEfficiency.toFixed(2)
+                          : monitoringRecommendationData.avgEfficiency.toFixed(2)
+                        : "—"}
+                    </dd>
+                  </div>
+                </dl>
+
+                {monitoringRecommendationData.recommendations.length === 0 ? (
+                  <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {monitoringRecommendationView === "cost"
+                      ? "No monitoring risks currently qualify for cost activation recommendations."
+                      : "No monitoring risks currently qualify for schedule activation recommendations."}
+                  </p>
+                ) : (
+                  <div className={DRIVER_TABLE_WRAP}>
+                    <Table className={`${DRIVER_TABLE} min-w-[980px] text-[length:var(--ds-text-xs)]`}>
+                      <TableHead>
+                        <TableRow className={DRIVER_HEAD_ROW}>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Risk</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Current Status</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Potential Reduction</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Mitigation Cost</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>
+                            {monitoringRecommendationView === "cost" ? "Cost Efficiency" : "Time Efficiency"}
+                          </TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Data Confidence</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Recommendation</TableHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {monitoringRecommendationData.recommendations.map((row) => (
+                          <TableRow key={row.riskId} className={DRIVER_ROW}>
+                            <TableCell className={`${DRIVER_CELL_NAME} max-w-[min(220px,28vw)]`}>
+                              <span className="block truncate" title={row.title}>
+                                {row.title}
+                              </span>
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{row.lifecycleLabel}</TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {monitoringRecommendationView === "cost"
+                                ? formatCost(row.potentialReduction)
+                                : formatDurationDays(row.potentialReduction)}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.mitigationCost != null ? formatCost(row.mitigationCost) : "—"}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.efficiency != null && Number.isFinite(row.efficiency)
+                                ? row.efficiency.toFixed(2)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{row.confidence}</TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{row.recommendation}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardBody>
+            </Card>
+            <Card className={`${RUN_SECTION_CARD} mt-4`}>
+              <CardHeader className={RUN_CARD_HEADER}>
+                <CardTitle className={RUN_CARD_TITLE}>Simulation Input Audit (Per Risk)</CardTitle>
+                <p className={`${CARD_DESC} mt-1`}>
+                  Monte Carlo inputs as recorded on the last persisted run when available (
+                  <code className="text-[length:var(--ds-text-xs)]">payload.inputs_used</code>
+                  ), otherwise derived from the live register using{" "}
+                  <code className="text-[length:var(--ds-text-xs)]">getEffectiveRiskInputs</code>. Flags use
+                  current risk data plus the same engine function.
+                </p>
+              </CardHeader>
+              <CardBody className={RUN_CARD_BODY}>
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <dl className="m-0 grid grid-cols-2 gap-x-4 gap-y-2 text-[length:var(--ds-text-sm)] sm:grid-cols-5">
+                    <div>
+                      <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">Total rows</dt>
+                      <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                        {simulationInputAuditSummary.total}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">Using pre</dt>
+                      <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                        {simulationInputAuditSummary.countPre}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">Using post</dt>
+                      <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                        {simulationInputAuditSummary.countPost}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">Status vs source mismatch</dt>
+                      <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                        {simulationInputAuditSummary.countMismatched}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">Incomplete active post data</dt>
+                      <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
+                        {simulationInputAuditSummary.countIncompleteMitigation}
+                      </dd>
+                    </div>
+                  </dl>
+                  <label className="flex cursor-pointer items-center gap-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                    <input
+                      type="checkbox"
+                      checked={sortAuditByPotentialReduction}
+                      onChange={(e) => setSortAuditByPotentialReduction(e.target.checked)}
+                      className="rounded border-[var(--ds-border)]"
+                    />
+                    Sort by monitoring opportunity (desc)
+                  </label>
+                </div>
+                {simulationInputAuditRows.length === 0 ? (
+                  <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    No risks to audit. Add risks or run a simulation.
+                  </p>
+                ) : (
+                  <div className={DRIVER_TABLE_WRAP}>
+                    <Table className={`${DRIVER_TABLE} min-w-[1100px] text-[length:var(--ds-text-xs)]`}>
+                      <TableHead>
+                        <TableRow className={DRIVER_HEAD_ROW}>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Risk</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Lifecycle</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>mitigationProfile</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Source</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>p</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Cost ML</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Time ML</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>appliesTo</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>In</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_LEFT}>Flags</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Δ (monitor)</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Mit. cost</TableHeaderCell>
+                          <TableHeaderCell className={DRIVER_TH_RIGHT}>Efficiency</TableHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {simulationInputAuditRows.map((row) => (
+                          <TableRow key={row.riskId} className={DRIVER_ROW}>
+                            <TableCell className={`${DRIVER_CELL_NAME} max-w-[min(220px,28vw)]`}>
+                              <span className="block truncate" title={row.title}>
+                                {row.title}
+                              </span>
+                              {row.valuesFromSnapshot && (
+                                <span className="mt-0.5 block text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                                  snapshot
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{row.lifecycleLabel}</TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{row.mitigationProfileStatusRaw}</TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>{row.sourceUsed}</TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.probabilityUsed.toFixed(4)}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>{formatCost(row.costMlUsed)}</TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>{row.timeMlUsed.toLocaleString()}</TableCell>
+                            <TableCell className={DRIVER_CELL_MUTED}>{row.appliesToDisplay}</TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.included ? (
+                                <Badge status="success" variant="subtle">
+                                  yes
+                                </Badge>
+                              ) : (
+                                <Badge status="neutral" variant="subtle">
+                                  no
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="max-w-[200px] px-3 py-1.5 align-top">
+                              <div className="flex flex-wrap gap-1">
+                                {row.flags.mismatchStatusVsSource && (
+                                  <Badge status="danger" variant="subtle">
+                                    status≠src
+                                  </Badge>
+                                )}
+                                {row.flags.postDataIncomplete && (
+                                  <Badge status="warning" variant="subtle">
+                                    post gap
+                                  </Badge>
+                                )}
+                                {row.flags.probabilityMismatch && (
+                                  <Badge status="warning" variant="subtle">
+                                    p align
+                                  </Badge>
+                                )}
+                                {!row.flags.mismatchStatusVsSource &&
+                                  !row.flags.postDataIncomplete &&
+                                  !row.flags.probabilityMismatch && (
+                                    <span className="text-[var(--ds-text-muted)]">—</span>
+                                  )}
+                              </div>
+                              {row.reasonIfExcluded ? (
+                                <span className="mt-1 block text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                                  {row.reasonIfExcluded}
+                                </span>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.potentialReductionCost != null && Number.isFinite(row.potentialReductionCost)
+                                ? formatCost(row.potentialReductionCost)
+                                : "—"}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.mitigationCost != null ? formatCost(row.mitigationCost) : "—"}
+                            </TableCell>
+                            <TableCell className={DRIVER_CELL_NUMERIC}>
+                              {row.costEfficiency != null && Number.isFinite(row.costEfficiency)
+                                ? row.costEfficiency.toFixed(2)
+                                : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardBody>
             </Card>
           </Section>
@@ -2361,10 +2912,15 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {/* Mitigation leverage (ROI): API; requires simulation snapshot. */}
           {snapshotNeutral ? (
             <div className={SECTION_GAP}>
-              <MitigationOptimisationPanel />
+              <MitigationOptimisationPanel
+                risks={risks}
+                neutralSnapshot={current ?? null}
+                targetPercent={targetPercent}
+                targetScheduleDays={targetScheduleDays}
+              />
             </div>
           ) : (
-            <p className={`${SECTION_GAP} text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]`}>
+            <p className={`${SMALL_GAP} text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]`}>
               Run simulation to see mitigation leverage.
             </p>
           )}

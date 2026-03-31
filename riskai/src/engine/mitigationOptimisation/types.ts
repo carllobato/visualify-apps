@@ -1,4 +1,4 @@
-export type BenefitMetric = "p80CostReduction";
+export type BenefitMetric = "targetCostReduction";
 
 export type MitigationCurvePoint = {
   incrementalSpend: number;
@@ -13,14 +13,17 @@ export type MitigationOptimisationRiskResult = {
   riskName: string;
   leverageScore: number;
   bestROIBand: { from: number; to: number };
+  bestROIBandBenefit: number;
   topBandBenefitPerDollar: number;
   explanation: string;
   curve: MitigationCurvePoint[];
 };
 
 export type MitigationOptimisationResult = {
-  baseline: { neutralP80: number };
+  baseline: { neutralTargetCost: number; neutralTargetDays: number; targetPercent: number };
   ranked: MitigationOptimisationRiskResult[];
+  rankedCost: MitigationOptimisationRiskResult[];
+  rankedSchedule: MitigationOptimisationRiskResult[];
   meta: {
     spendStepsUsed: number[];
     metricUsed: BenefitMetric;

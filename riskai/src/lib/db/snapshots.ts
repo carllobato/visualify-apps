@@ -1,5 +1,14 @@
-import { DEFAULT_PROJECT_ID } from "@/lib/db/risks";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+
+const SNAPSHOT_PROJECT_ID_REQUIRED = "projectId is required for snapshot access";
+
+function requireSnapshotProjectId(projectId?: string): string {
+  const trimmed = projectId?.trim();
+  if (!trimmed) {
+    throw new Error(SNAPSHOT_PROJECT_ID_REQUIRED);
+  }
+  return trimmed;
+}
 
 /** Full JSON persisted with each snapshot (reporting / audit). */
 export type SimulationSnapshotPayload = {
@@ -75,13 +84,13 @@ function sanitizeRiskCount(value: unknown): number | null {
 /**
  * Insert a Monte Carlo simulation result into riskai_simulation_snapshots (reporting scalars + payload jsonb).
  * Returns the inserted row including the canonical UUID primary key (id). Throws on failure.
- * @param projectId - Optional project UUID; when omitted uses default (legacy single-project).
+ * @param projectId - Project UUID (required).
  */
 export async function createSnapshot(
   snapshot: SimulationSnapshotPersistInput,
   projectId?: string
 ): Promise<SimulationSnapshotRow> {
-  const pid = projectId ?? DEFAULT_PROJECT_ID;
+  const pid = requireSnapshotProjectId(projectId);
   const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/snapshots`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -122,12 +131,37 @@ export async function createSnapshot(
 }
 
 /**
+ * Fetch a single simulation snapshot by id, scoped to the project.
+ * Uses maybeSingle() so 0 rows returns null without an error.
+ */
+export async function getSnapshotById(snapshotId: string, projectId?: string) {
+  const sid = snapshotId?.trim();
+  if (!sid) {
+    console.error("[snapshot fetch by id] snapshotId is required");
+    return null;
+  }
+  const pid = requireSnapshotProjectId(projectId);
+  const supabase = supabaseBrowserClient();
+  const { data, error } = await supabase
+    .from("riskai_simulation_snapshots")
+    .select("*")
+    .eq("id", sid)
+    .eq("project_id", pid)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[snapshot fetch by id error]", error.message ?? error);
+  }
+  return data;
+}
+
+/**
  * Fetch the most recent simulation snapshot for the project.
  * Uses maybeSingle() so 0 rows returns null without an error.
- * @param projectId - Optional project UUID; when omitted uses default (legacy single-project).
+ * @param projectId - Project UUID (required).
  */
 export async function getLatestSnapshot(projectId?: string) {
-  const pid = projectId ?? DEFAULT_PROJECT_ID;
+  const pid = requireSnapshotProjectId(projectId);
   const supabase = supabaseBrowserClient();
   const { data, error } = await supabase
     .from("riskai_simulation_snapshots")
@@ -144,12 +178,34 @@ export async function getLatestSnapshot(projectId?: string) {
 }
 
 /**
+ * Delete all simulation snapshots for a project.
+ * Used by "Clear History" when user wants a full reset across navigation.
+ */
+export async function clearProjectSnapshots(projectId?: string): Promise<{ deletedCount: number }> {
+  const pid = requireSnapshotProjectId(projectId);
+  const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/snapshots`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    deletedCount?: number;
+    error?: string;
+  };
+  if (!res.ok) {
+    const message = json.error?.trim() || `Snapshot clear failed (${res.status})`;
+    console.error("[snapshot clear error]", message);
+    throw new Error(message);
+  }
+  return { deletedCount: Number(json.deletedCount ?? 0) };
+}
+
+/**
  * Fetch the most recent snapshot marked as reporting-locked for the project.
  * Uses maybeSingle() so 0 rows returns null without an error.
- * @param projectId - Optional project UUID; when omitted uses default (legacy single-project).
+ * @param projectId - Project UUID (required).
  */
 export async function getLatestLockedSnapshot(projectId?: string) {
-  const pid = projectId ?? DEFAULT_PROJECT_ID;
+  const pid = requireSnapshotProjectId(projectId);
   const supabase = supabaseBrowserClient();
   const { data, error } = await supabase
     .from("riskai_simulation_snapshots")

@@ -659,6 +659,11 @@ textarea:disabled {
     border-color var(--ds-transition-fast);
 }
 .ds-nav-link svg {
+  display: block;
+  inline-size: 1rem;
+  block-size: 1rem;
+  flex: 0 0 auto;
+  aspect-ratio: 1 / 1;
   color: var(--ds-text-muted);
   transition: color var(--ds-transition-fast);
 }

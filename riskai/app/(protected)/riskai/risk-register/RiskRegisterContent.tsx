@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { selectDecisionByRiskId, selectDecisionScoreDelta } from "@/store/selectors";
 import { loadProjectContext, isProjectContextComplete } from "@/lib/projectContext";
-import { listRisks, replaceRisks, DEFAULT_PROJECT_ID } from "@/lib/db/risks";
+import { listRisks, replaceRisks } from "@/lib/db/risks";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { mergeDraftToRisk } from "@/domain/risk/risk.mapper";
 import type { RiskMergeCluster, MergeRiskDraft } from "@/domain/risk/risk-merge.types";
@@ -51,6 +51,8 @@ function getRiskColumnValue(risk: Risk, column: SortColumn): string {
       return risk.category;
     case "owner":
       return risk.owner ?? "—";
+    case "appliesTo":
+      return risk.appliesTo?.trim() ? risk.appliesTo.trim() : "—";
     case "preRating":
       return LEVEL_LETTER[risk.inherentRating.level] ?? "L";
     case "postRating":
@@ -83,7 +85,7 @@ function applyColumnFilters<T>(list: T[], filters: ColumnFilters, getValue: (ite
 export type RiskRegisterContentProps = { projectId?: string | null };
 
 export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterContentProps = {}) {
-  const { risks, simulation, addRisk, updateRisk, setRisks, archiveRisk, restoreArchivedRisk, clearRisks } =
+  const { risks, simulation, addRisk, updateRisk, setRisks, archiveRisk, closeRisk, restoreArchivedRisk, clearRisks } =
     useRiskRegister();
   const [saveToServerLoading, setSaveToServerLoading] = useState(false);
   const [saveToServerError, setSaveToServerError] = useState<string | null>(null);
@@ -115,8 +117,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const projectIdForHydrateRef = useRef<string | null>(null);
 
   const setupRedirectPath = urlProjectId ? riskaiPath(`/projects/${urlProjectId}`) : DASHBOARD_PATH;
-  /** UUID for DB/API: URL project when in project routes, else default (legacy). projectContext.projectName is a display name, not a UUID. */
-  const projectIdForDb = urlProjectId ?? DEFAULT_PROJECT_ID;
+  /** Trimmed project UUID from the URL; empty when missing — do not load or save risks without it. */
+  const projectIdTrimmed = urlProjectId?.trim() ?? "";
 
   const projectPermissions = useProjectPermissions();
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
@@ -153,9 +155,16 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   // Hydrate risk store from Supabase only on initial mount or when projectId changes.
   // No fallback to local/example data: on failure show error and clear risks.
   useEffect(() => {
-    if (!isProjectContextComplete(projectContext) && !urlProjectId) return;
-    if (projectIdForDb !== projectIdForHydrateRef.current) {
-      projectIdForHydrateRef.current = projectIdForDb;
+    const pid = urlProjectId?.trim();
+    if (!pid) {
+      console.error("[risk-register] listRisks skipped: projectId is required for risk access");
+      setRisks([]);
+      setRisksLoadError(null);
+      setRisksLoading(false);
+      return;
+    }
+    if (pid !== projectIdForHydrateRef.current) {
+      projectIdForHydrateRef.current = pid;
       hasHydratedFromDbRef.current = false;
     }
     if (hasHydratedFromDbRef.current && loadRetryKey === 0) return;
@@ -163,7 +172,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     hasHydratedFromDbRef.current = true;
     setRisksLoading(true);
     setRisksLoadError(null);
-    listRisks(projectIdForDb)
+    listRisks(pid)
       .then((loaded) => {
         setRisks(loaded);
         setRisksLoadError(null);
@@ -177,7 +186,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         }
       })
       .finally(() => setRisksLoading(false));
-  }, [projectContext, urlProjectId, projectIdForDb, setRisks, loadRetryKey]);
+  }, [urlProjectId, setRisks, loadRetryKey]);
 
   // Log when risk list grows (after add/append) for debugging visibility of new risks (dev only)
   useEffect(() => {
@@ -228,10 +237,15 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   );
 
   const handleSaveToServer = useCallback(async () => {
+    const pid = urlProjectId?.trim();
+    if (!pid) {
+      console.error("[risk-register] replaceRisks skipped: projectId is required for risk access");
+      return;
+    }
     setSaveToServerLoading(true);
     setSaveToServerError(null);
     try {
-      const saved = await replaceRisks(risks, projectIdForDb);
+      const saved = await replaceRisks(risks, pid);
       setRisks(mergeServerRisksWithLocal(saved, risks, true));
     } catch (err) {
       const msg =
@@ -245,7 +259,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     } finally {
       setSaveToServerLoading(false);
     }
-  }, [risks, setRisks, projectIdForDb, mergeServerRisksWithLocal]);
+  }, [risks, setRisks, urlProjectId, mergeServerRisksWithLocal]);
 
   const state = useMemo(() => ({ simulation }), [simulation]);
   const decisionById = useMemo(() => selectDecisionByRiskId(state), [state]);
@@ -285,6 +299,9 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             break;
           case "owner":
             cmp = (a.owner ?? "").localeCompare(b.owner ?? "");
+            break;
+          case "appliesTo":
+            cmp = (a.appliesTo ?? "").localeCompare(b.appliesTo ?? "");
             break;
           case "preRating":
             cmp = a.inherentRating.score - b.inherentRating.score;
@@ -357,12 +374,16 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   const handleAiReviewClick = useCallback(async () => {
     if (contentReadOnly) return;
+    const projectIdForApi = urlProjectId?.trim();
+    if (!projectIdForApi) {
+      console.error("[risk-register] AI review skipped: projectId is required for risk access");
+      return;
+    }
     setAiReviewOpen(true);
     setAiReviewError(null);
     setAiClusters([]);
     setAiReviewSkippedIds(new Set());
     setAiReviewLoading(true);
-    const projectIdForApi = projectIdForDb;
     try {
       const payload = {
         projectId: projectIdForApi,
@@ -392,7 +413,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     } finally {
       setAiReviewLoading(false);
     }
-  }, [contentReadOnly, projectIdForDb, risks]);
+  }, [contentReadOnly, urlProjectId, risks]);
 
   const handleAcceptMerge = useCallback(
     (cluster: RiskMergeCluster, draft: MergeRiskDraft) => {
@@ -424,12 +445,12 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     setLoadRetryKey((k) => k + 1);
   }, []);
 
-  // Show loading until gate is checked; in legacy mode (no urlProjectId) also require complete projectContext before showing content.
-  const blockContent = !gateChecked || (!urlProjectId && !isProjectContextComplete(projectContext));
+  // Show loading until gate is checked and a project id is present (risks are never loaded without it).
+  const blockContent = !gateChecked || !projectIdTrimmed;
 
   if (blockContent) {
     return (
-      <RiskRegisterLookupProviders projectId={projectIdForDb}>
+      <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
         <main className="p-6">
           <LoadingPlaceholderCompact label="Loading risk register" />
         </main>
@@ -439,7 +460,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   if (risksLoading) {
     return (
-      <RiskRegisterLookupProviders projectId={projectIdForDb}>
+      <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
       <main className="p-6 text-[var(--ds-text-primary)]">
         <div className="mb-6">
           <RiskRegisterHeader
@@ -462,7 +483,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   if (risksLoadError) {
     return (
-      <RiskRegisterLookupProviders projectId={projectIdForDb}>
+      <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
       <main className="p-6 text-[var(--ds-text-primary)]">
         <div className="mb-6">
           <RiskRegisterHeader
@@ -490,7 +511,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   }
 
   return (
-    <RiskRegisterLookupProviders projectId={projectIdForDb}>
+    <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
     <main className="p-6 text-[var(--ds-text-primary)]">
       <div className="mb-6">
         <RiskRegisterHeader
@@ -634,6 +655,9 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             onSave={(risk) => updateRisk(risk.id, risk)}
             onArchiveRisk={
               registerView === "active" && !contentReadOnly ? (id) => archiveRisk(id) : undefined
+            }
+            onCloseRisk={
+              registerView === "active" && !contentReadOnly ? (id) => closeRisk(id) : undefined
             }
             onRestoreRisk={
               registerView === "archived" && !contentReadOnly

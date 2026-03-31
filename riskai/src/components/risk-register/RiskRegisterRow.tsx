@@ -10,6 +10,7 @@ import { RiskEditCell } from "@/components/risk-register/RiskEditCell";
 import { RiskOwnerRowSelect } from "@/components/risk-register/RiskOwnerRowSelect";
 import { RiskCategorySelect } from "@/components/risk-register/RiskCategorySelect";
 import { RiskStatusSelect } from "@/components/risk-register/RiskStatusSelect";
+import { RiskAppliesToSelect } from "@/components/risk-register/RiskAppliesToSelect";
 import {
   Badge,
   Button,
@@ -140,7 +141,7 @@ export function RiskRegisterRow({
         : { status: "danger", variant: "subtle" };
 
   const hasValidationErrors = Boolean(validationErrors?.length);
-  const colSpan = onRiskClick ? 9 : 8;
+  const colSpan = onRiskClick ? 10 : 9;
 
   const rowHoverClass =
     onRiskClick && "cursor-pointer transition-colors hover:bg-[var(--ds-surface-hover)]";
@@ -232,6 +233,24 @@ export function RiskRegisterRow({
               riskId={risk.id}
               owner={risk.owner}
               onCommit={(name) => updateRisk(risk.id, { owner: name || undefined })}
+            />
+          </TableCell>
+        )}
+
+        {readOnly ? (
+          <TableCell className="min-w-0 align-middle">
+            <span className={cellTextClass} title={risk.appliesTo ?? undefined}>
+              {risk.appliesTo?.trim() ? risk.appliesTo : "—"}
+            </span>
+          </TableCell>
+        ) : (
+          <TableCell className="min-w-0 align-middle">
+            <RiskAppliesToSelect
+              id={`risk-row-applies-to-${risk.id}`}
+              value={risk.appliesTo ?? ""}
+              onChange={(name) => updateRisk(risk.id, { appliesTo: name })}
+              className={DS_NATIVE_SELECT}
+              allowEmptyPlaceholder={isDraft || !risk.appliesTo?.trim()}
             />
           </TableCell>
         )}

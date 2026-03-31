@@ -43,7 +43,7 @@
 | Route | Type | Notes |
 |-------|------|--------|
 | `/portfolios` | **Active** | Portfolio list (client component). |
-| `/portfolios/[portfolioId]` | **Active** | Portfolio overview; uses **mock data** only (`MOCK_PORTFOLIO_SUMMARY`). |
+| `/portfolios/[portfolioId]` | **Active** | Portfolio overview; placeholder/empty state (pending live data). |
 | `/portfolios/[portfolioId]/projects` | **Active** | List of projects in portfolio; links to `/projects/[id]`. |
 | `/portfolios/[portfolioId]/settings` | **Active** | Portfolio settings and members (admin only). |
 | `/portfolios/[portfolioId]/admin` | **Legacy** | Documented in ROUTE_MAP as redirect to `.../settings`; no redirect file found under `app` (may be middleware or doc-only). |
@@ -104,9 +104,9 @@
 - **Route:** `app/(protected)/projects/[projectId]/risks/page.tsx` → `RiskRegisterContent` (from `risk-register/RiskRegisterContent.tsx`).
 - **Purpose:** Main risk register: table of risks, add/edit, save to server, AI review.
 - **Current contents:** Header, risk table (sortable, filterable), “Add risk” (opens choice: file, AI, manual), risk detail modal, AI review drawer, save-to-server button, gate redirect when no project context in legacy mode.
-- **Data loaded:** Client: `listRisks(projectIdForDb)` to hydrate store, `loadProjectContext` for gate. Uses `projectIdForDb = urlProjectId ?? DEFAULT_PROJECT_ID` when not in project URL.
+- **Data loaded:** Client: `listRisks(projectIdForDb)` to hydrate store, `loadProjectContext` for gate. Requires a real project UUID from the URL.
 - **User actions:** Add risk (file / AI / manual), open risk detail, edit, save to server, AI merge review, sort/filter table. Optional `?focusRiskId=` for scroll + highlight.
-- **Status:** **Working** — production-useful. Legacy path uses `DEFAULT_PROJECT_ID` when no URL project.
+- **Status:** **Working** — production-useful. Requires project UUID in URL (no hardcoded fallback).
 
 ---
 
@@ -127,7 +127,7 @@
   - If no snapshot for project: “No simulation run for this project yet” + “Run simulation” button + “Go to Run Data” link.
   - If snapshot exists: baseline row (base value, contingency, duration, target P-value), Cost Simulation and Schedule Simulation sections (with CDF/charts), “Last simulation run” footer.
   - Uses project context (e.g. risk appetite), latest snapshot from DB for this project.
-- **Data loaded:** Client: `loadProjectContext`, risks from store, `getLatestSnapshot` / DB snapshot for project, `hydrateSimulationFromDbSnapshot` when project changes. Uses `effectiveProjectId = urlProjectId ?? activeProjectIdFromStorage ?? DEFAULT_PROJECT_ID` when not in URL.
+- **Data loaded:** Client: `loadProjectContext`, risks from store, `getLatestSnapshot` / DB snapshot for project, `hydrateSimulationFromDbSnapshot` when project changes. Requires a real project UUID from the URL or localStorage.
 - **User actions:** Run simulation (writes snapshot to DB), open “Go to Run Data” (`/projects/[id]/run-data`).
 - **Status:** **Working**. Clear split: run vs view results; link to Run Data is explicit.
 
@@ -208,9 +208,9 @@
 ### 15. Portfolio overview — `/portfolios/[portfolioId]`
 - **Route:** `app/(protected)/portfolios/[portfolioId]/page.tsx` → `PortfolioOverviewContent`.
 - **Purpose:** Executive snapshot of portfolio risk.
-- **Current contents:** KPI summary (projects, active risks, contingency, exposure, coverage), Top 5 Cost Risks, Top 5 Schedule Risks (or similar). All from **mock data** (`MOCK_PORTFOLIO_SUMMARY`).
-- **Data loaded:** Mock only; docstring says “wire to live data later”.
-- **Status:** **Partial** — UI in place, data not live.
+- **Current contents:** KPI summary (projects, active risks, contingency, exposure, coverage), Top 5 Cost Risks, Top 5 Schedule Risks — all showing placeholder/empty states.
+- **Data loaded:** None yet; wireframe layout ready for live aggregated data.
+- **Status:** **Placeholder** — wireframe layout in place, pending live data integration.
 
 ---
 
@@ -283,8 +283,8 @@
 5. **Legacy routes**
    - `/project`, `/risk-register`, `/simulation` redirect using localStorage; if no active project, user goes to `/`. Slight confusion if someone bookmarks a legacy URL and has no active project.
 
-6. **Portfolio overview mock data**
-   - `/portfolios/[portfolioId]` uses mock data only; “Portfolio Overview” in sidebar can look production-ready but is not wired to real data.
+6. **Portfolio overview placeholder**
+   - `/portfolios/[portfolioId]` shows placeholder/empty states; wireframe layout ready for live aggregated data.
 
 7. **Nav: Run Data**
    - NavBar comment: “TEMP: Run Data nav item for development audit – remove before production.” So Run Data is explicitly marked for product decision (keep vs remove vs only project-scoped).
@@ -299,7 +299,7 @@
 Suggested order for deciding what stays, what changes, and what gets removed:
 
 1. **Project Home** (`/projects/[projectId]`) — Central dashboard; confirm metrics, copy (“Run Data page”), and links.
-2. **Risk Register** (`/projects/[projectId]/risks`) — Core workflow; confirm save, AI, and project context behaviour (including legacy `DEFAULT_PROJECT_ID`).
+2. **Risk Register** (`/projects/[projectId]/risks`) — Core workflow; confirm save, AI, and project context behaviour.
 3. **Project Settings** (`/projects/[projectId]/settings`) — Context and localStorage vs server; confirm “Continue to Risk Register” and any API sync.
 4. **Simulation** (`/projects/[projectId]/simulation`) — Run vs view; confirm “Go to Run Data” and that run is the single place to trigger simulation.
 5. **Run Data (project-scoped)** (`/projects/[projectId]/run-data`) — Decide scope of diagnostic content and whether all sections stay; confirm it’s the only “full report” view for a run.

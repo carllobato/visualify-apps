@@ -116,6 +116,16 @@ export type SimulationAssumptionCounts = {
  * Compute assumption counts for the set of risks that were in the run.
  * Uses live risk fields (min/max, probability scale, ML) for input quality checks.
  */
+/** Cost min/max fields matter only when the risk applies to cost (excludes time-only). */
+function appliesToCostConsequences(r: Risk): boolean {
+  return !appliesToExcludesCost(r.appliesTo);
+}
+
+/** Schedule min/max fields matter only when the risk applies to time (excludes cost-only). */
+function appliesToTimeConsequences(r: Risk): boolean {
+  return !appliesToExcludesTime(r.appliesTo);
+}
+
 export function computeSimulationAssumptionCounts(risksInRun: Risk[]): SimulationAssumptionCounts {
   const totalInRun = risksInRun.length;
   let withCostRange = 0;
@@ -132,16 +142,18 @@ export function computeSimulationAssumptionCounts(risksInRun: Risk[]): Simulatio
   let costAndScheduleProfile = 0;
 
   for (const r of risksInRun) {
-    const costRange = hasCostRange(r);
-    const scheduleRange = hasScheduleRange(r);
+    const costConseq = appliesToCostConsequences(r);
+    const timeConseq = appliesToTimeConsequences(r);
+    const costRange = costConseq && hasCostRange(r);
+    const scheduleRange = timeConseq && hasScheduleRange(r);
     const preCost = hasPreCost(r);
     const preTime = hasPreTime(r);
     if (costRange) withCostRange += 1;
     if (scheduleRange) withScheduleRange += 1;
     if (costRange && scheduleRange) withBothRanges += 1;
     if (!costRange && !scheduleRange) withNoVariability += 1;
-    if (hasMinEqualsMaxCost(r) && preTime) withMinEqualsMaxCost += 1;
-    if (hasMinEqualsMaxSchedule(r) && preCost) withMinEqualsMaxSchedule += 1;
+    if (costConseq && hasMinEqualsMaxCost(r)) withMinEqualsMaxCost += 1;
+    if (timeConseq && hasMinEqualsMaxSchedule(r)) withMinEqualsMaxSchedule += 1;
     if (!hasPreProbability(r)) missingPreProbability += 1;
     if (!hasPostProbability(r)) missingPostProbability += 1;
     if (hasUnchangedMitigation(r)) unchangedMitigation += 1;

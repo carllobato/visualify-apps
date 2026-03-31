@@ -3,11 +3,16 @@
  * Use these helpers for simulation, validation, and analytics so casing and minor variants still work.
  */
 
+import type { MitigationMode, Risk } from "./risk.schema";
+
 /** Canonical `riskai_risk_statuses.name` for soft-deleted risks (`risks.status`). */
 export const RISK_STATUS_ARCHIVED_LOOKUP = "Archived";
 
 /** Default status when restoring an archived risk (first version; prior status not preserved). */
 export const RISK_STATUS_OPEN_LOOKUP = "Open";
+
+/** Canonical `riskai_risk_statuses.name` for closed risks (`risks.status`). */
+export const RISK_STATUS_CLOSED_LOOKUP = "Closed";
 
 export function normalizeRiskStatusKey(status: string | undefined | null): string {
   return (status ?? "").toString().trim().toLowerCase();
@@ -22,12 +27,67 @@ export function getDefaultNewRiskStatusName(rows: { name: string }[]): string {
   return draft?.name ?? "";
 }
 
+/** Resolve a configured status display name by one or more semantic keys (first match wins). */
+export function findRiskStatusNameByKeys(rows: { name: string }[], keys: string[]): string | undefined {
+  for (const key of keys) {
+    const found = rows.find((r) => normalizeRiskStatusKey(r.name) === key);
+    if (found) return found.name;
+  }
+  return undefined;
+}
+
+/**
+ * Default lifecycle status for risks created manually in Add Risk (not AI extraction).
+ * Matches `riskai_risk_statuses.name` for "open".
+ */
+export function getDefaultUserCreatedRiskStatusName(rows: { name: string }[]): string {
+  return findRiskStatusNameByKeys(rows, ["open"]) ?? "";
+}
+
+/**
+ * Lifecycle status implied by modelling mitigation mode (register lookup names).
+ * Does not handle "none" — callers map that to Open except when status should stay Draft.
+ */
+export function statusAutoFromMitigationMode(mode: MitigationMode, rows: { name: string }[]): string | undefined {
+  if (mode === "forecast") return findRiskStatusNameByKeys(rows, ["monitoring"]);
+  if (mode === "active") return findRiskStatusNameByKeys(rows, ["mitigating", "mitigated"]);
+  return undefined;
+}
+
 export function isRiskStatusDraft(status: string | undefined | null): boolean {
   return normalizeRiskStatusKey(status) === "draft";
 }
 
 export function isRiskStatusArchived(status: string | undefined | null): boolean {
   return normalizeRiskStatusKey(status) === "archived";
+}
+
+/** Keys aligned with default `riskai_risk_statuses` lifecycle rows (Run Data, analytics). */
+export type RiskLifecycleBucketKey =
+  | "draft"
+  | "open"
+  | "monitoring"
+  | "mitigating"
+  | "closed"
+  | "archived";
+
+/**
+ * Single lifecycle bucket per risk for register snapshots. Maps synonym `mitigated` → `mitigating`
+ * (some tenants use that lookup name; see `statusAutoFromMitigationMode`). Counts risks whose
+ * modelling has `mitigationProfile.status === 'active'` as mitigating even when `risks.status`
+ * was not yet updated (e.g. legacy rows).
+ */
+export function riskLifecycleBucketForRegisterSnapshot(risk: Risk): RiskLifecycleBucketKey | null {
+  const s = normalizeRiskStatusKey(risk.status);
+  if (!s) return null;
+  if (s === "archived") return "archived";
+  if (s === "closed") return "closed";
+  if (s === "draft") return "draft";
+  if (s === "mitigating" || s === "mitigated") return "mitigating";
+  if (risk.mitigationProfile?.status === "active") return "mitigating";
+  if (s === "monitoring") return "monitoring";
+  if (s === "open") return "open";
+  return null;
 }
 
 export function isRiskStatusClosed(status: string | undefined | null): boolean {

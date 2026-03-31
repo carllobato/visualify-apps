@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import type { Risk, RiskStatus, AppliesTo } from "@/domain/risk/risk.schema";
+import type { Risk, RiskStatus, AppliesTo, MitigationMode } from "@/domain/risk/risk.schema";
+import { mergeMitigationProfileForMode, mitigationModeFromRisk } from "@/domain/risk/mitigationMode";
 import {
   buildRating,
   probabilityPctToScale,
@@ -12,8 +13,12 @@ import {
 import {
   appliesToAffectsCost,
   appliesToAffectsTime,
+  findRiskStatusNameByKeys,
   isRiskStatusArchived,
+  isRiskStatusClosed,
   isRiskStatusDraft,
+  RISK_STATUS_CLOSED_LOOKUP,
+  statusAutoFromMitigationMode,
 } from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
 import { getRiskValidationErrors } from "@/domain/risk/runnable-risk.validator";
@@ -37,6 +42,7 @@ import {
   shouldPersistNewOwnerOnSubmit,
 } from "./RiskOwnerPicker";
 import { RiskStatusSelect } from "./RiskStatusSelect";
+import { useRiskStatusOptions } from "./RiskStatusOptionsContext";
 
 /** Native `<select>` / special inputs: matches design-system Form field chrome (no exported primitive). */
 const nativeSelectClass =
@@ -84,10 +90,10 @@ function toComparableSnapshot(risk: Record<string, unknown>): string {
   return JSON.stringify(sortKeys(risk));
 }
 
-/** For non-draft risks, all key cells are required. When applyMitigation is false, mitigation/post fields are not required. */
+/** For non-draft risks, all key cells are required. When mitigationMode is none, mitigation/post fields are not required. */
 function validateNonDraftRisk(form: {
   status: RiskStatus;
-  applyMitigation: boolean;
+  mitigationMode: MitigationMode;
   title: string;
   description: string;
   ownerSelect: string;
@@ -137,25 +143,39 @@ function validateNonDraftRisk(form: {
     const preTimeMax = parseInt(form.preMitigationTimeMax, 10);
     if (form.preMitigationTimeMax.trim() === "" || !Number.isFinite(preTimeMax) || preTimeMax < 0) errors.push("Pre-Mitigation Time Max");
   }
-  if (form.applyMitigation) {
-    if (!form.mitigation.trim()) errors.push("Mitigation description");
-    const postPct = parseFloat(form.postMitigationProbabilityPct);
-    if (!Number.isFinite(postPct) || postPct < 0 || postPct > 100) errors.push("Post-Mitigation Probability %");
+  if (form.mitigationMode !== "none") {
+    const postPctRaw = form.postMitigationProbabilityPct.trim();
+    if (postPctRaw !== "") {
+      const postPct = parseFloat(postPctRaw);
+      if (!Number.isFinite(postPct) || postPct < 0 || postPct > 100) errors.push("Post-Mitigation Probability %");
+    }
     if (appliesToAffectsCost(form.appliesTo)) {
-      const postCostMin = parseFloat(form.postMitigationCostMin);
-      if (form.postMitigationCostMin.trim() === "" || !Number.isFinite(postCostMin) || postCostMin < 0) errors.push("Post-Mitigation Cost Min");
-      const v = parseFloat(form.postMitigationCostML);
-      if (!Number.isFinite(v) || v < 0) errors.push("Post-Mitigation Cost Most Likely");
-      const postCostMax = parseFloat(form.postMitigationCostMax);
-      if (form.postMitigationCostMax.trim() === "" || !Number.isFinite(postCostMax) || postCostMax < 0) errors.push("Post-Mitigation Cost Max");
+      if (form.postMitigationCostMin.trim() !== "") {
+        const postCostMin = parseFloat(form.postMitigationCostMin);
+        if (!Number.isFinite(postCostMin) || postCostMin < 0) errors.push("Post-Mitigation Cost Min");
+      }
+      if (form.postMitigationCostML.trim() !== "") {
+        const v = parseFloat(form.postMitigationCostML);
+        if (!Number.isFinite(v) || v < 0) errors.push("Post-Mitigation Cost Most Likely");
+      }
+      if (form.postMitigationCostMax.trim() !== "") {
+        const postCostMax = parseFloat(form.postMitigationCostMax);
+        if (!Number.isFinite(postCostMax) || postCostMax < 0) errors.push("Post-Mitigation Cost Max");
+      }
     }
     if (appliesToAffectsTime(form.appliesTo)) {
-      const postTimeMin = parseInt(form.postMitigationTimeMin, 10);
-      if (form.postMitigationTimeMin.trim() === "" || !Number.isFinite(postTimeMin) || postTimeMin < 0) errors.push("Post-Mitigation Time Min");
-      const v = parseInt(form.postMitigationTimeML, 10);
-      if (!Number.isFinite(v) || v < 0) errors.push("Post-Mitigation Time ML (days)");
-      const postTimeMax = parseInt(form.postMitigationTimeMax, 10);
-      if (form.postMitigationTimeMax.trim() === "" || !Number.isFinite(postTimeMax) || postTimeMax < 0) errors.push("Post-Mitigation Time Max");
+      if (form.postMitigationTimeMin.trim() !== "") {
+        const postTimeMin = parseInt(form.postMitigationTimeMin, 10);
+        if (!Number.isFinite(postTimeMin) || postTimeMin < 0) errors.push("Post-Mitigation Time Min");
+      }
+      if (form.postMitigationTimeML.trim() !== "") {
+        const v = parseInt(form.postMitigationTimeML, 10);
+        if (!Number.isFinite(v) || v < 0) errors.push("Post-Mitigation Time ML (days)");
+      }
+      if (form.postMitigationTimeMax.trim() !== "") {
+        const postTimeMax = parseInt(form.postMitigationTimeMax, 10);
+        if (!Number.isFinite(postTimeMax) || postTimeMax < 0) errors.push("Post-Mitigation Time Max");
+      }
     }
   }
   return errors;
@@ -172,6 +192,7 @@ export function RiskDetailModal({
   onAddNewWithFile,
   onAddNewWithAI,
   onArchiveRisk,
+  onCloseRisk,
   onRestoreRisk,
 }: {
   open: boolean;
@@ -188,6 +209,8 @@ export function RiskDetailModal({
   onAddNewWithAI?: () => void;
   /** Soft-delete: set status to Archived (persist with Save to server). */
   onArchiveRisk?: (riskId: string) => void;
+  /** Set lifecycle status to Closed (persist with Save to server). */
+  onCloseRisk?: (riskId: string) => void;
   /** Restore archived risk to Open. */
   onRestoreRisk?: (riskId: string) => void;
 }) {
@@ -209,7 +232,7 @@ export function RiskDetailModal({
   const [ownerNewDraft, setOwnerNewDraft] = useState("");
   const [status, setStatus] = useState<RiskStatus>("open");
   const [appliesTo, setAppliesTo] = useState<AppliesTo>("both");
-  const [applyMitigation, setApplyMitigation] = useState(true);
+  const [mitigationMode, setMitigationMode] = useState<MitigationMode>("none");
   // Pre-Mitigation
   const [preMitigationProbabilityPct, setPreMitigationProbabilityPct] = useState("");
   const [preMitigationCostMin, setPreMitigationCostMin] = useState("");
@@ -230,6 +253,7 @@ export function RiskDetailModal({
   const [postMitigationTimeML, setPostMitigationTimeML] = useState("");
   const [postMitigationTimeMax, setPostMitigationTimeMax] = useState("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const { statuses: riskStatusOptions } = useRiskStatusOptions();
   const modalRef = useRef<HTMLDivElement>(null);
   const didInitialSyncRef = useRef(false);
   /** After a successful Save, store a snapshot so we treat the form as not dirty until the user edits or switches risk. */
@@ -257,8 +281,9 @@ export function RiskDetailModal({
     setOwnerSelect(ownerVal);
     setOwnerNewDraft("");
     setAppliesTo(risk.appliesTo ?? "both");
-    const hasMitigation = !!risk.mitigation?.trim();
-    setApplyMitigation(hasMitigation);
+    const mode = mitigationModeFromRisk(risk);
+    setMitigationMode(mode);
+    const hasMitigation = mode !== "none";
     setMitigation(risk.mitigation ?? "");
     setMitigationCost(risk.mitigationCost?.toString() ?? "");
     const prePct = probabilityScaleToDisplayPct(risk.inherentRating.probability);
@@ -279,7 +304,7 @@ export function RiskDetailModal({
     setPreMitigationTimeMax(
       risk.preMitigationTimeMax?.toString() ?? (preTimeML != null ? String(preTimeML) : "")
     );
-    // Post-Mitigation: only set form state when risk has mitigation, so dirty check (buildUpdatedRisk with applyMitigation) matches. When no mitigation, leave post fields empty so we don't get false positives.
+    // Post-Mitigation: only set form state when mitigation mode is not none, so dirty check (buildUpdatedRisk) matches. When none, leave post fields empty so we don't get false positives.
     if (hasMitigation) {
       const postPct = probabilityScaleToDisplayPct(risk.residualRating.probability);
       const postCostML = risk.postMitigationCostML ?? preCostML;
@@ -331,7 +356,7 @@ export function RiskDetailModal({
     }
   }, [open, getInitialIndex, risks, syncFormFromRisk]);
 
-  /** Normalize a risk the same way buildUpdatedRisk normalizes form output, so we can compare without false positives (e.g. "" vs undefined). When there is no mitigation text, post-mitigation fields are undefined to match buildUpdatedRisk when applyMitigation is false. When mitigation exists but post min/max are missing (e.g. old DB), derive same defaults as buildUpdatedRisk (0 for min, ML for max) so dirty check does not false-positive. Pre-mitigation min/max use same defaults as buildUpdatedRisk (0 for min, Math.max(ML, min) for max) so undefined does not trigger a false dirty. */
+  /** Normalize a risk the same way buildUpdatedRisk normalizes form output, so we can compare without false positives (e.g. "" vs undefined). When mitigation mode is none, post-mitigation fields are undefined to match buildUpdatedRisk. When mitigation exists but post min/max are missing (e.g. old DB), derive same defaults as buildUpdatedRisk (0 for min, ML for max) so dirty check does not false-positive. Pre-mitigation min/max use same defaults as buildUpdatedRisk (0 for min, Math.max(ML, min) for max) so undefined does not trigger a false dirty. */
   const normalizeRiskForComparison = useCallback((risk: Risk): Risk => {
     const toNum = (v: unknown): number | undefined =>
       typeof v === "number" && Number.isFinite(v) ? v : typeof v === "string" ? (Number.isFinite(Number(v)) ? Number(v) : undefined) : undefined;
@@ -339,7 +364,8 @@ export function RiskDetailModal({
       const n = toNum(v);
       return n != null ? Math.floor(n) : undefined;
     };
-    const hasMitigation = Boolean(risk.mitigation?.trim());
+    const mode = mitigationModeFromRisk(risk);
+    const hasMitigation = mode !== "none";
     const prePct = probabilityScaleToDisplayPct(risk.inherentRating.probability);
     const preCostML = risk.preMitigationCostML ?? 0;
     const preTimeML = risk.preMitigationTimeML ?? 0;
@@ -400,6 +426,7 @@ export function RiskDetailModal({
       inherentRating,
       residualRating,
       probability: (hasMitigation && postPct != null ? postPct : prePct) / 100,
+      mitigationProfile: mergeMitigationProfileForMode(risk, mode),
       updatedAt: "",
     };
   }, []);
@@ -482,6 +509,22 @@ export function RiskDetailModal({
     return () => el.removeEventListener("keydown", onKeyDown);
   }, [open, currentIndex]);
 
+  const handleMitigationModeChange = useCallback(
+    (next: MitigationMode) => {
+      setMitigationMode(next);
+      if (isRiskStatusClosed(status) || isRiskStatusArchived(status)) return;
+      if (next === "none") {
+        if (isRiskStatusDraft(status)) return;
+        const openName = findRiskStatusNameByKeys(riskStatusOptions, ["open"]);
+        if (openName) setStatus(openName);
+        return;
+      }
+      const auto = statusAutoFromMitigationMode(next, riskStatusOptions);
+      if (auto) setStatus(auto);
+    },
+    [status, riskStatusOptions]
+  );
+
   const parseNum = (s: string): number | undefined => {
     const v = parseFloat(s);
     return Number.isFinite(v) ? v : undefined;
@@ -491,7 +534,7 @@ export function RiskDetailModal({
     return Number.isFinite(v) ? v : undefined;
   };
 
-  /** Build the risk as it would be saved from current form state (for dirty check and save). When applyMitigation is false, residual = inherent and no mitigation fields. Derives min/max from ML when form leaves them empty so saved risk always passes runnable validation. */
+  /** Build the risk as it would be saved from current form state (for dirty check and save). When mitigationMode is none, residual = inherent and no mitigation fields. Forecast vs active both persist post fields for now; simulation still uses existing getEffectiveRiskInputs rules until that layer reads `mitigationProfile.status`. */
   const buildUpdatedRisk = useCallback((): Risk | null => {
     if (!currentRisk) return null;
     const prePct = parseNum(preMitigationProbabilityPct) ?? 50;
@@ -501,9 +544,10 @@ export function RiskDetailModal({
     const preP = probabilityPctToScale(prePct);
     const preC = consequenceScaleFromAppliesTo(applies, preCostML, preTimeML);
     const inherentRating = buildRating(preP, preC);
-    const postPct = applyMitigation ? (parseNum(postMitigationProbabilityPct) ?? 50) : prePct;
-    const postCostML = applyMitigation ? (parseNum(postMitigationCostML) ?? preCostML) : preCostML;
-    const postTimeML = applyMitigation ? (parseIntNum(postMitigationTimeML) ?? preTimeML) : preTimeML;
+    const persistMitigationFields = mitigationMode !== "none";
+    const postPct = persistMitigationFields ? (parseNum(postMitigationProbabilityPct) ?? 50) : prePct;
+    const postCostML = persistMitigationFields ? (parseNum(postMitigationCostML) ?? preCostML) : preCostML;
+    const postTimeML = persistMitigationFields ? (parseIntNum(postMitigationTimeML) ?? preTimeML) : preTimeML;
     const postP = probabilityPctToScale(postPct);
     const postC = consequenceScaleFromAppliesTo(applies, postCostML, postTimeML);
     const residualRating = buildRating(postP, postC);
@@ -511,10 +555,14 @@ export function RiskDetailModal({
     const preCostMax = parseNum(preMitigationCostMax) ?? Math.max(preCostML, preCostMin);
     const preTimeMin = parseIntNum(preMitigationTimeMin) ?? 0;
     const preTimeMax = parseIntNum(preMitigationTimeMax) ?? Math.max(preTimeML, preTimeMin);
-    const postCostMin = applyMitigation ? (parseNum(postMitigationCostMin) ?? 0) : undefined;
-    const postCostMax = applyMitigation ? (parseNum(postMitigationCostMax) ?? Math.max(postCostML, postCostMin ?? 0)) : undefined;
-    const postTimeMin = applyMitigation ? (parseIntNum(postMitigationTimeMin) ?? 0) : undefined;
-    const postTimeMax = applyMitigation ? (parseIntNum(postMitigationTimeMax) ?? Math.max(postTimeML, postTimeMin ?? 0)) : undefined;
+    const postCostMin = persistMitigationFields ? (parseNum(postMitigationCostMin) ?? 0) : undefined;
+    const postCostMax = persistMitigationFields
+      ? (parseNum(postMitigationCostMax) ?? Math.max(postCostML, postCostMin ?? 0))
+      : undefined;
+    const postTimeMin = persistMitigationFields ? (parseIntNum(postMitigationTimeMin) ?? 0) : undefined;
+    const postTimeMax = persistMitigationFields
+      ? (parseIntNum(postMitigationTimeMax) ?? Math.max(postTimeML, postTimeMin ?? 0))
+      : undefined;
     const catTrim = (category ?? "").trim();
     const categoryOut =
       catTrim !== "" ? catTrim : isRiskStatusDraft(status) ? "" : currentRisk.category;
@@ -533,17 +581,18 @@ export function RiskDetailModal({
       preMitigationTimeMin: preTimeMin,
       preMitigationTimeML: preTimeML ?? undefined,
       preMitigationTimeMax: preTimeMax,
-      mitigation: applyMitigation ? ((mitigation ?? "").trim() || undefined) : undefined,
-      mitigationCost: applyMitigation ? (parseNum(mitigationCost) ?? undefined) : undefined,
+      mitigation: persistMitigationFields ? ((mitigation ?? "").trim() || undefined) : undefined,
+      mitigationCost: persistMitigationFields ? (parseNum(mitigationCost) ?? undefined) : undefined,
       postMitigationCostMin: postCostMin,
-      postMitigationCostML: applyMitigation ? (postCostML ?? undefined) : undefined,
+      postMitigationCostML: persistMitigationFields ? (postCostML ?? undefined) : undefined,
       postMitigationCostMax: postCostMax,
       postMitigationTimeMin: postTimeMin,
-      postMitigationTimeML: applyMitigation ? (postTimeML ?? undefined) : undefined,
+      postMitigationTimeML: persistMitigationFields ? (postTimeML ?? undefined) : undefined,
       postMitigationTimeMax: postTimeMax,
       inherentRating,
       residualRating,
-      probability: (applyMitigation ? postPct : prePct) / 100,
+      probability: (persistMitigationFields ? postPct : prePct) / 100,
+      mitigationProfile: mergeMitigationProfileForMode(currentRisk, mitigationMode),
       updatedAt: nowIso(),
     };
   }, [
@@ -555,7 +604,7 @@ export function RiskDetailModal({
     ownerSelect,
     ownerNewDraft,
     appliesTo,
-    applyMitigation,
+    mitigationMode,
     preMitigationProbabilityPct,
     preMitigationCostMin,
     preMitigationCostML,
@@ -630,7 +679,7 @@ export function RiskDetailModal({
     if (!updated) return false;
     const errors = validateNonDraftRisk({
       status,
-      applyMitigation,
+      mitigationMode,
       title,
       description,
       category,
@@ -697,7 +746,7 @@ export function RiskDetailModal({
     ownerSelect,
     ownerNewDraft,
     appliesTo,
-    applyMitigation,
+    mitigationMode,
     preMitigationProbabilityPct,
     preMitigationCostMin,
     preMitigationCostML,
@@ -721,6 +770,21 @@ export function RiskDetailModal({
     onArchiveRisk?.(currentRisk.id);
     onClose();
   }, [currentRisk, isAddNewSlot, onArchiveRisk, onClose]);
+
+  const handleCloseRiskAction = useCallback(() => {
+    if (!currentRisk || isAddNewSlot || isRiskStatusArchived(currentRisk.status)) return;
+    onCloseRisk?.(currentRisk.id);
+    const closedName =
+      (findRiskStatusNameByKeys(riskStatusOptions, ["closed"]) as RiskStatus | undefined) ??
+      (RISK_STATUS_CLOSED_LOOKUP as RiskStatus);
+    setStatus(closedName);
+    const patched: Risk = { ...currentRisk, status: closedName, updatedAt: nowIso() };
+    const baseline = toComparableSnapshot(
+      normalizeRiskForComparison(patched) as Record<string, unknown>
+    );
+    lastSyncedBaselineRef.current = baseline;
+    lastSavedSnapshotRef.current = { id: currentRisk.id, snapshot: baseline };
+  }, [currentRisk, isAddNewSlot, onCloseRisk, riskStatusOptions, normalizeRiskForComparison]);
 
   const handleRestoreRiskAction = useCallback(() => {
     if (!currentRisk || isAddNewSlot || !isRiskStatusArchived(currentRisk.status)) return;
@@ -857,6 +921,15 @@ export function RiskDetailModal({
                   aria-label="Risk title"
                   id="risk-detail-dialog-title"
                 />
+                <Badge
+                  status="neutral"
+                  variant="subtle"
+                  className="shrink-0 text-[length:var(--ds-text-xs)] font-normal"
+                  title="Lifecycle status (same as Status in the form below)."
+                  aria-label={`Risk status: ${status}`}
+                >
+                  {status}
+                </Badge>
                 {isRiskStatusArchived(currentRisk.status) && (
                   <Badge status="neutral" variant="subtle" className="shrink-0" aria-label="Archived risk">
                     Archived
@@ -907,6 +980,7 @@ export function RiskDetailModal({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="shrink-0 text-[var(--ds-text-primary)]"
               aria-hidden
             >
               <path d="M18 6 6 18M6 6l12 12" />
@@ -1100,48 +1174,60 @@ export function RiskDetailModal({
                   </div>
                 </section>
 
-                {/* Apply Mitigation toggle */}
-                <section>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Apply Mitigation</span>
-                    <div
-                      className="inline-flex rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-0.5 bg-[var(--ds-surface-inset)] gap-0.5"
-                      role="group"
-                      aria-label="Apply mitigation"
-                    >
-                      <Button
-                        type="button"
-                        variant={!applyMitigation ? "primary" : "ghost"}
-                        size="sm"
-                        onClick={() => setApplyMitigation(false)}
-                        className="rounded-[var(--ds-radius-sm)] shadow-none"
-                        aria-pressed={!applyMitigation}
-                      >
-                        No
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={applyMitigation ? "primary" : "ghost"}
-                        size="sm"
-                        onClick={() => setApplyMitigation(true)}
-                        className="rounded-[var(--ds-radius-sm)] shadow-none"
-                        aria-pressed={applyMitigation}
-                      >
-                        Yes
-                      </Button>
-                    </div>
-                  </div>
-                </section>
-
-                {applyMitigation && (
-                  <>
-                {/* Mitigation */}
+                {/* Mitigation: 3-state mode + optional detail / post */}
                 <section>
                   <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Mitigation</h3>
                   <div className="space-y-3">
                     <div>
+                      <Label className="block mb-2">Mitigation</Label>
+                      <div
+                        className="inline-flex flex-wrap rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-0.5 bg-[var(--ds-surface-inset)] gap-0.5 w-full sm:w-auto"
+                        role="group"
+                        aria-label="Mitigation mode"
+                      >
+                        <Button
+                          type="button"
+                          variant={mitigationMode === "none" ? "primary" : "ghost"}
+                          size="sm"
+                          onClick={() => handleMitigationModeChange("none")}
+                          disabled={readOnly}
+                          className="rounded-[var(--ds-radius-sm)] shadow-none flex-1 min-w-[3.5rem] sm:flex-initial"
+                          aria-pressed={mitigationMode === "none"}
+                        >
+                          No
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={mitigationMode === "forecast" ? "primary" : "ghost"}
+                          size="sm"
+                          onClick={() => handleMitigationModeChange("forecast")}
+                          disabled={readOnly}
+                          className="rounded-[var(--ds-radius-sm)] shadow-none flex-1 min-w-[7rem] sm:flex-initial text-[length:var(--ds-text-xs)] px-2"
+                          aria-pressed={mitigationMode === "forecast"}
+                        >
+                          Forecast Mitigation
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={mitigationMode === "active" ? "primary" : "ghost"}
+                          size="sm"
+                          onClick={() => handleMitigationModeChange("active")}
+                          disabled={readOnly}
+                          className="rounded-[var(--ds-radius-sm)] shadow-none flex-1 min-w-[7rem] sm:flex-initial text-[length:var(--ds-text-xs)] px-2"
+                          aria-pressed={mitigationMode === "active"}
+                        >
+                          Active Mitigation
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                {mitigationMode !== "none" && (
+                  <>
+                <div className="space-y-3 mt-1">
+                    <div>
                       <Label htmlFor="detail-mitigation" className="block">
-                        Description {!isRiskStatusDraft(status) && <RequiredStar />}
+                        Description
                       </Label>
                       <Textarea
                         id="detail-mitigation"
@@ -1166,7 +1252,6 @@ export function RiskDetailModal({
                       />
                     </div>
                   </div>
-                </section>
 
                 {/* Post-Mitigation */}
                 <section>
@@ -1174,7 +1259,7 @@ export function RiskDetailModal({
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="detail-post-prob" className="block">
-                        Probability % {!isRiskStatusDraft(status) && <RequiredStar />}
+                        Probability %
                       </Label>
                       <div className="grid grid-cols-3 gap-2 items-center">
                         <input
@@ -1201,29 +1286,29 @@ export function RiskDetailModal({
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label htmlFor="detail-post-cost-min" className="block">Cost Min ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-post-cost-min" className="block">Cost Min ($)</Label>
                         <Input id="detail-post-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMin)} onChange={(e) => setPostMitigationCostMin(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-post-cost-ml" className="block">Cost Most Likely ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-post-cost-ml" className="block">Cost Most Likely ($)</Label>
                         <Input id="detail-post-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostML)} onChange={(e) => setPostMitigationCostML(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-post-cost-max" className="block">Cost Max ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-post-cost-max" className="block">Cost Max ($)</Label>
                         <Input id="detail-post-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMax)} onChange={(e) => setPostMitigationCostMax(parseCostInput(e.target.value))} />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label htmlFor="detail-post-time-min" className="block">Time Min (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-post-time-min" className="block">Time Min (days)</Label>
                         <Input id="detail-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-post-time-ml" className="block">Time ML (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-post-time-ml" className="block">Time ML (days)</Label>
                         <Input id="detail-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-post-time-max" className="block">Time Max (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-post-time-max" className="block">Time Max (days)</Label>
                         <Input id="detail-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
                       </div>
                     </div>
@@ -1231,6 +1316,7 @@ export function RiskDetailModal({
                 </section>
                   </>
                 )}
+                </section>
               </div>
             )
           )}
@@ -1251,6 +1337,17 @@ export function RiskDetailModal({
               )}
             </div>
             <div className="flex flex-wrap gap-2 ml-auto items-center justify-end">
+              {!isAddNewSlot && currentRisk && onCloseRisk && !isRiskStatusArchived(currentRisk.status) && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={handleCloseRiskAction}
+                  aria-label="Close risk — set status to Closed"
+                >
+                  Close risk
+                </Button>
+              )}
               {!isAddNewSlot && currentRisk && onArchiveRisk && !isRiskStatusArchived(currentRisk.status) && (
                 <Button
                   type="button"

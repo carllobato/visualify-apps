@@ -3,10 +3,15 @@ import type { Risk } from "@/domain/risk/risk.schema";
 import { buildRating } from "@/domain/risk/risk.logic";
 import { costToConsequenceScale, timeDaysToConsequenceScale } from "@/domain/risk/risk.logic";
 
-/** Default project UUID used when no projectId is provided (legacy single-project flow). */
-export const DEFAULT_PROJECT_ID = "a8995152-7065-4f79-ab8a-015b6ab0a3ec";
-
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function requireRiskProjectId(projectId?: string): string {
+  const trimmed = projectId?.trim();
+  if (!trimmed) {
+    throw new Error("projectId is required for risk access");
+  }
+  return trimmed;
+}
 
 /** Supabase `public.risks` column list — keep in sync with DB (no `*`). */
 export const RISK_DB_SELECT_COLUMNS =
@@ -136,10 +141,10 @@ function riskToRow(risk: Risk, projectId: string): RiskInsertRow {
 /**
  * Fetch all risks for the active project, ordered by created_at ascending.
  * Returns domain Risk[] for use in the store.
- * @param projectId - Optional project UUID; when omitted uses default (legacy single-project).
+ * @param projectId - Project UUID (required).
  */
 export async function listRisks(projectId?: string): Promise<Risk[]> {
-  const pid = projectId ?? DEFAULT_PROJECT_ID;
+  const pid = requireRiskProjectId(projectId);
   const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/risks`, {
     method: "GET",
     cache: "no-store",
@@ -163,10 +168,10 @@ export async function listRisks(projectId?: string): Promise<Risk[]> {
  * the list are soft-deleted (archived) by the server route, never hard-deleted.
  * Returns the saved risks (with DB-assigned ids for rows that had non-UUID ids) so the
  * client can merge local-only fields by position and avoid losing data for newly created risks.
- * @param projectId - Optional project UUID; when omitted uses default (legacy single-project).
+ * @param projectId - Project UUID (required).
  */
 export async function replaceRisks(risks: Risk[], projectId?: string): Promise<Risk[]> {
-  const pid = projectId ?? DEFAULT_PROJECT_ID;
+  const pid = requireRiskProjectId(projectId);
   const rows = risks.map((r) => riskToRow(r, pid));
   if (typeof console !== "undefined" && console.log && rows.length > 0) {
     console.log("[risks] replaceRisks upsert payload (per row keys)", Object.keys(rows[0] ?? {}).sort().join(","));

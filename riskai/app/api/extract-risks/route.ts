@@ -13,38 +13,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "documentText is required" }, { status: 400 });
     }
 
-    // Day0 stub: hardcoded risks so we can prove end-to-end wiring
-    const risks = [
-      {
-        id: "r1",
-        title: "Long lead switchgear may delay commissioning",
-        category: "Programme",
-        probability: 4,
-        consequence: 5,
-        inherentRating: 20,
-        status: "Open" as const,
-      },
-      {
-        id: "r2",
-        title: "Escalation risk on structural steel pricing",
-        category: "Cost",
-        probability: 3,
-        consequence: 4,
-        inherentRating: 12,
-        status: "Open" as const,
-      },
-      {
-        id: "r3",
-        title: "Authority approvals may extend up to 45 days",
-        category: "Approvals",
-        probability: 3,
-        consequence: 3,
-        inherentRating: 9,
-        status: "Open" as const,
-      },
-    ];
-
-    return NextResponse.json({ risks });
+    return NextResponse.json(
+      { error: "Risk extraction is not yet implemented. Please add risks manually." },
+      { status: 501 }
+    );
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Unexpected server error";
     return NextResponse.json(

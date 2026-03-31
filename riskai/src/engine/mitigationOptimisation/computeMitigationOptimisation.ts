@@ -1,5 +1,5 @@
 import type { SimulationSnapshot } from "@/domain/simulation/simulation.types";
-import { getNeutralP80Cost } from "./getNeutralP80Cost";
+import { getNeutralCostAtPercentile } from "./getNeutralP80Cost";
 import type {
   BenefitMetric,
   MitigationCurvePoint,
@@ -11,10 +11,13 @@ import type {
 type RiskInput = {
   id: string;
   title: string;
+  appliesTo?: string;
   probability?: number;
   mitigation?: string;
   preMitigationCostML?: number;
   postMitigationCostML?: number;
+  preMitigationTimeML?: number;
+  postMitigationTimeML?: number;
   inherentRating?: { probability?: number; consequence?: number };
   residualRating?: { probability?: number; consequence?: number };
   mitigationProfile?: { effectiveness?: number; confidence?: number };
@@ -36,8 +39,19 @@ function getProbability(r: RiskInput): number {
   return 0.2;
 }
 
+function affectsCost(r: RiskInput): boolean {
+  const k = (r.appliesTo ?? "").toString().trim().toLowerCase();
+  return k !== "time";
+}
+
+function affectsTime(r: RiskInput): boolean {
+  const k = (r.appliesTo ?? "").toString().trim().toLowerCase();
+  return k !== "cost";
+}
+
 /** Cost ($): post ML if mitigated and set, else pre ML, else consequence 1–5 map. */
 function getCost(r: RiskInput): number {
+  if (!affectsCost(r)) return 0;
   const hasMitigation = Boolean(r.mitigation?.trim());
   if (hasMitigation && typeof r.postMitigationCostML === "number" && Number.isFinite(r.postMitigationCostML) && r.postMitigationCostML > 0)
     return r.postMitigationCostML;
@@ -57,17 +71,40 @@ function getCost(r: RiskInput): number {
   return map[cc] ?? 0;
 }
 
+/** Time (days): post ML if mitigated and set, else pre ML, else consequence 1–5 map. */
+function getTime(r: RiskInput): number {
+  if (!affectsTime(r)) return 0;
+  const hasMitigation = Boolean(r.mitigation?.trim());
+  if (hasMitigation && typeof r.postMitigationTimeML === "number" && Number.isFinite(r.postMitigationTimeML) && r.postMitigationTimeML > 0)
+    return r.postMitigationTimeML;
+  if (typeof r.preMitigationTimeML === "number" && Number.isFinite(r.preMitigationTimeML) && r.preMitigationTimeML > 0)
+    return r.preMitigationTimeML;
+  const c = r.residualRating?.consequence ?? r.inherentRating?.consequence;
+  const n = typeof c === "number" ? c : Number(c);
+  if (!Number.isFinite(n)) return 0;
+  const cc = Math.max(1, Math.min(5, Math.round(n)));
+  const map: Record<number, number> = {
+    1: 5,
+    2: 15,
+    3: 30,
+    4: 60,
+    5: 90,
+  };
+  return map[cc] ?? 0;
+}
+
 /** Materiality weight: from snapshot.risks[].expectedCost if available, else p*c, normalised. */
 function getMaterialityWeights(
   risks: RiskInput[],
-  neutralSnapshot: SimulationSnapshot | null | undefined
+  neutralSnapshot: SimulationSnapshot | null | undefined,
+  dimension: "cost" | "schedule"
 ): { riskId: string; w: number; usedFallback: boolean }[] {
   const hasPerRisk =
     neutralSnapshot?.risks?.length &&
     risks.every((r) => neutralSnapshot.risks.some((s) => s.id === r.id));
 
   if (hasPerRisk && neutralSnapshot) {
-    const byId = new Map(neutralSnapshot.risks.map((s) => [s.id, s.expectedCost]));
+    const byId = new Map(neutralSnapshot.risks.map((s) => [s.id, dimension === "cost" ? s.expectedCost : s.expectedDays]));
     const total = risks.reduce((sum, r) => sum + (byId.get(r.id) ?? 0), 0);
     if (total > 0) {
       return risks.map((r) => ({
@@ -80,8 +117,8 @@ function getMaterialityWeights(
 
   const materialities = risks.map((r) => {
     const p = getProbability(r);
-    const c = getCost(r);
-    return { riskId: r.id, m: p * c, usedFallback: true };
+    const impact = dimension === "cost" ? getCost(r) : getTime(r);
+    return { riskId: r.id, m: p * impact, usedFallback: true };
   });
   const sum = materialities.reduce((s, x) => s + x.m, 0);
   if (sum <= 0) {
@@ -107,23 +144,41 @@ export function computeMitigationOptimisation(args: {
   spendSteps?: number[];
   benefitMetric?: BenefitMetric;
   budgetCap?: number;
+  targetPercent?: number;
+  targetScheduleDays?: number;
 }): MitigationOptimisationResult {
   const spendStepsUsed = args.spendSteps ?? [0, 25_000, 50_000, 100_000, 200_000];
-  const benefitMetricUsed = args.benefitMetric ?? "p80CostReduction";
+  const benefitMetricUsed = args.benefitMetric ?? "targetCostReduction";
+  const targetPercentUsed =
+    typeof args.targetPercent === "number" && Number.isFinite(args.targetPercent)
+      ? Math.max(0, Math.min(100, args.targetPercent))
+      : 80;
 
-  let neutralP80: number;
+  let neutralTargetCost: number;
   try {
-    neutralP80 = args.neutralSnapshot ? getNeutralP80Cost(args.neutralSnapshot) : 0;
+    neutralTargetCost = args.neutralSnapshot ? getNeutralCostAtPercentile(args.neutralSnapshot, targetPercentUsed) : 0;
   } catch {
-    neutralP80 = 0;
+    neutralTargetCost = 0;
   }
 
-  const weights = getMaterialityWeights(args.risks, args.neutralSnapshot);
-  const weightByRiskId = new Map(weights.map((x) => [x.riskId, x.w]));
-  const usedFallbackCount = weights.filter((x) => x.usedFallback).length;
+  const weightsCost = getMaterialityWeights(args.risks, args.neutralSnapshot, "cost");
+  const weightsSchedule = getMaterialityWeights(args.risks, args.neutralSnapshot, "schedule");
+  const costWeightByRiskId = new Map(weightsCost.map((x) => [x.riskId, x.w]));
+  const scheduleWeightByRiskId = new Map(weightsSchedule.map((x) => [x.riskId, x.w]));
+  const usedFallbackCount =
+    weightsCost.filter((x) => x.usedFallback).length + weightsSchedule.filter((x) => x.usedFallback).length;
+  const neutralTargetDays =
+    typeof args.targetScheduleDays === "number" && Number.isFinite(args.targetScheduleDays) && args.targetScheduleDays >= 0
+      ? args.targetScheduleDays
+      : 0;
 
   let usedDefaultMitigationCount = 0;
-  const results: MitigationOptimisationRiskResult[] = args.risks.map((risk) => {
+  const buildResults = (
+    baselineValue: number,
+    weightByRiskId: Map<string, number>,
+    dimension: "cost" | "schedule"
+  ): MitigationOptimisationRiskResult[] =>
+    args.risks.map((risk) => {
     const w = weightByRiskId.get(risk.id) ?? 0;
     const maxReduction =
       typeof risk.mitigationProfile?.effectiveness === "number"
@@ -137,7 +192,7 @@ export function computeMitigationOptimisation(args: {
         ? BASE_K * (0.8 + 0.4 * Math.max(0, Math.min(1, conf)))
         : BASE_K;
 
-    const benefitAt = (spend: number) => neutralP80 * w * reduction(spend, maxReduction, k);
+    const benefitAt = (spend: number) => baselineValue * w * reduction(spend, maxReduction, k);
 
     const curve: MitigationCurvePoint[] = [];
     let prevCumulative = 0;
@@ -170,8 +225,9 @@ export function computeMitigationOptimisation(args: {
     const defaultsUsed: string[] = [];
     if (maxReduction === DEFAULT_MAX_REDUCTION) defaultsUsed.push("default maxReduction 0.25");
     if (typeof conf !== "number") defaultsUsed.push("default k");
+    const benefitUnitLabel = dimension === "schedule" ? "days reduced per dollar" : "cost reduced per dollar";
     const explanation =
-      `Materiality weight ${w.toFixed(3)}; best ROI band $${bestROIBand.from.toLocaleString()}–$${bestROIBand.to.toLocaleString()} ($${topBandBenefitPerDollar.toFixed(2)} benefit per dollar).` +
+      `Materiality weight ${w.toFixed(3)}; best ROI band $${bestROIBand.from.toLocaleString()}–$${bestROIBand.to.toLocaleString()} (${topBandBenefitPerDollar.toFixed(4)} ${benefitUnitLabel}).` +
       (defaultsUsed.length ? ` ${defaultsUsed.join("; ")}.` : "");
 
     return {
@@ -179,19 +235,30 @@ export function computeMitigationOptimisation(args: {
       riskName: risk.title,
       leverageScore,
       bestROIBand,
+      bestROIBandBenefit: curve[bestROIIndex]?.marginalBenefit ?? 0,
       topBandBenefitPerDollar,
       explanation,
       curve,
     };
   });
 
-  const ranked = [...results].sort((a, b) => {
+  const resultsCost = buildResults(neutralTargetCost, costWeightByRiskId, "cost");
+  const resultsSchedule = buildResults(neutralTargetDays, scheduleWeightByRiskId, "schedule");
+  const rankedCost = [...resultsCost].sort((a, b) => {
     if (b.leverageScore !== a.leverageScore) return b.leverageScore - a.leverageScore;
-    const wa = weightByRiskId.get(a.riskId) ?? 0;
-    const wb = weightByRiskId.get(b.riskId) ?? 0;
+    const wa = costWeightByRiskId.get(a.riskId) ?? 0;
+    const wb = costWeightByRiskId.get(b.riskId) ?? 0;
     if (wb !== wa) return wb - wa;
     return a.riskName.localeCompare(b.riskName);
   });
+  const rankedSchedule = [...resultsSchedule].sort((a, b) => {
+    if (b.leverageScore !== a.leverageScore) return b.leverageScore - a.leverageScore;
+    const wa = scheduleWeightByRiskId.get(a.riskId) ?? 0;
+    const wb = scheduleWeightByRiskId.get(b.riskId) ?? 0;
+    if (wb !== wa) return wb - wa;
+    return a.riskName.localeCompare(b.riskName);
+  });
+  const ranked = rankedCost;
 
   let budgetPlan: MitigationOptimisationResult["budgetPlan"] | undefined;
   if (args.budgetCap != null && args.budgetCap > 0) {
@@ -205,7 +272,7 @@ export function computeMitigationOptimisation(args: {
       benefitPerDollar: number;
     };
     const bands: Band[] = [];
-    for (const r of ranked) {
+    for (const r of rankedCost) {
       for (let i = 1; i < r.curve.length; i++) {
         const pt = r.curve[i];
         if (pt.incrementalSpend > 0 && pt.benefitPerDollar > 0)
@@ -247,8 +314,10 @@ export function computeMitigationOptimisation(args: {
   }
 
   return {
-    baseline: { neutralP80 },
+    baseline: { neutralTargetCost, neutralTargetDays, targetPercent: targetPercentUsed },
     ranked,
+    rankedCost,
+    rankedSchedule,
     meta: {
       spendStepsUsed: [...spendStepsUsed],
       metricUsed: benefitMetricUsed,

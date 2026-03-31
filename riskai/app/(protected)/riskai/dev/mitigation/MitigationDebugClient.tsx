@@ -99,7 +99,7 @@ export function MitigationDebugClient() {
         body: JSON.stringify({
           spendSteps: [0, 25000, 50000, 100000, 200000],
           budgetCap: 200000,
-          benefitMetric: "p80CostReduction",
+          benefitMetric: "targetCostReduction",
         }),
       });
       const { json, textPreview } = await parsePostResponse(res);
@@ -119,12 +119,14 @@ export function MitigationDebugClient() {
   }, []);
 
   const postPayload = mitPost?.json as {
-    baseline?: { neutralP80?: number };
+    baseline?: { neutralTargetCost?: number; neutralTargetDays?: number; targetPercent?: number };
     ranked?: Array<{
       riskName?: string;
       bestROIBand?: { from?: number; to?: number };
       topBandBenefitPerDollar?: number;
     }>;
+    rankedCost?: Array<{ riskName?: string }>;
+    rankedSchedule?: Array<{ riskName?: string }>;
     error?: string;
   } | undefined;
 
@@ -159,10 +161,16 @@ export function MitigationDebugClient() {
           {postPayload && !mitPost.error && (
             <div className="mb-2">
               <p>
-                <strong>baseline.neutralP80:</strong> {postPayload.baseline?.neutralP80 ?? "—"}
+                <strong>baseline.neutralTargetCost:</strong> {postPayload.baseline?.neutralTargetCost ?? "—"}{" "}
+                (P{postPayload.baseline?.targetPercent ?? "—"})
               </p>
               <p>
-                <strong>ranked.length:</strong> {postPayload.ranked?.length ?? 0}
+                <strong>baseline.neutralTargetDays:</strong> {postPayload.baseline?.neutralTargetDays ?? "—"}
+              </p>
+              <p>
+                <strong>rankedCost.length:</strong> {postPayload.rankedCost?.length ?? postPayload.ranked?.length ?? 0}
+                {" · "}
+                <strong>rankedSchedule.length:</strong> {postPayload.rankedSchedule?.length ?? 0}
               </p>
               {postPayload.ranked && postPayload.ranked.length > 0 && (
                 <p>

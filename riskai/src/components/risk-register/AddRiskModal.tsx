@@ -12,7 +12,7 @@ import {
 import {
   appliesToAffectsCost,
   appliesToAffectsTime,
-  getDefaultNewRiskStatusName,
+  getDefaultUserCreatedRiskStatusName,
   isRiskStatusDraft,
 } from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
@@ -235,9 +235,9 @@ export function AddRiskModal({
     if (!open || statusesLoading) return;
     setStatus((prev: string) => {
       if (prev !== "") return prev;
-      const draftName = getDefaultNewRiskStatusName(statuses);
-      dlog("[add risk] default status after options load", draftName || "(none)");
-      return (draftName || "draft") as RiskStatus;
+      const openName = getDefaultUserCreatedRiskStatusName(statuses);
+      dlog("[add risk] default status after options load", openName || "(none)");
+      return (openName || "open") as RiskStatus;
     });
   }, [open, statusesLoading, statuses]);
 
@@ -250,7 +250,7 @@ export function AddRiskModal({
     if (!open) return;
     dlog("[add risk] form defaults snapshot", {
       category: "(blank until user selects)",
-      statusAfterOptions: getDefaultNewRiskStatusName(statuses) || "(pending)",
+      statusAfterOptions: getDefaultUserCreatedRiskStatusName(statuses) || "(pending)",
       ownerSelect: "",
     });
   }, [open, statuses]);
@@ -421,7 +421,19 @@ export function AddRiskModal({
             className="h-9 w-9 shrink-0 p-0"
             aria-label="Close dialog"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0 text-[var(--ds-text-primary)]"
+              aria-hidden
+            >
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </Button>

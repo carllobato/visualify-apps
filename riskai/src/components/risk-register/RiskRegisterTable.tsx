@@ -41,6 +41,7 @@ export type SortColumn =
   | "title"
   | "category"
   | "owner"
+  | "appliesTo"
   | "preRating"
   | "postRating"
   | "mitigationMovement"
@@ -118,6 +119,9 @@ function getDistinctValues(risks: Risk[], column: SortColumn): string[] {
         break;
       case "owner":
         set.add(r.owner ?? "—");
+        break;
+      case "appliesTo":
+        set.add(r.appliesTo?.trim() ? r.appliesTo.trim() : "—");
         break;
       case "preRating":
         set.add(levelToLetter(r.inherentRating.level));
@@ -366,6 +370,7 @@ export function RiskRegisterTable({
           <col />
           <col />
           <col />
+          <col />
           <col style={{ width: 100 }} />
           <col style={{ width: 100 }} />
           <col style={{ width: 100 }} />
@@ -448,6 +453,24 @@ export function RiskRegisterTable({
                   <SortableHeader label="Owner" column="owner" sortState={sortState} onSort={onSortByColumn!} />
                 ) : (
                   <span>Owner</span>
+                )}
+              </HeaderCell>
+            </TableHeaderCell>
+            <TableHeaderCell className="align-middle">
+              <HeaderCell
+                canFilter={canFilter}
+                column="appliesTo"
+                risks={risks}
+                risksForFilterOptions={filterOptionsRisks}
+                columnFilters={columnFilters}
+                onColumnFilterChange={onColumnFilterChange}
+                openFilterColumn={openFilterColumn}
+                setOpenFilterColumn={setOpenFilterColumn}
+              >
+                {canSort ? (
+                  <SortableHeader label="Applies To" column="appliesTo" sortState={sortState} onSort={onSortByColumn!} />
+                ) : (
+                  <span>Applies To</span>
                 )}
               </HeaderCell>
             </TableHeaderCell>
@@ -545,7 +568,7 @@ export function RiskRegisterTable({
         <TableBody className="[&>tr]:border-[var(--ds-border-subtle)]">
           {risks.length === 0 && !onAddNewClick ? (
             <TableRow>
-              <TableCell colSpan={showActions ? 9 : 8}>
+              <TableCell colSpan={showActions ? 10 : 9}>
                 <p className="m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">No risks yet.</p>
               </TableCell>
             </TableRow>
@@ -574,6 +597,9 @@ export function RiskRegisterTable({
                   </TableCell>
                   <TableCell className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">
                     Add new risk
+                  </TableCell>
+                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    {"\u00A0"}
                   </TableCell>
                   <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                     {"\u00A0"}

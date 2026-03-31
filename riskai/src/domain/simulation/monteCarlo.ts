@@ -5,12 +5,16 @@
  *
  * Data lineage (Analysis):
  * - Risks with status "closed" or "archived" are excluded from all calculations.
- * - Probability, cost and time impacts use: post-mitigation if present, else pre-mitigation.
- * - "Present" = defined, finite, and (for numerics) non-negative where applicable.
+ * - Post-mitigation impacts apply only when `mitigationProfile.status === "active"` (Mitigating) and post ML cost/time are valid; otherwise pre-mitigation (Open / Monitoring / incomplete active).
+ * - Cost vs time contributions respect `appliesTo` (cost-only / time-only / both).
  */
 
 import type { Risk } from "@/domain/risk/risk.schema";
-import { isRiskStatusExcludedFromSimulation } from "@/domain/risk/riskFieldSemantics";
+import {
+  appliesToExcludesCost,
+  appliesToExcludesTime,
+  isRiskStatusExcludedFromSimulation,
+} from "@/domain/risk/riskFieldSemantics";
 import { probability01FromScale } from "@/domain/risk/risk.logic";
 import type {
   SimulationRiskSnapshot,
@@ -21,56 +25,102 @@ import type {
 export type EffectiveRiskInputs = {
   sourceUsed: "post" | "pre";
   probability: number;
+  costMin: number;
   costML: number;
+  costMax: number;
+  timeMin: number;
   timeML: number;
+  timeMax: number;
 };
 
 /** Simulation engine version; surface in Run Data / diagnostics. */
-export const SIMULATION_ENGINE_VERSION = "v1.01 (17 Mar 2026)";
+export const SIMULATION_ENGINE_VERSION = "v1.03 (31 Mar 2026)";
 
 function isPresentNum(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0;
 }
 
 /**
+ * Map explicit scenario `risk.probability` (0–1) to pre vs post scale only when it clearly agrees with that side;
+ * otherwise use scale-based probability so we never apply a post-derived value under pre-mitigation simulation (and vice versa).
+ */
+function simulationProbability01(
+  risk: Risk,
+  usePost: boolean,
+  fromScalePre: number,
+  fromScalePost: number
+): number {
+  const explicit =
+    typeof risk.probability === "number" && Number.isFinite(risk.probability) && risk.probability >= 0 && risk.probability <= 1
+      ? risk.probability
+      : null;
+  if (explicit === null) {
+    return usePost ? fromScalePost : fromScalePre;
+  }
+  const distPre = Math.abs(explicit - fromScalePre);
+  const distPost = Math.abs(explicit - fromScalePost);
+  if (distPre < distPost) {
+    return usePost ? fromScalePost : explicit;
+  }
+  if (distPost < distPre) {
+    return usePost ? explicit : fromScalePre;
+  }
+  return usePost ? fromScalePost : fromScalePre;
+}
+
+/**
  * Single source of truth for Analysis/simulation inputs.
  * - Excludes closed and archived risks (returns null).
- * - Uses post-mitigation values when mitigation text is set and post ML cost/time are present; else pre.
- * - Probability in 0–1 from `pre_probability` / `post_probability` (1–5) scale; optional `risk.probability` overrides when set.
- * - Cost and time in dollars and days respectively.
+ * - Post-mitigation values only when `mitigationProfile.status === "active"` and post ML cost & time are valid; else pre (including active with incomplete post).
+ * - Probability: scale-based pre/post per `usePost`, with `risk.probability` used only when it aligns with that side vs the other scale.
+ * - Cost and time in dollars and days; zeroed per `appliesTo` for cost-only / time-only risks.
  */
 export function getEffectiveRiskInputs(risk: Risk): EffectiveRiskInputs | null {
   if (isRiskStatusExcludedFromSimulation(risk.status)) return null;
 
-  const hasMitigation = Boolean(risk.mitigation?.trim());
-  const postCost = risk.postMitigationCostML;
-  const preCost = risk.preMitigationCostML;
-  const postTime = risk.postMitigationTimeML;
-  const preTime = risk.preMitigationTimeML;
-
-  const usePost = hasMitigation && isPresentNum(postCost) && isPresentNum(postTime);
+  const mitigationMode = risk.mitigationProfile?.status;
+  const hasValidPostValues =
+    isPresentNum(risk.postMitigationCostML) && isPresentNum(risk.postMitigationTimeML);
+  // Active mitigation (Mitigating) uses post ML when present; otherwise fall back to pre so partially modelled rows stay safe.
+  // Replaces prior rule: Boolean(risk.mitigation?.trim()) && post cost ML && post time ML (field presence only).
+  const usePost = mitigationMode === "active" && hasValidPostValues;
 
   const fromScalePre = probability01FromScale(risk.inherentRating.probability);
   const fromScalePost = probability01FromScale(risk.residualRating.probability);
-  const probability =
-    typeof risk.probability === "number" && Number.isFinite(risk.probability) && risk.probability >= 0 && risk.probability <= 1
-      ? risk.probability
-      : usePost
-        ? fromScalePost
-        : fromScalePre;
+  const probability = simulationProbability01(risk, usePost, fromScalePre, fromScalePost);
 
-  const costML = getCostMLFromPrePost(risk, postCost, preCost);
-  const timeML = getTimeMLFromPrePost(risk, postTime, preTime);
+  const costRaw = getCostMLForSimulation(risk, usePost);
+  const timeRaw = getTimeMLForSimulation(risk, usePost);
+  const excludesCost = appliesToExcludesCost(risk.appliesTo);
+  const excludesTime = appliesToExcludesTime(risk.appliesTo);
+  const costML = excludesCost ? 0 : costRaw;
+  const timeML = excludesTime ? 0 : timeRaw;
+
+  const costRange = excludesCost
+    ? { costMin: 0, costMax: 0 }
+    : getCostRangeForSimulation(risk, usePost, costRaw);
+  const timeRange = excludesTime
+    ? { timeMin: 0, timeMax: 0 }
+    : getTimeRangeForSimulation(risk, usePost, timeRaw);
 
   const sourceUsed: "post" | "pre" = usePost ? "post" : "pre";
 
-  return { sourceUsed, probability, costML, timeML };
+  return {
+    sourceUsed,
+    probability,
+    costMin: costRange.costMin,
+    costML,
+    costMax: costRange.costMax,
+    timeMin: timeRange.timeMin,
+    timeML,
+    timeMax: timeRange.timeMax,
+  };
 }
 
-function getCostMLFromPrePost(risk: Risk, postCost: number | undefined, preCost: number | undefined): number {
-  if (isPresentNum(postCost)) return postCost;
-  if (isPresentNum(preCost)) return preCost;
-  const c = risk.residualRating?.consequence ?? risk.inherentRating?.consequence;
+function consequenceToCostFallback(risk: Risk, usePost: boolean): number {
+  const c = usePost
+    ? (risk.residualRating?.consequence ?? risk.inherentRating?.consequence)
+    : risk.inherentRating?.consequence;
   const cons = typeof c === "number" ? c : Number(c);
   if (!Number.isFinite(cons)) return 0;
   const cc = Math.max(1, Math.min(5, Math.round(cons)));
@@ -78,13 +128,81 @@ function getCostMLFromPrePost(risk: Risk, postCost: number | undefined, preCost:
   return map[cc] ?? 0;
 }
 
+function getCostMLForSimulation(risk: Risk, usePost: boolean): number {
+  const postCost = risk.postMitigationCostML;
+  const preCost = risk.preMitigationCostML;
+  if (usePost && isPresentNum(postCost)) return postCost;
+  if (!usePost && isPresentNum(preCost)) return preCost;
+  if (usePost && isPresentNum(preCost)) return preCost;
+  return consequenceToCostFallback(risk, usePost);
+}
+
 /** Maximum schedule impact (days) used in simulation; range is 0–30 days. */
 const SCHEDULE_IMPACT_DAYS_CAP = 30;
 
-function getTimeMLFromPrePost(risk: Risk, postTime: number | undefined, preTime: number | undefined): number {
-  if (isPresentNum(postTime)) return Math.min(postTime, SCHEDULE_IMPACT_DAYS_CAP);
-  if (isPresentNum(preTime)) return Math.min(preTime, SCHEDULE_IMPACT_DAYS_CAP);
+function getTimeMLForSimulation(risk: Risk, usePost: boolean): number {
+  const postTime = risk.postMitigationTimeML;
+  const preTime = risk.preMitigationTimeML;
+  if (usePost && isPresentNum(postTime)) return Math.min(postTime, SCHEDULE_IMPACT_DAYS_CAP);
+  if (!usePost && isPresentNum(preTime)) return Math.min(preTime, SCHEDULE_IMPACT_DAYS_CAP);
+  if (usePost && isPresentNum(preTime)) return Math.min(preTime, SCHEDULE_IMPACT_DAYS_CAP);
   return 0;
+}
+
+/**
+ * Default spread factor when min/max are not provided.
+ * Produces a right-skewed triangular distribution typical of project risk impacts.
+ */
+const DEFAULT_MIN_FACTOR = 0.75;
+const DEFAULT_MAX_FACTOR = 1.5;
+
+function getCostRangeForSimulation(
+  risk: Risk,
+  usePost: boolean,
+  costML: number
+): { costMin: number; costMax: number } {
+  const rawMin = usePost ? risk.postMitigationCostMin : risk.preMitigationCostMin;
+  const rawMax = usePost ? risk.postMitigationCostMax : risk.preMitigationCostMax;
+  const hasMin = isPresentNum(rawMin);
+  const hasMax = isPresentNum(rawMax);
+
+  if (costML <= 0) return { costMin: 0, costMax: 0 };
+
+  const costMin = hasMin ? Math.min(rawMin!, costML) : costML * DEFAULT_MIN_FACTOR;
+  const costMax = hasMax ? Math.max(rawMax!, costML) : costML * DEFAULT_MAX_FACTOR;
+  return { costMin: Math.max(0, costMin), costMax };
+}
+
+function getTimeRangeForSimulation(
+  risk: Risk,
+  usePost: boolean,
+  timeML: number
+): { timeMin: number; timeMax: number } {
+  const rawMin = usePost ? risk.postMitigationTimeMin : risk.preMitigationTimeMin;
+  const rawMax = usePost ? risk.postMitigationTimeMax : risk.preMitigationTimeMax;
+  const hasMin = isPresentNum(rawMin);
+  const hasMax = isPresentNum(rawMax);
+
+  if (timeML <= 0) return { timeMin: 0, timeMax: 0 };
+
+  const timeMin = hasMin
+    ? Math.min(rawMin!, timeML)
+    : timeML * DEFAULT_MIN_FACTOR;
+  const timeMax = hasMax
+    ? Math.min(Math.max(rawMax!, timeML), SCHEDULE_IMPACT_DAYS_CAP)
+    : Math.min(timeML * DEFAULT_MAX_FACTOR, SCHEDULE_IMPACT_DAYS_CAP);
+  return { timeMin: Math.max(0, timeMin), timeMax };
+}
+
+/** Sample from a triangular distribution (min, mode, max). Returns mode when degenerate. */
+function sampleTriangular(random: () => number, min: number, mode: number, max: number): number {
+  if (max <= min) return mode;
+  const u = random();
+  const fc = (mode - min) / (max - min);
+  if (u < fc) {
+    return min + Math.sqrt(u * (max - min) * (mode - min));
+  }
+  return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
 }
 
 export type SimulationResult = {
@@ -189,7 +307,7 @@ export type RunMonteCarloOptions = {
 /**
  * Runs Monte Carlo simulation: for each iteration, for each risk,
  * decide if risk triggers (random < probability); if so add most likely cost and time.
- * Closed risks are excluded. Uses post-mitigation inputs when present, else pre-mitigation.
+ * Closed risks are excluded. Effective inputs encode pre vs post, probability alignment, and appliesTo (cost-only / time-only zero the irrelevant leg).
  * Returns costSamples, timeSamples, and computed summary (mean, p50, p80, p90, min, max).
  */
 export function runMonteCarloSimulation(
@@ -209,8 +327,8 @@ export function runMonteCarloSimulation(
     for (const inp of effective) {
       const trigger = random() < inp.probability;
       if (trigger) {
-        totalCost += inp.costML;
-        totalTime += inp.timeML;
+        totalCost += sampleTriangular(random, inp.costMin, inp.costML, inp.costMax);
+        totalTime += sampleTriangular(random, inp.timeMin, inp.timeML, inp.timeMax);
       }
     }
     costSamples.push(totalCost);
@@ -249,7 +367,7 @@ export function buildSimulationReport(
 
 /**
  * Builds snapshot fields from Monte Carlo result + risks for backward compatibility.
- * Closed risks are excluded. Uses same effective inputs (post/pre) as runMonteCarloSimulation.
+ * Closed risks are excluded. Uses same effective inputs as runMonteCarloSimulation.
  * Caller supplies id and timestampIso to form a full SimulationSnapshot.
  */
 export function buildSimulationSnapshotFromResult(

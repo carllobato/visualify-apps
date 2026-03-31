@@ -1,4 +1,4 @@
-export type BenefitMetric = "p80CostReduction";
+export type BenefitMetric = "targetCostReduction";
 
 export type MitigationCurvePoint = {
   incrementalSpend: number;
@@ -19,8 +19,10 @@ export type MitigationOptimisationRiskResult = {
 };
 
 export type MitigationOptimisationResult = {
-  baseline: { neutralP80: number };
+  baseline: { neutralTargetCost: number; neutralTargetDays: number; targetPercent: number };
   ranked: MitigationOptimisationRiskResult[];
+  rankedCost: MitigationOptimisationRiskResult[];
+  rankedSchedule: MitigationOptimisationRiskResult[];
   meta: {
     spendStepsUsed: number[];
     metricUsed: BenefitMetric;
@@ -51,15 +53,19 @@ export function computeMitigationOptimisation(args: {
   const spendStepsUsed = args.spendSteps ?? [0, 25_000, 50_000, 100_000, 200_000];
 
   // For now: minimal safe stub, no snapshot parsing yet.
-  // We will implement neutralP80 extraction in the next micro-step.
-  const neutralP80 = 0;
+  // Minimal safe stub.
+  const neutralTargetCost = 0;
+  const neutralTargetDays = 0;
+  const targetPercent = 80;
 
   return {
-    baseline: { neutralP80 },
+    baseline: { neutralTargetCost, neutralTargetDays, targetPercent },
     ranked: [],
+    rankedCost: [],
+    rankedSchedule: [],
     meta: {
       spendStepsUsed,
-      metricUsed: args.benefitMetric ?? "p80CostReduction",
+      metricUsed: args.benefitMetric ?? "targetCostReduction",
       usedFallbackMaterialityCount: 0,
       usedDefaultMitigationParamsCount: 0,
     },

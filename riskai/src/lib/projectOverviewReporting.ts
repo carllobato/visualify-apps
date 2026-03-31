@@ -25,7 +25,7 @@ import {
   type TimeCdfPoint,
 } from "@/lib/simulationDisplayUtils";
 
-const DISTRIBUTION_BIN_COUNT = 28;
+const DISTRIBUTION_BIN_COUNT = 50;
 
 const REPORTING_ANCHOR_PERCS = [20, 50, 80, 90] as const;
 export type ReportingAnchorPercentile = (typeof REPORTING_ANCHOR_PERCS)[number];

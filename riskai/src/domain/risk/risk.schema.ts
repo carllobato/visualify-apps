@@ -42,6 +42,10 @@ export const MitigationProfileSchema = z.object({
 });
 export type MitigationProfile = z.infer<typeof MitigationProfileSchema>;
 
+/** Modelling mitigation 3-state in Risk Detail UI only (not a separate DB column; use lifecycle `status` for persistence). */
+export const MitigationModeSchema = z.enum(["none", "forecast", "active"]);
+export type MitigationMode = z.infer<typeof MitigationModeSchema>;
+
 /**
  * Scales (Day-1: 1–5)
  */

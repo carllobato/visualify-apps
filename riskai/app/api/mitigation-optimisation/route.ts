@@ -13,13 +13,28 @@ import { requireUser } from "@/lib/auth/requireUser";
 import { computeMitigationOptimisation, getNeutralP80Cost } from "@/engine/mitigationOptimisation";
 import type { BenefitMetric } from "@/engine/mitigationOptimisation";
 import { dlog, dwarn, isDev } from "@/lib/debug";
+import type { SimulationSnapshot } from "@/domain/simulation/simulation.types";
 
 /** POST body: only optional spendSteps, budgetCap, benefitMetric. Risks and snapshot loaded internally. */
 type Body = {
   spendSteps?: unknown;
   budgetCap?: unknown;
   benefitMetric?: unknown;
+  targetPercent?: unknown;
+  targetScheduleDays?: unknown;
+  risks?: unknown;
+  neutralSnapshot?: unknown;
 };
+
+function isValidSnapshot(snapshot: unknown): snapshot is SimulationSnapshot {
+  if (snapshot == null || typeof snapshot !== "object") return false;
+  const s = snapshot as Record<string, unknown>;
+  return (
+    typeof s.p80Cost === "number" &&
+    Number.isFinite(s.p80Cost) &&
+    Array.isArray(s.risks)
+  );
+}
 
 function validateSpendSteps(value: unknown): { ok: true; steps: number[] } | { ok: false; error: string } {
   if (value === undefined || value === null) return { ok: true, steps: [0, 25_000, 50_000, 100_000, 200_000] };
@@ -45,9 +60,23 @@ function validateBudgetCap(value: unknown): { ok: true; cap?: number } | { ok: f
 }
 
 function validateBenefitMetric(value: unknown): BenefitMetric | null {
-  if (value === "p80CostReduction") return "p80CostReduction";
-  if (value === undefined || value === null) return "p80CostReduction";
+  if (value === "targetCostReduction") return "targetCostReduction";
+  if (value === undefined || value === null) return "targetCostReduction";
   return null;
+}
+
+function validateTargetPercent(value: unknown): { ok: true; targetPercent: number } | { ok: false; error: string } {
+  if (value === undefined || value === null) return { ok: true, targetPercent: 80 };
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return { ok: false, error: "targetPercent must be a number between 0 and 100" };
+  return { ok: true, targetPercent: n };
+}
+
+function validateTargetScheduleDays(value: unknown): { ok: true; targetScheduleDays?: number } | { ok: false; error: string } {
+  if (value === undefined || value === null) return { ok: true };
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return { ok: false, error: "targetScheduleDays must be a non-negative number" };
+  return { ok: true, targetScheduleDays: n };
 }
 
 function devHeaders(status: ReturnType<typeof getSimulationContextStatus>) {
@@ -89,15 +118,27 @@ export async function POST(req: Request) {
 
     const benefitMetric = validateBenefitMetric(body.benefitMetric);
     if (benefitMetric === null) {
-      return NextResponse.json({ error: "benefitMetric must be \"p80CostReduction\" or omitted" }, { status: 400 });
+      return NextResponse.json({ error: "benefitMetric must be \"targetCostReduction\" or omitted" }, { status: 400 });
+    }
+    const targetPercentResult = validateTargetPercent(body.targetPercent);
+    if (!targetPercentResult.ok) {
+      return NextResponse.json({ error: targetPercentResult.error }, { status: 400 });
+    }
+    const targetScheduleDaysResult = validateTargetScheduleDays(body.targetScheduleDays);
+    if (!targetScheduleDaysResult.ok) {
+      return NextResponse.json({ error: targetScheduleDaysResult.error }, { status: 400 });
     }
 
-    const { risks, neutralSnapshot } = await getSimulationContext();
+    const bodyRisks = Array.isArray(body.risks) ? body.risks : null;
+    const bodyNeutralSnapshot = isValidSnapshot(body.neutralSnapshot) ? body.neutralSnapshot : null;
+    const context = await getSimulationContext();
+    const risks = bodyRisks ?? context.risks;
+    const neutralSnapshot = bodyNeutralSnapshot ?? context.neutralSnapshot;
     const status = getSimulationContextStatus();
     dlog("[api/mit-opt] ctx", {
-      riskCount: status.riskCount,
-      hasSnapshot: status.hasNeutralSnapshot,
-      neutralP80: status.neutralP80,
+      riskCount: risks.length,
+      hasSnapshot: !!neutralSnapshot,
+      neutralP80: neutralSnapshot ? getNeutralP80Cost(neutralSnapshot) : null,
       lastUpdatedAt: status.lastUpdatedAt,
     });
 
@@ -114,12 +155,17 @@ export async function POST(req: Request) {
       neutralSnapshot,
       spendSteps: spendResult.steps,
       benefitMetric,
+      targetPercent: targetPercentResult.targetPercent,
+      targetScheduleDays: targetScheduleDaysResult.targetScheduleDays,
       budgetCap: budgetResult.cap,
     });
 
     dlog("[api/mit-opt] ok", {
-      neutralP80: result.baseline.neutralP80,
-      rankedCount: result.ranked.length,
+      neutralTargetCost: result.baseline.neutralTargetCost,
+      neutralTargetDays: result.baseline.neutralTargetDays,
+      targetPercent: result.baseline.targetPercent,
+      rankedCostCount: result.rankedCost.length,
+      rankedScheduleCount: result.rankedSchedule.length,
     });
 
     const headers = devHeaders(getSimulationContextStatus());
@@ -162,11 +208,15 @@ export async function GET() {
     const result = computeMitigationOptimisation({
       risks: risks as Parameters<typeof computeMitigationOptimisation>[0]["risks"],
       neutralSnapshot,
+      targetPercent: 80,
     });
 
     dlog("[api/mit-opt] ok", {
-      neutralP80: result.baseline.neutralP80,
-      rankedCount: result.ranked.length,
+      neutralTargetCost: result.baseline.neutralTargetCost,
+      neutralTargetDays: result.baseline.neutralTargetDays,
+      targetPercent: result.baseline.targetPercent,
+      rankedCostCount: result.rankedCost.length,
+      rankedScheduleCount: result.rankedSchedule.length,
     });
 
     const headers = devHeaders(getSimulationContextStatus());
@@ -175,7 +225,8 @@ export async function GET() {
         ok: true,
         hasNeutralSnapshot: true,
         neutralP80,
-        sampleRankedCount: result.ranked.length,
+        sampleRankedCostCount: result.rankedCost.length,
+        sampleRankedScheduleCount: result.rankedSchedule.length,
       },
       { status: 200, headers }
     );

@@ -1,23 +1,11 @@
 import { SummaryTile } from "@/components/dashboard/SummaryTile";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { RankedRiskList } from "@/components/dashboard/RankedRiskList";
-import {
-  MOCK_PORTFOLIO_SUMMARY,
-  type PortfolioSummary,
-} from "./mockPortfolioOverviewData";
-import { formatPortfolioCurrency } from "./formatPortfolioCurrency";
-
-function formatCoverageRatio(ratio: number): string {
-  return `${ratio.toFixed(2)}x`;
-}
 
 /**
  * Portfolio Overview: executive snapshot of portfolio risk exposure.
- * Uses mock data only; ready to be wired to live data later.
+ * Placeholder state — will be wired to live aggregated data from project snapshots.
  */
 export function PortfolioOverviewContent() {
-  const data: PortfolioSummary = MOCK_PORTFOLIO_SUMMARY;
-
   return (
     <main className="w-full px-4 sm:px-6 py-8">
       {/* Section A — Portfolio KPI Summary */}
@@ -26,31 +14,11 @@ export function PortfolioOverviewContent() {
           Portfolio KPI summary
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <SummaryTile
-            title="Projects"
-            primaryValue={String(data.projectCount)}
-            subtext={`${data.activeProjectCount} active projects`}
-          />
-          <SummaryTile
-            title="Active Risks"
-            primaryValue={String(data.activeRisks)}
-            subtext={`${data.highRisks} high severity`}
-          />
-          <SummaryTile
-            title="Contingency Held"
-            primaryValue={formatPortfolioCurrency(data.contingencyHeld)}
-            subtext="Portfolio contingency pool"
-          />
-          <SummaryTile
-            title="Risk Exposure"
-            primaryValue={formatPortfolioCurrency(data.riskExposure)}
-            subtext="Aggregated across projects"
-          />
-          <SummaryTile
-            title="Coverage Ratio"
-            primaryValue={formatCoverageRatio(data.coverageRatio)}
-            subtext="Portfolio protection level"
-          />
+          <SummaryTile title="Projects" primaryValue="—" subtext="No data yet" />
+          <SummaryTile title="Active Risks" primaryValue="—" subtext="No data yet" />
+          <SummaryTile title="Contingency Held" primaryValue="—" subtext="No data yet" />
+          <SummaryTile title="Risk Exposure" primaryValue="—" subtext="No data yet" />
+          <SummaryTile title="Coverage Ratio" primaryValue="—" subtext="No data yet" />
         </div>
       </section>
 
@@ -60,51 +28,14 @@ export function PortfolioOverviewContent() {
           Portfolio risk concentration
         </h2>
         <DashboardCard title="Top 5 Cost Risks">
-          <RankedRiskList<Omit<PortfolioSummary["topCostRisks"][number], "id">>
-            items={data.topCostRisks}
-            renderRow={(item) => (
-              <div className="flex-1 min-w-0 flex items-center justify-between gap-2 flex-wrap">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--ds-text-primary)] truncate m-0">
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-[var(--ds-text-muted)] m-0">
-                    {item.projectName}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-sm font-medium text-[var(--ds-text-primary)]">
-                    {formatPortfolioCurrency(item.value)}
-                  </span>
-                  {item.status != null && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]">
-                      {item.status}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-          />
+          <p className="text-sm text-[var(--ds-text-muted)] m-0">
+            No cost risk data available. Run simulations in your projects to populate this view.
+          </p>
         </DashboardCard>
         <DashboardCard title="Top 5 Schedule Risks">
-          <RankedRiskList<Omit<PortfolioSummary["topScheduleRisks"][number], "id">>
-            items={data.topScheduleRisks}
-            renderRow={(item) => (
-              <div className="flex-1 min-w-0 flex items-center justify-between gap-2 flex-wrap">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--ds-text-primary)] truncate m-0">
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-[var(--ds-text-muted)] m-0">
-                    {item.projectName}
-                  </p>
-                </div>
-                <span className="text-sm font-medium text-[var(--ds-text-primary)] shrink-0">
-                  {item.impactDays} days
-                </span>
-              </div>
-            )}
-          />
+          <p className="text-sm text-[var(--ds-text-muted)] m-0">
+            No schedule risk data available. Run simulations in your projects to populate this view.
+          </p>
         </DashboardCard>
       </section>
 

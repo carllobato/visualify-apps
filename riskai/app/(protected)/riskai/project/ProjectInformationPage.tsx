@@ -26,7 +26,6 @@ import { ProjectExcelUploadSection } from "@/components/project/ProjectExcelUplo
 import { ProjectMembersSection } from "@/components/project/ProjectMembersSection";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { useRiskRegister } from "@/store/risk-register.store";
-import { DEFAULT_PROJECT_ID } from "@/lib/db/risks";
 import { RiskDetailModal } from "@/components/risk-register/RiskDetailModal";
 import { RiskRegisterLookupProviders } from "@/components/risk-register/RiskRegisterLookupProviders";
 import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
@@ -771,19 +770,21 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         </div>
       )}
 
-      <RiskRegisterLookupProviders projectId={projectId ?? DEFAULT_PROJECT_ID}>
-        <RiskDetailModal
-          open={showArchivedReviewModal}
-          risks={archivedRisks}
-          initialRiskId={archivedRisks[0]?.id ?? null}
-          readOnly={riskUiReadOnly}
-          onClose={() => setShowArchivedReviewModal(false)}
-          onSave={(risk) => updateRisk(risk.id, risk)}
-          onRestoreRisk={
-            riskUiReadOnly ? undefined : (id) => restoreArchivedRisk(id)
-          }
-        />
-      </RiskRegisterLookupProviders>
+      {projectId && (
+        <RiskRegisterLookupProviders projectId={projectId}>
+          <RiskDetailModal
+            open={showArchivedReviewModal}
+            risks={archivedRisks}
+            initialRiskId={archivedRisks[0]?.id ?? null}
+            readOnly={riskUiReadOnly}
+            onClose={() => setShowArchivedReviewModal(false)}
+            onSave={(risk) => updateRisk(risk.id, risk)}
+            onRestoreRisk={
+              riskUiReadOnly ? undefined : (id) => restoreArchivedRisk(id)
+            }
+          />
+        </RiskRegisterLookupProviders>
+      )}
     </main>
   );
 }

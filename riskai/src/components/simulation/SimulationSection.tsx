@@ -30,9 +30,6 @@ import {
   timeAtPercentile,
   percentileAtCost,
   percentileAtTime,
-  binSamplesIntoHistogram,
-  binSamplesIntoTimeHistogram,
-  distributionToCostCdf,
   barDataToCostCdf,
   barDataToTimeCdf,
   percentileFromSorted,
@@ -41,7 +38,6 @@ import {
   P10_DECILES,
   type CostCdfPoint,
   type TimeCdfPoint,
-  type DistributionPoint,
   type CostSummary,
   type TimeSummary,
 } from "@/lib/simulationDisplayUtils";
@@ -51,7 +47,7 @@ import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.type
 
 const CHART_HEIGHT = 300;
 const CHART_MARGIN = { top: 10, right: 16, left: 8, bottom: 28 };
-const DISTRIBUTION_BIN_COUNT = 28;
+const DISTRIBUTION_BIN_COUNT = 100;
 const SIMULATION_TOP_RISKS_COUNT = 5;
 
 /** Offset (px) to shift label left/right from the line so two labels on same row don't clash. */
@@ -146,9 +142,75 @@ function formatCostCompact(value: number): string {
   return formatCost(value);
 }
 
+/** Gaussian KDE: evaluate density at evenly-spaced x-points from raw samples. */
+const KDE_EVAL_POINTS = 200;
+
+function gaussianKde(
+  samples: number[],
+  numPoints: number = KDE_EVAL_POINTS
+): { x: number; density: number }[] {
+  const n = samples.length;
+  if (n === 0) return [];
+  const sorted = [...samples].sort((a, b) => a - b);
+  const min = sorted[0];
+  const max = sorted[n - 1];
+  const mean = sorted.reduce((s, v) => s + v, 0) / n;
+  const variance = sorted.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const stddev = Math.sqrt(variance) || 1;
+  const bw = 1.6 * stddev * n ** -0.2;
+  const pad = bw * 3;
+  const lo = min - pad;
+  const hi = max + pad;
+  const step = (hi - lo) / (numPoints - 1);
+  const inv2bwSq = 1 / (2 * bw * bw);
+  const norm = 1 / (n * bw * Math.sqrt(2 * Math.PI));
+  const out: { x: number; density: number }[] = [];
+  for (let i = 0; i < numPoints; i++) {
+    const x = lo + i * step;
+    let sum = 0;
+    for (let j = 0; j < n; j++) {
+      const d = x - sorted[j];
+      sum += Math.exp(-d * d * inv2bwSq);
+    }
+    out.push({ x, density: sum * norm });
+  }
+  return out;
+}
+
+function kdeCost(
+  samples: number[],
+  numPoints: number = KDE_EVAL_POINTS
+): { cost: number; barPct: number; smoothPct: number }[] {
+  const raw = gaussianKde(samples, numPoints);
+  if (raw.length === 0) return [];
+  const peak = Math.max(...raw.map((p) => p.density));
+  const scale = peak > 0 ? 100 / peak : 1;
+  return raw.map((p) => ({
+    cost: p.x,
+    barPct: p.density * scale,
+    smoothPct: p.density * scale,
+  }));
+}
+
+function kdeTime(
+  samples: number[],
+  numPoints: number = KDE_EVAL_POINTS
+): { time: number; barPct: number; smoothPct: number }[] {
+  const raw = gaussianKde(samples, numPoints);
+  if (raw.length === 0) return [];
+  const peak = Math.max(...raw.map((p) => p.density));
+  const scale = peak > 0 ? 100 / peak : 1;
+  return raw.map((p) => ({
+    time: p.x,
+    barPct: p.density * scale,
+    smoothPct: p.density * scale,
+  }));
+}
+
+/** Simple moving-average fallback for percentile-derived histograms (no raw samples). */
 function smoothBarPct(
   data: { cost: number; barPct: number }[],
-  windowSize: number = 3
+  windowSize: number = 5
 ): { cost: number; barPct: number; smoothPct: number }[] {
   if (data.length === 0) return [];
   const half = Math.floor(windowSize / 2);
@@ -168,7 +230,7 @@ function smoothBarPct(
 
 function smoothBarPctTime(
   data: { time: number; barPct: number }[],
-  windowSize: number = 3
+  windowSize: number = 5
 ): { time: number; barPct: number; smoothPct: number }[] {
   if (data.length === 0) return [];
   const half = Math.floor(windowSize / 2);
@@ -263,27 +325,21 @@ function CostChart({
 }) {
   const { samples, summary, iterationCount } = results;
   const costSamples = useMemo(() => samples ?? [], [samples]);
-  const divisor = costSamples.length > 0 ? iterationCount : 1;
 
   const { smoothData, deciles } = useMemo(() => {
-    let barData: { cost: number; barPct: number }[] = [];
-    let dist: DistributionPoint[] = [];
+    let smooth: { cost: number; barPct: number; smoothPct: number }[] = [];
     if (costSamples.length > 0) {
-      dist = binSamplesIntoHistogram(costSamples, DISTRIBUTION_BIN_COUNT);
-      barData = dist.map((b) => ({
-        cost: b.cost,
-        barPct: (Number(b.frequency) / divisor) * 100,
-      }));
+      smooth = kdeCost(costSamples);
     } else if (summary) {
-      dist = deriveCostHistogramFromPercentiles(summary, DISTRIBUTION_BIN_COUNT);
+      const dist = deriveCostHistogramFromPercentiles(summary, DISTRIBUTION_BIN_COUNT);
       const total = dist.reduce((s, d) => s + Number(d.frequency), 0);
       const div = total > 0 ? total : 1;
-      barData = dist.map((d) => ({
+      const barData = dist.map((d) => ({
         cost: d.cost,
         barPct: (Number(d.frequency) / div) * 100,
       }));
+      smooth = smoothBarPct(barData, 5);
     }
-    const smooth = smoothBarPct(barData, 3);
     const sorted = [...costSamples].sort((a, b) => a - b);
     const deciles =
       sorted.length > 0
@@ -297,9 +353,8 @@ function CostChart({
               }));
             })()
           : [];
-    const cdfFromDist = dist.length > 0 ? distributionToCostCdf(dist) : [];
-    return { smoothData: smooth, deciles, cdf: cdfFromDist.length > 0 ? cdfFromDist : (smooth.length > 0 ? barDataToCostCdf(smooth) : []) };
-  }, [costSamples, summary, divisor]);
+    return { smoothData: smooth, deciles };
+  }, [costSamples, summary]);
 
   const chartData = useMemo(() => {
     if (smoothData.length === 0) return smoothData;
@@ -492,8 +547,9 @@ function CostChart({
   const yMax = useMemo(() => {
     if (smoothData.length === 0) return 5;
     const maxPct = smoothData.reduce((m, d) => Math.max(m, d.barPct ?? 0, d.smoothPct ?? 0), 0);
-    const step = maxPct <= 5 ? 0.5 : maxPct <= 10 ? 1 : 2;
-    return Math.ceil(maxPct / step) * step;
+    const padded = maxPct * 1.25;
+    const step = padded <= 5 ? 0.5 : padded <= 10 ? 1 : 2;
+    return Math.ceil(padded / step) * step;
   }, [smoothData]);
 
   const empty = smoothData.length === 0;
@@ -754,24 +810,19 @@ function TimeChart({
   const timeSamples = useMemo(() => samples ?? [], [samples]);
 
   const { smoothData, deciles } = useMemo(() => {
-    let barData: { time: number; barPct: number }[] = [];
-    const divisor = timeSamples.length > 0 ? iterationCount : 1;
+    let smooth: { time: number; barPct: number; smoothPct: number }[] = [];
     if (timeSamples.length > 0) {
-      const buckets = binSamplesIntoTimeHistogram(timeSamples, DISTRIBUTION_BIN_COUNT);
-      barData = buckets.map((b) => ({
-        time: b.time,
-        barPct: (Number(b.frequency) / divisor) * 100,
-      }));
+      smooth = kdeTime(timeSamples);
     } else if (summary) {
       const dist = deriveTimeHistogramFromPercentiles(summary, DISTRIBUTION_BIN_COUNT);
       const total = dist.reduce((s, d) => s + Number(d.frequency), 0);
       const div = total > 0 ? total : 1;
-      barData = dist.map((d) => ({
+      const barData = dist.map((d) => ({
         time: d.time,
         barPct: (Number(d.frequency) / div) * 100,
       }));
+      smooth = smoothBarPctTime(barData, 5);
     }
-    const smooth = smoothBarPctTime(barData, 3);
     const sorted = [...timeSamples].sort((a, b) => a - b);
     const deciles =
       sorted.length > 0
@@ -980,8 +1031,9 @@ function TimeChart({
   const yMax = useMemo(() => {
     if (smoothData.length === 0) return 5;
     const maxPct = smoothData.reduce((m, d) => Math.max(m, d.barPct ?? 0, d.smoothPct ?? 0), 0);
-    const step = maxPct <= 5 ? 0.5 : maxPct <= 10 ? 1 : 2;
-    return Math.ceil(maxPct / step) * step;
+    const padded = maxPct * 1.25;
+    const step = padded <= 5 ? 0.5 : padded <= 10 ? 1 : 2;
+    return Math.ceil(padded / step) * step;
   }, [smoothData]);
 
   const empty = smoothData.length === 0;
