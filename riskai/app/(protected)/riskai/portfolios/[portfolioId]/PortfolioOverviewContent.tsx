@@ -1,11 +1,12 @@
 import { SummaryTile } from "@/components/dashboard/SummaryTile";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 
-/**
- * Portfolio Overview: executive snapshot of portfolio risk exposure.
- * Placeholder state — will be wired to live aggregated data from project snapshots.
- */
-export function PortfolioOverviewContent() {
+type PortfolioOverviewContentProps = {
+  projectCount: number;
+  activeRiskCount: number;
+};
+
+export function PortfolioOverviewContent({ projectCount, activeRiskCount }: PortfolioOverviewContentProps) {
   return (
     <main className="w-full px-4 sm:px-6 py-8">
       {/* Section A — Portfolio KPI Summary */}
@@ -14,8 +15,16 @@ export function PortfolioOverviewContent() {
           Portfolio KPI summary
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <SummaryTile title="Projects" primaryValue="—" subtext="No data yet" />
-          <SummaryTile title="Active Risks" primaryValue="—" subtext="No data yet" />
+          <SummaryTile
+            title="Projects"
+            primaryValue={String(projectCount)}
+            subtext={projectCount === 1 ? "1 project" : `${projectCount} projects`}
+          />
+          <SummaryTile
+            title="Active Risks"
+            primaryValue={String(activeRiskCount)}
+            subtext={activeRiskCount === 1 ? "1 active risk" : `${activeRiskCount} active risks`}
+          />
           <SummaryTile title="Contingency Held" primaryValue="—" subtext="No data yet" />
           <SummaryTile title="Risk Exposure" primaryValue="—" subtext="No data yet" />
           <SummaryTile title="Coverage Ratio" primaryValue="—" subtext="No data yet" />
