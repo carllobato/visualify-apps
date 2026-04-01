@@ -6,6 +6,8 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { ProjectionScenarioProvider } from "@/context/ProjectionScenarioContext";
 import { LegalDocumentProvider } from "@/components/legal/LegalDocumentProvider";
 import { RiskRegisterProvider } from "@/store/risk-register.store";
+import { InactivityGuard } from "@/components/InactivityGuard";
+import { SingleSessionGuard } from "@/components/SingleSessionGuard";
 
 const geist = Geist({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-geist-mono" });
@@ -43,7 +45,11 @@ export default function RootLayout({
         <ThemeProvider>
           <ProjectionScenarioProvider>
             <RiskRegisterProvider>
-              <LegalDocumentProvider>{children}</LegalDocumentProvider>
+              <LegalDocumentProvider>
+                {children}
+                <InactivityGuard />
+                <SingleSessionGuard />
+              </LegalDocumentProvider>
             </RiskRegisterProvider>
           </ProjectionScenarioProvider>
         </ThemeProvider>

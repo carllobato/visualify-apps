@@ -161,6 +161,8 @@ export function LoginClient() {
   const initialTab: LoginTabId =
     typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "signup" ? "signup" : "signin";
 
+  const reason = searchParams.get("reason");
+
   const [tab, setTab] = useState<LoginTabId>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -280,6 +282,18 @@ export function LoginClient() {
         </div>
         <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
       </div>
+
+      {reason === "session_replaced" && (
+        <Callout status="warning" className="mb-3 text-center text-[length:var(--ds-text-sm)]">
+          You were signed out because your account signed in on another device or browser.
+        </Callout>
+      )}
+
+      {reason === "inactive" && (
+        <Callout status="warning" className="mb-3 text-center text-[length:var(--ds-text-sm)]">
+          You were signed out due to inactivity. Please sign in again.
+        </Callout>
+      )}
 
       {tab === "signup" && signUpAwaitingEmail ? (
         <div className="space-y-4" role="status" aria-live="polite">
