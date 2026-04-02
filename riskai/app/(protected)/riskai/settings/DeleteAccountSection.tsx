@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { Callout } from "@visualify/design-system";
+import { Button, Callout, Card, CardBody, CardHeader } from "@visualify/design-system";
 
 export function DeleteAccountSection() {
   const [open, setOpen] = useState(false);
@@ -38,35 +38,29 @@ export function DeleteAccountSection() {
   }
 
   return (
-    <section className="mb-10">
-      <h2 className="mb-3 text-lg font-medium text-[var(--ds-text-primary)]">Danger zone</h2>
-      <div className="rounded-lg border border-[var(--ds-status-danger-border)] bg-[var(--ds-status-danger-subtle-bg)] p-4">
-        <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
-          Permanently delete your account and associated access. This does not remove data owned by
-          organisations you were invited to unless your user record is the only link — confirm with
-          your admin if unsure.
-        </p>
-        <p className="mb-3 text-xs leading-relaxed text-[var(--ds-text-muted)]">
-          <span className="font-medium text-[var(--ds-text-secondary)]">Setup (self-hosted / local):</span> add{" "}
-          <code className="rounded bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] px-1 py-0.5 font-mono text-[11px]">
-            SUPABASE_SERVICE_ROLE_KEY
-          </code>{" "}
-          to <code className="rounded bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] px-1 py-0.5 font-mono text-[11px]">.env.local</code>{" "}
-          (Supabase → Project Settings → API → <span className="whitespace-nowrap">service_role</span> secret), then
-          restart the dev server. On Vercel, add the same variable under Project → Settings → Environment Variables and
-          redeploy.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setOpen(true);
-          }}
-          className="rounded-md border border-[var(--ds-status-danger-border)] bg-[var(--ds-surface-elevated)] px-4 py-2 text-sm font-medium text-[var(--ds-status-danger-fg)] hover:bg-[var(--ds-status-danger-bg)]"
-        >
-          Delete account
-        </button>
-      </div>
+    <>
+      <Card>
+        <CardHeader className="!px-4 !py-2.5">
+          <h2 className="m-0 text-sm font-semibold text-[var(--ds-status-danger-fg)]">Danger zone</h2>
+        </CardHeader>
+        <CardBody className="!px-4 !py-3">
+          <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
+            Permanently delete your account and associated access. This does not remove data owned by
+            organisations you were invited to unless your user record is the only link — confirm with
+            your admin if unsure.
+          </p>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setError(null);
+              setOpen(true);
+            }}
+            className="border-[var(--ds-status-danger-border)] text-[var(--ds-status-danger-fg)] hover:border-[var(--ds-status-danger-border)] hover:bg-[var(--ds-status-danger-bg)]"
+          >
+            Delete account
+          </Button>
+        </CardBody>
+      </Card>
 
       {open ? (
         <div
@@ -97,26 +91,25 @@ export function DeleteAccountSection() {
               </Callout>
             )}
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 disabled={deleting}
                 onClick={() => setOpen(false)}
-                className="rounded-lg border border-[var(--ds-border)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
                 disabled={deleting}
                 onClick={confirmDelete}
-                className="rounded-lg bg-[var(--ds-status-danger-strong-bg)] px-4 py-2.5 text-sm font-medium text-[var(--ds-status-danger-strong-fg)] hover:opacity-90 disabled:opacity-50"
+                className="bg-[var(--ds-status-danger-strong-bg)] text-[var(--ds-status-danger-strong-fg)] shadow-none hover:bg-[var(--ds-status-danger-strong-bg)] hover:opacity-90"
               >
                 {deleting ? "Deleting…" : "Yes, delete my account"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       ) : null}
-    </section>
+    </>
   );
 }

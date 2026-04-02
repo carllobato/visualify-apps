@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ACCOUNT_PROFILE_UPDATED_EVENT } from "@/lib/onboarding/types";
 import { saveUserProfileThroughApi } from "@/lib/profiles/profileDb";
-import { Callout } from "@visualify/design-system";
+import { Button, Callout, Label } from "@visualify/design-system";
+import {
+  projectSettingsFieldWidthClass,
+  projectSettingsInputClass,
+} from "@/components/project/projectSettingsDsFormClasses";
 
 const SAVED_RESET_DELAY_MS = 2500;
 
@@ -67,67 +71,66 @@ export function AccountProfileForm({
     return () => clearTimeout(id);
   }, [status]);
 
-  const inputClass =
-    "w-full rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
-  const labelClass = "block text-sm font-medium text-[var(--ds-text-secondary)] mb-1";
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="profile-first-name" className={labelClass}>
-          First name <span className="text-[var(--ds-status-danger)]">*</span>
-        </label>
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className={projectSettingsFieldWidthClass("sm")}>
+        <Label htmlFor="profile-first-name" className="!mb-1">
+          First name{" "}
+          <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+        </Label>
         <input
           id="profile-first-name"
           type="text"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          className={inputClass}
+          className={projectSettingsInputClass(false)}
           placeholder="First name"
           autoComplete="given-name"
           required
         />
       </div>
-      <div>
-        <label htmlFor="profile-last-name" className={labelClass}>
-          Surname <span className="text-[var(--ds-status-danger)]">*</span>
-        </label>
+      <div className={projectSettingsFieldWidthClass("sm")}>
+        <Label htmlFor="profile-last-name" className="!mb-1">
+          Surname{" "}
+          <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+        </Label>
         <input
           id="profile-last-name"
           type="text"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          className={inputClass}
+          className={projectSettingsInputClass(false)}
           placeholder="Surname"
           autoComplete="family-name"
           required
         />
       </div>
-      <div>
-        <label htmlFor="profile-company" className={labelClass}>
-          Company <span className="text-[var(--ds-status-danger)]">*</span>
-        </label>
+      <div className={projectSettingsFieldWidthClass("sm")}>
+        <Label htmlFor="profile-company" className="!mb-1">
+          Company{" "}
+          <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+        </Label>
         <input
           id="profile-company"
           type="text"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
-          className={inputClass}
+          className={projectSettingsInputClass(false)}
           placeholder="Company"
           autoComplete="organization"
           required
         />
       </div>
-      <div>
-        <label htmlFor="profile-role" className={labelClass}>
+      <div className={projectSettingsFieldWidthClass("sm")}>
+        <Label htmlFor="profile-role" className="!mb-1">
           Role
-        </label>
+        </Label>
         <input
           id="profile-role"
           type="text"
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          className={inputClass}
+          className={projectSettingsInputClass(false)}
           placeholder="e.g. Risk manager"
           autoComplete="organization-title"
         />
@@ -141,13 +144,9 @@ export function AccountProfileForm({
           {message}
         </Callout>
       )}
-      <button
-        type="submit"
-        disabled={status === "saving"}
-        className="inline-flex px-4 py-2 text-sm font-medium rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]"
-      >
+      <Button type="submit" variant="primary" disabled={status === "saving"}>
         {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Save profile"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -197,7 +197,7 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
                   aria-hidden
                 />
                 <button type="button" role="menuitem" className={menuItemClass} onClick={handleSignOut}>
-                  Sign out
+                  Sign Out
                 </button>
               </div>
             ) : null}
