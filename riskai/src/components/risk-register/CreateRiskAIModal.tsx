@@ -9,9 +9,11 @@ const btnSecondary =
 export function CreateRiskAIModal({
   open,
   onClose,
+  projectId,
 }: {
   open: boolean;
   onClose: () => void;
+  projectId?: string | null;
 }) {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -52,7 +54,7 @@ export function CreateRiskAIModal({
           <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
             Describe your risk including mitigation, cost and time data. AI will extract structured risk fields.
           </p>
-          <RiskExtractPanel hideTitle showStatus />
+          <RiskExtractPanel hideTitle showStatus projectId={projectId} />
         </div>
         <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)]">
           <button type="button" onClick={onClose} className={btnSecondary}>

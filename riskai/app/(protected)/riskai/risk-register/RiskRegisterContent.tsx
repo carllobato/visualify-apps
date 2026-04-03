@@ -728,6 +728,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       )}
       <AddNewRiskChoiceModal
         open={showAddNewRiskChoiceModal}
+        projectId={projectIdTrimmed || null}
         onClose={() => setShowAddNewRiskChoiceModal(false)}
         onAddManualRisk={() => {
           setShowAddNewRiskChoiceModal(false);
@@ -749,6 +750,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       <CreateRiskAIModal
         open={showCreateRiskAIModal}
         onClose={() => setShowCreateRiskAIModal(false)}
+        projectId={projectIdTrimmed || null}
       />
       <AddRiskModal
         open={showAddRiskModal}

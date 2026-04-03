@@ -51,9 +51,9 @@ const CHART_HEIGHT = 200;
 /** Extra top room for on-chart “Target (PXX)” / “Current” labels. */
 const CHART_MARGIN = { top: 14, right: 12, left: 4, bottom: 4 };
 
-/** Page shell: DS canvas + text so the route is not stuck on a parent pure-black shell. */
+/** Page shell: inherits ProtectedShell main panel surface + text. */
 const overviewPageShellClass =
-  "min-h-full w-full bg-[var(--ds-background)] text-[var(--ds-text-primary)] p-6";
+  "min-h-full w-full bg-transparent text-[var(--ds-text-primary)] p-6";
 
 /** P on the piecewise-linear CDF at x (same anchors as the line). */
 function interpolatePAtX(points: CdfChartPoint[], x: number): number | null {

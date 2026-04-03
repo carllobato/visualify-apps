@@ -1,6 +1,6 @@
 :root {
   /* Canonical palette — surface hierarchy: page (bg) → muted alt → inset → elevated card (surface) */
-  --ds-bg: #ffffff;
+  --ds-bg: #f4f5f7;
   --ds-surface: #ffffff;
   /* Grouped / inset layers — touch more contrast vs page than #fafbfc, still light */
   --ds-surface-muted: #f6f7f9;
@@ -215,7 +215,7 @@
   --ds-app-top-nav-border: color-mix(in oklab, var(--ds-text-primary) 9%, transparent);
   --ds-app-top-nav-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   --ds-app-top-nav-blur: 10px;
-  --ds-app-sidebar-bg: color-mix(in oklab, var(--ds-surface) 72%, var(--ds-bg));
+  --ds-app-sidebar-bg: var(--ds-primary-foreground);
 
   --ds-space-1: 4px;
   --ds-space-2: 8px;
@@ -340,7 +340,7 @@
   --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 44%, var(--ds-surface-default));
   --ds-control-border-hover: color-mix(in oklab, var(--ds-text-primary) 24%, var(--ds-border));
   --ds-input-bg-hover: color-mix(in oklab, var(--ds-muted) 32%, var(--ds-surface-inset));
-  --ds-primary-foreground: var(--ds-primary-text);
+  --ds-primary-foreground: var(--ds-surface);
 
   --ds-text-primary: var(--ds-foreground);
   --ds-text-muted: var(--ds-text-tertiary);
@@ -496,7 +496,7 @@
   --ds-app-top-nav-border: color-mix(in oklab, var(--ds-text-inverse) 14%, transparent);
   --ds-app-top-nav-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   --ds-app-top-nav-blur: 10px;
-  --ds-app-sidebar-bg: color-mix(in oklab, var(--ds-surface) 68%, var(--ds-bg));
+  --ds-app-sidebar-bg: var(--ds-primary-foreground);
 
   /* Chart colours — dark theme overrides (see :root block for token roles). */
   --ds-chart-series-1: var(--ds-primary);
@@ -762,7 +762,6 @@ ul[role="listbox"] button:focus-visible {
 
 .ds-app-sidebar {
   background-color: var(--ds-app-sidebar-bg);
-  border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-lg);
   box-shadow: var(--ds-shadow-sm);
   overflow: hidden;

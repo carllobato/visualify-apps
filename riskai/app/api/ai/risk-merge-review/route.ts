@@ -9,7 +9,11 @@ import type { Risk } from "@/domain/risk/risk.schema";
 import { probabilityScaleToDisplayPct } from "@/domain/risk/risk.logic";
 import { RiskMergeReviewResponseSchema } from "@/domain/risk/risk-merge.types";
 import { checkAiRateLimit, buildRateLimit429Payload } from "@/server/ai/rate-limit";
+import { estimateOpenAiChatCostUsd } from "@/server/ai/openai-usage-cost";
 import { env } from "@/lib/env";
+import { supabaseServerClient } from "@/lib/supabase/server";
+
+const USAGE_LOG_PREFIX = "[visualify_ai_usage risk-merge-review]";
 
 const MIN_MERGE_CONFIDENCE = 0.65;
 
@@ -341,6 +345,35 @@ ${buildUserPayload(risks)}`;
         c.confidence >= MIN_MERGE_CONFIDENCE &&
         c.mergedDraft != null
     );
+
+    const userIdForUsage = auth.id;
+    const projectIdForUsage = projectId.trim();
+    const promptTokens = completion.usage?.prompt_tokens;
+    const completionTokens = completion.usage?.completion_tokens;
+    void (async () => {
+      try {
+        const supabase = await supabaseServerClient();
+        const { error } = await supabase.from("visualify_ai_usage").insert({
+          product_key: "riskai",
+          project_id: projectIdForUsage,
+          user_id: userIdForUsage,
+          feature: "risk-merge-review",
+          model: completion.model,
+          tokens_input: promptTokens ?? null,
+          tokens_output: completionTokens ?? null,
+          cost_usd: estimateOpenAiChatCostUsd(completion.model, promptTokens, completionTokens),
+        });
+        if (error) {
+          console.error(USAGE_LOG_PREFIX, "insert failed:", error.message, error);
+        }
+      } catch (e: unknown) {
+        console.error(
+          USAGE_LOG_PREFIX,
+          "insert threw:",
+          e instanceof Error ? e.message : String(e)
+        );
+      }
+    })();
 
     return NextResponse.json({ clusters: filtered });
   } catch (err: unknown) {

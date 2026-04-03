@@ -29,7 +29,7 @@ export function Button({
   };
   const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
     primary:
-      "bg-[var(--ds-primary)] text-[var(--ds-primary-foreground)] shadow-[var(--ds-shadow-sm)] " +
+      "bg-[var(--ds-primary)] text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] " +
       "hover:bg-[var(--ds-primary-hover)] active:brightness-[0.97] disabled:shadow-none " +
       "disabled:hover:bg-[var(--ds-primary)] disabled:hover:brightness-100 disabled:active:brightness-100",
     secondary:

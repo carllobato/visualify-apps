@@ -81,6 +81,7 @@ export function AddNewRiskChoiceModal({
   onClose,
   onRisksAdded,
   onAddManualRisk,
+  projectId,
 }: {
   open: boolean;
   onClose: () => void;
@@ -88,6 +89,8 @@ export function AddNewRiskChoiceModal({
   onRisksAdded?: (riskIds: string[]) => void;
   /** Called when user chooses to add a risk manually (form); parent should close this modal and open AddRiskModal */
   onAddManualRisk?: () => void;
+  /** Optional; sent with extract-risk for usage logging */
+  projectId?: string | null;
 }) {
   const { appendRisks } = useRiskRegister();
   const [documentText, setDocumentText] = useState("");
@@ -221,7 +224,10 @@ export function AddNewRiskChoiceModal({
       const res = await fetch("/api/ai/extract-risk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentText: text }),
+        body: JSON.stringify({
+          documentText: text,
+          ...(projectId != null && projectId.trim() !== "" ? { projectId: projectId.trim() } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -245,7 +251,7 @@ export function AddNewRiskChoiceModal({
       setGenerateMessage(e instanceof Error ? e.message : "Network or unexpected error");
       setGenerateStatus("error");
     }
-  }, [documentText, appendRisks, onRisksAdded]);
+  }, [documentText, appendRisks, onRisksAdded, projectId]);
 
   const handleGenerate = useCallback(() => {
     if (hasFile) {

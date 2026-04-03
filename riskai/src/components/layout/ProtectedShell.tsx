@@ -21,16 +21,16 @@ export function ProtectedShell({ children }: { children: React.ReactNode }) {
       <div className="ds-app-shell-body flex min-h-0 flex-1 overflow-hidden md:gap-3 md:pr-3">
         <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div
-            ref={mainScrollRef}
-            className="ds-app-main relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
-          >
-            <div className="pt-[var(--ds-app-header-height)]">
-              <div className="flex min-h-[calc(100vh-var(--ds-app-header-height))] flex-1 flex-col">
-                <div className="flex-1">
+          <div className="ds-app-main relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div
+              ref={mainScrollRef}
+              className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pt-[var(--ds-app-header-height)] md:pt-[calc(var(--ds-app-header-height)+12px)] md:pb-3"
+            >
+              <div className="flex w-full min-h-full min-w-0 shrink-0 flex-col bg-[var(--ds-primary-foreground)] md:rounded-[var(--ds-radius-lg)] md:shadow-[var(--ds-shadow-sm)]">
+                <div className="min-w-0 grow shrink-0">
                   <PageTransition scrollContainerRef={mainScrollRef}>{children}</PageTransition>
                 </div>
-                <div className="mt-auto">
+                <div className="shrink-0">
                   <SiteLegalFooter />
                 </div>
               </div>

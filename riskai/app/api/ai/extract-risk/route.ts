@@ -5,7 +5,11 @@ import OpenAI from "openai";
 import { requireUser } from "@/lib/auth/requireUser";
 import { IntelligentExtractDraftSchema } from "@/domain/risk/risk.schema";
 import { checkAiRateLimit, buildRateLimit429Payload } from "@/server/ai/rate-limit";
+import { estimateOpenAiChatCostUsd } from "@/server/ai/openai-usage-cost";
 import { env } from "@/lib/env";
+import { supabaseServerClient } from "@/lib/supabase/server";
+
+const USAGE_LOG_PREFIX = "[visualify_ai_usage extract-risk]";
 
 const EXTRACT_SYSTEM = `You are an expert risk analyst for a decision intelligence platform. Your job is to turn free-text risk descriptions into a fully populated, structured risk record. You must EXTRACT explicit values and INFER missing values from context. Never leave fields blank when reasonable inference can be made.
 
@@ -173,6 +177,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const documentText = typeof body?.documentText === "string" ? body.documentText : "";
+    const rawProjectId = body?.projectId;
+    const projectIdForUsage =
+      typeof rawProjectId === "string" && rawProjectId.trim().length > 0 ? rawProjectId.trim() : null;
 
     if (!documentText.trim()) {
       return NextResponse.json({ error: "documentText is required" }, { status: 400 });
@@ -222,6 +229,34 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const userIdForUsage = auth.id;
+    const promptTokens = completion.usage?.prompt_tokens;
+    const completionTokens = completion.usage?.completion_tokens;
+    void (async () => {
+      try {
+        const supabase = await supabaseServerClient();
+        const { error } = await supabase.from("visualify_ai_usage").insert({
+          product_key: "riskai",
+          project_id: projectIdForUsage,
+          user_id: userIdForUsage,
+          feature: "extract-risk",
+          model: completion.model,
+          tokens_input: promptTokens ?? null,
+          tokens_output: completionTokens ?? null,
+          cost_usd: estimateOpenAiChatCostUsd(completion.model, promptTokens, completionTokens),
+        });
+        if (error) {
+          console.error(USAGE_LOG_PREFIX, "insert failed:", error.message, error);
+        }
+      } catch (e: unknown) {
+        console.error(
+          USAGE_LOG_PREFIX,
+          "insert threw:",
+          e instanceof Error ? e.message : String(e)
+        );
+      }
+    })();
 
     return NextResponse.json({ risk: result.data });
   } catch (err: unknown) {

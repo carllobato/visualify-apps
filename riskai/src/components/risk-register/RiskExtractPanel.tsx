@@ -7,9 +7,18 @@ import { Callout } from "@visualify/design-system";
 
 type Status = "idle" | "loading" | "error";
 
-type RiskExtractPanelProps = { hideTitle?: boolean; showStatus?: boolean };
+type RiskExtractPanelProps = {
+  hideTitle?: boolean;
+  showStatus?: boolean;
+  /** When set, included in extract-risk API body for usage logging */
+  projectId?: string | null;
+};
 
-export function RiskExtractPanel({ hideTitle, showStatus = false }: RiskExtractPanelProps = {}) {
+export function RiskExtractPanel({
+  hideTitle,
+  showStatus = false,
+  projectId,
+}: RiskExtractPanelProps = {}) {
   const [documentText, setDocumentText] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -24,7 +33,10 @@ export function RiskExtractPanel({ hideTitle, showStatus = false }: RiskExtractP
       const res = await fetch("/api/ai/extract-risk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentText }),
+        body: JSON.stringify({
+          documentText,
+          ...(projectId != null && projectId.trim() !== "" ? { projectId: projectId.trim() } : {}),
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
