@@ -762,7 +762,10 @@ ul[role="listbox"] button:focus-visible {
 
 .ds-app-sidebar {
   background-color: var(--ds-app-sidebar-bg);
-  border-right: 1px solid var(--ds-border);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-sm);
+  overflow: hidden;
 }
 
 .ds-app-main {

@@ -146,7 +146,8 @@ export default function PortfolioSettingsContent({
 
   useEffect(() => {
     if (!setPageHeaderExtras) return;
-    setPageHeaderExtras({ titleSuffix: "Portfolio Settings", end: headerActions });
+    // Title comes from URL in PortfolioPageHeader; only register the Save action.
+    setPageHeaderExtras({ titleSuffix: "", end: headerActions });
     return () => setPageHeaderExtras(null);
   }, [headerActions, setPageHeaderExtras]);
 

@@ -24,3 +24,23 @@ export function portfolioIdFromAppPathname(pathname: string | null): string | nu
   if (segments[0] === "riskai" && segments[1] === "portfolios" && segments[2]) return segments[2];
   return null;
 }
+
+/**
+ * Shell title suffix for known portfolio routes, from the URL only (updates on navigation without
+ * waiting for the page RSC or `useEffect`). Returns null for unknown subpaths — use header extras then.
+ */
+export function portfolioRouteTitleFromPathname(
+  pathname: string | null | undefined,
+  portfolioId: string
+): string | null {
+  const pid = portfolioId.trim();
+  if (!pathname || !pid) return null;
+  const normalized = pathname.replace(/\/+$/, "") || pathname;
+  const overview = riskaiPath(`/portfolios/${pid}`).replace(/\/+$/, "");
+  const projects = riskaiPath(`/portfolios/${pid}/projects`).replace(/\/+$/, "");
+  const settings = riskaiPath(`/portfolios/${pid}/portfolio-settings`).replace(/\/+$/, "");
+  if (normalized === overview) return "Overview";
+  if (normalized === projects) return "Projects";
+  if (normalized === settings) return "Portfolio Settings";
+  return null;
+}

@@ -1,4 +1,3 @@
-import { RegisterPageHeaderTitle } from "@/components/RegisterPageHeaderTitle";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import {
   RISK_STATUS_CLOSED_LOOKUP,
@@ -39,7 +38,6 @@ export default async function PortfolioOverviewPage({
 
   return (
     <>
-      <RegisterPageHeaderTitle titleSuffix="Overview" />
       <PortfolioOverviewContent
         projectCount={projectCount ?? 0}
         activeRiskCount={activeRiskCount}

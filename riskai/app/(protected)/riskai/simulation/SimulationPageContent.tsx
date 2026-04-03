@@ -77,6 +77,7 @@ import {
   StatusPositionCard,
   type StatusPositionTone,
 } from "@/components/dashboard/StatusPositionCard";
+import { NeutralRiskaiLoading } from "@/components/NeutralRiskaiLoading";
 import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.types";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { probability01FromScale } from "@/domain/risk/risk.logic";
@@ -2541,14 +2542,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       )}
 
       {loadingSnapshot && (
-        <Card variant="inset" className="mt-0 p-6" aria-busy="true" aria-live="polite">
-          <div className="mx-auto max-w-md animate-pulse space-y-3">
-            <div className="mx-auto h-4 w-3/4 max-w-sm rounded bg-[var(--ds-surface-muted)]" />
-            <div className="mx-auto h-4 w-1/2 max-w-xs rounded bg-[var(--ds-surface-muted)]" />
-            <div className="mx-auto h-4 w-2/3 max-w-56 rounded bg-[var(--ds-surface-muted)]" />
-          </div>
-          <span className="sr-only">Loading simulation data</span>
-        </Card>
+        <NeutralRiskaiLoading variant="inset" srLabel="Loading simulation data" />
       )}
 
       {showDefaultSimulationActions && (

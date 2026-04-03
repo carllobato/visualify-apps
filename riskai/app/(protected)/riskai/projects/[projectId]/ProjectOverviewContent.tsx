@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
 import { Badge, Button, Card, CardBody } from "@visualify/design-system";
-import { LoadingPlaceholder } from "@/components/ds/LoadingPlaceholder";
 import {
   Line,
   LineChart,
@@ -216,6 +215,26 @@ function DashCard({ children, className }: { children: React.ReactNode; classNam
     <Card variant="elevated" className={className}>
       <CardBody className="p-5">{children}</CardBody>
     </Card>
+  );
+}
+
+const overviewSkeletonBar = "rounded bg-[var(--ds-surface-muted)]";
+
+function OverviewProjectStatusSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3" aria-hidden="true">
+      <div className={`${overviewSkeletonBar} h-8 w-24 max-w-full`} />
+      <div className={`${overviewSkeletonBar} h-3 w-40 max-w-full`} />
+    </div>
+  );
+}
+
+function OverviewInsightBodySkeleton() {
+  return (
+    <div className="animate-pulse space-y-2" aria-hidden="true">
+      <div className={`${overviewSkeletonBar} h-4 w-full max-w-[18rem]`} />
+      <div className={`${overviewSkeletonBar} h-3 w-32 max-w-full`} />
+    </div>
   );
 }
 
@@ -643,7 +662,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const reportingNoteTrimmed = reportingSnapshot?.lock_note?.trim() ?? "";
 
   const overviewHeaderEnd = useMemo(() => {
-    if (!reportingSnapshot || loadingRisks) return null;
+    if (!reportingSnapshot) return null;
     return (
       <>
         <p className="m-0">
@@ -662,7 +681,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         </div>
       </>
     );
-  }, [reportingSnapshot, loadingRisks, reportingMonthHeader, reportingNoteTrimmed]);
+  }, [reportingSnapshot, reportingMonthHeader, reportingNoteTrimmed]);
 
   useEffect(() => {
     setExtras({
@@ -702,17 +721,9 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     );
   }
 
-  if (loadingRisks) {
-    return (
-      <main className={overviewPageShellClass}>
-        <LoadingPlaceholder label="Loading project overview" />
-      </main>
-    );
-  }
-
-  const rag = ragPresentation(ragStatus);
-  const activeN = countActiveRisks(risks);
-  const highN = countHighSeverityActive(risks);
+  const rag = loadingRisks ? null : ragPresentation(ragStatus);
+  const activeN = loadingRisks ? 0 : countActiveRisks(risks);
+  const highN = loadingRisks ? 0 : countHighSeverityActive(risks);
 
   const targetLabelShort = targetAppetite;
 
@@ -727,20 +738,30 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       : null;
 
   return (
-    <main className={overviewPageShellClass}>
+    <main className={overviewPageShellClass} aria-busy={loadingRisks || undefined}>
       {/* Row 1 — headline metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <DashCard>
           <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-3">
             Project status
           </p>
-          <Badge status={rag.badgeStatus} variant="strong" className="px-3.5 py-1.5 text-[length:var(--ds-text-sm)] font-semibold">
-            {rag.label}
-          </Badge>
-          <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] m-0 mt-3 tabular-nums">
-            {activeN} active risk{activeN === 1 ? "" : "s"}
-            {highN > 0 ? ` · ${highN} high / extreme` : ""}
-          </p>
+          {loadingRisks ? (
+            <OverviewProjectStatusSkeleton />
+          ) : (
+            <>
+              <Badge
+                status={rag!.badgeStatus}
+                variant="strong"
+                className="px-3.5 py-1.5 text-[length:var(--ds-text-sm)] font-semibold"
+              >
+                {rag!.label}
+              </Badge>
+              <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] m-0 mt-3 tabular-nums">
+                {activeN} active risk{activeN === 1 ? "" : "s"}
+                {highN > 0 ? ` · ${highN} high / extreme` : ""}
+              </p>
+            </>
+          )}
         </DashCard>
 
         <DashCard>
@@ -848,40 +869,58 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Key cost risk
           </p>
-          <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
-            {keyCostRisk ?? "—"}
-          </p>
-          {keyCostRiskImpact != null ? (
-            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
-              {formatCurrency(keyCostRiskImpact)} exposure
-            </p>
-          ) : null}
+          {loadingRisks ? (
+            <OverviewInsightBodySkeleton />
+          ) : (
+            <>
+              <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
+                {keyCostRisk ?? "—"}
+              </p>
+              {keyCostRiskImpact != null ? (
+                <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
+                  {formatCurrency(keyCostRiskImpact)} exposure
+                </p>
+              ) : null}
+            </>
+          )}
         </DashCard>
         <DashCard>
           <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Key time risk
           </p>
-          <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
-            {keyTimeRisk ?? "—"}
-          </p>
-          {keyTimeRiskDays != null && keyTimeRiskDays > 0 ? (
-            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
-              {formatDurationDays(keyTimeRiskDays)} mean
-            </p>
-          ) : null}
+          {loadingRisks ? (
+            <OverviewInsightBodySkeleton />
+          ) : (
+            <>
+              <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
+                {keyTimeRisk ?? "—"}
+              </p>
+              {keyTimeRiskDays != null && keyTimeRiskDays > 0 ? (
+                <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
+                  {formatDurationDays(keyTimeRiskDays)} mean
+                </p>
+              ) : null}
+            </>
+          )}
         </DashCard>
         <DashCard>
           <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
             Key opportunity
           </p>
-          <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
-            {keyOpportunityInfo?.name ?? "—"}
-          </p>
-          {keyOpportunityInfo != null && keyOpportunityInfo.delta > 0 ? (
-            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
-              {formatCurrency(keyOpportunityInfo.delta)} pre vs modelled
-            </p>
-          ) : null}
+          {loadingRisks ? (
+            <OverviewInsightBodySkeleton />
+          ) : (
+            <>
+              <p className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)] m-0 leading-snug line-clamp-3">
+                {keyOpportunityInfo?.name ?? "—"}
+              </p>
+              {keyOpportunityInfo != null && keyOpportunityInfo.delta > 0 ? (
+                <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
+                  {formatCurrency(keyOpportunityInfo.delta)} pre vs modelled
+                </p>
+              ) : null}
+            </>
+          )}
         </DashCard>
       </div>
     </main>

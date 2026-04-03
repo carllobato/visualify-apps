@@ -343,7 +343,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <aside
         className={
-          "ds-app-sidebar fixed bottom-0 left-0 top-[var(--ds-app-header-height)] z-50 flex flex-col transition-[transform,width] duration-[400ms] ease-out will-change-[width] md:static md:top-auto md:z-0 md:mt-[var(--ds-app-header-height)] md:h-[calc(100vh-var(--ds-app-header-height))] " +
+          "ds-app-sidebar fixed bottom-3 left-3 top-[calc(var(--ds-app-header-height)+12px)] z-50 flex flex-col transition-[transform,width] duration-[400ms] ease-out will-change-[width] md:static md:top-auto md:z-0 md:ml-3 md:mt-[calc(var(--ds-app-header-height)+12px)] md:mb-3 md:h-[calc(100vh-var(--ds-app-header-height)-24px)] " +
           widthClass +
           (collapsed && hoverPeek ? " ds-sidebar-peek" : "") +
           (mobileOpen ? " translate-x-0" : " -translate-x-full md:translate-x-0")

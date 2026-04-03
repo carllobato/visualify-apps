@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { RegisterPageHeaderTitle } from "@/components/RegisterPageHeaderTitle";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
 
@@ -35,7 +34,6 @@ export default async function PortfolioProjectsPage({
 
   return (
     <>
-      <RegisterPageHeaderTitle titleSuffix="Projects" />
       <main className="w-full px-4 py-10">
         <p className="text-sm text-[var(--ds-text-secondary)] mb-8">
           Projects in this portfolio.

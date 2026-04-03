@@ -18,7 +18,7 @@ export function ProtectedShell({ children }: { children: React.ReactNode }) {
         onMenuClick={() => setMobileNavOpen(true)}
         onAccountMenuOpen={() => setMobileNavOpen(false)}
       />
-      <div className="ds-app-shell-body flex min-h-0 flex-1 overflow-hidden">
+      <div className="ds-app-shell-body flex min-h-0 flex-1 overflow-hidden md:gap-3 md:pr-3">
         <Sidebar mobileOpen={mobileNavOpen} onMobileClose={() => setMobileNavOpen(false)} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <div
