@@ -2,8 +2,9 @@
 
 /**
  * Project Settings page: define baseline project context used to interpret risk outputs.
- * Data is persisted in localStorage under key "riskai_project_context_v1" (see src/lib/projectContext.ts).
- * Optional server sync: POST /api/project-context (same style as simulation-context).
+ * With a project selected: load `visualify_project_settings` first, then localStorage fallback;
+ * save upserts to Supabase (RLS) and mirrors to localStorage (`riskai_project_context_v1`).
+ * Legacy (no project): localStorage only. Optional: POST /api/project-context.
  */
 
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +33,7 @@ import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   Button,
   Callout,
@@ -168,6 +170,47 @@ function formatGroupedNumber(value: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 }).format(value);
 }
 
+function rawNumericFieldsFromContext(stored: ProjectContext): RawNumericFields {
+  return {
+    contingencyValue_input: stored.contingencyValue_input === 0 ? "" : String(stored.contingencyValue_input),
+    plannedDuration_months: stored.plannedDuration_months === 0 ? "" : String(stored.plannedDuration_months),
+    scheduleContingency_weeks: stored.scheduleContingency_weeks === 0 ? "" : String(stored.scheduleContingency_weeks),
+  };
+}
+
+/** Map DB `target_completion_date` to `YYYY-MM-DD` for the date input. */
+function targetCompletionDateFromDb(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return "";
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
+  const raw = {
+    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    location:
+      row.location !== undefined && row.location !== null && typeof row.location === "string"
+        ? row.location.trim()
+        : undefined,
+    plannedDuration_months: row.planned_duration_months,
+    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+    scheduleContingency_weeks: row.schedule_contingency_weeks,
+    riskAppetite: row.risk_appetite,
+    currency: row.currency,
+    financialUnit: row.financial_unit,
+    projectValue_input: row.project_value_input,
+    contingencyValue_input: row.contingency_value_input,
+  };
+  return parseProjectContext(raw);
+}
+
 export type ProjectInformationPageProps = { projectId?: string | null };
 type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive";
 
@@ -185,6 +228,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const [form, setForm] = useState<ProjectContext>(defaultContext());
   const [rawNumericFields, setRawNumericFields] = useState<RawNumericFields>({});
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showArchivedReviewModal, setShowArchivedReviewModal] = useState(false);
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("overview");
@@ -217,30 +261,73 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const riskRegisterHref = projectId ? riskaiPath(`/projects/${projectId}/risks`) : DASHBOARD_PATH;
 
   useEffect(() => {
-    const stored = loadProjectContext(projectId ?? undefined);
-    if (stored) {
-      setForm(stored);
-      setRawNumericFields({
-        contingencyValue_input: stored.contingencyValue_input === 0 ? "" : String(stored.contingencyValue_input),
-        plannedDuration_months: stored.plannedDuration_months === 0 ? "" : String(stored.plannedDuration_months),
-        scheduleContingency_weeks: stored.scheduleContingency_weeks === 0 ? "" : String(stored.scheduleContingency_weeks),
-      });
-    }
-    setMounted(true);
-  }, [projectId]);
+    let cancelled = false;
+    const trimmedProjectId = projectId?.trim();
 
-  // When we have a projectId, load project name from API so the field shows the DB name.
-  useEffect(() => {
-    if (!projectId) return;
-    fetch(`/api/projects/${projectId}`, { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { name?: string } | null) => {
-        if (data && typeof data.name === "string") {
-          const name = data.name;
-          setForm((prev) => ({ ...prev, projectName: name }));
+    if (!trimmedProjectId) {
+      const stored = loadProjectContext(projectId ?? undefined);
+      if (stored) {
+        setForm(stored);
+        setRawNumericFields(rawNumericFieldsFromContext(stored));
+      }
+      setMounted(true);
+      return;
+    }
+
+    void (async () => {
+      const supabase = supabaseBrowserClient();
+      const { data: row, error } = await supabase
+        .from("visualify_project_settings")
+        .select("*")
+        .eq("project_id", trimmedProjectId)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      let skipApiProjectName = false;
+      let hydrated = false;
+
+      if (!error && row && typeof row === "object") {
+        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        if (parsed) {
+          setForm(parsed);
+          setRawNumericFields(rawNumericFieldsFromContext(parsed));
+          hydrated = true;
+          if (parsed.projectName.trim().length > 0) {
+            skipApiProjectName = true;
+          }
         }
-      })
-      .catch(() => {});
+      }
+
+      if (!hydrated) {
+        const stored = loadProjectContext(trimmedProjectId);
+        if (stored) {
+          setForm(stored);
+          setRawNumericFields(rawNumericFieldsFromContext(stored));
+        }
+      }
+
+      if (cancelled) return;
+
+      if (!skipApiProjectName) {
+        try {
+          const res = await fetch(`/api/projects/${trimmedProjectId}`, { credentials: "include" });
+          const data: { name?: string } | null = res.ok ? await res.json() : null;
+          if (cancelled) return;
+          if (data && typeof data.name === "string") {
+            setForm((prev) => ({ ...prev, projectName: data.name as string }));
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!cancelled) setMounted(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
   useEffect(() => {
@@ -272,12 +359,14 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       }
       setValidation((prev) => ({ ...prev, [key]: "" }));
       if (saved) setSaved(false);
+      setSaveError(null);
     },
     [saved]
   );
 
-  const onSave = useCallback(() => {
+  const onSave = useCallback(async () => {
     if (settingsReadOnly) return;
+    setSaveError(null);
     const err = getValidationErrors(form, rawNumericFields);
     setValidation(err);
     if (Object.keys(err).length > 0) {
@@ -296,35 +385,62 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     const parsed = parseProjectContext(form);
     if (!parsed) return;
     const toSave: ProjectContext = parsed;
-    const ok = saveProjectContext(toSave, projectId ?? undefined);
-    if (ok) {
-      setForm(toSave);
-      setRawNumericFields({
-        contingencyValue_input: toSave.contingencyValue_input === 0 ? "" : String(toSave.contingencyValue_input),
-        plannedDuration_months: toSave.plannedDuration_months === 0 ? "" : String(toSave.plannedDuration_months),
-        scheduleContingency_weeks: toSave.scheduleContingency_weeks === 0 ? "" : String(toSave.scheduleContingency_weeks),
-      });
-      setSaved(true);
-      if (savedHideTimeoutRef.current) clearTimeout(savedHideTimeoutRef.current);
-      savedHideTimeoutRef.current = setTimeout(() => {
-        setSaved(false);
-        savedHideTimeoutRef.current = null;
-      }, SAVED_CONFIRM_AUTO_HIDE_MS);
-      fetch("/api/project-context", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toSave),
-      }).catch(() => {});
-      if (projectId) {
-        fetch(`/api/projects/${projectId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: toSave.projectName }),
-          credentials: "include",
-        })
-          .then((res) => { if (res.ok) router.refresh(); })
-          .catch(() => {});
+
+    if (projectId) {
+      const supabase = supabaseBrowserClient();
+      const { error: settingsErr } = await supabase.from("visualify_project_settings").upsert(
+        {
+          project_id: projectId,
+          project_name: toSave.projectName,
+          location: toSave.location?.trim() ? toSave.location.trim() : null,
+          currency: toSave.currency,
+          financial_unit: toSave.financialUnit,
+          project_value_input: toSave.projectValue_input,
+          contingency_value_input: toSave.contingencyValue_input,
+          planned_duration_months: toSave.plannedDuration_months,
+          target_completion_date: toSave.targetCompletionDate,
+          schedule_contingency_weeks: toSave.scheduleContingency_weeks,
+          risk_appetite: toSave.riskAppetite,
+        },
+        { onConflict: "project_id" }
+      );
+      if (settingsErr) {
+        setSaveError(settingsErr.message);
+        return;
       }
+    }
+
+    const okLs = saveProjectContext(toSave, projectId ?? undefined);
+    if (!projectId && !okLs) {
+      return;
+    }
+
+    setForm(toSave);
+    setRawNumericFields({
+      contingencyValue_input: toSave.contingencyValue_input === 0 ? "" : String(toSave.contingencyValue_input),
+      plannedDuration_months: toSave.plannedDuration_months === 0 ? "" : String(toSave.plannedDuration_months),
+      scheduleContingency_weeks: toSave.scheduleContingency_weeks === 0 ? "" : String(toSave.scheduleContingency_weeks),
+    });
+    setSaved(true);
+    if (savedHideTimeoutRef.current) clearTimeout(savedHideTimeoutRef.current);
+    savedHideTimeoutRef.current = setTimeout(() => {
+      setSaved(false);
+      savedHideTimeoutRef.current = null;
+    }, SAVED_CONFIRM_AUTO_HIDE_MS);
+    fetch("/api/project-context", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(toSave),
+    }).catch(() => {});
+    if (projectId) {
+      fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: toSave.projectName }),
+        credentials: "include",
+      })
+        .then((res) => { if (res.ok) router.refresh(); })
+        .catch(() => {});
     }
   }, [activeTab, form, rawNumericFields, projectId, router, settingsReadOnly]);
 
@@ -335,6 +451,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     setForm(defaultContext());
     setRawNumericFields({});
     setSaved(false);
+    setSaveError(null);
     setValidation({});
   }, [projectId, settingsReadOnly]);
 
@@ -713,6 +830,18 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             </div>
           </CardBody>
         </Card>
+      )}
+
+      {saveError && (
+        <Callout
+          status="danger"
+          className="mt-3 !border-[var(--ds-border-subtle)] !px-3 !py-2"
+          role="alert"
+        >
+          <span className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+            Could not save settings: {saveError}
+          </span>
+        </Callout>
       )}
 
       {saved && (

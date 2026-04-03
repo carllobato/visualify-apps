@@ -1,6 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 const STORAGE_KEY = "riskai-theme";
 
@@ -24,6 +33,24 @@ function applyTheme(theme: Theme) {
   localStorage.setItem(STORAGE_KEY, theme);
 }
 
+function parseThemePreference(raw: unknown): Theme | null {
+  if (raw === "dark" || raw === "light") return raw;
+  return null;
+}
+
+async function persistThemePreferenceToSupabase(theme: Theme): Promise<void> {
+  try {
+    const supabase = supabaseBrowserClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("visualify_profiles").update({ theme_preference: theme }).eq("id", user.id);
+  } catch {
+    /* silent */
+  }
+}
+
 type ThemeContextValue = {
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -40,12 +67,48 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     applyTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const supabase = supabaseBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data: row } = await supabase
+          .from("visualify_profiles")
+          .select("theme_preference")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        const remote = parseThemePreference(row?.theme_preference as unknown);
+        if (!remote) return;
+        const localRaw = localStorage.getItem(STORAGE_KEY);
+        if (localRaw === remote) return;
+        if (cancelled) return;
+        setThemeState(remote);
+        applyTheme(remote);
+      } catch {
+        /* silent */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const setTheme = useCallback((next: Theme) => {
     setThemeState(next);
+    void persistThemePreferenceToSupabase(next);
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
+    setThemeState((prev) => {
+      const next: Theme = prev === "dark" ? "light" : "dark";
+      void persistThemePreferenceToSupabase(next);
+      return next;
+    });
   }, []);
 
   const value = useMemo(

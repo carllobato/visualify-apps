@@ -42,6 +42,8 @@ export default async function PortfolioSettingsPage({
           description: portfolio.description,
           owner_user_id: portfolio.owner_user_id,
           created_at: portfolio.created_at,
+          reporting_currency: portfolio.reporting_currency,
+          reporting_unit: portfolio.reporting_unit,
         }}
       />
     </>

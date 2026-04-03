@@ -16,9 +16,12 @@ import {
 } from "recharts";
 import { buildSimulationFromDbRow, useRiskRegister } from "@/store/risk-register.store";
 import { listRisks } from "@/lib/db/risks";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   loadProjectContext,
+  parseProjectContext,
   riskAppetiteToPercent,
+  type ProjectContext,
   type RiskAppetite,
 } from "@/lib/projectContext";
 import { formatReportMonthLabel, type SimulationSnapshotRow } from "@/lib/db/snapshots";
@@ -127,6 +130,39 @@ function formatSignedTimeGap(meanDays: number | null, appetiteLineDays: number |
   if (d === 0) return formatDurationDays(0);
   const sign = d < 0 ? "-" : "+";
   return `${sign}${formatDurationDays(Math.abs(d))}`;
+}
+
+/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
+function targetCompletionDateFromDb(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return "";
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
+  const raw = {
+    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    location:
+      row.location !== undefined && row.location !== null && typeof row.location === "string"
+        ? row.location.trim()
+        : undefined,
+    plannedDuration_months: row.planned_duration_months,
+    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+    scheduleContingency_weeks: row.schedule_contingency_weeks,
+    riskAppetite: row.risk_appetite,
+    currency: row.currency,
+    financialUnit: row.financial_unit,
+    projectValue_input: row.project_value_input,
+    contingencyValue_input: row.contingency_value_input,
+  };
+  return parseProjectContext(raw);
 }
 
 export type ProjectOverviewInitialData = {
@@ -344,6 +380,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const { setExtras } = usePageHeaderExtras();
   const [risks, setRisksLocal] = useState<Risk[]>([]);
   const [loadingRisks, setLoadingRisks] = useState(true);
+  const [projectSettingsResolved, setProjectSettingsResolved] = useState<ProjectContext | null>(null);
+  const [projectSettingsReady, setProjectSettingsReady] = useState(false);
 
   useEffect(() => {
     const pid = projectId?.trim();
@@ -363,15 +401,52 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  useEffect(() => {
+    const pid = projectId?.trim();
+    if (!pid) {
+      setProjectSettingsResolved(null);
+      setProjectSettingsReady(false);
+      return;
+    }
+    let cancelled = false;
+    setProjectSettingsReady(false);
+    void (async () => {
+      const supabase = supabaseBrowserClient();
+      const { data: row, error } = await supabase
+        .from("visualify_project_settings")
+        .select("*")
+        .eq("project_id", pid)
+        .maybeSingle();
+      if (cancelled) return;
+      let next: ProjectContext | null = null;
+      if (!error && row && typeof row === "object") {
+        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        if (parsed) next = parsed;
+      }
+      if (next == null) {
+        next = loadProjectContext(pid);
+      }
+      if (!cancelled) {
+        setProjectSettingsResolved(next);
+        setProjectSettingsReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
+
   const builtFromReporting = useMemo(() => {
     if (!reportingSnapshot) return null;
     return buildSimulationFromDbRow(reportingSnapshot);
   }, [reportingSnapshot]);
 
-  const projectContext = useMemo(
-    () => (projectId ? loadProjectContext(projectId) : null),
-    [projectId]
-  );
+  const projectContext = useMemo(() => {
+    const pid = projectId?.trim();
+    if (!pid) return null;
+    if (!projectSettingsReady) return loadProjectContext(pid);
+    return projectSettingsResolved;
+  }, [projectId, projectSettingsReady, projectSettingsResolved]);
 
   const targetAppetite: RiskAppetite = projectContext?.riskAppetite ?? "P80";
   const targetPercent = riskAppetiteToPercent(targetAppetite);

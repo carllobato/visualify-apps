@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { selectDecisionByRiskId, selectDecisionScoreDelta } from "@/store/selectors";
-import { loadProjectContext, isProjectContextComplete } from "@/lib/projectContext";
+import {
+  loadProjectContext,
+  isProjectContextComplete,
+  parseProjectContext,
+  type ProjectContext,
+} from "@/lib/projectContext";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { listRisks, replaceRisks } from "@/lib/db/risks";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { mergeDraftToRisk } from "@/domain/risk/risk.mapper";
@@ -82,6 +88,39 @@ function applyColumnFilters<T>(list: T[], filters: ColumnFilters, getValue: (ite
   return result;
 }
 
+/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
+function targetCompletionDateFromDb(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return "";
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
+  const raw = {
+    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    location:
+      row.location !== undefined && row.location !== null && typeof row.location === "string"
+        ? row.location.trim()
+        : undefined,
+    plannedDuration_months: row.planned_duration_months,
+    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+    scheduleContingency_weeks: row.schedule_contingency_weeks,
+    riskAppetite: row.risk_appetite,
+    currency: row.currency,
+    financialUnit: row.financial_unit,
+    projectValue_input: row.project_value_input,
+    contingencyValue_input: row.contingency_value_input,
+  };
+  return parseProjectContext(raw);
+}
+
 export type RiskRegisterContentProps = { projectId?: string | null };
 
 export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterContentProps = {}) {
@@ -137,11 +176,43 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     }
   }, [contentReadOnly, urlProjectId]);
 
-  // Gate: load project context for gate/display. When urlProjectId is set use project-specific key; else legacy global key.
+  // Gate: load project context for gate/display. Project routes: Supabase first, then project-scoped localStorage; legacy: global localStorage only.
   useEffect(() => {
-    const ctx = loadProjectContext(urlProjectId ?? undefined);
-    setProjectContext(ctx);
-    setGateChecked(true);
+    const trimmed = urlProjectId?.trim();
+    if (!trimmed) {
+      const ctx = loadProjectContext(urlProjectId ?? undefined);
+      setProjectContext(ctx);
+      setGateChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    setGateChecked(false);
+    void (async () => {
+      const supabase = supabaseBrowserClient();
+      const { data: row, error } = await supabase
+        .from("visualify_project_settings")
+        .select("*")
+        .eq("project_id", trimmed)
+        .maybeSingle();
+      if (cancelled) return;
+      let next: ProjectContext | null = null;
+      if (!error && row && typeof row === "object") {
+        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        if (parsed) next = parsed;
+      }
+      if (next == null) {
+        next = loadProjectContext(trimmed);
+      }
+      if (!cancelled) {
+        setProjectContext(next);
+        setGateChecked(true);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [urlProjectId]);
   useEffect(() => {
     if (!gateChecked) return;

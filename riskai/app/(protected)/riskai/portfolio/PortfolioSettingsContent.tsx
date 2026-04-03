@@ -14,6 +14,7 @@ import {
   projectSettingsFieldWidthClass,
   projectSettingsInputClass,
   projectSettingsReadOnlyFieldClass,
+  projectSettingsSelectClass,
   projectSettingsTextareaClass,
 } from "@/components/project/projectSettingsDsFormClasses";
 import type { PortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAccess";
@@ -36,9 +37,17 @@ export type PortfolioSettingsInitial = {
   description: string | null;
   owner_user_id: string;
   created_at: string | null;
+  reporting_currency: string | null;
+  reporting_unit: string | null;
 };
 
 const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
+
+const DEFAULT_REPORTING_CURRENCY = "AUD";
+const DEFAULT_REPORTING_UNIT = "MILLIONS";
+
+const REPORTING_CURRENCY_OPTIONS = ["AUD", "USD", "GBP"] as const;
+const REPORTING_UNIT_OPTIONS = ["THOUSANDS", "MILLIONS", "BILLIONS"] as const;
 
 type PortfolioSettingsTab = "general" | "members" | "details";
 
@@ -66,6 +75,12 @@ export default function PortfolioSettingsContent({
   );
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description ?? "");
+  const [reportingCurrency, setReportingCurrency] = useState(
+    () => initial.reporting_currency ?? DEFAULT_REPORTING_CURRENCY
+  );
+  const [reportingUnit, setReportingUnit] = useState(
+    () => initial.reporting_unit ?? DEFAULT_REPORTING_UNIT
+  );
   const [saved, setSaved] = useState(false);
   const [validation, setValidation] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -89,6 +104,8 @@ export default function PortfolioSettingsContent({
         body: JSON.stringify({
           name: trimmedName,
           description: description.trim() || null,
+          reporting_currency: reportingCurrency,
+          reporting_unit: reportingUnit,
         }),
         credentials: "include",
       });
@@ -103,7 +120,15 @@ export default function PortfolioSettingsContent({
     } finally {
       setSaving(false);
     }
-  }, [portfolioId, name, description, router, canEditPortfolioDetails]);
+  }, [
+    portfolioId,
+    name,
+    description,
+    reportingCurrency,
+    reportingUnit,
+    router,
+    canEditPortfolioDetails,
+  ]);
 
   const headerActions = useMemo(
     () => (
@@ -191,6 +216,42 @@ export default function PortfolioSettingsContent({
                     placeholder="Brief description of this portfolio"
                   />
                 </div>
+                <div className={projectSettingsFieldWidthClass("sm")}>
+                  <Label htmlFor="portfolio-reporting-currency" className="!mb-1">
+                    Reporting currency
+                  </Label>
+                  <select
+                    id="portfolio-reporting-currency"
+                    value={reportingCurrency}
+                    onChange={(e) => setReportingCurrency(e.target.value)}
+                    disabled={!canEditPortfolioDetails}
+                    className={projectSettingsSelectClass(false, "sm") + readOnlyChrome}
+                  >
+                    {REPORTING_CURRENCY_OPTIONS.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={projectSettingsFieldWidthClass("sm")}>
+                  <Label htmlFor="portfolio-reporting-unit" className="!mb-1">
+                    Reporting unit
+                  </Label>
+                  <select
+                    id="portfolio-reporting-unit"
+                    value={reportingUnit}
+                    onChange={(e) => setReportingUnit(e.target.value)}
+                    disabled={!canEditPortfolioDetails}
+                    className={projectSettingsSelectClass(false, "sm") + readOnlyChrome}
+                  >
+                    {REPORTING_UNIT_OPTIONS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </CardBody>
           </Card>
@@ -229,6 +290,18 @@ export default function PortfolioSettingsContent({
             <dt className="text-[var(--ds-text-muted)]">Created</dt>
             <dd className="font-medium text-[var(--ds-text-primary)]">
               {formatDate(initial.created_at)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[var(--ds-text-muted)]">Reporting currency</dt>
+            <dd className="font-medium text-[var(--ds-text-primary)]">
+              {initial.reporting_currency ?? DEFAULT_REPORTING_CURRENCY}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[var(--ds-text-muted)]">Reporting unit</dt>
+            <dd className="font-medium text-[var(--ds-text-primary)]">
+              {initial.reporting_unit ?? DEFAULT_REPORTING_UNIT}
             </dd>
           </div>
         </dl>

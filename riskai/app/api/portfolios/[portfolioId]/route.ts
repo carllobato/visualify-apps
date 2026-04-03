@@ -5,6 +5,9 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const REPORTING_CURRENCIES = new Set(["AUD", "USD", "GBP"]);
+const REPORTING_UNITS = new Set(["THOUSANDS", "MILLIONS", "BILLIONS"]);
+
 /**
  * GET /api/portfolios/[portfolioId] — Portfolio row if the user may access settings (member or table owner).
  */
@@ -65,9 +68,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let body: { name?: string; description?: string };
+  let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as { name?: string; description?: string };
+    body = (await request.json()) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -75,19 +78,63 @@ export async function PATCH(
   const name = typeof body?.name === "string" ? body.name.trim() : undefined;
   const description =
     body?.description === null || typeof body?.description === "string"
-      ? (body.description === null ? null : body.description.trim() || null)
+      ? (body.description === null ? null : String(body.description).trim() || null)
       : undefined;
 
-  if (name === undefined && description === undefined) {
+  let reporting_currency: string | null | undefined;
+  if ("reporting_currency" in body) {
+    const v = body.reporting_currency;
+    if (v === null) {
+      reporting_currency = null;
+    } else if (typeof v === "string") {
+      const t = v.trim();
+      if (!REPORTING_CURRENCIES.has(t)) {
+        return NextResponse.json({ error: "Invalid reporting_currency" }, { status: 400 });
+      }
+      reporting_currency = t;
+    } else {
+      return NextResponse.json({ error: "Invalid reporting_currency" }, { status: 400 });
+    }
+  }
+
+  let reporting_unit: string | null | undefined;
+  if ("reporting_unit" in body) {
+    const v = body.reporting_unit;
+    if (v === null) {
+      reporting_unit = null;
+    } else if (typeof v === "string") {
+      const t = v.trim();
+      if (!REPORTING_UNITS.has(t)) {
+        return NextResponse.json({ error: "Invalid reporting_unit" }, { status: 400 });
+      }
+      reporting_unit = t;
+    } else {
+      return NextResponse.json({ error: "Invalid reporting_unit" }, { status: 400 });
+    }
+  }
+
+  if (
+    name === undefined &&
+    description === undefined &&
+    reporting_currency === undefined &&
+    reporting_unit === undefined
+  ) {
     return NextResponse.json(
-      { error: "Provide at least one of name or description" },
+      { error: "Provide at least one of name, description, reporting_currency, or reporting_unit" },
       { status: 400 }
     );
   }
 
-  const updates: { name?: string; description?: string | null } = {};
+  const updates: {
+    name?: string;
+    description?: string | null;
+    reporting_currency?: string | null;
+    reporting_unit?: string | null;
+  } = {};
   if (name !== undefined) updates.name = name;
   if (description !== undefined) updates.description = description;
+  if (reporting_currency !== undefined) updates.reporting_currency = reporting_currency;
+  if (reporting_unit !== undefined) updates.reporting_unit = reporting_unit;
 
   const { error } = await supabase
     .from("visualify_portfolios")
@@ -102,5 +149,8 @@ export async function PATCH(
     id: portfolioId,
     name: name ?? result.portfolio.name,
     description: description !== undefined ? description : result.portfolio.description,
+    reporting_currency:
+      reporting_currency !== undefined ? reporting_currency : result.portfolio.reporting_currency,
+    reporting_unit: reporting_unit !== undefined ? reporting_unit : result.portfolio.reporting_unit,
   });
 }

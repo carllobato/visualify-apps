@@ -41,7 +41,13 @@ import {
   getNeutralTimeSamples,
   getNeutralTimeSummary,
 } from "@/store/selectors";
-import { loadProjectContext, formatMoneyMillions, isProjectContextComplete } from "@/lib/projectContext";
+import {
+  loadProjectContext,
+  formatMoneyMillions,
+  isProjectContextComplete,
+  parseProjectContext,
+  type ProjectContext,
+} from "@/lib/projectContext";
 import {
   formatDurationDays,
   formatDurationDaysBarLabel,
@@ -1528,6 +1534,39 @@ function overallStatusToTone(status: string): StatusPositionTone {
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
 
+/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
+function targetCompletionDateFromDb(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return "";
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
+  const raw = {
+    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    location:
+      row.location !== undefined && row.location !== null && typeof row.location === "string"
+        ? row.location.trim()
+        : undefined,
+    plannedDuration_months: row.planned_duration_months,
+    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+    scheduleContingency_weeks: row.schedule_contingency_weeks,
+    riskAppetite: row.risk_appetite,
+    currency: row.currency,
+    financialUnit: row.financial_unit,
+    projectValue_input: row.project_value_input,
+    contingencyValue_input: row.contingency_value_input,
+  };
+  return parseProjectContext(raw);
+}
+
 /** Build YYYY-MM for a given date. */
 function toMonthYearKey(d: Date): string {
   const y = d.getFullYear();
@@ -1597,6 +1636,9 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
   const [snapshotPersistWarning, setSnapshotPersistWarning] = useState<string | null>(null);
   const [projectContext, setProjectContext] = useState<ReturnType<typeof loadProjectContext>>(null);
+  /** Resolved display context for project-scoped routes (Supabase first, then localStorage). */
+  const [scopedDisplayContext, setScopedDisplayContext] = useState<ProjectContext | null>(null);
+  const [scopedDisplayContextReady, setScopedDisplayContextReady] = useState(false);
   const [gateChecked, setGateChecked] = useState(false);
   const [initializingProjectRun, setInitializingProjectRun] = useState(true);
   const effectiveProjectIdRef = useRef<string | undefined>(undefined);
@@ -1683,6 +1725,41 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       // localStorage unavailable (e.g. private browsing)
     }
   }, []);
+
+  // Project-scoped: load settings from Supabase first, then localStorage fallback (legacy flows unchanged).
+  useEffect(() => {
+    if (!effectiveProjectId) {
+      setScopedDisplayContext(null);
+      setScopedDisplayContextReady(false);
+      return;
+    }
+    let cancelled = false;
+    setScopedDisplayContextReady(false);
+    void (async () => {
+      const supabase = supabaseBrowserClient();
+      const { data: row, error } = await supabase
+        .from("visualify_project_settings")
+        .select("*")
+        .eq("project_id", effectiveProjectId)
+        .maybeSingle();
+      if (cancelled) return;
+      let next: ProjectContext | null = null;
+      if (!error && row && typeof row === "object") {
+        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        if (parsed) next = parsed;
+      }
+      if (next == null) {
+        next = loadProjectContext(effectiveProjectId);
+      }
+      if (!cancelled) {
+        setScopedDisplayContext(next);
+        setScopedDisplayContextReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveProjectId]);
 
   // Gate: redirect to setup only in legacy mode (no urlProjectId). When accessing via URL, global context is not required.
   useEffect(() => {
@@ -1791,10 +1868,11 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   // In project routes, use project-scoped context only (no legacy fallback),
   // otherwise cards like Overall Position can mix a loaded run with another project's context.
   // In legacy mode (no effective project id), keep using the gate/global context.
-  const displayContext = useMemo(
-    () => (effectiveProjectId ? loadProjectContext(effectiveProjectId) : projectContext),
-    [effectiveProjectId, projectContext]
-  );
+  const displayContext = useMemo(() => {
+    if (!effectiveProjectId) return projectContext;
+    if (!scopedDisplayContextReady) return loadProjectContext(effectiveProjectId);
+    return scopedDisplayContext;
+  }, [effectiveProjectId, projectContext, scopedDisplayContextReady, scopedDisplayContext]);
 
   const baseline: SimulationSectionBaseline | null = useMemo(() => {
     const targetPNumeric = displayContext

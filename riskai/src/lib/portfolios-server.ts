@@ -20,6 +20,8 @@ export type PortfolioForAdmin = {
   product_id: string | null;
   created_at: string | null;
   updated_at: string | null;
+  reporting_currency: string | null;
+  reporting_unit: string | null;
 };
 
 export type PortfolioMemberRow = {
@@ -52,7 +54,9 @@ export async function assertPortfolioAdminAccess(
 ): Promise<AssertPortfolioAdminResult> {
   const { data: portfolio, error: portfolioError } = await supabase
     .from("visualify_portfolios")
-    .select("id, name, description, owner_user_id, product_id, created_at, updated_at")
+    .select(
+      "id, name, description, owner_user_id, product_id, created_at, updated_at, reporting_currency, reporting_unit"
+    )
     .eq("id", portfolioId)
     .single();
 
@@ -68,6 +72,9 @@ export async function assertPortfolioAdminAccess(
     product_id: portfolio.product_id ?? null,
     created_at: portfolio.created_at ?? null,
     updated_at: portfolio.updated_at ?? null,
+    reporting_currency:
+      typeof portfolio.reporting_currency === "string" ? portfolio.reporting_currency : null,
+    reporting_unit: typeof portfolio.reporting_unit === "string" ? portfolio.reporting_unit : null,
   };
 
   const isTableOwner = portfolio.owner_user_id === userId;
