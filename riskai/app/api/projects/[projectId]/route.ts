@@ -26,13 +26,6 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  if (process.env.NODE_ENV === "development") {
-    console.log("[project-access] GET /api/projects/[id] permissions", {
-      projectId,
-      accessMode: bundle.permissions.accessMode,
-    });
-  }
-
   return NextResponse.json({
     ...bundle.project,
     permissions: bundle.permissions,
@@ -61,12 +54,6 @@ export async function PATCH(
   }
 
   if (!bundle.permissions.canEditProjectMetadata) {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[project-access] PATCH project denied", {
-        projectId,
-        accessMode: bundle.permissions.accessMode,
-      });
-    }
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

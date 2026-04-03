@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import type { ProjectPermissions } from "@/types/projectPermissions";
@@ -33,8 +34,9 @@ export async function getProjectIfAccessible(
 /**
  * Project row + permission flags for the given user (must match session for RLS).
  * Used by API routes and assertProjectAccess; keeps checks aligned with project_members + RLS.
+ * Request-cached per (projectId, userId) so nested routes can reuse the layout’s fetch without another round trip.
  */
-export async function getProjectAccessForUser(
+export const getProjectAccessForUser = cache(async function getProjectAccessForUser(
   projectId: string,
   userId: string
 ): Promise<ProjectAccessBundle | null> {
@@ -61,18 +63,6 @@ export async function getProjectAccessForUser(
     memberRole,
   });
 
-  if (process.env.NODE_ENV === "development") {
-    // Temporary trace (access consistency pass)
-    console.log("[project-access] resolved permissions", {
-      projectId,
-      userId,
-      accessMode: permissions.accessMode,
-      canEditProjectMetadata: permissions.canEditProjectMetadata,
-      canEditContent: permissions.canEditContent,
-      canManageMembers: permissions.canManageMembers,
-    });
-  }
-
   return {
     project: {
       id: data.id,
@@ -83,7 +73,7 @@ export async function getProjectAccessForUser(
     ownerUserId: data.owner_user_id as string,
     portfolioId: data.portfolio_id ?? null,
   };
-}
+});
 
 /**
  * Returns the project if it exists and `owner_user_id` matches (table owner only).

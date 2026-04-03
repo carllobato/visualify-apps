@@ -8,6 +8,8 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 export type AssertProjectAccessOk = {
   project: ProjectRow;
   permissions: ProjectPermissions;
+  /** From the same `visualify_projects` row as access resolution; avoids a second project query in layout. */
+  portfolioId: string | null;
 };
 export type AssertProjectAccessDenied =
   | { error: "unauthorized" }
@@ -37,5 +39,9 @@ export async function assertProjectAccess(
     return { error: "forbidden" };
   }
 
-  return { project: bundle.project, permissions: bundle.permissions };
+  return {
+    project: bundle.project,
+    permissions: bundle.permissions,
+    portfolioId: bundle.portfolioId,
+  };
 }

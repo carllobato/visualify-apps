@@ -234,7 +234,6 @@ export async function POST(req: Request) {
     );
   }
 
-  const start = Date.now();
   try {
     const body = await req.json().catch(() => ({}));
     const projectId = typeof body?.projectId === "string" ? body.projectId : "";
@@ -256,12 +255,6 @@ export async function POST(req: Request) {
     }
 
     if (!access.permissions.canEditContent) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[project-access] risk-merge-review denied", {
-          projectId,
-          accessMode: access.permissions.accessMode,
-        });
-      }
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -283,7 +276,6 @@ For each cluster you output, the mergedDraft MUST include refined pre- and post-
 
 Risks (JSON):
 ${buildUserPayload(risks)}`;
-    const reqPayloadSize = new Blob([userContent]).size;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -295,11 +287,6 @@ ${buildUserPayload(risks)}`;
     });
 
     const rawText = completion.choices[0]?.message?.content?.trim() ?? "";
-    const resPayloadSize = new Blob([rawText]).size;
-
-    if (process.env.NODE_ENV === "development") {
-      console.info("[risk-merge-review] request payload size:", reqPayloadSize, "response size:", resPayloadSize, "ms:", Date.now() - start);
-    }
 
     if (!rawText) {
       return NextResponse.json(

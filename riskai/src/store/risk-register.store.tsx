@@ -444,12 +444,6 @@ function reducer(state: State, action: Action): State {
     case "simulation/run": {
       const snapshot = action.payload.snapshot;
       const neutral = action.payload.neutral;
-      console.log("STORE simulation/run", {
-        action: action.type,
-        snapshotId: snapshot.id,
-        timestampIso: snapshot.timestampIso,
-        stack: new Error().stack?.split("\n").slice(0, 5).join("\n"),
-      });
       const nextHistoryRaw = [snapshot, ...state.simulation.history].slice(
         0,
         SIMULATION_HISTORY_CAP
@@ -493,10 +487,6 @@ function reducer(state: State, action: Action): State {
     }
 
     case "simulation/clearHistory":
-      console.log("STORE simulation/clearHistory", {
-        action: action.type,
-        stack: new Error().stack?.split("\n").slice(0, 5).join("\n"),
-      });
       return {
         ...state,
         simulation: {
@@ -516,12 +506,6 @@ function reducer(state: State, action: Action): State {
 
     case "simulation/setCanonicalId": {
       const { id } = action.payload;
-      console.log("STORE simulation/setCanonicalId", {
-        action: action.type,
-        snapshotId: id,
-        timestampIso: state.simulation.current?.timestampIso,
-        stack: new Error().stack?.split("\n").slice(0, 5).join("\n"),
-      });
       const current = state.simulation.current
         ? { ...state.simulation.current, id }
         : undefined;
@@ -536,12 +520,6 @@ function reducer(state: State, action: Action): State {
 
     case "simulation/hydrate": {
       const { current, history, neutral, seed } = action.payload;
-      console.log("STORE simulation/hydrate", {
-        action: action.type,
-        snapshotId: current?.id,
-        timestampIso: current?.timestampIso,
-        stack: new Error().stack?.split("\n").slice(0, 5).join("\n"),
-      });
       const capped = Array.isArray(history) ? history.slice(0, SIMULATION_HISTORY_CAP) : [];
       return {
         ...state,
@@ -771,62 +749,9 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
       | "run-data-load-last-locked"
       | "unknown" = "unknown"
   ) => {
-    const rowMeta = row as { id?: string; created_at?: string | null };
-    console.log(
-      "CALL hydrateSimulationFromDbSnapshot",
-      rowMeta.id ?? null,
-      rowMeta.created_at ?? null
-    );
-    console.log("STORE simulation/hydrate", source, rowMeta.id ?? null);
+    void source;
     const built = buildSimulationFromDbRow(row);
     if (built) {
-      const dbRow = row as Record<string, unknown>;
-      const debugPayload = {
-        source,
-        snapshotId: dbRow.id ?? null,
-        projectId: dbRow.project_id ?? null,
-        createdAt: dbRow.created_at ?? null,
-        lockedForReporting: Boolean(dbRow.locked_for_reporting),
-        lockedAt: dbRow.locked_at ?? null,
-        dbSummary: {
-          cost_p20: dbRow.cost_p20 ?? null,
-          cost_p50: dbRow.cost_p50 ?? null,
-          cost_p80: dbRow.cost_p80 ?? null,
-          cost_p90: dbRow.cost_p90 ?? null,
-          time_p20: dbRow.time_p20 ?? null,
-          time_p50: dbRow.time_p50 ?? null,
-          time_p80: dbRow.time_p80 ?? null,
-          time_p90: dbRow.time_p90 ?? null,
-        },
-        hydratedSummary: {
-          p20Cost: built.current.p20Cost,
-          p50Cost: built.current.p50Cost,
-          p80Cost: built.current.p80Cost,
-          p90Cost: built.current.p90Cost,
-          p20Time: built.neutral.summary.p20Time,
-          p50Time: built.neutral.summary.p50Time,
-          p80Time: built.neutral.summary.p80Time,
-          p90Time: built.neutral.summary.p90Time,
-        },
-        hydratedAt: new Date().toISOString(),
-      };
-      console.info("[simulation] hydrate from db snapshot", debugPayload);
-      // Single-line JSON log makes copy/paste from DevTools reliable (no collapsed "Object").
-      console.info("[simulation] hydrate from db snapshot json", JSON.stringify(debugPayload));
-      if (typeof window !== "undefined") {
-        (
-          window as Window & {
-            __riskaiSimulationDebug?: unknown;
-            __riskaiSimulationDebugRow?: unknown;
-          }
-        ).__riskaiSimulationDebug = debugPayload;
-        (
-          window as Window & {
-            __riskaiSimulationDebug?: unknown;
-            __riskaiSimulationDebugRow?: unknown;
-          }
-        ).__riskaiSimulationDebugRow = row;
-      }
       dispatch({
         type: "simulation/hydrate",
         payload: {
@@ -848,15 +773,12 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
       updateRatingPc: (id, target, payload) =>
         dispatch({ type: "RISK_UPDATE_RATING_PC", payload: { id, target, ...payload } }),
       archiveRisk: (id) => {
-        console.log("[risks] archived (local store)", { riskId: id, status: RISK_STATUS_ARCHIVED_LOOKUP });
         dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_ARCHIVED_LOOKUP } });
       },
       closeRisk: (id) => {
-        console.log("[risks] closed (local store)", { riskId: id, status: RISK_STATUS_CLOSED_LOOKUP });
         dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_CLOSED_LOOKUP } });
       },
       restoreArchivedRisk: (id) => {
-        console.log("[risks] restored from archive (local store)", { riskId: id, status: RISK_STATUS_OPEN_LOOKUP });
         dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_OPEN_LOOKUP } });
       },
       clearRisks: () => dispatch({ type: "risks/clear" }),
@@ -871,7 +793,6 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
         if (invalidCount > 0) {
           return Promise.resolve({ ran: false, blockReason: "invalid", invalidCount });
         }
-        console.log("CALL runSimulation START");
         const iterCount = iterations ?? 10000;
         const seed =
           state.simulation.seed != null
@@ -1012,17 +933,8 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
             if (!row?.id) {
               const message = "Snapshot was not returned from the database.";
               console.error("[snapshots]", message);
-              console.log("CALL runSimulation BLOCKED snapshot_persist");
               return { ran: false as const, blockReason: "snapshot_persist" as const, message };
             }
-            console.log(
-              "RUN SIM SUCCESS",
-              row.id,
-              row.created_at ?? null,
-              snapshotWithDuration.id,
-              neutral.summary?.p80Cost ?? null
-            );
-            console.log("CALL runSimulation SNAPSHOT SAVED");
             dispatch({
               type: "simulation/run",
               payload: { snapshot: snapshotWithDuration, neutral },
@@ -1038,7 +950,6 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
           })
           .catch((e: unknown) => {
             console.error("[snapshots]", e);
-            console.log("CALL runSimulation BLOCKED snapshot_persist");
             const message =
               e &&
               typeof e === "object" &&

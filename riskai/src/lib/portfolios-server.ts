@@ -114,19 +114,20 @@ export async function getAccessiblePortfolios(
   supabase: SupabaseClient,
   userId: string
 ): Promise<GetAccessiblePortfoliosResult> {
-  const { data: portfolios, error } = await supabase
-    .from("visualify_portfolios")
-    .select("id, name, created_at, owner_user_id")
-    .order("created_at", { ascending: true });
+  const [portfoliosResult, membersResult] = await Promise.all([
+    supabase
+      .from("visualify_portfolios")
+      .select("id, name, created_at, owner_user_id")
+      .order("created_at", { ascending: true }),
+    supabase.from("visualify_portfolio_members").select("portfolio_id").eq("user_id", userId),
+  ]);
 
+  const { data: portfolios, error } = portfoliosResult;
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  const { data: memberships } = await supabase
-    .from("visualify_portfolio_members")
-    .select("portfolio_id")
-    .eq("user_id", userId);
+  const { data: memberships } = membersResult;
 
   const memberPortfolioIds = new Set(
     (memberships ?? []).map((m) => m.portfolio_id)
@@ -164,20 +165,21 @@ export async function getAccessibleProjects(
   userId: string,
   accessiblePortfolioIds: string[]
 ): Promise<GetAccessibleProjectsResult> {
-  const { data: ownedProjects, error: ownedError } = await supabase
-    .from("visualify_projects")
-    .select("id, name, created_at")
-    .eq("owner_user_id", userId)
-    .order("created_at", { ascending: true });
+  const [ownedResult, membersIndexResult] = await Promise.all([
+    supabase
+      .from("visualify_projects")
+      .select("id, name, created_at")
+      .eq("owner_user_id", userId)
+      .order("created_at", { ascending: true }),
+    supabase.from("visualify_project_members").select("project_id").eq("user_id", userId),
+  ]);
+
+  const { data: ownedProjects, error: ownedError } = ownedResult;
+  const { data: memberRows, error: memberError } = membersIndexResult;
 
   if (ownedError) {
     return { ok: false, error: ownedError.message };
   }
-
-  const { data: memberRows, error: memberError } = await supabase
-    .from("visualify_project_members")
-    .select("project_id")
-    .eq("user_id", userId);
 
   if (memberError) {
     return { ok: false, error: memberError.message };

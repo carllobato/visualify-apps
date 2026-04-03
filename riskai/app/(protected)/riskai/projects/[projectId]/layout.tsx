@@ -31,36 +31,18 @@ export default async function ProjectLayout({
     redirect(await buildLoginRedirectUrl(pathname));
   }
   if ("error" in access && access.error === "forbidden") {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console
-      console.log("[projects] access denied or not found", { projectId });
-    }
     redirect(riskaiPath("/not-found"));
   }
 
-  const { project, permissions } = access;
-  if (process.env.NODE_ENV === "development") {
-    // Temporary trace (access consistency pass)
-    console.log("[project-access] layout", {
-      projectId,
-      accessMode: permissions.accessMode,
-      canEditContent: permissions.canEditContent,
-    });
-  }
-  let portfolioId: string | null = null;
+  const { project, permissions, portfolioId } = access;
+
   let portfolioName: string | null = null;
-  const supabase = await supabaseServerClient();
-  const { data: projectRow } = await supabase
-    .from("visualify_projects")
-    .select("portfolio_id")
-    .eq("id", projectId)
-    .single();
-  if (projectRow?.portfolio_id) {
-    portfolioId = projectRow.portfolio_id;
+  if (portfolioId) {
+    const supabase = await supabaseServerClient();
     const { data: portfolio } = await supabase
       .from("visualify_portfolios")
       .select("name")
-      .eq("id", projectRow.portfolio_id)
+      .eq("id", portfolioId)
       .single();
     portfolioName = portfolio?.name ?? null;
   }

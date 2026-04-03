@@ -81,7 +81,6 @@ const ALL_NAV_ITEMS: {
   { href: riskaiPath("/projects"), projectSlug: "project-home", label: "Project Home", icon: "home" },
   { href: riskaiPath("/projects"), projectSlug: "risks", label: "Risk Register" },
   { href: riskaiPath("/matrix"), label: "Risk Matrix", hideInMvp: true },
-  // TEMP: Run Data nav item for development audit – remove before production
   { href: riskaiPath("/dev/run-data"), projectSlug: "run-data", label: "Run Data" },
   { href: riskaiPath("/simulation"), projectSlug: "simulation", label: "Simulation" },
 ];

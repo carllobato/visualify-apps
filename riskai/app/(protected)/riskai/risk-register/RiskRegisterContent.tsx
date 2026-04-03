@@ -151,7 +151,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const searchParams = useSearchParams();
   const focusRiskId = searchParams.get("focusRiskId");
   const highlightTimeoutRef = useRef<number | null>(null);
-  const prevRisksLengthRef = useRef(risks.length);
   const hasHydratedFromDbRef = useRef(false);
   const projectIdForHydrateRef = useRef<string | null>(null);
 
@@ -169,12 +168,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const contentReadOnly =
     Boolean(urlProjectId) &&
     (projectPermissions == null || !projectPermissions.canEditContent);
-
-  useEffect(() => {
-    if (contentReadOnly && urlProjectId && process.env.NODE_ENV === "development") {
-      console.log("[project-access] risk register read-only UI", { projectId: urlProjectId });
-    }
-  }, [contentReadOnly, urlProjectId]);
 
   // Gate: load project context for gate/display. Project routes: Supabase first, then project-scoped localStorage; legacy: global localStorage only.
   useEffect(() => {
@@ -259,17 +252,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       .finally(() => setRisksLoading(false));
   }, [urlProjectId, setRisks, loadRetryKey]);
 
-  // Log when risk list grows (after add/append) for debugging visibility of new risks (dev only)
-  useEffect(() => {
-    if (risks.length > prevRisksLengthRef.current && process.env.NODE_ENV === "development") {
-      console.log("[risk-ui] after add", {
-        total: risks.length,
-        ids: risks.map((r) => r.id ?? (r as Risk & { tempId?: string }).tempId).slice(-5),
-      });
-    }
-    prevRisksLengthRef.current = risks.length;
-  }, [risks]);
-
   /** Merge server-returned risks with current local risks: prefer server values so DB-populated data is not overwritten; only use local when server value is missing (e.g. legacy DB without extended columns). When matchByIndex is true (e.g. right after replaceRisks), pairs by array index so newly saved risks with temp IDs that got real UUIDs still get local fallbacks. Otherwise matches by id only. */
   const mergeServerRisksWithLocal = useCallback(
     (serverRisks: Risk[], localRisks: Risk[], matchByIndex?: boolean): Risk[] => {
@@ -342,13 +324,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         ? risks.filter((r) => !isRiskStatusArchived(r.status))
         : risks.filter((r) => isRiskStatusArchived(r.status));
 
-    if (registerView === "active") {
-      console.log("[risk-ui] active register excludes archived", {
-        totalInStore: risks.length,
-        activeVisibleBeforeColumnFilters: baseList.length,
-      });
-    }
-
     let list = baseList;
     const risksForFilterOptions = list;
     list = applyColumnFilters(list, columnFilters, getRiskColumnValue);
@@ -397,14 +372,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     }
     return { filteredRisks: list, risksForFilterOptions };
   }, [risks, columnFilters, tableSortState, registerView]);
-
-  if (process.env.NODE_ENV === "development") {
-    console.log("[risk-ui] render", {
-      total: risks.length,
-      visible: filteredRisks.length,
-      filterState: columnFilters,
-    });
-  }
 
   // When opening the detail modal for a newly added risk, it may not be in filteredRisks (e.g. "Show flagged only").
   // Ensure the initial risk is included so the modal shows the correct risk instead of defaulting to the first filtered one.
@@ -494,11 +461,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         mergedFromRiskIds: cluster.riskIds,
         aiMergeClusterId: cluster.clusterId,
       });
-      console.log("[risk lookup] selected status on save", newRisk.status);
-      console.log("[risk lookup] selected applies_to on save", newRisk.appliesTo);
       // Archive the risks that were merged (keep for completeness, do not delete)
       for (const id of cluster.riskIds) {
-        console.log("[risks] archived (merge accept)", { riskId: id, status: RISK_STATUS_ARCHIVED_LOOKUP });
         updateRisk(id, { status: RISK_STATUS_ARCHIVED_LOOKUP });
       }
       addRisk(newRisk);

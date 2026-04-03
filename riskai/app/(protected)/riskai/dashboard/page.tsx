@@ -9,9 +9,8 @@ import {
 import type { AccessiblePortfolio, AccessibleProject } from "@/lib/portfolios-server";
 import { isDevAuthBypassEnabled } from "@/lib/dev/devAuthBypass";
 import { getAccessiblePortfolios, getAccessibleProjects } from "@/lib/portfolios-server";
-import { fetchPublicProfile } from "@/lib/profiles/profileDb";
+import { fetchPublicProfile, type PublicProfileRow } from "@/lib/profiles/profileDb";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { dlog } from "@/lib/debug";
 import { riskaiPath } from "@/lib/routes";
 import { Callout, Card, CardBody } from "@visualify/design-system";
 
@@ -28,9 +27,14 @@ export default async function DashboardPage() {
   let portfolios: AccessiblePortfolio[] = [];
   let projects: AccessibleProject[] = [];
   let projectTiles: ProjectTilePayload[] = [];
+  let profileRow: PublicProfileRow | null = null;
 
   if (user) {
-    const portfoliosResult = await getAccessiblePortfolios(supabase, user.id);
+    const [portfoliosResult, profile] = await Promise.all([
+      getAccessiblePortfolios(supabase, user.id),
+      fetchPublicProfile(supabase, user.id),
+    ]);
+    profileRow = profile;
     portfolios = portfoliosResult.ok ? portfoliosResult.portfolios : [];
     const portfolioIds = portfolios.map((p) => p.id);
     const projectsResult = await getAccessibleProjects(supabase, user.id, portfolioIds);
@@ -38,15 +42,9 @@ export default async function DashboardPage() {
     projectTiles = projectsResult.ok
       ? sortProjectTilesByRag(await getProjectTilePayloads(supabase, projects))
       : [];
-    dlog("[dashboard] accessible projects", {
-      count: projects.length,
-      portfolioScopeCount: portfolioIds.length,
-      source: "getAccessibleProjects (owner + project_members + portfolio)",
-    });
   }
 
   const meta = user?.user_metadata as Record<string, unknown> | undefined;
-  const profileRow = user ? await fetchPublicProfile(supabase, user.id) : null;
   const rawFirst = profileRow?.first_name ?? meta?.first_name;
   const dashboardFirstName =
     typeof rawFirst === "string" && rawFirst.trim() ? rawFirst.trim() : null;

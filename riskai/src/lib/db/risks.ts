@@ -156,10 +156,6 @@ export async function listRisks(projectId?: string): Promise<Risk[]> {
     throw new Error(message);
   }
   const rows = (json.risks ?? []) as RiskRow[];
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[risks] listRisks select fields", RISK_DB_SELECT_COLUMNS);
-    if (rows[0]) console.log("[risks] listRisks sample row keys", Object.keys(rows[0]).sort().join(","));
-  }
   return rows.map(rowToRisk);
 }
 
@@ -173,10 +169,6 @@ export async function listRisks(projectId?: string): Promise<Risk[]> {
 export async function replaceRisks(risks: Risk[], projectId?: string): Promise<Risk[]> {
   const pid = requireRiskProjectId(projectId);
   const rows = risks.map((r) => riskToRow(r, pid));
-  if (typeof console !== "undefined" && console.log && rows.length > 0) {
-    console.log("[risks] replaceRisks upsert payload (per row keys)", Object.keys(rows[0] ?? {}).sort().join(","));
-    console.log("[risks] replaceRisks upsert payload sample", JSON.stringify(rows[0] ?? null));
-  }
 
   const res = await fetch(`/api/projects/${encodeURIComponent(pid)}/risks`, {
     method: "PUT",

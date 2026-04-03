@@ -1,4 +1,3 @@
-import { getProjectIfAccessible } from "@/lib/db/projectAccess";
 import DevHealthPage from "../../../dev/health/page";
 
 export default async function ProjectEngineHealthPage({
@@ -7,6 +6,5 @@ export default async function ProjectEngineHealthPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const project = await getProjectIfAccessible(projectId);
-  return <DevHealthPage projectId={project?.id ?? projectId} />;
+  return <DevHealthPage projectId={projectId} />;
 }

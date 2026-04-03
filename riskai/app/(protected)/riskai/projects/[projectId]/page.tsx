@@ -1,5 +1,3 @@
-import { notFound } from "next/navigation";
-import { getProjectIfAccessible } from "@/lib/db/projectAccess";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { ProjectOverviewContent } from "./ProjectOverviewContent";
 import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
@@ -10,8 +8,6 @@ export default async function ProjectDashboardPage({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
-  const project = await getProjectIfAccessible(projectId);
-  if (!project) notFound();
 
   const supabase = await supabaseServerClient();
 

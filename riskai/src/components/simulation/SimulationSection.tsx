@@ -566,13 +566,16 @@ function CostChart({
           </p>
         )}
       </CardHeader>
-      <CardContent className="w-full p-4" style={{ height: CHART_HEIGHT }}>
+      <CardContent
+        className="flex w-full flex-col p-4"
+        style={{ height: CHART_HEIGHT }}
+      >
         {empty ? (
-          <div className="flex h-full items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+          <div className="flex min-h-0 flex-1 items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             No data
           </div>
         ) : (
-          <div className="h-full overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
+          <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartDataWithRagBand} margin={CHART_MARGIN}>
               <XAxis
@@ -1050,13 +1053,16 @@ function TimeChart({
           </p>
         )}
       </CardHeader>
-      <CardContent className="w-full p-4" style={{ height: CHART_HEIGHT }}>
+      <CardContent
+        className="flex w-full flex-col p-4"
+        style={{ height: CHART_HEIGHT }}
+      >
         {empty ? (
-          <div className="flex h-full items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+          <div className="flex min-h-0 flex-1 items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             No data
           </div>
         ) : (
-          <div className="h-full overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
+          <div className="min-h-0 min-w-0 flex-1 overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-muted)_22%,transparent)] text-[var(--ds-primary)]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartDataWithRagBand} margin={CHART_MARGIN}>
               <XAxis

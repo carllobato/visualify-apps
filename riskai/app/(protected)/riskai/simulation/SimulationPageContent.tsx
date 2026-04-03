@@ -1696,12 +1696,6 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   }, [invalidRunnableCount]);
 
   useEffect(() => {
-    if (simulationReadOnly && process.env.NODE_ENV === "development") {
-      console.log("[project-access] simulation UI read-only", { projectId: urlProjectId });
-    }
-  }, [simulationReadOnly, urlProjectId]);
-
-  useEffect(() => {
     const supabase = supabaseBrowserClient();
     supabase.auth
       .getUser()
@@ -1776,7 +1770,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     }
   }, [gateChecked, projectContext, router, setupRedirectPath, urlProjectId]);
 
-  // When project changes: clear store, then load risks + snapshot for this project. Only show results if snapshot exists for this project.
+  // When project changes: clear store, then load risks + locked snapshot in parallel; exit loading when both settle. Only show results if snapshot exists for this project.
   useEffect(() => {
     if (!gateChecked) return;
     if (!isProjectContextComplete(projectContext) && !urlProjectId) return;
@@ -1792,24 +1786,31 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     setSessionLatestSavedSnapshotRow(null);
     // Always start from a clean in-memory simulation state on project load; reporting snapshot is fetched for metadata only (no auto-hydrate).
     clearRef.current();
-    listRisks(projectIdWeAreLoading)
-      .then((loaded) => {
-        if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
-        setRisksRef.current(loaded);
-      })
-      .catch((err) => console.error("[simulation] load risks", err));
-    getLatestLockedSnapshot(projectIdWeAreLoading)
-      .then((lockedSnapshot) => {
-        if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
-        setLockedSnapshotRow(lockedSnapshot ?? null);
-        setInitializingProjectRun(false);
-      })
-      .catch((err) => {
-        if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
+    void Promise.all([
+      listRisks(projectIdWeAreLoading)
+        .then((loaded) => ({ kind: "risks" as const, loaded }))
+        .catch((err) => {
+          console.error("[simulation] load risks", err);
+          return { kind: "risksFailed" as const };
+        }),
+      getLatestLockedSnapshot(projectIdWeAreLoading)
+        .then((lockedSnapshot) => ({ kind: "snapshot" as const, lockedSnapshot }))
+        .catch((err) => {
+          if (effectiveProjectIdRef.current === projectIdWeAreLoading) {
+            console.error("[simulation] load locked snapshot", err);
+          }
+          return { kind: "snapshotFailed" as const };
+        }),
+    ]).then(([risksOutcome, snapshotOutcome]) => {
+      if (effectiveProjectIdRef.current !== projectIdWeAreLoading) return;
+      if (risksOutcome.kind === "risks") setRisksRef.current(risksOutcome.loaded);
+      if (snapshotOutcome.kind === "snapshot") {
+        setLockedSnapshotRow(snapshotOutcome.lockedSnapshot ?? null);
+      } else {
         setLockedSnapshotRow(null);
-        console.error("[simulation] load locked snapshot", err);
-        setInitializingProjectRun(false);
-      });
+      }
+      setInitializingProjectRun(false);
+    });
   }, [gateChecked, projectContext, urlProjectId, effectiveProjectId]);
 
   const hydrateAfterSuccessfulRun = useCallback(async (snapshotProjectId: string, snapshotId: string) => {
@@ -1979,45 +1980,6 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     [timeSamples, timeSummary, iterationCount, snapshotRisks]
   );
 
-  // Debug: expose what the Simulation page is currently rendering.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const current = simulation.current;
-    const debugViewModel = {
-      effectiveProjectId: effectiveProjectId ?? null,
-      currentSnapshotId: current?.id ?? null,
-      currentTimestampIso: current?.timestampIso ?? null,
-      latestLockedSnapshotId:
-        lockedSnapshotRow && typeof lockedSnapshotRow === "object" ? (lockedSnapshotRow.id ?? null) : null,
-      latestLockedCreatedAt:
-        lockedSnapshotRow && typeof lockedSnapshotRow === "object" ? (lockedSnapshotRow.created_at ?? null) : null,
-      selectedSnapshotId: selectedSnapshotId ?? null,
-      neutralSummary: neutralSummary ?? null,
-      timeSummary: timeSummary ?? null,
-      iterationCount,
-      snapshotRiskCount: snapshotRisks.length,
-      showResults,
-      showDefaultSimulationActions,
-    };
-    (
-      window as Window & {
-        __riskaiSimulationViewModel?: unknown;
-      }
-    ).__riskaiSimulationViewModel = debugViewModel;
-    console.info("[simulation] view model json", JSON.stringify(debugViewModel));
-  }, [
-    effectiveProjectId,
-    iterationCount,
-    lockedSnapshotRow,
-    selectedSnapshotId,
-    neutralSummary,
-    showDefaultSimulationActions,
-    showResults,
-    simulation.current,
-    snapshotRisks.length,
-    timeSummary,
-  ]);
-
   /** Simulated total cost (dollars) at target P from the cost CDF. */
   const simulatedTotalCostAtTargetPDollars = useMemo(() => {
     if (!baseline || !costCdf?.length) return null;
@@ -2159,59 +2121,6 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     plannedDurationDays,
     scheduleContingencyDays,
   ]);
-
-  // Debug: isolate Cost Simulation chart inputs and reference lines.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const targetPNumeric = costBaseline?.targetPNumeric ?? null;
-    const targetPLabel = costBaseline?.targetPLabel ?? null;
-    const contingencyValueDollars =
-      displayContext && Number.isFinite(displayContext.contingencyValue_m)
-        ? displayContext.contingencyValue_m * 1e6
-        : null;
-    const approvedValue = costBaseline?.approvedValue ?? null;
-    const refCost =
-      contingencyValueDollars != null && Number.isFinite(contingencyValueDollars)
-        ? contingencyValueDollars
-        : approvedValue;
-    const currentPAtRef =
-      costCdf?.length && refCost != null && refCost > 0
-        ? percentileAtCost(costCdf, refCost)
-        : null;
-    const costAtTargetP =
-      costCdf?.length && targetPNumeric != null
-        ? costAtPercentile(costCdf, targetPNumeric)
-        : null;
-
-    const debug = {
-      snapshotId: simulation.current?.id ?? null,
-      snapshotTimestampIso: simulation.current?.timestampIso ?? null,
-      targetPNumeric,
-      targetPLabel,
-      contingencyValueDollars,
-      approvedValue,
-      refCostForCurrentP: refCost,
-      currentPAtRef,
-      costAtTargetP,
-      neutralSummary: neutralSummary
-        ? {
-            p20Cost: neutralSummary.p20Cost,
-            p50Cost: neutralSummary.p50Cost,
-            p80Cost: neutralSummary.p80Cost,
-            p90Cost: neutralSummary.p90Cost,
-          }
-        : null,
-      cdfPointCount: costCdf?.length ?? 0,
-      cdfFirstPoint: costCdf?.[0] ?? null,
-      cdfLastPoint: costCdf?.[costCdf.length - 1] ?? null,
-    };
-    (
-      window as Window & {
-        __riskaiCostChartDebug?: unknown;
-      }
-    ).__riskaiCostChartDebug = debug;
-    console.info("[simulation] cost chart debug json", JSON.stringify(debug));
-  }, [costBaseline, costCdf, displayContext, neutralSummary, simulation.current]);
 
   const projectPositionExecutiveSummary = useMemo(() => {
     const { overallStatus, costLine, timeLine } = projectPositionMetrics;
