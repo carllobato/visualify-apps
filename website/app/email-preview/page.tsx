@@ -20,6 +20,12 @@ const PREVIEWS = [
     description:
       "Supabase auth — matches riskai/supabase/email-templates/confirm_signup.html.",
   },
+  {
+    href: "/email-preview/password-changed",
+    title: "Password changed",
+    description:
+      "Supabase auth — matches riskai/supabase/email-templates/password_changed_notification.html.",
+  },
 ] as const;
 
 export default function EmailPreviewIndexPage() {

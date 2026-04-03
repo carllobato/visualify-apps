@@ -9,6 +9,7 @@ import { AccountProfileForm } from "./AccountProfileForm";
 import { DeleteAccountSection } from "./DeleteAccountSection";
 import { AccountSettingsTabs } from "./AccountSettingsTabs";
 import { LastLoginPanel } from "./LastLoginPanel";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 import { Card, CardBody, CardFooter, CardHeader } from "@visualify/design-system";
 import { riskaiPath } from "@/lib/routes";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
@@ -100,13 +101,31 @@ export default async function UserSettingsPage() {
                 <dl className="space-y-2 text-sm">
                   <div>
                     <dt className="text-[var(--ds-text-muted)]">Email</dt>
-                    <dd className="font-medium text-[var(--ds-text-primary)]">{user.email ?? "—"}</dd>
+                    <dd className="m-0">
+                      <span className="font-medium text-[var(--ds-text-primary)]">{user.email ?? "—"}</span>
+                      <p className="mt-1.5 text-sm text-[var(--ds-text-secondary)]">
+                        Email changes are not currently available in-app.
+                      </p>
+                    </dd>
                   </div>
                   <div>
                     <dt className="text-[var(--ds-text-muted)]">User ID</dt>
                     <dd className="font-mono text-xs break-all text-[var(--ds-text-primary)]">{user.id}</dd>
                   </div>
                 </dl>
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader className="!px-4 !py-2.5">
+                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Password</h2>
+              </CardHeader>
+              <CardBody className="!px-4 !py-3">
+                <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
+                  Use a strong password you don&apos;t use elsewhere. You&apos;ll need your current password to
+                  confirm.
+                </p>
+                <ChangePasswordForm />
               </CardBody>
             </Card>
 

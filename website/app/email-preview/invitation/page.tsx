@@ -1,15 +1,7 @@
 type SearchParams = Record<string, string | string[] | undefined>;
 
-/** Aligns with `packages/design-system/src/styles/globals.css` :root tokens (inline for email). */
-const DS = {
-  surface: "#f7f7f8",
-  bg: "#ffffff",
-  border: "#e6e6e8",
-  textPrimary: "#111111",
-  textSecondary: "#5f6368",
-  textTertiary: "#9aa0a6",
-  primary: "#3b82f6",
-  primaryText: "#ffffff",
+/** Layout tokens; colors use `.email-preview-root` CSS vars (light/dark via theme toggle). */
+const EP = {
   radiusMd: "16px",
   radiusSm: "10px",
   font:
@@ -38,11 +30,12 @@ export default async function InvitationEmailPreviewPage({
 
   return (
     <div
+      className="email-preview-root"
       style={{
         margin: 0,
         padding: 0,
-        backgroundColor: DS.surface,
-        color: DS.textPrimary,
+        backgroundColor: "var(--ep-surface)",
+        color: "var(--ep-text-primary)",
         minHeight: "100vh",
         WebkitFontSmoothing: "antialiased",
       }}
@@ -53,7 +46,7 @@ export default async function InvitationEmailPreviewPage({
         cellSpacing={0}
         cellPadding={0}
         border={0}
-        style={{ margin: 0, padding: 0, width: "100%", backgroundColor: DS.surface }}
+        style={{ margin: 0, padding: 0, width: "100%", backgroundColor: "var(--ep-surface)" }}
       >
         <tbody>
           <tr>
@@ -61,8 +54,8 @@ export default async function InvitationEmailPreviewPage({
               align="center"
               style={{
                 padding: "24px 12px",
-                backgroundColor: DS.surface,
-                fontFamily: DS.font,
+                backgroundColor: "var(--ep-surface)",
+                fontFamily: EP.font,
               }}
             >
               <table
@@ -77,9 +70,9 @@ export default async function InvitationEmailPreviewPage({
                   <tr>
                     <td
                       style={{
-                        backgroundColor: DS.bg,
-                        border: `1px solid ${DS.border}`,
-                        borderRadius: DS.radiusMd,
+                        backgroundColor: "var(--ep-bg)",
+                        border: "1px solid var(--ep-border)",
+                        borderRadius: EP.radiusMd,
                         padding: "24px",
                       }}
                     >
@@ -91,7 +84,7 @@ export default async function InvitationEmailPreviewPage({
                                 fontSize: "16px",
                                 lineHeight: "24px",
                                 fontWeight: 600,
-                                color: DS.textPrimary,
+                                color: "var(--ep-text-primary)",
                                 padding: "0 0 14px 0",
                               }}
                             >
@@ -101,7 +94,7 @@ export default async function InvitationEmailPreviewPage({
                           <tr>
                             <td
                               style={{
-                                borderTop: `1px solid ${DS.border}`,
+                                borderTop: "1px solid var(--ep-border)",
                                 fontSize: 0,
                                 lineHeight: 0,
                                 height: 0,
@@ -117,7 +110,7 @@ export default async function InvitationEmailPreviewPage({
                                 fontSize: "24px",
                                 lineHeight: "30px",
                                 fontWeight: 700,
-                                color: DS.textPrimary,
+                                color: "var(--ep-text-primary)",
                                 padding: "0 0 14px 0",
                               }}
                             >
@@ -129,7 +122,7 @@ export default async function InvitationEmailPreviewPage({
                               style={{
                                 fontSize: "16px",
                                 lineHeight: "24px",
-                                color: DS.textPrimary,
+                                color: "var(--ep-text-primary)",
                                 padding: "0 0 10px 0",
                               }}
                             >
@@ -141,12 +134,12 @@ export default async function InvitationEmailPreviewPage({
                               style={{
                                 fontSize: "16px",
                                 lineHeight: "24px",
-                                color: DS.textSecondary,
+                                color: "var(--ep-text-secondary)",
                                 padding: "0 0 20px 0",
                               }}
                             >
                               {inviterDisplayName} has invited you to join{" "}
-                              <span style={{ fontWeight: 700, color: DS.textPrimary }}>{projectName}</span>
+                              <span style={{ fontWeight: 700, color: "var(--ep-text-primary)" }}>{projectName}</span>
                               {" "}in Visualify | Risk AI.
                             </td>
                           </tr>
@@ -157,7 +150,7 @@ export default async function InvitationEmailPreviewPage({
                                   <tr>
                                     <td
                                       align="center"
-                                      style={{ borderRadius: DS.radiusSm, backgroundColor: DS.primary }}
+                                      style={{ borderRadius: EP.radiusSm, backgroundColor: "var(--ep-primary)" }}
                                     >
                                       <a
                                         href={inviteLink}
@@ -167,9 +160,9 @@ export default async function InvitationEmailPreviewPage({
                                           fontSize: "14px",
                                           lineHeight: "20px",
                                           fontWeight: 600,
-                                          color: DS.primaryText,
+                                          color: "var(--ep-primary-text)",
                                           textDecoration: "none",
-                                          borderRadius: DS.radiusSm,
+                                          borderRadius: EP.radiusSm,
                                         }}
                                       >
                                         Accept invitation
@@ -190,9 +183,9 @@ export default async function InvitationEmailPreviewPage({
                                 border={0}
                                 style={{
                                   width: "100%",
-                                  backgroundColor: DS.surface,
-                                  border: `1px solid ${DS.border}`,
-                                  borderRadius: DS.radiusSm,
+                                  backgroundColor: "var(--ep-surface)",
+                                  border: "1px solid var(--ep-border)",
+                                  borderRadius: EP.radiusSm,
                                 }}
                               >
                                 <tbody>
@@ -202,7 +195,7 @@ export default async function InvitationEmailPreviewPage({
                                         style={{
                                           fontSize: "13px",
                                           lineHeight: "18px",
-                                          color: DS.textSecondary,
+                                          color: "var(--ep-text-secondary)",
                                           padding: "0 0 6px 0",
                                         }}
                                       >
@@ -213,7 +206,7 @@ export default async function InvitationEmailPreviewPage({
                                         style={{
                                           fontSize: "13px",
                                           lineHeight: "18px",
-                                          color: DS.primary,
+                                          color: "var(--ep-primary)",
                                           wordBreak: "break-all",
                                           textDecoration: "underline",
                                         }}
@@ -231,7 +224,7 @@ export default async function InvitationEmailPreviewPage({
                               style={{
                                 fontSize: "13px",
                                 lineHeight: "18px",
-                                color: DS.textSecondary,
+                                color: "var(--ep-text-secondary)",
                                 padding: "0 0 14px 0",
                               }}
                             >
@@ -242,10 +235,10 @@ export default async function InvitationEmailPreviewPage({
                             <td
                               style={{
                                 paddingTop: "12px",
-                                borderTop: `1px solid ${DS.border}`,
+                                borderTop: "1px solid var(--ep-border)",
                                 fontSize: "12px",
                                 lineHeight: "16px",
-                                color: DS.textTertiary,
+                                color: "var(--ep-text-tertiary)",
                               }}
                             >
                               Powered by Visualify

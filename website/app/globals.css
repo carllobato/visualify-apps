@@ -70,6 +70,32 @@ body {
   outline-offset: 2px;
 }
 
+/* Dev-only email previews under /email-preview — colors track html.dark (theme toggle) */
+.email-preview-root {
+  --ep-surface: #f7f7f8;
+  --ep-bg: #ffffff;
+  --ep-border: #e6e6e8;
+  --ep-text-primary: #111111;
+  --ep-text-secondary: #5f6368;
+  --ep-text-tertiary: #9aa0a6;
+  --ep-primary: #3b82f6;
+  --ep-primary-text: #ffffff;
+  transition:
+    background-color 0.35s ease,
+    color 0.35s ease;
+}
+
+html.dark .email-preview-root {
+  --ep-surface: #0c0c0e;
+  --ep-bg: #18181b;
+  --ep-border: #3f3f46;
+  --ep-text-primary: #fafafa;
+  --ep-text-secondary: #a1a1aa;
+  --ep-text-tertiary: #71717a;
+  --ep-primary: #3b82f6;
+  --ep-primary-text: #ffffff;
+}
+
 /* Early access modal — fluid “liquid” entrance */
 @keyframes liquid-backdrop-in {
   from {

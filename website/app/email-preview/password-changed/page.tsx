@@ -15,23 +15,16 @@ function getParam(searchParams: SearchParams, key: string): string {
 }
 
 /**
- * Preview for Supabase “Confirm signup” email (`riskai/supabase/email-templates/confirm_signup.html`).
- * Dev: /email-preview/confirm-signup (website app) — same defaults as riskai app preview.
+ * Preview for Supabase “Password changed notification” (`riskai/supabase/email-templates/password_changed_notification.html`).
+ * Dev: /email-preview/password-changed (website app).
  */
-export default async function ConfirmSignupEmailPreviewPage({
+export default async function PasswordChangedEmailPreviewPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
   const email = getParam(params, "email").trim() || "you@example.com";
-  const siteUrl = getParam(params, "site_url").trim() || "https://app.riskai.com.au";
-  const inviteToken = getParam(params, "invite_token").trim();
-  const confirmationUrl =
-    getParam(params, "confirmation_url").trim() ||
-    `${siteUrl.replace(/\/+$/, "")}/auth/confirm?token_hash=demo-token&type=signup${
-      inviteToken ? `&invite_token=${encodeURIComponent(inviteToken)}` : ""
-    }`;
 
   return (
     <div
@@ -119,7 +112,7 @@ export default async function ConfirmSignupEmailPreviewPage({
                                 padding: "0 0 14px 0",
                               }}
                             >
-                              Confirm your email
+                              Your password has been changed
                             </td>
                           </tr>
                           <tr>
@@ -140,88 +133,23 @@ export default async function ConfirmSignupEmailPreviewPage({
                                 fontSize: "16px",
                                 lineHeight: "24px",
                                 color: "var(--ep-text-secondary)",
+                                padding: "0 0 16px 0",
+                              }}
+                            >
+                              Your password for Visualify has been successfully updated.
+                            </td>
+                          </tr>
+                          <tr>
+                            <td
+                              style={{
+                                fontSize: "16px",
+                                lineHeight: "24px",
+                                color: "var(--ep-text-secondary)",
                                 padding: "0 0 20px 0",
                               }}
                             >
-                              Thanks for signing up. Confirm your email address{" "}
-                              <span style={{ fontWeight: 700, color: "var(--ep-text-primary)" }}>{email}</span> to finish
-                              creating your Visualify | Risk AI account.
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: "0 0 20px 0" }}>
-                              <table role="presentation" cellSpacing={0} cellPadding={0} border={0}>
-                                <tbody>
-                                  <tr>
-                                    <td
-                                      align="center"
-                                      style={{ borderRadius: EP.radiusSm, backgroundColor: "var(--ep-primary)" }}
-                                    >
-                                      <a
-                                        href={confirmationUrl}
-                                        style={{
-                                          display: "inline-block",
-                                          padding: "11px 18px",
-                                          fontSize: "14px",
-                                          lineHeight: "20px",
-                                          fontWeight: 600,
-                                          color: "var(--ep-primary-text)",
-                                          textDecoration: "none",
-                                          borderRadius: EP.radiusSm,
-                                        }}
-                                      >
-                                        Confirm email
-                                      </a>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td style={{ padding: "0 0 16px 0" }}>
-                              <table
-                                role="presentation"
-                                width="100%"
-                                cellSpacing={0}
-                                cellPadding={0}
-                                border={0}
-                                style={{
-                                  width: "100%",
-                                  backgroundColor: "var(--ep-surface)",
-                                  border: "1px solid var(--ep-border)",
-                                  borderRadius: EP.radiusSm,
-                                }}
-                              >
-                                <tbody>
-                                  <tr>
-                                    <td style={{ padding: "10px 12px" }}>
-                                      <div
-                                        style={{
-                                          fontSize: "13px",
-                                          lineHeight: "18px",
-                                          color: "var(--ep-text-secondary)",
-                                          padding: "0 0 6px 0",
-                                        }}
-                                      >
-                                        If the button does not work, use this link:
-                                      </div>
-                                      <a
-                                        href={confirmationUrl}
-                                        style={{
-                                          fontSize: "13px",
-                                          lineHeight: "18px",
-                                          color: "var(--ep-primary)",
-                                          wordBreak: "break-all",
-                                          textDecoration: "underline",
-                                        }}
-                                      >
-                                        {confirmationUrl}
-                                      </a>
-                                    </td>
-                                  </tr>
-                                </tbody>
-                              </table>
+                              This notice applies to{" "}
+                              <span style={{ fontWeight: 700, color: "var(--ep-text-primary)" }}>{email}</span>.
                             </td>
                           </tr>
                           <tr>
@@ -233,7 +161,7 @@ export default async function ConfirmSignupEmailPreviewPage({
                                 padding: "0 0 14px 0",
                               }}
                             >
-                              If you did not create an account, you can ignore this message.
+                              If you did not make this change, please contact support immediately.
                             </td>
                           </tr>
                           <tr>
