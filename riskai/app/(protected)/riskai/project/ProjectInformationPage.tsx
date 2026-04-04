@@ -57,6 +57,7 @@ import {
   projectSettingsInputClass,
   projectSettingsNumberInputClass,
   projectSettingsReadOnlyFieldClass,
+  projectSettingsSegmentedControlGroupClass,
   projectSettingsSelectClass,
 } from "@/components/project/projectSettingsDsFormClasses";
 import { PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE } from "@/lib/settings/settingsPermissionMessages";
@@ -486,7 +487,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const readOnlyChrome = settingsReadOnly ? ` ${projectSettingsReadOnlyFieldClass}` : "";
 
   return (
-    <main className="w-full px-4 py-6 sm:px-6">
+    <main className="ds-document-page">
       {settingsReadOnly && (
         <Callout
           status="info"
@@ -497,7 +498,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         </Callout>
       )}
 
-      <div className="mb-4 border-b border-[var(--ds-border)]">
+      <div className="ds-project-settings-tabs">
         <Tabs>
           <Tab active={activeTab === "overview"} onClick={() => setActiveTab("overview")}>
             Overview
@@ -518,11 +519,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       </div>
 
       {activeTab === "overview" && (
-        <Card className="mb-4">
-          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Project details</h2>
+        <Card className="ds-project-settings-section-card">
+          <CardHeader className="ds-project-settings-card-header">
+            <h2 className="ds-project-settings-card-title">Project details</h2>
           </CardHeader>
-          <CardBody className="!px-4 !py-3">
+          <CardBody className="ds-project-settings-card-body">
             <div className="max-w-2xl space-y-3">
             <div className={projectSettingsFieldWidthClass("sm")}>
               <Label htmlFor="projectName" className="!mb-1">
@@ -600,11 +601,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
 
       {activeTab === "parameters" && (
         <>
-          <Card className="mb-4">
-            <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Financial Context</h2>
+          <Card className="ds-project-settings-section-card">
+            <CardHeader className="ds-project-settings-card-header">
+              <h2 className="ds-project-settings-card-title">Financial Context</h2>
             </CardHeader>
-            <CardBody className="!px-4 !py-3 space-y-2.5">
+            <CardBody className="ds-project-settings-card-body space-y-2.5">
               <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="projectValue_input" className="!mb-1">
                   Project Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
@@ -662,11 +663,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             </CardBody>
           </Card>
 
-          <Card className="mb-4">
-            <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Schedule Context</h2>
+          <Card className="ds-project-settings-section-card">
+            <CardHeader className="ds-project-settings-card-header">
+              <h2 className="ds-project-settings-card-title">Schedule Context</h2>
             </CardHeader>
-            <CardBody className="!px-4 !py-3 space-y-2.5">
+            <CardBody className="ds-project-settings-card-body space-y-2.5">
               <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="plannedDuration_months" className="!mb-1">
                   Planned duration <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
@@ -742,14 +743,14 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             </CardBody>
           </Card>
 
-          <Card className="mb-4">
-            <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Risk Appetite</h2>
+          <Card className="ds-project-settings-section-card">
+            <CardHeader className="ds-project-settings-card-header">
+              <h2 className="ds-project-settings-card-title">Risk Appetite</h2>
             </CardHeader>
-            <CardBody className="!px-4 !py-3">
+            <CardBody className="ds-project-settings-card-body">
               <div className={projectSettingsFieldWidthClass("md")}>
                 <div
-                  className="inline-flex flex-wrap gap-1 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)] p-1"
+                  className={projectSettingsSegmentedControlGroupClass}
                   role="radiogroup"
                   aria-label="Risk appetite"
                 >
@@ -793,11 +794,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         ))}
 
       {activeTab === "archive" && (
-        <Card className="mb-4">
-          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Register of archived risks</h2>
+        <Card className="ds-project-settings-section-card">
+          <CardHeader className="ds-project-settings-card-header">
+            <h2 className="ds-project-settings-card-title">Register of archived risks</h2>
           </CardHeader>
-          <CardBody className="!px-4 !py-3">
+          <CardBody className="ds-project-settings-card-body">
             <HelperText className="!mb-2 !mt-0">Review archived risks one by one (Previous / Next) in the detail modal.</HelperText>
             {archivedRisks.length > 0 ? (
               <div className="-mx-1 overflow-x-auto">

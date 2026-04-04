@@ -5,10 +5,6 @@ import { createPortal } from "react-dom";
 import {
   Button,
   Callout,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
   DashboardTileKpi,
   Label,
   Table,
@@ -89,6 +85,16 @@ import {
 } from "@/domain/risk/riskFieldSemantics";
 
 const DISTRIBUTION_BIN_COUNT = 100;
+
+/** Match project/portfolio overview main padding. */
+const simulationPageMainClass =
+  "min-h-full w-full bg-transparent text-[var(--ds-text-primary)] px-4 sm:px-6 py-8";
+
+/** Same chrome as `SummaryTile` (document tile + hover). */
+const simulationDocumentTileClass = "ds-document-tile-panel ds-document-tile-panel--interactive";
+
+/** Titled sections: same shell as `DashboardCard` base tile (no hover lift — long forms / tables). */
+const simulationDocumentSectionClass = "ds-document-tile-panel overflow-hidden";
 
 /** Stable empty array for snapshot risks to avoid new [] identity every render. */
 const EMPTY_SNAPSHOT_RISKS: SimulationRiskSnapshot[] = [];
@@ -510,11 +516,9 @@ function ProjectValueContingencyMetricCard({
     "relative z-[1] min-h-0 w-full min-w-0 overflow-hidden rounded-[var(--ds-chart-bar-radius)] bg-[var(--ds-surface-inset)]";
 
   return (
-    <Card
-      variant="inset"
-      className="flex w-full min-w-0 flex-col border-0 text-[var(--ds-text-secondary)]"
+    <div
+      className={`${simulationDocumentTileClass} flex min-h-0 w-full min-w-0 flex-col p-4 text-[var(--ds-text-secondary)]`}
     >
-      <CardContent className="flex w-full min-w-0 flex-col p-4">
         <div
           className="flex w-full min-w-0 flex-col gap-3"
           role="group"
@@ -887,8 +891,7 @@ function ProjectValueContingencyMetricCard({
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -1142,11 +1145,9 @@ function ScheduleDurationContingencyGanttCard({
     "relative z-[1] min-h-0 w-full min-w-0 overflow-hidden rounded-[var(--ds-chart-bar-radius)] bg-[var(--ds-surface-inset)]";
 
   return (
-    <Card
-      variant="inset"
-      className="flex w-full min-w-0 flex-col border-0 text-[var(--ds-text-secondary)]"
+    <div
+      className={`${simulationDocumentTileClass} flex min-h-0 w-full min-w-0 flex-col p-4 text-[var(--ds-text-secondary)]`}
     >
-      <CardContent className="flex w-full min-w-0 flex-col p-4">
         <div
           className="flex w-full min-w-0 flex-col gap-3"
           role="group"
@@ -1521,8 +1522,7 @@ function ScheduleDurationContingencyGanttCard({
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
@@ -2514,7 +2514,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   }, [urlProjectId, setPageHeaderExtras, simulationHeaderActions]);
 
   return (
-    <main className="p-6">
+    <main className={simulationPageMainClass}>
       {hasDraftRisks && (
         <Callout status="warning" className="mt-2 text-right" role="status">
           Review and save all draft risks in the Risk Register before running simulation.
@@ -2542,11 +2542,11 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       )}
 
       {loadingSnapshot && (
-        <NeutralRiskaiLoading variant="inset" srLabel="Loading simulation data" />
+        <NeutralRiskaiLoading variant="content" srLabel="Loading simulation data" />
       )}
 
       {showDefaultSimulationActions && (
-        <Card variant="inset" className="mt-0 p-6 text-center">
+        <div className={`${simulationDocumentTileClass} mt-0 p-6 text-center`}>
           <p className="m-0 font-medium text-[var(--ds-text-primary)]">
             {lockedSnapshotRow
               ? "Load the last reporting run or run a new simulation."
@@ -2619,7 +2619,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
               </Button>
             )}
           </div>
-        </Card>
+        </div>
       )}
 
       {showResults && (
@@ -2745,11 +2745,11 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
             )}
           </section>
 
-          <Card variant="inset" className="mt-8 overflow-hidden">
-            <CardHeader className="border-b border-[var(--ds-border)] px-4 py-3">
-              <CardTitle className="text-[length:var(--ds-text-base)]">Risk Drivers</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
+          <section className={`${simulationDocumentSectionClass} mt-8`}>
+            <h2 className="border-b border-[var(--ds-border)] px-4 py-3 text-base font-semibold text-[var(--ds-text-primary)] m-0">
+              Risk Drivers
+            </h2>
+            <div className="space-y-4 p-4">
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
@@ -2836,17 +2836,17 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   </TableBody>
                 </Table>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card variant="inset" className="mt-8 overflow-hidden">
-            <CardHeader className="border-b border-[var(--ds-border)] px-4 py-3">
-              <CardTitle className="text-[length:var(--ds-text-base)]">Mitigation Impact</CardTitle>
+          <section className={`${simulationDocumentSectionClass} mt-8`}>
+            <div className="border-b border-[var(--ds-border)] px-4 py-3">
+              <h2 className="text-base font-semibold text-[var(--ds-text-primary)] m-0">Mitigation Impact</h2>
               <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                 Impact of mitigation actions on total exposure
               </p>
-            </CardHeader>
-            <CardContent className="space-y-4 p-4">
+            </div>
+            <div className="space-y-4 p-4">
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
@@ -2948,14 +2948,14 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   />
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card variant="inset" className="mt-8 overflow-hidden">
-            <CardHeader className="border-b border-[var(--ds-border)] px-4 py-3">
-              <CardTitle className="text-[length:var(--ds-text-base)]">Data Confidence</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5 p-4">
+          <section className={`${simulationDocumentSectionClass} mt-8`}>
+            <h2 className="border-b border-[var(--ds-border)] px-4 py-3 text-base font-semibold text-[var(--ds-text-primary)] m-0">
+              Data Confidence
+            </h2>
+            <div className="space-y-5 p-4">
               <div>
                 <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
                   Status
@@ -3000,8 +3000,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   </ul>
                 )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         </>
       )}
 

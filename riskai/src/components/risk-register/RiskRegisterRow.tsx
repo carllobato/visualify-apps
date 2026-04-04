@@ -1,24 +1,20 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import type { Risk, RiskLevel } from "@/domain/risk/risk.schema";
+import type { Risk } from "@/domain/risk/risk.schema";
 import type { DecisionMetrics } from "@/domain/decision/decision.types";
-import { isRiskStatusDraft } from "@/domain/risk/riskFieldSemantics";
+import {
+  getCurrentRiskRatingLetter,
+  getCurrentRiskRatingTitle,
+  isRiskStatusDraft,
+} from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { RiskEditCell } from "@/components/risk-register/RiskEditCell";
 import { RiskOwnerRowSelect } from "@/components/risk-register/RiskOwnerRowSelect";
 import { RiskCategorySelect } from "@/components/risk-register/RiskCategorySelect";
 import { RiskStatusSelect } from "@/components/risk-register/RiskStatusSelect";
-import { RiskAppliesToSelect } from "@/components/risk-register/RiskAppliesToSelect";
-import {
-  Badge,
-  Button,
-  Callout,
-  Card,
-  TableCell,
-  TableRow,
-} from "@visualify/design-system";
+import { Badge, Callout, Card, TableCell, TableRow } from "@visualify/design-system";
 
 function formatCategoryLabel(category: string | "" | null | undefined): string {
   if (category == null || category === "") return "—";
@@ -48,25 +44,14 @@ function ratingLetterToBadgeTone(letter: "L" | "M" | "H" | "E"): DsBadgeTone {
 const RATING_BADGE_CIRCLE =
   "!inline-flex !h-7 !w-7 !min-h-[1.75rem] !min-w-[1.75rem] !rounded-full !p-0 items-center justify-center text-[length:var(--ds-text-xs)]";
 
-function levelToLetter(level: RiskLevel): "L" | "M" | "H" | "E" {
-  const map: Record<RiskLevel, "L" | "M" | "H" | "E"> = {
-    low: "L",
-    medium: "M",
-    high: "H",
-    extreme: "E",
-  };
-  return map[level] ?? "M";
-}
-
-/** Risk movement: compare inherent vs residual score. */
-function getRiskMovement(preScore: number, postScore: number): "↑" | "↓" | "→" {
-  if (postScore > preScore) return "↑";
-  if (postScore < preScore) return "↓";
-  return "→";
-}
-
 const DS_NATIVE_SELECT =
   "w-full min-w-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)] px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]";
+
+/** Category, Owner, Status, Rating — `max-w-0` helps ellipsis; column widths come from table `<colgroup>`. */
+const EQUAL_QUARTET_TD = "max-w-0 min-w-0 overflow-hidden align-middle";
+
+/** Match `RISK_ID_COL_PX` in `RiskRegisterTable` so ID header and cells align. */
+const RISK_ID_COL_PX = 100;
 
 const DESCRIPTION_TOOLTIP_MAX_LEN = 140;
 
@@ -82,16 +67,14 @@ export function RiskRegisterRow({
   decision: _decision,
   scoreDelta: _scoreDelta,
   onRiskClick,
-  onRestoreArchived,
   validationErrors,
 }: {
   risk: Risk;
   rowIndex?: number;
   decision?: DecisionMetrics | null;
   scoreDelta?: number;
+  /** Row click opens risk details (no separate actions column). */
   onRiskClick?: (risk: Risk) => void;
-  /** When set (archived register), show Restore next to View / Edit. */
-  onRestoreArchived?: (risk: Risk) => void;
   /** When present and non-empty, a compact error summary is shown under the row (e.g. from runnable validator). */
   validationErrors?: string[];
 }) {
@@ -103,6 +86,9 @@ export function RiskRegisterRow({
 
   const cellTextClass =
     "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] truncate min-w-0";
+
+  const riskIdCellTextClass =
+    "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] whitespace-nowrap tabular-nums";
 
   const handleRowClick = (e: React.MouseEvent) => {
     if (!onRiskClick) return;
@@ -127,21 +113,15 @@ export function RiskRegisterRow({
   };
 
   const riskIdDisplay = risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : "—";
-  const preLetter = levelToLetter(risk.inherentRating.level);
-  const postLetter = levelToLetter(risk.residualRating.level);
-  const movement = getRiskMovement(risk.inherentRating.score, risk.residualRating.score);
-  const preBadge = ratingLetterToBadgeTone(preLetter);
-  const postBadge = ratingLetterToBadgeTone(postLetter);
-
-  const movementBadge: DsBadgeTone =
-    movement === "→"
+  const currentLetter = getCurrentRiskRatingLetter(risk);
+  const currentRatingTitle = getCurrentRiskRatingTitle(risk);
+  const currentBadge: DsBadgeTone =
+    currentLetter === "N/A"
       ? { status: "neutral", variant: "subtle" }
-      : movement === "↓"
-        ? { status: "success", variant: "subtle" }
-        : { status: "danger", variant: "subtle" };
+      : ratingLetterToBadgeTone(currentLetter as "L" | "M" | "H" | "E");
 
   const hasValidationErrors = Boolean(validationErrors?.length);
-  const colSpan = onRiskClick ? 10 : 9;
+  const colSpan = 6;
 
   const rowHoverClass =
     onRiskClick && "cursor-pointer transition-colors hover:bg-[var(--ds-surface-hover)]";
@@ -167,16 +147,19 @@ export function RiskRegisterRow({
           .filter(Boolean)
           .join(" ")}
       >
-        <TableCell className="w-[56px] tabular-nums align-middle">
-          <span className={cellTextClass} title={risk.id}>
+        <TableCell
+          className="tabular-nums align-middle"
+          style={{ width: RISK_ID_COL_PX, minWidth: RISK_ID_COL_PX, maxWidth: RISK_ID_COL_PX }}
+        >
+          <span className={riskIdCellTextClass} title={risk.id}>
             {riskIdDisplay}
           </span>
         </TableCell>
 
         {readOnly ? (
-          <TableCell className="relative min-w-0 align-middle">
+          <TableCell className="relative align-middle" style={{ width: "35%", minWidth: 260 }}>
             <div
-              className="relative min-w-0"
+              className="relative min-w-0 max-w-full"
               onMouseEnter={() => hasDescription && setShowDescCard(true)}
               onMouseLeave={() => setShowDescCard(false)}
             >
@@ -198,104 +181,66 @@ export function RiskRegisterRow({
             </div>
           </TableCell>
         ) : (
-          <TableCell className="min-w-0 align-middle">
-            <RiskEditCell
-              value={risk.title}
-              placeholder="Risk title"
-              onChange={(title) => updateRisk(risk.id, { title })}
-            />
+          <TableCell className="align-middle" style={{ width: "35%", minWidth: 260 }}>
+            <div className="min-w-0 max-w-full">
+              <RiskEditCell
+                value={risk.title}
+                placeholder="Risk title"
+                onChange={(title) => updateRisk(risk.id, { title })}
+              />
+            </div>
           </TableCell>
         )}
 
         {readOnly ? (
-          <TableCell className="min-w-0 align-middle">
-            <span className={cellTextClass}>{formatCategoryLabel(risk.category)}</span>
+          <TableCell className={EQUAL_QUARTET_TD}>
+            <span
+              className={`${cellTextClass} block w-full`}
+              title={risk.category?.trim() ? risk.category : undefined}
+            >
+              {formatCategoryLabel(risk.category)}
+            </span>
           </TableCell>
         ) : (
-          <TableCell className="min-w-0 align-middle">
+          <TableCell className={EQUAL_QUARTET_TD}>
             <RiskCategorySelect
               id={`risk-row-category-${risk.id}`}
               value={risk.category ?? ""}
               onChange={(name) => updateRisk(risk.id, { category: name })}
-              className={DS_NATIVE_SELECT}
+              className={`${DS_NATIVE_SELECT} truncate`}
               allowEmptyPlaceholder={isDraft || !risk.category?.trim()}
             />
           </TableCell>
         )}
 
         {readOnly ? (
-          <TableCell className="min-w-0 align-middle">
-            <span className={cellTextClass}>{risk.owner ?? "—"}</span>
+          <TableCell className={EQUAL_QUARTET_TD}>
+            <span className={`${cellTextClass} block w-full`} title={risk.owner?.trim() ? risk.owner : undefined}>
+              {risk.owner ?? "—"}
+            </span>
           </TableCell>
         ) : (
-          <TableCell className="min-w-0 align-middle">
+          <TableCell className={EQUAL_QUARTET_TD}>
             <RiskOwnerRowSelect
               riskId={risk.id}
               owner={risk.owner}
               onCommit={(name) => updateRisk(risk.id, { owner: name || undefined })}
+              className="truncate"
             />
           </TableCell>
         )}
 
-        {readOnly ? (
-          <TableCell className="min-w-0 align-middle">
-            <span className={cellTextClass} title={risk.appliesTo ?? undefined}>
-              {risk.appliesTo?.trim() ? risk.appliesTo : "—"}
-            </span>
-          </TableCell>
-        ) : (
-          <TableCell className="min-w-0 align-middle">
-            <RiskAppliesToSelect
-              id={`risk-row-applies-to-${risk.id}`}
-              value={risk.appliesTo ?? ""}
-              onChange={(name) => updateRisk(risk.id, { appliesTo: name })}
-              className={DS_NATIVE_SELECT}
-              allowEmptyPlaceholder={isDraft || !risk.appliesTo?.trim()}
-            />
-          </TableCell>
-        )}
-
-        <TableCell className="align-middle">
-          <span title={`Inherent: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`}>
-            <Badge status={preBadge.status} variant={preBadge.variant} className={RATING_BADGE_CIRCLE}>
-              {preLetter}
-            </Badge>
-          </span>
-        </TableCell>
-
-        <TableCell className="align-middle">
-          {risk.mitigation?.trim() ? (
-            <span title={`Residual: ${risk.residualRating.level} (score ${risk.residualRating.score})`}>
-              <Badge status={postBadge.status} variant={postBadge.variant} className={RATING_BADGE_CIRCLE}>
-                {postLetter}
-              </Badge>
-            </span>
-          ) : (
-            <span title="No mitigation applied">
-              <Badge status="neutral" variant="subtle" className={RATING_BADGE_CIRCLE}>
-                N/A
-              </Badge>
-            </span>
-          )}
-        </TableCell>
-
-        <TableCell className="align-middle">
-          <span title={movement === "↑" ? "Worsening" : movement === "↓" ? "Improving" : "Stable"}>
-            <Badge status={movementBadge.status} variant={movementBadge.variant} className={RATING_BADGE_CIRCLE}>
-              {movement}
-            </Badge>
-          </span>
-        </TableCell>
-
-        <TableCell className="align-middle">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <TableCell className={EQUAL_QUARTET_TD}>
+          <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
             {readOnly ? (
               isDraft ? (
                 <Badge status="warning" variant="subtle" className="shrink-0">
                   Draft
                 </Badge>
               ) : (
-                <span className={cellTextClass}>{risk.status}</span>
+                <span className={`${cellTextClass} min-w-0 flex-1 truncate`} title={risk.status}>
+                  {risk.status}
+                </span>
               )
             ) : (
               <RiskStatusSelect
@@ -305,44 +250,21 @@ export function RiskRegisterRow({
                   dlog("[risk register row] status change", name);
                   updateRisk(risk.id, { status: name });
                 }}
-                className={DS_NATIVE_SELECT}
+                className={`${DS_NATIVE_SELECT} truncate`}
               />
             )}
           </div>
         </TableCell>
 
-        {onRiskClick && (
-          <TableCell className="align-middle text-right">
-            <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-2">
-              {onRestoreArchived && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRestoreArchived(risk);
-                  }}
-                  title="Restore this risk to Open status"
-                >
-                  Restore
-                </Button>
-              )}
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRiskClick(risk);
-                }}
-                title="View and edit details"
-              >
-                View / Edit
-              </Button>
-            </div>
-          </TableCell>
-        )}
+        <TableCell className={EQUAL_QUARTET_TD}>
+          <div className="flex min-w-0 justify-start overflow-hidden">
+            <span title={currentRatingTitle}>
+              <Badge status={currentBadge.status} variant={currentBadge.variant} className={RATING_BADGE_CIRCLE}>
+                {currentLetter}
+              </Badge>
+            </span>
+          </div>
+        </TableCell>
       </TableRow>
       {hasValidationErrors && (
         <TableRow>

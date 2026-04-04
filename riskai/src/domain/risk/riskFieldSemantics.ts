@@ -3,7 +3,7 @@
  * Use these helpers for simulation, validation, and analytics so casing and minor variants still work.
  */
 
-import type { MitigationMode, Risk } from "./risk.schema";
+import type { MitigationMode, Risk, RiskLevel } from "./risk.schema";
 
 /** Canonical `riskai_risk_statuses.name` for soft-deleted risks (`risks.status`). */
 export const RISK_STATUS_ARCHIVED_LOOKUP = "Archived";
@@ -16,6 +16,58 @@ export const RISK_STATUS_CLOSED_LOOKUP = "Closed";
 
 export function normalizeRiskStatusKey(status: string | undefined | null): string {
   return (status ?? "").toString().trim().toLowerCase();
+}
+
+const RATING_LETTER: Record<RiskLevel, string> = { low: "L", medium: "M", high: "H", extreme: "E" };
+
+function inherentLetter(risk: Risk): string {
+  return RATING_LETTER[risk.inherentRating.level] ?? "M";
+}
+
+function residualLetter(risk: Risk): string {
+  return RATING_LETTER[risk.residualRating.level] ?? "M";
+}
+
+/**
+ * Register table "Rating" column: which letter (or N/A) to show from lifecycle status.
+ * — draft / closed / archived → N/A
+ * — open / monitoring → pre-mitigation (inherent)
+ * — mitigating / mitigated → post-mitigation (residual), or N/A if no mitigation text
+ */
+export function isCurrentRiskRatingNA(risk: Risk): boolean {
+  const s = normalizeRiskStatusKey(risk.status);
+  if (s === "draft" || s === "closed" || s === "archived") return true;
+  if (s === "mitigating" || s === "mitigated") return !risk.mitigation?.trim();
+  return false;
+}
+
+export function getCurrentRiskRatingLetter(risk: Risk): string {
+  if (isCurrentRiskRatingNA(risk)) return "N/A";
+  const s = normalizeRiskStatusKey(risk.status);
+  if (s === "mitigating" || s === "mitigated") return residualLetter(risk);
+  if (s === "open" || s === "monitoring") return inherentLetter(risk);
+  return inherentLetter(risk);
+}
+
+/** Numeric score for the rating shown in {@link getCurrentRiskRatingLetter} (undefined when N/A). */
+export function getCurrentRiskRatingScoreForSort(risk: Risk): number | undefined {
+  if (isCurrentRiskRatingNA(risk)) return undefined;
+  const s = normalizeRiskStatusKey(risk.status);
+  if (s === "mitigating" || s === "mitigated") return risk.residualRating.score;
+  return risk.inherentRating.score;
+}
+
+export function getCurrentRiskRatingTitle(risk: Risk): string {
+  const s = normalizeRiskStatusKey(risk.status);
+  if (s === "draft" || s === "closed" || s === "archived") return "Rating: N/A for this status";
+  if (s === "open" || s === "monitoring") {
+    return `Pre-mitigation: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`;
+  }
+  if (s === "mitigating" || s === "mitigated") {
+    if (!risk.mitigation?.trim()) return "Post-mitigation: N/A (no mitigation)";
+    return `Post-mitigation: ${risk.residualRating.level} (score ${risk.residualRating.score})`;
+  }
+  return `Pre-mitigation: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`;
 }
 
 /**

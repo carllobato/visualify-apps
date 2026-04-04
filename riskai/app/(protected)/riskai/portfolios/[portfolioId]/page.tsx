@@ -3,6 +3,9 @@ import {
   RISK_STATUS_CLOSED_LOOKUP,
   RISK_STATUS_ARCHIVED_LOOKUP,
 } from "@/domain/risk/riskFieldSemantics";
+import type { ProjectCurrency } from "@/lib/projectContext";
+import { sumContingencyByCurrency } from "@/lib/portfolioContingencyAggregate";
+import { contingencyHeldTileCopy } from "./formatPortfolioCurrency";
 import { PortfolioOverviewContent } from "./PortfolioOverviewContent";
 
 export default async function PortfolioOverviewPage({
@@ -36,11 +39,24 @@ export default async function PortfolioOverviewPage({
     activeRiskCount = count ?? 0;
   }
 
+  let contingencyByCurrency = new Map<ProjectCurrency, number>();
+  if (projectIds.length > 0) {
+    const { data: settingsRows } = await supabase
+      .from("visualify_project_settings")
+      .select("contingency_value_input, financial_unit, currency")
+      .in("project_id", projectIds);
+    contingencyByCurrency = sumContingencyByCurrency(settingsRows ?? []);
+  }
+
+  const contingencyTile = contingencyHeldTileCopy(contingencyByCurrency, projectCount ?? 0);
+
   return (
     <>
       <PortfolioOverviewContent
         projectCount={projectCount ?? 0}
         activeRiskCount={activeRiskCount}
+        contingencyPrimaryValue={contingencyTile.primaryValue}
+        contingencySubtext={contingencyTile.subtext}
       />
     </>
   );

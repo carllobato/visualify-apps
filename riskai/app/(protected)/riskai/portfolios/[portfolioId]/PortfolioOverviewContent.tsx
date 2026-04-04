@@ -4,11 +4,18 @@ import { DashboardCard } from "@/components/dashboard/DashboardCard";
 type PortfolioOverviewContentProps = {
   projectCount: number;
   activeRiskCount: number;
+  contingencyPrimaryValue: string;
+  contingencySubtext: string;
 };
 
-export function PortfolioOverviewContent({ projectCount, activeRiskCount }: PortfolioOverviewContentProps) {
+export function PortfolioOverviewContent({
+  projectCount,
+  activeRiskCount,
+  contingencyPrimaryValue,
+  contingencySubtext,
+}: PortfolioOverviewContentProps) {
   return (
-    <main className="w-full px-4 sm:px-6 py-8">
+    <main className="ds-document-page">
       {/* Section A — Portfolio KPI Summary */}
       <section className="mb-8" aria-labelledby="portfolio-kpi-heading">
         <h2 id="portfolio-kpi-heading" className="sr-only">
@@ -25,7 +32,7 @@ export function PortfolioOverviewContent({ projectCount, activeRiskCount }: Port
             primaryValue={String(activeRiskCount)}
             subtext={activeRiskCount === 1 ? "1 active risk" : `${activeRiskCount} active risks`}
           />
-          <SummaryTile title="Contingency Held" primaryValue="—" subtext="No data yet" />
+          <SummaryTile title="Contingency Held" primaryValue={contingencyPrimaryValue} subtext={contingencySubtext} />
           <SummaryTile title="Risk Exposure" primaryValue="—" subtext="No data yet" />
           <SummaryTile title="Coverage Ratio" primaryValue="—" subtext="No data yet" />
         </div>

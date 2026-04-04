@@ -181,7 +181,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
         aria-expanded={dropdownOpen}
         aria-haspopup="listbox"
         aria-label="Switch project"
-        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm font-medium text-[var(--ds-text-secondary)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] hover:bg-[var(--ds-surface-hover)] transition-colors truncate max-w-[220px]"
+        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--ds-radius-sm)] text-sm font-medium text-[var(--ds-text-secondary)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] hover:bg-[var(--ds-surface-hover)] transition-colors truncate max-w-[220px]"
       >
         <span className="truncate">{buttonLabel}</span>
         {showDropdown && <ChevronDown />}
@@ -190,7 +190,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
       {dropdownOpen && (
         <ul
           role="listbox"
-          className="absolute right-0 top-full mt-1 min-w-[200px] max-h-64 overflow-auto rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-lg py-1 z-50"
+          className="absolute right-0 top-full mt-1 min-w-[200px] max-h-64 overflow-auto rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-lg py-1 z-50"
         >
           {projects.map((p) => (
             <li key={p.id} role="option" aria-selected={p.id === selectedProjectIdForList}>
@@ -235,7 +235,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
           aria-modal="true"
           aria-labelledby="new-project-title"
         >
-          <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 w-full max-w-sm shadow-lg">
+          <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 w-full max-w-sm shadow-lg">
             <h2 id="new-project-title" className="text-base font-semibold text-[var(--ds-text-primary)] mb-3">
               New project
             </h2>

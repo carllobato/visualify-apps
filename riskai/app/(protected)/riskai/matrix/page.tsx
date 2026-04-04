@@ -165,14 +165,14 @@ export default function RiskMatrixPage() {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <div
-          className="inline-flex rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5"
+          className="inline-flex rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5"
           role="group"
           aria-label="Inherent or Residual"
         >
           <button
             type="button"
             onClick={() => setMode("Inherent")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-[var(--ds-radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === "Inherent"
                 ? "bg-[var(--ds-background)] text-[var(--ds-text-primary)] shadow-sm dark:bg-[var(--ds-surface-inset)]"
                 : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)]"
@@ -183,7 +183,7 @@ export default function RiskMatrixPage() {
           <button
             type="button"
             onClick={() => setMode("Residual")}
-            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-[var(--ds-radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
               mode === "Residual"
                 ? "bg-[var(--ds-background)] text-[var(--ds-text-primary)] shadow-sm dark:bg-[var(--ds-surface-inset)]"
                 : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)]"
@@ -217,7 +217,7 @@ export default function RiskMatrixPage() {
       <div className="mt-8 w-full max-w-5xl">
         {/* Option A: outer 2x2 grid — [headerCol, matrixCol] x [headerRow, matrixRow]. Only the 5x5 has heat/cells. */}
         <div
-          className="grid w-full gap-px rounded-lg border border-[var(--ds-border)] bg-[var(--ds-muted)] p-px"
+          className="grid w-full gap-px rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-muted)] p-px"
           style={{
             gridTemplateColumns: "2.5rem 1fr",
             gridTemplateRows: "auto auto",

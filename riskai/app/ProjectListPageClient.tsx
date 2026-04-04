@@ -92,7 +92,7 @@ export function ProjectListPageClient() {
             </p>
             <Link
               href={riskaiPath("/create-project")}
-              className="mt-6 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
+              className="mt-6 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-sm)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
             >
               Create your first project
             </Link>
@@ -105,7 +105,7 @@ export function ProjectListPageClient() {
               <li key={p.id}>
                 <Link
                   href={riskaiPath(`/projects/${p.id}`)}
-                  className="block px-4 py-3 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] transition-colors"
+                  className="block px-4 py-3 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] transition-colors"
                 >
                   <span className="font-medium">{p.name || p.id}</span>
                 </Link>
@@ -114,7 +114,7 @@ export function ProjectListPageClient() {
           </ul>
           <Link
             href={riskaiPath("/create-project")}
-            className="inline-flex px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)]"
+            className="inline-flex px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)]"
           >
             + New project
           </Link>

@@ -56,11 +56,11 @@ function deduplicateByTitle(risks: Risk[]): Risk[] {
 }
 
 const containerClass =
-  "rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 flex flex-col min-h-[280px] min-w-0";
+  "rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 flex flex-col min-h-[280px] min-w-0";
 const boxTitleClass =
   "text-base font-medium text-[var(--ds-text-primary)] mb-2 border-b border-[var(--ds-border)] pb-2";
 const btnPrimary =
-  "px-4 py-2 rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
+  "px-4 py-2 rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
 
 /** Context of the uploaded file – used to determine which API to run (not yet passed to API). */
 export type FileContext =
@@ -279,7 +279,7 @@ export function AddNewRiskChoiceModal({
       onClick={handleBackdropClick}
     >
       <div
-        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-2xl overflow-hidden flex flex-col min-h-[400px] min-w-[280px]"
+        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-2xl overflow-hidden flex flex-col min-h-[400px] min-w-[280px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
@@ -289,7 +289,7 @@ export function AddNewRiskChoiceModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
+            className="p-2 rounded-[var(--ds-radius-sm)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
             aria-label="Close"
           >
             <span aria-hidden className="text-xl leading-none">×</span>
@@ -307,7 +307,7 @@ export function AddNewRiskChoiceModal({
                   onClose();
                   onAddManualRisk();
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-md border-2 border-dashed border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] text-[var(--ds-text-secondary)] text-sm font-medium hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-[var(--ds-radius-sm)] border-2 border-dashed border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] text-[var(--ds-text-secondary)] text-sm font-medium hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
               >
                 Add risk manually
               </button>
@@ -324,7 +324,7 @@ export function AddNewRiskChoiceModal({
                 onChange={(e) => setDocumentText(e.target.value)}
                 placeholder="Describe your risk including any mitigation, cost and time data."
                 rows={6}
-                className="flex-1 min-h-[120px] w-full box-border px-3 py-2.5 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent mt-1"
+                className="flex-1 min-h-[120px] w-full box-border px-3 py-2.5 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent mt-1"
               />
             </div>
             <div className={containerClass}>
@@ -341,7 +341,7 @@ export function AddNewRiskChoiceModal({
                 onDragOver={onFileDragOver}
                 onDragLeave={onFileDragLeave}
                 onDrop={onFileDrop}
-                className={`border-2 border-dashed rounded-md p-4 text-center text-sm transition-colors flex-1 min-h-[80px] flex flex-col justify-center ${
+                className={`border-2 border-dashed rounded-[var(--ds-radius-md)] p-4 text-center text-sm transition-colors flex-1 min-h-[80px] flex flex-col justify-center ${
                   fileDragOver
                     ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
                     : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] hover:border-[var(--ds-border)]"
@@ -368,7 +368,7 @@ export function AddNewRiskChoiceModal({
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={fileUploadStatus === "loading"}
-                      className="px-3 py-1.5 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
+                      className="px-3 py-1.5 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
                     >
                       Choose file
                     </button>
@@ -399,7 +399,7 @@ export function AddNewRiskChoiceModal({
                     onChange={(e) =>
                       setFileContext((e.target.value as FileContext) || null)
                     }
-                    className="w-full px-3 py-2 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
+                    className="w-full px-3 py-2 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
                     aria-label="File context"
                   >
                     <option value="">Select context…</option>

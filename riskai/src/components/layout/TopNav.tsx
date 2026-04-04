@@ -55,9 +55,18 @@ type TopNavProps = {
   onAccountMenuOpen?: () => void;
   /** Translucent bar for full-bleed backgrounds (e.g. login). */
   variant?: "default" | "glass";
+  /**
+   * Match trailing edge to the document panel’s outer right (same inset as shell `md:pr-3`), not inner content padding.
+   */
+  shellDocumentAlign?: boolean;
 };
 
-export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: TopNavProps) {
+export function TopNav({
+  onMenuClick,
+  onAccountMenuOpen,
+  variant = "default",
+  shellDocumentAlign = false,
+}: TopNavProps) {
   const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null | "loading">("loading");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -103,8 +112,12 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
     "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-2)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
     "hover:bg-[var(--ds-surface-hover)] focus-visible:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
+  const headerPad = shellDocumentAlign
+    ? "pl-[var(--ds-space-2)] pr-0 md:pr-[var(--ds-space-3)]"
+    : "px-[var(--ds-space-2)]";
+
   return (
-    <header className={`flex h-14 shrink-0 items-center justify-between gap-[var(--ds-space-3)] px-[var(--ds-space-2)] ${headerSurface}`}>
+    <header className={`flex h-14 shrink-0 items-center justify-between gap-[var(--ds-space-3)] ${headerPad} ${headerSurface}`}>
       <div className="flex min-w-0 items-center gap-[var(--ds-space-3)]">
         {onMenuClick ? (
           <Button
@@ -149,7 +162,7 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
           </Button>
         ) : (
           <span
-            className="inline-block h-9 w-9 shrink-0 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-muted)]"
+            className="inline-block h-9 w-9 shrink-0 rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
             aria-hidden
           />
         )}
@@ -158,9 +171,9 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
           <div className="relative flex items-center" ref={menuRef}>
             <Button
               type="button"
-              variant="secondary"
+              variant="ghost"
               size="md"
-              className="!h-9 !rounded-full !py-0 !pl-1 !pr-2 !gap-2 !font-normal"
+              className="!h-9 !rounded-full !border-0 !py-0 !pl-1 !pr-2 !gap-2 !font-normal shadow-[var(--ds-shadow-sm)] !bg-[var(--ds-surface-muted)] hover:!bg-[var(--ds-surface-subtle)] active:!brightness-[0.98] [&_svg]:text-[var(--ds-text-secondary)] hover:[&_svg]:text-[var(--ds-text-primary)]"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               aria-label="Account menu"
@@ -172,7 +185,7 @@ export function TopNav({ onMenuClick, onAccountMenuOpen, variant = "default" }: 
                 })
               }
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)]">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
                 <PersonIcon />
               </span>
               <ChevronIcon />

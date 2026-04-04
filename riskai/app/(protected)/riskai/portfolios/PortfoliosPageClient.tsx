@@ -98,7 +98,7 @@ export function PortfoliosPageClient() {
             <li key={p.id}>
               <Link
                 href={riskaiPath(`/portfolios/${p.id}`)}
-                className="block px-4 py-3 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] transition-colors"
+                className="block px-4 py-3 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] transition-colors"
               >
                 <span className="font-medium">{p.name || p.id}</span>
                 <span className="ml-2 text-sm text-[var(--ds-text-muted)]">

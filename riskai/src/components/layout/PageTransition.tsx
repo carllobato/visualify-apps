@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 
 type PageTransitionProps = {
   children: React.ReactNode;
-  /** Main column scroll element; reset when the URL changes. */
-  scrollContainerRef: RefObject<HTMLElement | null>;
+  /** When set, reset this element’s scroll on navigation; otherwise reset `window`. */
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 };
 
 /**
@@ -21,8 +21,9 @@ export function PageTransition({ children, scrollContainerRef }: PageTransitionP
   const reduceMotion = useReducedMotion() === true;
 
   useLayoutEffect(() => {
-    const el = scrollContainerRef.current;
+    const el = scrollContainerRef?.current;
     if (el) el.scrollTop = 0;
+    else window.scrollTo(0, 0);
   }, [pathname, scrollContainerRef]);
 
   return (

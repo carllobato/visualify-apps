@@ -35,7 +35,9 @@ import {
 export type PortfolioSettingsInitial = {
   name: string;
   description: string | null;
-  owner_user_id: string;
+  /** Name from profile, else profile email (sign-in identity). */
+  owner_username: string;
+  owner_company: string;
   created_at: string | null;
   reporting_currency: string | null;
   reporting_unit: string | null;
@@ -48,6 +50,10 @@ const DEFAULT_REPORTING_UNIT = "MILLIONS";
 
 const REPORTING_CURRENCY_OPTIONS = ["AUD", "USD", "GBP"] as const;
 const REPORTING_UNIT_OPTIONS = ["THOUSANDS", "MILLIONS", "BILLIONS"] as const;
+
+/** Details tab values: Geist Mono via `font-mono`, matches Portfolio ID row. */
+const portfolioDetailsValueClass =
+  "font-mono text-xs text-[var(--ds-text-primary)] break-all";
 
 type PortfolioSettingsTab = "general" | "members" | "details";
 
@@ -280,30 +286,22 @@ export default function PortfolioSettingsContent({
       {activeTab === "details" && (
       <section className="mb-10">
         <h2 className={settingsStandaloneSectionTitleClass}>Details</h2>
-        <dl className="rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] p-4 space-y-2 text-sm">
+        <dl className="ds-document-tile-panel p-4 space-y-2 text-sm">
           <div>
-            <dt className="text-[var(--ds-text-muted)]">Owner ID</dt>
-            <dd className="font-mono text-xs text-[var(--ds-text-primary)] break-all">
-              {initial.owner_user_id}
-            </dd>
+            <dt className="text-[var(--ds-text-muted)]">Portfolio ID</dt>
+            <dd className={portfolioDetailsValueClass}>{portfolioId}</dd>
+          </div>
+          <div>
+            <dt className="text-[var(--ds-text-muted)]">Owner username</dt>
+            <dd className={portfolioDetailsValueClass}>{initial.owner_username}</dd>
+          </div>
+          <div>
+            <dt className="text-[var(--ds-text-muted)]">Owner Company</dt>
+            <dd className={portfolioDetailsValueClass}>{initial.owner_company}</dd>
           </div>
           <div>
             <dt className="text-[var(--ds-text-muted)]">Created</dt>
-            <dd className="font-medium text-[var(--ds-text-primary)]">
-              {formatDate(initial.created_at)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[var(--ds-text-muted)]">Reporting currency</dt>
-            <dd className="font-medium text-[var(--ds-text-primary)]">
-              {initial.reporting_currency ?? DEFAULT_REPORTING_CURRENCY}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[var(--ds-text-muted)]">Reporting unit</dt>
-            <dd className="font-medium text-[var(--ds-text-primary)]">
-              {initial.reporting_unit ?? DEFAULT_REPORTING_UNIT}
-            </dd>
+            <dd className={portfolioDetailsValueClass}>{formatDate(initial.created_at)}</dd>
           </div>
         </dl>
       </section>

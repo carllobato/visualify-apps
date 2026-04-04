@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
-import { Badge, Button, Card, CardBody } from "@visualify/design-system";
+import { Badge, Button } from "@visualify/design-system";
 import {
   Line,
   LineChart,
@@ -51,9 +51,11 @@ const CHART_HEIGHT = 200;
 /** Extra top room for on-chart “Target (PXX)” / “Current” labels. */
 const CHART_MARGIN = { top: 14, right: 12, left: 4, bottom: 4 };
 
-/** Page shell: inherits ProtectedShell main panel surface + text. */
-const overviewPageShellClass =
-  "min-h-full w-full bg-transparent text-[var(--ds-text-primary)] p-6";
+/** Same chrome as `SummaryTile` / portfolio KPI tiles (document tile tokens + hover). */
+const overviewDocumentTileClass = "ds-document-tile-panel ds-document-tile-panel--interactive";
+
+/** Tile section label: aligned with `SummaryTile` title typography. */
+const overviewTileTitleClass = "text-sm font-medium text-[var(--ds-text-secondary)] m-0 mb-1";
 
 /** P on the piecewise-linear CDF at x (same anchors as the line). */
 function interpolatePAtX(points: CdfChartPoint[], x: number): number | null {
@@ -212,9 +214,9 @@ function countHighSeverityActive(risks: Risk[]): number {
 
 function DashCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <Card variant="elevated" className={className}>
-      <CardBody className="p-5">{children}</CardBody>
-    </Card>
+    <div className={`${overviewDocumentTileClass} flex flex-col p-4 min-h-[88px] ${className ?? ""}`}>
+      {children}
+    </div>
   );
 }
 
@@ -284,10 +286,8 @@ function DistributionMiniChart({
   const showCurrentDot = showCurrentGuide && pAtCurrent != null;
 
   return (
-    <DashCard className="flex flex-col gap-3">
-      <h3 className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0">
-        {title}
-      </h3>
+    <DashCard className="!min-h-0 flex flex-col gap-3">
+      <h3 className="text-sm font-medium text-[var(--ds-text-secondary)] m-0">{title}</h3>
       {!hasLine ? (
         <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 py-8 text-center">Unavailable</p>
       ) : (
@@ -698,15 +698,17 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     if (meanMinusAppetite == null || !Number.isFinite(meanMinusAppetite)) {
       return "text-[var(--ds-text-primary)]";
     }
-    if (meanMinusAppetite <= 0) return "text-[var(--ds-status-success-strong-fg)]";
-    return "text-[var(--ds-status-danger-strong-fg)]";
+    if (meanMinusAppetite <= 0) return "text-[var(--ds-status-success-fg)]";
+    return "text-[var(--ds-status-danger-fg)]";
   };
 
   if (!reportingSnapshot) {
     return (
-      <main className={overviewPageShellClass}>
-        <Card variant="elevated" className="p-8 text-center">
-          <p className="text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)] m-0">No reporting run locked</p>
+      <main className="ds-document-page">
+        <div className={`${overviewDocumentTileClass} max-w-lg mx-auto p-8 text-center`}>
+          <p className="text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)] m-0">
+            No reporting run locked
+          </p>
           <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 max-w-md mx-auto">
             Lock a simulation for reporting to populate this overview. Reporting uses only the latest locked
             run—not draft or unlocked simulations.
@@ -716,7 +718,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
               <Button>Go to Simulation</Button>
             </Link>
           </div>
-        </Card>
+        </div>
       </main>
     );
   }
@@ -738,13 +740,11 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       : null;
 
   return (
-    <main className={overviewPageShellClass} aria-busy={loadingRisks || undefined}>
+    <main className="ds-document-page" aria-busy={loadingRisks || undefined}>
       {/* Row 1 — headline metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-3">
-            Project status
-          </p>
+          <p className={`${overviewTileTitleClass} mb-2`}>Project status</p>
           {loadingRisks ? (
             <OverviewProjectStatusSkeleton />
           ) : (
@@ -765,9 +765,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         </DashCard>
 
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-3">
-            Target vs current confidence
-          </p>
+          <p className={`${overviewTileTitleClass} mb-2`}>Target vs current confidence</p>
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span className="text-3xl font-bold tracking-tight text-[var(--ds-text-primary)] tabular-nums">
@@ -776,7 +774,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
               <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">(Current)</span>
               {confidenceVsTargetDir === "above" ? (
                 <span
-                  className="text-base leading-none text-[var(--ds-status-success-strong-fg)]"
+                  className="text-base leading-none text-[var(--ds-status-success-fg)]"
                   aria-label="Above target"
                   role="img"
                 >
@@ -784,7 +782,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
                 </span>
               ) : confidenceVsTargetDir === "below" ? (
                 <span
-                  className="text-base leading-none text-[var(--ds-status-danger-strong-fg)]"
+                  className="text-base leading-none text-[var(--ds-status-danger-fg)]"
                   aria-label="Below target"
                   role="img"
                 >
@@ -799,9 +797,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         </DashCard>
 
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
-            $ gap to target
-          </p>
+          <p className={overviewTileTitleClass}>$ gap to target</p>
           <p
             className={`text-3xl font-semibold tracking-tight m-0 tabular-nums ${gapValueClass(dollarGapSigned)}`}
           >
@@ -810,9 +806,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         </DashCard>
 
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
-            Time gap to target
-          </p>
+          <p className={overviewTileTitleClass}>Time gap to target</p>
           <p
             className={`text-3xl font-semibold tracking-tight m-0 tabular-nums ${gapValueClass(timeGapSigned)}`}
           >
@@ -844,18 +838,14 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       {/* Row 3 — buffer */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-8">
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0">
-            $ contingency remaining
-          </p>
+          <p className={overviewTileTitleClass}>$ contingency remaining</p>
           <p className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary)] m-0 mt-2 tabular-nums">
             {bufferCostDisplay}
           </p>
           <BufferBar fraction={costBufferBarFraction} />
         </DashCard>
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0">
-            Time contingency remaining
-          </p>
+          <p className={overviewTileTitleClass}>Time contingency remaining</p>
           <p className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary)] m-0 mt-2 tabular-nums">
             {bufferTimeDisplay}
           </p>
@@ -866,9 +856,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       {/* Insights */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
-            Key cost risk
-          </p>
+          <p className={overviewTileTitleClass}>Key cost risk</p>
           {loadingRisks ? (
             <OverviewInsightBodySkeleton />
           ) : (
@@ -885,9 +873,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           )}
         </DashCard>
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
-            Key time risk
-          </p>
+          <p className={overviewTileTitleClass}>Key time risk</p>
           {loadingRisks ? (
             <OverviewInsightBodySkeleton />
           ) : (
@@ -904,9 +890,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           )}
         </DashCard>
         <DashCard>
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] m-0 mb-2">
-            Key opportunity
-          </p>
+          <p className={overviewTileTitleClass}>Key opportunity</p>
           {loadingRisks ? (
             <OverviewInsightBodySkeleton />
           ) : (

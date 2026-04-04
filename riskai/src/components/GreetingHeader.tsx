@@ -23,26 +23,26 @@ export function GreetingHeader({ firstName, className }: GreetingHeaderProps) {
     setGreeting(getGreeting(new Date().getHours()));
   }, []);
 
-  const rootClass = className ? `mb-8 ${className}` : "mb-8";
+  const rootClass = className ? `mb-[var(--ds-space-4)] ${className}` : "mb-[var(--ds-space-4)]";
 
   return (
     <header className={rootClass}>
-      <div className="min-h-[2.5rem]">
+      <div className="min-h-[2.25rem]">
         {greeting != null ? (
-          <h1 className="text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">
+          <h1 className="m-0 text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
             {greeting}, {displayName}
           </h1>
         ) : (
           <h1
-            className="invisible text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]"
+            className="invisible m-0 text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]"
             aria-hidden
           >
             Good afternoon, {displayName}
           </h1>
         )}
       </div>
-      <p className="mt-0.5 text-sm text-[var(--ds-text-secondary)]">
-        Here&apos;s your current workspace
+      <p className="m-0 mt-1 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+        Choose a portfolio or project
       </p>
     </header>
   );

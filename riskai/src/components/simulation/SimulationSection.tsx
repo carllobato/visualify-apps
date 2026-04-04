@@ -2,18 +2,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@visualify/design-system";
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@visualify/design-system";
 import {
   Area,
   ComposedChart,
@@ -49,6 +38,14 @@ const CHART_HEIGHT = 300;
 const CHART_MARGIN = { top: 10, right: 16, left: 8, bottom: 28 };
 const DISTRIBUTION_BIN_COUNT = 100;
 const SIMULATION_TOP_RISKS_COUNT = 5;
+
+/** Titled panels: `DashboardCard`-style shell (static — no hover lift). */
+const SIM_SECTION_SHELL = "ds-document-tile-panel overflow-hidden";
+
+/** Inline KPI tiles: `SummaryTile`-style chrome + hover. */
+const SIM_KPI_TILE_CLASS = "ds-document-tile-panel ds-document-tile-panel--interactive";
+
+const SIM_NESTED_PANEL_CLASS = "overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border)]";
 
 /** Offset (px) to shift label left/right from the line so two labels on same row don't clash. */
 const REF_LINE_LABEL_OFFSET_X = 8;
@@ -555,9 +552,11 @@ function CostChart({
   const empty = smoothData.length === 0;
 
   return (
-    <Card className="overflow-hidden border border-[var(--ds-border-subtle)] shadow-none">
-      <CardHeader className="border-b border-[var(--ds-border-subtle)] px-4 py-2.5">
-        <CardTitle className="text-[length:var(--ds-text-sm)] font-semibold">Cost Distribution</CardTitle>
+    <section className={SIM_SECTION_SHELL}>
+      <div className="border-b border-[var(--ds-border)] px-4 py-2.5">
+        <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+          Cost Distribution
+        </h3>
         {!empty && isDebug && (
           <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
             {costSamples.length > 0
@@ -565,11 +564,8 @@ function CostChart({
               : "Derived from percentiles"}
           </p>
         )}
-      </CardHeader>
-      <CardContent
-        className="flex w-full flex-col p-4"
-        style={{ height: CHART_HEIGHT }}
-      >
+      </div>
+      <div className="flex w-full flex-col p-4" style={{ height: CHART_HEIGHT }}>
         {empty ? (
           <div className="flex min-h-0 flex-1 items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             No data
@@ -786,8 +782,8 @@ function CostChart({
           </ResponsiveContainer>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -1042,9 +1038,11 @@ function TimeChart({
   const empty = smoothData.length === 0;
 
   return (
-    <Card className="overflow-hidden border border-[var(--ds-border-subtle)] shadow-none">
-      <CardHeader className="border-b border-[var(--ds-border-subtle)] px-4 py-2.5">
-        <CardTitle className="text-[length:var(--ds-text-sm)] font-semibold">Time Distribution</CardTitle>
+    <section className={SIM_SECTION_SHELL}>
+      <div className="border-b border-[var(--ds-border)] px-4 py-2.5">
+        <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+          Time Distribution
+        </h3>
         {!empty && isDebug && (
           <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
             {timeSamples.length > 0
@@ -1052,11 +1050,8 @@ function TimeChart({
               : "Derived from percentiles"}
           </p>
         )}
-      </CardHeader>
-      <CardContent
-        className="flex w-full flex-col p-4"
-        style={{ height: CHART_HEIGHT }}
-      >
+      </div>
+      <div className="flex w-full flex-col p-4" style={{ height: CHART_HEIGHT }}>
         {empty ? (
           <div className="flex min-h-0 flex-1 items-center justify-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             No data
@@ -1273,8 +1268,8 @@ function TimeChart({
           </ResponsiveContainer>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -1381,17 +1376,14 @@ export function SimulationSection(props: SimulationSectionProps) {
   const tableLabelDisplay = tableSubtitle ? `${tableLabel} (${tableSubtitle})` : tableLabel;
 
   return (
-    <Card
-      variant="inset"
-      className="overflow-hidden text-[var(--ds-text-secondary)] transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]"
-    >
-      <CardHeader className="border-b border-[var(--ds-border-subtle)] px-4 py-3">
-        <CardTitle className="text-[length:var(--ds-text-base)]">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 p-4">
+    <section className={`${SIM_SECTION_SHELL} text-[var(--ds-text-secondary)]`}>
+      <div className="border-b border-[var(--ds-border)] px-4 py-3">
+        <h2 className="m-0 text-base font-semibold text-[var(--ds-text-primary)]">{title}</h2>
+      </div>
+      <div className="space-y-4 p-4">
         <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
-          <Card className="flex min-h-[8.5rem] flex-col transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]">
-            <CardContent className="flex flex-1 flex-col p-4">
+          <div className={`${SIM_KPI_TILE_CLASS} flex min-h-[8.5rem] flex-col`}>
+            <div className="flex flex-1 flex-col p-4">
             <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
               {mode === "cost" ? "Current Funding Confidence" : "Current P-Value (Time)"}
             </div>
@@ -1410,10 +1402,10 @@ export function SimulationSection(props: SimulationSectionProps) {
                   : "Planned duration as reference (chart is risk delay, not programme length)"}
               </div>
             )}
-            </CardContent>
-          </Card>
-          <Card className="flex min-h-[8.5rem] flex-col transition-colors hover:border-[color-mix(in_oklab,var(--ds-border)_140%,var(--ds-text-muted))]">
-            <CardContent className="flex flex-1 flex-col p-4">
+            </div>
+          </div>
+          <div className={`${SIM_KPI_TILE_CLASS} flex min-h-[8.5rem] flex-col`}>
+            <div className="flex flex-1 flex-col p-4">
             <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
               Funding Position vs Target{mode === "cost" ? "" : " (Time)"}
             </div>
@@ -1487,8 +1479,8 @@ export function SimulationSection(props: SimulationSectionProps) {
                 )}
               </div>
             ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {mode === "cost" && costResults && (
@@ -1514,7 +1506,7 @@ export function SimulationSection(props: SimulationSectionProps) {
           />
         )}
 
-        <Card className="overflow-hidden">
+        <div className={SIM_NESTED_PANEL_CLASS}>
           <div className="border-b border-[var(--ds-border)] px-4 py-2">
             <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">{tableLabelDisplay}</h3>
           </div>
@@ -1563,8 +1555,8 @@ export function SimulationSection(props: SimulationSectionProps) {
               </TableBody>
             </Table>
           </div>
-        </Card>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </section>
   );
 }

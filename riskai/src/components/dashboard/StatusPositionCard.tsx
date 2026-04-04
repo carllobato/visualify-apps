@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Card, CardContent } from "@visualify/design-system";
+
+/** Match `SummaryTile` / simulation metric tiles (document tile + hover). */
+const documentTileSurfaceClass = "ds-document-tile-panel ds-document-tile-panel--interactive";
 
 export type StatusPositionTone = "on_track" | "at_risk" | "off_track" | "neutral";
 
@@ -43,12 +45,10 @@ export function StatusPositionCard({
   className = "",
   contentClassName = "",
 }: StatusPositionCardProps) {
+  const bodyClass = contentClassName.trim() || "p-4";
   return (
-    <Card
-      variant="inset"
-      className={`border-0 text-[var(--ds-text-secondary)] ${className}`.trim()}
-    >
-      <CardContent className={contentClassName.trim()}>
+    <div className={`${documentTileSurfaceClass} text-[var(--ds-text-secondary)] ${className}`.trim()}>
+      <div className={bodyClass}>
         <div className="flex flex-col">
           {label ? (
             <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
@@ -84,7 +84,7 @@ export function StatusPositionCard({
             </div>
           ) : null}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

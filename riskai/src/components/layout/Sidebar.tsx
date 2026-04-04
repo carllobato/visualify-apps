@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { setSideNavPinnedCookie } from "@/lib/sideNavPinnedCookie";
 import {
   DASHBOARD_PATH,
   portfolioIdFromAppPathname,
@@ -14,6 +15,25 @@ import {
 } from "@/lib/routes";
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
+const SIDENAV_KEY = "riskai-side-nav-pinned";
+
+function parseSideNavPinnedFromDb(raw: unknown): boolean | null {
+  if (raw === true || raw === false) return raw;
+  return null;
+}
+
+async function persistSideNavPinnedToSupabase(pinned: boolean): Promise<void> {
+  try {
+    const client = supabaseBrowserClient();
+    const {
+      data: { user },
+    } = await client.auth.getUser();
+    if (!user) return;
+    await client.from("visualify_profiles").update({ side_nav_pinned: pinned }).eq("id", user.id);
+  } catch {
+    /* silent */
+  }
+}
 
 const PanelLeftIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0" aria-hidden>
@@ -134,14 +154,20 @@ const CogIcon = () => (
 type SidebarProps = {
   mobileOpen: boolean;
   onMobileClose: () => void;
+  /** From server cookie so first HTML matches saved rail width (default: pinned open). */
+  initialSideNavPinned?: boolean;
 };
 
 /** Brief delay before expanding the collapsed rail so cursor passes don’t flash the panel open. */
 const SIDEBAR_HOVER_OPEN_DELAY_MS = 250;
 
-export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({
+  mobileOpen,
+  onMobileClose,
+  initialSideNavPinned = true,
+}: SidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => initialSideNavPinned === false);
   /** When rail is collapsed, hover temporarily expands labels/width (desktop hover). */
   const [hoverPeek, setHoverPeek] = useState(false);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,6 +203,49 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   }, [projectIdFromUrl]);
 
   const supabase = useMemo(() => supabaseBrowserClient(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const { data: row } = await supabase
+          .from("visualify_profiles")
+          .select("side_nav_pinned")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        const remote = parseSideNavPinnedFromDb(row?.side_nav_pinned as unknown);
+        if (remote === null) return;
+        let localPinned: boolean;
+        try {
+          const raw = localStorage.getItem(SIDENAV_KEY);
+          if (raw === "false") localPinned = false;
+          else if (raw === "true") localPinned = true;
+          else localPinned = true;
+        } catch {
+          localPinned = true;
+        }
+        if (localPinned === remote) return;
+        if (cancelled) return;
+        setCollapsed(!remote);
+        try {
+          localStorage.setItem(SIDENAV_KEY, remote ? "true" : "false");
+        } catch {
+          /* silent */
+        }
+        setSideNavPinnedCookie(remote);
+      } catch {
+        /* silent */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
 
   useEffect(() => {
     try {
@@ -301,7 +370,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     </div>
   );
 
-  const widthClass = visuallyCollapsed ? "w-[56px]" : "w-[240px]";
+  const widthClass = visuallyCollapsed ? "w-[56px]" : "w-56";
 
   const handleAsidePointerEnter = () => {
     if (hoverLeaveTimerRef.current) {
@@ -343,9 +412,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
       <aside
         className={
-          "ds-app-sidebar fixed bottom-3 left-3 top-[calc(var(--ds-app-header-height)+12px)] z-50 flex flex-col transition-[transform,width] duration-[400ms] ease-out will-change-[width] md:static md:top-auto md:z-0 md:ml-3 md:mt-[calc(var(--ds-app-header-height)+12px)] md:mb-3 md:h-[calc(100vh-var(--ds-app-header-height)-24px)] " +
+          "ds-app-sidebar fixed bottom-3 left-3 top-[calc(var(--ds-app-header-height)+12px)] z-50 flex flex-col transition-[transform,width] duration-[400ms] ease-out will-change-[width] md:sticky md:top-[calc(var(--ds-app-header-height)+12px)] md:z-0 md:ml-3 md:mt-[calc(var(--ds-app-header-height)+12px)] md:mb-3 md:h-[calc(100dvh-var(--ds-app-header-height)-24px)] md:self-start " +
           widthClass +
-          (collapsed && hoverPeek ? " ds-sidebar-peek" : "") +
           (mobileOpen ? " translate-x-0" : " -translate-x-full md:translate-x-0")
         }
         onMouseEnter={handleAsidePointerEnter}
@@ -488,18 +556,31 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
         <div className="relative flex min-h-12 shrink-0 items-center px-[var(--ds-space-2)] py-[var(--ds-space-2)]">
           <div
-            className="pointer-events-none absolute left-[var(--ds-space-2)] right-[var(--ds-space-2)] top-0 h-px bg-[var(--ds-border)]"
+            className="pointer-events-none absolute left-[var(--ds-space-2)] right-[var(--ds-space-2)] top-0 h-px bg-[var(--ds-border-subtle)]"
             aria-hidden
           />
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="ds-sidebar-collapse-btn !h-auto w-full min-w-0 !justify-start !gap-0 rounded-[var(--ds-radius-md)] px-3 py-1 font-medium"
+            className="ds-sidebar-collapse-btn !h-auto w-full min-w-0 !justify-start !gap-0 rounded-[var(--ds-radius-sm)] px-3 py-1 font-medium"
             aria-pressed={!collapsed}
             title={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
             aria-label={collapsed ? "Pin sidebar open" : "Collapse sidebar"}
-            onClick={() => setCollapsed((c) => !c)}
+            onClick={() =>
+              setCollapsed((c) => {
+                const next = !c;
+                const pinned = !next;
+                try {
+                  localStorage.setItem(SIDENAV_KEY, pinned ? "true" : "false");
+                } catch {
+                  /* silent */
+                }
+                setSideNavPinnedCookie(pinned);
+                void persistSideNavPinnedToSupabase(pinned);
+                return next;
+              })
+            }
           >
             {collapsed ? <PinOpenIcon /> : <PanelLeftIcon />}
             <span className={navLabelClass}>{collapsed ? "Pin open" : "Collapse"}</span>

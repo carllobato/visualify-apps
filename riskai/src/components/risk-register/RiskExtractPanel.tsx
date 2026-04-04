@@ -66,7 +66,7 @@ export function RiskExtractPanel({
 
   return (
     <div
-      className={hideTitle ? "" : "rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 mb-4"}
+      className={hideTitle ? "" : "rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 mb-4"}
       style={hideTitle ? undefined : { marginBottom: 16 }}
     >
       {!hideTitle && (
@@ -102,14 +102,14 @@ export function RiskExtractPanel({
             onChange={(e) => setDocumentText(e.target.value)}
             placeholder="Describe your risk including any mitigation, cost and time data."
             rows={6}
-            className="w-full box-border px-3 py-2.5 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent"
+            className="w-full box-border px-3 py-2.5 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent"
           />
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={handleExtract}
               disabled={status === "loading"}
-              className="w-full px-3 py-1.5 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
+              className="w-full px-3 py-1.5 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
             >
               Extract
             </button>

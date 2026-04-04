@@ -235,7 +235,7 @@ export function NavBar() {
           </button>
           {userMenuOpen && (
             <div
-              className="absolute right-0 top-full z-50 min-w-[10rem] rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] pt-2 pb-1 shadow-lg"
+              className="absolute right-0 top-full z-50 min-w-[10rem] rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] pt-2 pb-1 shadow-lg"
               role="menu"
             >
               {isLoggedIn ? (

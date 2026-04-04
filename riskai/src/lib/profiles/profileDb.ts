@@ -57,6 +57,20 @@ export type PublicProfileRow = {
   role: string | null;
 };
 
+/** Display fields for settings / audit: name or profile email, and company (falls back to "—"). */
+export function ownerUsernameAndCompanyFromProfile(profile: PublicProfileRow | null): {
+  username: string;
+  company: string;
+} {
+  if (!profile) {
+    return { username: "—", company: "—" };
+  }
+  const name = [profile.first_name, profile.surname].filter(Boolean).join(" ").trim();
+  const username = name || profile.email?.trim() || "—";
+  const company = profile.company?.trim() || "—";
+  return { username, company };
+}
+
 export async function fetchPublicProfile(
   supabase: SupabaseClient,
   userId: string,

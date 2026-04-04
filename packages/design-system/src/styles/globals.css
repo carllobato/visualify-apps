@@ -1,15 +1,24 @@
 :root {
-  /* Canonical palette — surface hierarchy: page (bg) → muted alt → inset → elevated card (surface) */
-  --ds-bg: #f4f5f7;
+  /*
+   * Light mode — surface ladder (deepest → highest):
+   *   Canvas (--ds-bg / --ds-canvas): cool gutter outside the window; slightly lighter than legacy so the glass top nav reads cleaner; still below the white frame so the workspace floats.
+   *   Frame & document (--ds-surface, --ds-app-document-bg): shared bright face (#fff) for sidebar chrome and the main reading plane.
+   *   Muted / subtle (--ds-surface-muted, --ds-surface-subtle): grouped rows and inset wells on the document — stepped, not another grey-on-grey slab.
+   *   Row tiles: --ds-surface-tile + --ds-elevation-tile (+ --ds-surface-tile-hover on pointer); create rows rest flat; hover: --ds-surface-row-create-hover + lighter --ds-elevation-row-create-hover than standard tiles.
+   * App-frame structure: sidebar + main document sheet are borderless; float reads from radius + shadow (--ds-elevation-app-frame / --ds-elevation-app-document-shell), aligned with tile elevation vocabulary.
+   */
+  --ds-bg: #f7f9fc;
   --ds-surface: #ffffff;
-  /* Grouped / inset layers — touch more contrast vs page than #fafbfc, still light */
-  --ds-surface-muted: #f6f7f9;
-  --ds-surface-subtle: #eef0f4;
+  /* Grouped on document — one step above canvas tint, below pure white */
+  --ds-surface-muted: #f3f5f8;
+  /* Inset wells / dense groupings — clearer than muted, still light */
+  --ds-surface-subtle: #eceff4;
 
   --ds-text-secondary: #5f6368;
   --ds-text-tertiary: #9aa0a6;
 
-  --ds-border: #e6e6e8;
+  /* Base chromatic border — slightly stronger than legacy #e6e6e8 so rims read without heavy contrast */
+  --ds-border: #d4d8e0;
   --ds-border-width: 1px;
 
   --ds-primary: #3b82f6;
@@ -32,7 +41,10 @@
   --ds-card: var(--ds-surface);
   --ds-card-foreground: var(--ds-foreground);
 
-  --ds-border-subtle: color-mix(in oklab, var(--ds-border) 48%, transparent);
+  /* Hairlines / dividers — softest (lighter than card rims) */
+  --ds-border-subtle: color-mix(in oklab, var(--ds-border) 42%, transparent);
+  /* Tile & KPI rims on the document — visible but quiet; dark override keeps edges on --ds-app-document-bg */
+  --ds-border-card: color-mix(in oklab, var(--ds-border) 68%, transparent);
   --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 38%, var(--ds-surface-default));
   /* Neutral hover affordance (inputs, ghost controls, tabs — no blue tint) */
   --ds-control-border-hover: color-mix(in oklab, var(--ds-text-primary) 20%, var(--ds-border));
@@ -45,7 +57,41 @@
 
   --ds-surface-default: var(--ds-background);
   --ds-surface-elevated: var(--ds-card);
+  /* Raised list/KPI row tiles on the document — whisper contrast vs pure white + shadow (no border). */
+  --ds-surface-tile: color-mix(in oklab, var(--ds-surface-muted) 20%, var(--ds-surface));
+  /* Standard row tiles only — tiny lift toward white on hover (with elevation + translate). */
+  --ds-surface-tile-hover: color-mix(in oklab, var(--ds-surface-tile) 90%, var(--ds-surface));
   --ds-surface-inset: var(--ds-surface-subtle);
+
+  /* KPI / stat tiles on document — darker rest than row tiles; rest/hover shadows match row tiles (--ds-elevation-tile / -hover) */
+  --ds-document-tile-bg: color-mix(in oklab, var(--ds-surface-muted) 45%, var(--ds-surface));
+  --ds-document-tile-hover-bg: color-mix(in oklab, var(--ds-document-tile-bg) 84%, var(--ds-surface));
+  --ds-document-tile-border: transparent;
+  --ds-document-tile-shadow: var(--ds-elevation-tile);
+  --ds-document-tile-hover-shadow: var(--ds-elevation-tile-hover);
+
+  /*
+   * Windowed SaaS layout — token roles (light):
+   * --ds-canvas: outer browser/page backdrop (gutter); same as --ds-bg — see “Light mode — surface ladder” above.
+   * --ds-app-frame-bg: chrome that shares the “window” face with the sidebar (typically --ds-surface / white).
+   * --ds-app-main-bg: main column behind the document sheet — canvas so the sheet and sidebar float forward.
+   * --ds-app-document-bg: main reading column (soft grey in the tile/muted family); page content lives here; row tiles use --ds-surface-tile + tile elevation.
+   * --ds-app-sidebar-bg: nav rail; aliases frame so the rail matches the window face.
+   * Border order: --ds-border-subtle < --ds-border-card; app shell chrome uses shadow only (see .ds-app-sidebar / .ds-app-document-shell).
+   * Dark mode overrides these relationships without changing layout (see [data-theme="dark"]).
+   */
+  --ds-canvas: var(--ds-bg);
+  --ds-app-frame-bg: var(--ds-surface);
+  --ds-app-main-bg: var(--ds-canvas);
+  /* Flat document sheet — same muted↔surface ramp as row/KPI tiles, slightly quieter than --ds-surface-tile (light) */
+  --ds-app-document-bg: color-mix(in oklab, var(--ds-surface-muted) 14%, var(--ds-surface));
+  /* Create / “add” row — same family as --ds-surface-tile but blended down so it reads as a muted tile, not a floating patch (still no tile shadow). */
+  --ds-surface-row-create: color-mix(in oklab, var(--ds-surface-tile) 38%, var(--ds-app-document-bg));
+  --ds-surface-row-create-hover: color-mix(in oklab, var(--ds-surface-tile) 62%, var(--ds-app-document-bg));
+  --ds-app-sidebar-bg: var(--ds-app-frame-bg);
+  /* Legacy token — shells no longer draw a rim; kept for demos / overrides. */
+  --ds-border-app-frame: transparent;
+  --ds-border-app-document-shell: transparent;
 
   --ds-status-success: var(--ds-success);
   --ds-status-success-bg: color-mix(in oklab, var(--ds-status-success) 18%, var(--ds-surface-default));
@@ -147,10 +193,14 @@
   --ds-risk-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-risk-neutral));
   --ds-risk-neutral-border: color-mix(in oklab, var(--ds-risk-neutral) 34%, var(--ds-border));
 
+  /* Radius scale (3 tiers): sm = dense controls (inputs, buttons); md = cards, tiles, rows, dialogs; lg = app frame & sidebar shell */
   --ds-radius-sm: 10px;
   --ds-radius-md: 16px;
   --ds-radius-lg: 24px;
-  --ds-radius-xl: 32px;
+  /* Radius roles — aliases only */
+  --ds-radius-app-frame: var(--ds-radius-lg);
+  --ds-radius-card: var(--ds-radius-md);
+  --ds-radius-inner: var(--ds-radius-sm);
 
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --ds-shadow-md: 0 12px 40px rgba(17, 17, 17, 0.08);
@@ -203,9 +253,52 @@
   /* Solid CTA that uses inverse text — hover border tints */
   --ds-control-strong-border-hover: color-mix(in oklab, var(--ds-text-inverse) 25%, transparent);
   --ds-control-strong-border-active: color-mix(in oklab, var(--ds-text-inverse) 40%, transparent);
-  /* Raised list tiles */
-  --ds-elevation-tile: 0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 3%, transparent);
-  --ds-elevation-tile-hover: 0 3px 12px color-mix(in oklab, var(--ds-scrim-ink) 5.5%, transparent);
+  /*
+   * Elevation ladder (light): app frame (structural float) → tiles on document → overlays / modals above.
+   * Frame uses a soft second layer so sidebar/document read above canvas; tiles stay subtler but visible vs flat document.
+   */
+  /* Sidebar / small framed panels — inset hairline + diffuse stack (same family as --ds-elevation-tile). */
+  --ds-elevation-app-frame:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 2.8%, transparent),
+    0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 8%, transparent),
+    0 8px 24px -8px color-mix(in oklab, var(--ds-scrim-ink) 12%, transparent);
+  /* Main document sheet: frame stack + rim line + lateral wash so the panel reads beside the sidebar and viewport edge (no border). */
+  --ds-elevation-app-document-shell:
+    var(--ds-elevation-app-frame),
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 3.5%, transparent),
+    0 2px 8px color-mix(in oklab, var(--ds-scrim-ink) 5.5%, transparent),
+    -14px 0 30px -14px color-mix(in oklab, var(--ds-scrim-ink) 9%, transparent),
+    14px 0 30px -14px color-mix(in oklab, var(--ds-scrim-ink) 9%, transparent);
+  --ds-elevation-tile:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 2.8%, transparent),
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 3.5%, transparent),
+    0 2px 2px color-mix(in oklab, var(--ds-scrim-ink) 5%, transparent),
+    0 6px 16px -6px color-mix(in oklab, var(--ds-scrim-ink) 8.5%, transparent);
+  --ds-elevation-tile-hover:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 2.8%, transparent),
+    0 3px 6px color-mix(in oklab, var(--ds-scrim-ink) 6.5%, transparent),
+    0 12px 28px -8px color-mix(in oklab, var(--ds-scrim-ink) 10%, transparent);
+  /* Create / add row hover: tile-like lift, clearly weaker than --ds-elevation-tile-hover (not primary CTA). */
+  --ds-elevation-row-create-hover:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 2.4%, transparent),
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 3%, transparent),
+    0 2px 4px color-mix(in oklab, var(--ds-scrim-ink) 4.2%, transparent),
+    0 7px 16px -6px color-mix(in oklab, var(--ds-scrim-ink) 6.5%, transparent);
+  /* Inline secondary actions (e.g. dashboard create links): hover surface + shadow, weaker than row tiles. */
+  --ds-inline-action-hover-bg: color-mix(in oklab, var(--ds-surface-muted) 52%, var(--ds-app-document-bg));
+  --ds-inline-action-hover-shadow:
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 3%, transparent),
+    0 2px 6px color-mix(in oklab, var(--ds-scrim-ink) 4.5%, transparent),
+    0 6px 14px -4px color-mix(in oklab, var(--ds-scrim-ink) 6%, transparent);
+  /* Secondary / outline buttons — no stroke; edge from inset highlight + soft drop (tile family, control scale). */
+  --ds-elevation-button-secondary:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 2.2%, transparent),
+    0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 6%, transparent),
+    0 2px 6px -2px color-mix(in oklab, var(--ds-scrim-ink) 7%, transparent);
+  --ds-elevation-button-secondary-hover:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 2.6%, transparent),
+    0 2px 4px color-mix(in oklab, var(--ds-scrim-ink) 7%, transparent),
+    0 8px 16px -4px color-mix(in oklab, var(--ds-scrim-ink) 9%, transparent);
   /* Modal panels (legal, etc.) */
   --ds-shadow-modal-panel: 0 25px 50px -12px color-mix(in oklab, var(--ds-scrim-ink) 20%, transparent);
   /* App shell top header (subtle frosted structural layer) */
@@ -213,9 +306,8 @@
   /* Premium-but-quiet glass: slightly clearer read-through with restrained blur. */
   --ds-app-top-nav-bg: color-mix(in oklab, var(--ds-surface) 42%, transparent);
   --ds-app-top-nav-border: color-mix(in oklab, var(--ds-text-primary) 9%, transparent);
-  --ds-app-top-nav-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  --ds-app-top-nav-shadow: 0 2px 10px rgba(0, 0, 0, 0.045);
   --ds-app-top-nav-blur: 10px;
-  --ds-app-sidebar-bg: var(--ds-primary-foreground);
 
   --ds-space-1: 4px;
   --ds-space-2: 8px;
@@ -305,16 +397,21 @@
 }
 
 [data-theme="dark"] {
-  --ds-bg: #0e0e10;
+  /*
+   * Dark intent: deepest canvas, then frame/document/sidebar surfaces, then inset/muted for grouped rows.
+   * Row tiles hug --ds-app-document-bg (muted tint only); separation leans on --ds-elevation-tile, not bright fills.
+   * --ds-text-tertiary is lifted slightly for WCAG-friendly helper copy on dark surfaces.
+   */
+  --ds-bg: #131318;
   --ds-surface: #1a1a1d;
-  /* Slightly deeper than #1c1c21 for clearer inset tiles */
-  --ds-surface-muted: #19191e;
-  --ds-surface-subtle: #2b2b32;
+  /* Inset / grouped — visibly below document surface without heavy nested frames */
+  --ds-surface-muted: #222228;
+  --ds-surface-subtle: #35353e;
 
   --ds-text-secondary: #a1a1aa;
-  --ds-text-tertiary: #6b7280;
+  --ds-text-tertiary: #9aa3ad;
 
-  --ds-border: #2f2f34;
+  --ds-border: #45454e;
   --ds-border-width: 1px;
 
   --ds-primary: #3b82f6;
@@ -336,7 +433,8 @@
   --ds-card: var(--ds-surface);
   --ds-card-foreground: var(--ds-foreground);
 
-  --ds-border-subtle: color-mix(in oklab, var(--ds-border) 58%, transparent);
+  --ds-border-subtle: color-mix(in oklab, var(--ds-border) 84%, transparent);
+  --ds-border-card: color-mix(in oklab, var(--ds-border) 92%, var(--ds-text-primary) 4%);
   --ds-surface-hover: color-mix(in oklab, var(--ds-muted) 44%, var(--ds-surface-default));
   --ds-control-border-hover: color-mix(in oklab, var(--ds-text-primary) 24%, var(--ds-border));
   --ds-input-bg-hover: color-mix(in oklab, var(--ds-muted) 32%, var(--ds-surface-inset));
@@ -349,6 +447,24 @@
   --ds-surface-default: var(--ds-background);
   --ds-surface-elevated: var(--ds-card);
   --ds-surface-inset: var(--ds-surface-subtle);
+
+  --ds-canvas: var(--ds-bg);
+  --ds-app-frame-bg: var(--ds-surface);
+  --ds-app-main-bg: var(--ds-canvas);
+  --ds-app-document-bg: color-mix(in oklab, var(--ds-surface-muted) 12%, var(--ds-surface));
+  --ds-border-app-document-shell: transparent;
+  /* Borderless rows: document-family fills only (no text-primary lift). Tile > create (higher muted % on tile only). */
+  --ds-surface-tile: color-mix(in oklab, var(--ds-surface-muted) 52%, var(--ds-app-document-bg));
+  /* Standard row tiles only — nudge toward muted (slightly higher L*) on hover. */
+  --ds-surface-tile-hover: color-mix(in oklab, var(--ds-surface-tile) 82%, var(--ds-surface-muted));
+  --ds-document-tile-bg: color-mix(in oklab, var(--ds-surface-muted) 71%, var(--ds-app-document-bg));
+  --ds-document-tile-hover-bg: color-mix(in oklab, var(--ds-document-tile-bg) 76%, var(--ds-surface-muted));
+  --ds-document-tile-hover-shadow: var(--ds-elevation-tile-hover);
+  /* Muted tile cousin (flat): same chroma ladder as tiles, weaker fill + neutral hover (no risk tint). */
+  --ds-surface-row-create: color-mix(in oklab, var(--ds-surface-tile) 32%, var(--ds-app-document-bg));
+  --ds-surface-row-create-hover: color-mix(in oklab, var(--ds-surface-tile) 52%, var(--ds-app-document-bg));
+  --ds-app-sidebar-bg: color-mix(in oklab, var(--ds-surface) 92%, var(--ds-canvas) 8%);
+  --ds-border-app-frame: transparent;
 
   --ds-status-success: var(--ds-success);
   --ds-status-success-bg: color-mix(in oklab, var(--ds-status-success) 22%, var(--ds-surface-default));
@@ -453,6 +569,45 @@
   --ds-shadow-md: 0 12px 40px rgba(0, 0, 0, 0.28);
   --ds-shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.36);
 
+  --ds-elevation-app-frame:
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 44%, transparent),
+    0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 32%, transparent),
+    0 12px 36px -8px color-mix(in oklab, var(--ds-scrim-ink) 46%, transparent);
+  --ds-elevation-app-document-shell:
+    var(--ds-elevation-app-frame),
+    0 2px 8px color-mix(in oklab, var(--ds-scrim-ink) 40%, transparent),
+    -14px 0 40px -12px color-mix(in oklab, var(--ds-scrim-ink) 38%, transparent),
+    14px 0 40px -12px color-mix(in oklab, var(--ds-scrim-ink) 38%, transparent);
+  --ds-elevation-tile:
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 44%, transparent),
+    0 5px 18px -3px color-mix(in oklab, var(--ds-scrim-ink) 48%, transparent),
+    0 16px 40px -10px color-mix(in oklab, var(--ds-scrim-ink) 44%, transparent);
+  --ds-elevation-tile-hover:
+    0 7px 34px color-mix(in oklab, var(--ds-scrim-ink) 57%, transparent),
+    0 5px 18px -2px color-mix(in oklab, var(--ds-scrim-ink) 50%, transparent);
+  --ds-elevation-row-create-hover:
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 34%, transparent),
+    0 3px 12px -2px color-mix(in oklab, var(--ds-scrim-ink) 38%, transparent),
+    0 9px 24px -8px color-mix(in oklab, var(--ds-scrim-ink) 40%, transparent);
+  /* Stronger than light: document ≈ surface is very close to muted — need a clearer step + shadow read. */
+  --ds-inline-action-hover-bg: color-mix(
+    in oklab,
+    var(--ds-surface-subtle) 22%,
+    color-mix(in oklab, var(--ds-surface-muted) 70%, var(--ds-app-document-bg))
+  );
+  --ds-inline-action-hover-shadow:
+    0 1px 0 color-mix(in oklab, var(--ds-scrim-ink) 52%, transparent),
+    0 2px 10px color-mix(in oklab, var(--ds-scrim-ink) 44%, transparent),
+    0 8px 22px -4px color-mix(in oklab, var(--ds-scrim-ink) 50%, transparent);
+  --ds-elevation-button-secondary:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-text-inverse) 5%, transparent),
+    0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 28%, transparent),
+    0 2px 8px -2px color-mix(in oklab, var(--ds-scrim-ink) 36%, transparent);
+  --ds-elevation-button-secondary-hover:
+    inset 0 1px 0 color-mix(in oklab, var(--ds-text-inverse) 7%, transparent),
+    0 2px 6px color-mix(in oklab, var(--ds-scrim-ink) 34%, transparent),
+    0 10px 22px -4px color-mix(in oklab, var(--ds-scrim-ink) 42%, transparent);
+
   --ds-surface-floating: color-mix(in oklab, var(--ds-surface) 82%, var(--ds-bg));
   --ds-border-floating: color-mix(in oklab, var(--ds-text-primary) 12%, var(--ds-border));
   --ds-border-floating-width: 0.5px;
@@ -489,14 +644,11 @@
   --ds-focus-highlight-outline: color-mix(in oklab, var(--ds-status-warning) 64%, transparent);
   --ds-control-strong-border-hover: color-mix(in oklab, var(--ds-text-inverse) 25%, transparent);
   --ds-control-strong-border-active: color-mix(in oklab, var(--ds-text-inverse) 40%, transparent);
-  --ds-elevation-tile: 0 1px 2px color-mix(in oklab, var(--ds-scrim-ink) 20%, transparent);
-  --ds-elevation-tile-hover: 0 4px 16px color-mix(in oklab, var(--ds-scrim-ink) 28%, transparent);
   --ds-shadow-modal-panel: 0 25px 50px -12px color-mix(in oklab, var(--ds-scrim-ink) 55%, transparent);
-  --ds-app-top-nav-bg: color-mix(in oklab, var(--ds-surface) 40%, transparent);
-  --ds-app-top-nav-border: color-mix(in oklab, var(--ds-text-inverse) 14%, transparent);
-  --ds-app-top-nav-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --ds-app-top-nav-bg: color-mix(in oklab, var(--ds-surface) 26%, transparent);
+  --ds-app-top-nav-border: color-mix(in oklab, var(--ds-text-inverse) 7%, transparent);
+  --ds-app-top-nav-shadow: 0 1px 4px color-mix(in oklab, var(--ds-scrim-ink) 17%, transparent);
   --ds-app-top-nav-blur: 10px;
-  --ds-app-sidebar-bg: var(--ds-primary-foreground);
 
   /* Chart colours — dark theme overrides (see :root block for token roles). */
   --ds-chart-series-1: var(--ds-primary);
@@ -551,7 +703,7 @@ html {
 
 body {
   margin: 0;
-  background: var(--ds-background);
+  background: var(--ds-canvas);
   color: var(--ds-foreground);
   font-family: var(--ds-font-sans);
   -webkit-font-smoothing: antialiased;
@@ -673,7 +825,7 @@ textarea:disabled {
 }
 .ds-nav-link:hover:not(.ds-nav-link--active):not(.ds-nav-link--disabled) {
   color: var(--ds-text-primary);
-  background-color: var(--ds-surface-subtle);
+  background-color: var(--ds-surface-hover);
 }
 .ds-nav-link:hover:not(.ds-nav-link--active):not(.ds-nav-link--disabled) svg {
   color: var(--ds-text-primary);
@@ -687,6 +839,9 @@ textarea:disabled {
 }
 .ds-nav-link--rail {
   border-left: 2px solid transparent;
+}
+.ds-nav-link--rail:not(.ds-nav-link--active) {
+  border-radius: var(--ds-radius-sm);
 }
 .ds-nav-link--active.ds-nav-link--rail {
   border-left-color: color-mix(in oklab, var(--ds-text-primary) 50%, transparent);
@@ -736,7 +891,7 @@ ul[role="listbox"] button:focus-visible {
 
 /* App shell — primary top bar, secondary sidebar, main canvas, legal footer (token-led hierarchy) */
 .ds-app-shell {
-  background-color: var(--ds-bg);
+  background-color: var(--ds-canvas);
   color: var(--ds-text-primary);
 }
 
@@ -762,17 +917,32 @@ ul[role="listbox"] button:focus-visible {
 
 .ds-app-sidebar {
   background-color: var(--ds-app-sidebar-bg);
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-sm);
+  border: none;
+  border-radius: var(--ds-radius-app-frame);
+  box-shadow: var(--ds-elevation-app-frame);
   overflow: hidden;
 }
 
+/* Primary reading sheet (RiskAI protected layout): shadow-led float on md+; mobile stays flat full-bleed. */
+.ds-app-document-shell {
+  background-color: var(--ds-app-document-bg);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+@media (min-width: 768px) {
+  .ds-app-document-shell {
+    border-radius: var(--ds-radius-app-frame);
+    box-shadow: var(--ds-elevation-app-document-shell);
+  }
+}
+
 .ds-app-main {
-  background-color: var(--ds-bg);
+  background-color: var(--ds-app-main-bg);
 }
 
 .ds-site-footer {
-  background-color: var(--ds-bg);
+  background-color: var(--ds-canvas);
 }
 
 /* Sidebar chrome primitives (layout shell) */
@@ -787,16 +957,10 @@ ul[role="listbox"] button:focus-visible {
   color: var(--ds-text-muted);
 }
 .ds-sidebar-collapse-btn:hover:not(:disabled):not([disabled]) {
-  background-color: transparent !important;
   color: var(--ds-text-primary) !important;
 }
 .ds-sidebar-collapse-btn:hover:not(:disabled):not([disabled]) svg {
   color: var(--ds-text-primary);
-}
-
-/* Sidebar hover-peek shell: keep elevation without changing divider thickness */
-.ds-sidebar-peek {
-  box-shadow: var(--ds-shadow-md);
 }
 
 /* Sidebar section headers — shared typography and subtle contrast */
@@ -821,4 +985,233 @@ ul[role="listbox"] button:focus-visible {
 /* Page header title separators use regular weight for a slimmer pipe glyph. */
 .ds-page-header-separator {
   font-weight: 400;
+}
+
+/*
+ * RiskAI dashboard launcher (`/riskai/dashboard`) — uses :root / [data-theme="dark"] tokens
+ * (--ds-inline-action-hover-*, --ds-primary, etc.). Keeps launcher chrome in one place vs long Tailwind strings.
+ */
+.ds-dashboard-page {
+  width: 100%;
+  padding-inline: var(--ds-space-4);
+  padding-bottom: var(--ds-space-8);
+  padding-top: var(--ds-space-5);
+}
+@media (min-width: 640px) {
+  .ds-dashboard-page {
+    padding-inline: var(--ds-space-6);
+  }
+}
+
+.ds-dashboard-section-heading {
+  margin: 0;
+  font-size: var(--ds-text-lg);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--ds-text-primary);
+}
+
+.ds-dashboard-portfolio-grid {
+  margin: 0;
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ds-space-4);
+}
+@media (min-width: 768px) {
+  .ds-dashboard-portfolio-grid--multi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ds-dashboard-project-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ds-space-3);
+}
+@media (min-width: 640px) {
+  .ds-dashboard-project-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .ds-dashboard-project-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ds-dashboard-launcher-primary {
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.ds-dashboard-launcher-chevron {
+  margin-left: var(--ds-space-2);
+  flex-shrink: 0;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-muted);
+}
+
+/* Inline “Create portfolio / Create project” row — hover matches tile motion + --ds-inline-action-hover-* */
+.ds-dashboard-inline-create {
+  display: inline-flex;
+  min-height: 2.5rem;
+  width: fit-content;
+  max-width: 100%;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--ds-space-2);
+  border-radius: var(--ds-radius-sm);
+  padding: var(--ds-space-2) var(--ds-space-3);
+  text-decoration: none;
+  box-shadow: none;
+  color: inherit;
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out,
+    background-color 200ms ease-out;
+}
+.ds-dashboard-inline-create:hover {
+  transform: translateY(-1px);
+  background-color: var(--ds-inline-action-hover-bg);
+  box-shadow: var(--ds-inline-action-hover-shadow);
+}
+.ds-dashboard-inline-create:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+
+.ds-dashboard-inline-create-label {
+  font-size: var(--ds-text-sm);
+  font-weight: 500;
+  color: color-mix(in oklab, var(--ds-text-primary) 82%, var(--ds-text-secondary));
+  transition: color 200ms ease-out;
+}
+.ds-dashboard-inline-create:hover .ds-dashboard-inline-create-label {
+  color: var(--ds-text-primary);
+}
+
+.ds-dashboard-inline-create-plus {
+  font-size: var(--ds-text-base);
+  font-weight: 300;
+  line-height: 1;
+  color: var(--ds-text-muted);
+  transition: color 200ms ease-out;
+}
+.ds-dashboard-inline-create:hover .ds-dashboard-inline-create-plus {
+  color: var(--ds-text-secondary);
+}
+
+/* Empty inset cards — primary CTA (navigates; not <button>) */
+.ds-dashboard-empty-title {
+  margin: 0;
+  font-size: var(--ds-text-base);
+  font-weight: 500;
+  color: var(--ds-text-primary);
+}
+
+.ds-dashboard-empty-primary {
+  margin-top: var(--ds-space-5);
+  display: inline-flex;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ds-radius-sm);
+  padding-inline: var(--ds-space-4);
+  font-size: var(--ds-text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 150ms ease-out;
+  background-color: var(--ds-primary);
+  color: var(--ds-primary-text);
+  box-shadow: var(--ds-shadow-sm);
+}
+.ds-dashboard-empty-primary:hover {
+  filter: brightness(1.07);
+}
+.ds-dashboard-empty-primary:active {
+  filter: brightness(0.97);
+}
+.ds-dashboard-empty-primary:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+
+/*
+ * Document-column pages — shared shell for portfolio overview, project overview, and project settings.
+ * Aligns horizontal padding with `.ds-dashboard-page` (space-4 / sm:space-6); vertical rhythm matches overview `py-8`.
+ */
+.ds-document-page {
+  min-height: 100%;
+  width: 100%;
+  background-color: transparent;
+  color: var(--ds-text-primary);
+  padding-inline: var(--ds-space-4);
+  padding-block: var(--ds-space-8);
+}
+@media (min-width: 640px) {
+  .ds-document-page {
+    padding-inline: var(--ds-space-6);
+  }
+}
+
+/*
+ * Document tiles — portfolio / project overview KPI blocks and titled panels (`SummaryTile`, `DashboardCard`).
+ * Base: radius, border, fill, elevation. `--interactive` adds the same hover lift + shadow as KPI summary tiles.
+ */
+.ds-document-tile-panel {
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-document-tile-border);
+  background-color: var(--ds-document-tile-bg);
+  box-shadow: var(--ds-document-tile-shadow);
+}
+
+.ds-document-tile-panel--interactive {
+  outline: none;
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out,
+    background-color 200ms ease-out;
+}
+
+.ds-document-tile-panel--interactive:hover {
+  transform: translateY(-1px);
+  background-color: var(--ds-document-tile-hover-bg);
+  box-shadow: var(--ds-document-tile-hover-shadow);
+}
+
+/*
+ * Project settings — section cards and tabs use the same density tokens as dashboard blocks
+ * (`--ds-dashboard-section-*`) and the design-system documentation examples.
+ */
+.ds-project-settings-tabs {
+  margin-bottom: var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-project-settings-section-card {
+  margin-bottom: var(--ds-space-4);
+}
+
+.ds-project-settings-card-header {
+  border-bottom: 1px solid var(--ds-border-subtle);
+  padding-inline: var(--ds-dashboard-section-header-padding-x);
+  padding-block: var(--ds-dashboard-section-header-padding-y);
+}
+
+.ds-project-settings-card-body {
+  padding-inline: var(--ds-dashboard-section-body-padding);
+  padding-block: var(--ds-dashboard-section-body-padding);
+}
+
+.ds-project-settings-card-title {
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  color: var(--ds-text-primary);
 }

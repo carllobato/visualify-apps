@@ -20,10 +20,13 @@ export function RiskOwnerRowSelect({
   riskId,
   owner,
   onCommit,
+  className,
 }: {
   riskId: string;
   owner: string | null | undefined;
   onCommit: (name: string) => void;
+  /** Merged onto the field (e.g. `truncate` in narrow table cells). */
+  className?: string;
 }) {
   const { createProjectOwner } = useRiskProjectOwners();
   const raw = (owner ?? "").trim();
@@ -71,7 +74,7 @@ export function RiskOwnerRowSelect({
       onSelectChange={handleSelectChange}
       onNewNameDraftChange={setNewNameDraft}
       onNewNameInputBlur={handleNewBlur}
-      className={DS_ROW_FIELD}
+      className={[DS_ROW_FIELD, className].filter(Boolean).join(" ")}
       allowEmptyPlaceholder={normalized === ""}
     />
   );

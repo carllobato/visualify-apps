@@ -7,12 +7,13 @@ type CardProps = DivProps & {
 };
 
 export function Card({ className = "", variant = "default", ...props }: CardProps) {
-  const base =
-    "overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] text-[var(--ds-text-primary)]";
+  const base = "overflow-hidden rounded-[var(--ds-radius-md)] text-[var(--ds-text-primary)]";
   const variants: Record<NonNullable<CardProps["variant"]>, string> = {
-    default: "bg-[var(--ds-surface)] shadow-[var(--ds-elevation-tile)]",
-    elevated: "bg-[var(--ds-surface)] shadow-[var(--ds-shadow-sm)]",
-    inset: "bg-[var(--ds-surface-muted)] shadow-none",
+    /* Borderless shell — edge reads from elevation (aligned with document KPI / row tiles). */
+    default: "border border-transparent bg-[var(--ds-surface)] shadow-[var(--ds-elevation-tile)]",
+    elevated: "border border-transparent bg-[var(--ds-surface)] shadow-[var(--ds-shadow-sm)]",
+    /* Inset panels have no shadow — keep a hairline so grouped chrome does not disappear. */
+    inset: "border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] shadow-none",
   };
   return <div className={`${base} ${variants[variant]} ${className}`} {...props} />;
 }

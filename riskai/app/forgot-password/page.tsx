@@ -7,7 +7,7 @@ export default function ForgotPasswordPage() {
     <main className="relative flex min-h-full flex-col items-center justify-center px-4 py-8">
       <div
         className={[
-          "relative w-full max-w-md overflow-hidden rounded-lg border border-[var(--ds-border-auth-shell)]",
+          "relative w-full max-w-md overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-auth-shell)]",
           "shadow-[var(--ds-shadow-auth-card)]",
           t,
         ].join(" ")}

@@ -14,7 +14,17 @@ export type { StatBlockProps } from "./components/StatBlock";
 export { StatusBlock } from "./components/StatusBlock";
 export type { StatusBlockProps, StatusTone } from "./components/StatusBlock";
 export { Callout } from "./components/Callout";
-export { FieldError, HelperText, Input, Label, Textarea } from "./components/Form";
+export {
+  dsDocumentTileFieldClass,
+  dsFieldChromeClassName,
+  dsTextInputFieldClassName,
+  dsTextareaFieldClassName,
+  FieldError,
+  HelperText,
+  Input,
+  Label,
+  Textarea,
+} from "./components/Form";
 export { Section, SectionBody, SectionHeader } from "./components/Section";
 export { Tab, Tabs } from "./components/Tabs";
 export {

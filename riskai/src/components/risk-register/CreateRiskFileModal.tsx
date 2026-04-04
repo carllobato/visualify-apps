@@ -57,9 +57,9 @@ function deduplicateByTitle(risks: Risk[]): Risk[] {
 }
 
 const btnPrimary =
-  "px-4 py-2 rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
+  "px-4 py-2 rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
 const btnSecondary =
-  "px-4 py-2 rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] text-sm font-medium hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0";
+  "px-4 py-2 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] text-sm font-medium hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0";
 
 export function CreateRiskFileModal({
   open,
@@ -194,7 +194,7 @@ export function CreateRiskFileModal({
     >
       <div
         style={{ width: "90vw", maxWidth: 480, maxHeight: "90vh" }}
-        className="shrink-0 rounded-xl border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-xl flex flex-col overflow-hidden"
+        className="shrink-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-xl flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
@@ -204,7 +204,7 @@ export function CreateRiskFileModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-md border border-transparent text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
+            className="p-2 rounded-[var(--ds-radius-sm)] border border-transparent text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
             aria-label="Close"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -225,7 +225,7 @@ export function CreateRiskFileModal({
             onDragOver={onFileDragOver}
             onDragLeave={onFileDragLeave}
             onDrop={onFileDrop}
-            className={`border-2 border-dashed rounded-md p-6 text-center text-sm transition-colors min-h-[120px] flex flex-col justify-center ${
+            className={`border-2 border-dashed rounded-[var(--ds-radius-md)] p-6 text-center text-sm transition-colors min-h-[120px] flex flex-col justify-center ${
               fileDragOver
                 ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
                 : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] hover:border-[var(--ds-border)]"
@@ -252,7 +252,7 @@ export function CreateRiskFileModal({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={fileUploadStatus === "loading"}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
+                  className="px-3 py-1.5 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
                 >
                   Choose file
                 </button>

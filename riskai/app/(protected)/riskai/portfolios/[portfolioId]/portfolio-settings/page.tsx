@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
+import { ownerUsernameAndCompanyFromProfile, fetchPublicProfile } from "@/lib/profiles/profileDb";
 import { riskaiPath } from "@/lib/routes";
 import PortfolioSettingsContent from "../../../portfolio/PortfolioSettingsContent";
 
@@ -32,6 +33,10 @@ export default async function PortfolioSettingsPage({
 
   const { portfolio, ...memberCapabilities } = result;
 
+  const ownerProfile = await fetchPublicProfile(supabase, portfolio.owner_user_id);
+  const { username: ownerUsername, company: ownerCompany } =
+    ownerUsernameAndCompanyFromProfile(ownerProfile);
+
   return (
     <>
       <PortfolioSettingsContent
@@ -40,7 +45,8 @@ export default async function PortfolioSettingsPage({
         initial={{
           name: portfolio.name,
           description: portfolio.description,
-          owner_user_id: portfolio.owner_user_id,
+          owner_username: ownerUsername,
+          owner_company: ownerCompany,
           created_at: portfolio.created_at,
           reporting_currency: portfolio.reporting_currency,
           reporting_unit: portfolio.reporting_unit,

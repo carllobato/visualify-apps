@@ -29,7 +29,14 @@ import { CreateRiskAIModal } from "@/components/risk-register/CreateRiskAIModal"
 import { AddNewRiskChoiceModal } from "@/components/risk-register/AddNewRiskChoiceModal";
 import { AIReviewDrawer } from "@/components/risk-register/AIReviewDrawer";
 import { RiskRegisterLookupProviders } from "@/components/risk-register/RiskRegisterLookupProviders";
-import { isRiskStatusArchived, RISK_STATUS_ARCHIVED_LOOKUP } from "@/domain/risk/riskFieldSemantics";
+import {
+  getCurrentRiskRatingLetter,
+  getCurrentRiskRatingScoreForSort,
+  getCurrentRiskRatingTitle,
+  isCurrentRiskRatingNA,
+  isRiskStatusArchived,
+  RISK_STATUS_ARCHIVED_LOOKUP,
+} from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
@@ -39,14 +46,12 @@ import {
   CardBody,
   Callout,
   FieldError,
-  Tab,
-  Tabs,
+  Input,
 } from "@visualify/design-system";
-import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
+import { NeutralRiskaiLoading } from "@/components/NeutralRiskaiLoading";
 const FOCUS_HIGHLIGHT_CLASS = "risk-focus-highlight";
 const HIGHLIGHT_DURATION_MS = 2000;
 
-const LEVEL_LETTER: Record<string, string> = { low: "L", medium: "M", high: "H", extreme: "E" };
 function getRiskColumnValue(risk: Risk, column: SortColumn): string {
   switch (column) {
     case "riskId":
@@ -57,19 +62,8 @@ function getRiskColumnValue(risk: Risk, column: SortColumn): string {
       return risk.category;
     case "owner":
       return risk.owner ?? "—";
-    case "appliesTo":
-      return risk.appliesTo?.trim() ? risk.appliesTo.trim() : "—";
-    case "preRating":
-      return LEVEL_LETTER[risk.inherentRating.level] ?? "L";
-    case "postRating":
-      return risk.mitigation?.trim() ? (LEVEL_LETTER[risk.residualRating.level] ?? "L") : "N/A";
-    case "mitigationMovement": {
-      const pre = risk.inherentRating.score;
-      const post = risk.residualRating.score;
-      if (post > pre) return "↑";
-      if (post < pre) return "↓";
-      return "→";
-    }
+    case "currentRating":
+      return getCurrentRiskRatingLetter(risk);
     case "status":
       return risk.status;
     default:
@@ -80,12 +74,128 @@ function getRiskColumnValue(risk: Risk, column: SortColumn): string {
 function applyColumnFilters<T>(list: T[], filters: ColumnFilters, getValue: (item: T, col: SortColumn) => string): T[] {
   let result = list;
   for (const col of Object.keys(filters) as SortColumn[]) {
+    if (col === "riskId") continue;
     const values = filters[col];
     if (!values?.length) continue;
     const set = new Set(values);
     result = result.filter((item) => set.has(getValue(item, col)));
   }
   return result;
+}
+
+function pushSearchToken(tokens: string[], value: unknown) {
+  if (value == null) return;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (t) tokens.push(t);
+    return;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    tokens.push(String(value));
+    return;
+  }
+  if (typeof value === "boolean") {
+    tokens.push(value ? "true" : "false");
+  }
+}
+
+/** Lowercased concatenation of searchable risk fields for global register search. */
+function buildRiskSearchText(risk: Risk): string {
+  const tokens: string[] = [];
+  pushSearchToken(tokens, risk.id);
+  if (risk.riskNumber != null) {
+    pushSearchToken(tokens, risk.riskNumber);
+    pushSearchToken(tokens, String(risk.riskNumber).padStart(3, "0"));
+  }
+  pushSearchToken(tokens, risk.title);
+  pushSearchToken(tokens, risk.description);
+  pushSearchToken(tokens, risk.category);
+  pushSearchToken(tokens, risk.status);
+  pushSearchToken(tokens, risk.owner);
+  pushSearchToken(tokens, risk.mitigation);
+  pushSearchToken(tokens, risk.contingency);
+  pushSearchToken(tokens, risk.appliesTo);
+  pushSearchToken(tokens, risk.dueDate);
+  pushSearchToken(tokens, risk.createdAt);
+  pushSearchToken(tokens, risk.updatedAt);
+  pushSearchToken(tokens, risk.aiMergeClusterId);
+
+  // Rating: only the register column semantics (not raw inherent vs residual), so e.g. "high" does not
+  // match a mitigated row that shows M while inherentRating.level is still "high".
+  pushSearchToken(tokens, getCurrentRiskRatingLetter(risk));
+  pushSearchToken(tokens, getCurrentRiskRatingTitle(risk));
+
+  const numericFields = [
+    risk.preMitigationCostMin,
+    risk.preMitigationCostML,
+    risk.preMitigationCostMax,
+    risk.preMitigationTimeMin,
+    risk.preMitigationTimeML,
+    risk.preMitigationTimeMax,
+    risk.mitigationCost,
+    risk.postMitigationCostMin,
+    risk.postMitigationCostML,
+    risk.postMitigationCostMax,
+    risk.postMitigationTimeMin,
+    risk.postMitigationTimeML,
+    risk.postMitigationTimeMax,
+    risk.probability,
+    risk.escalationPersistence,
+    risk.sensitivity,
+    risk.mitigationStrength,
+  ];
+  for (const n of numericFields) pushSearchToken(tokens, n);
+
+  if (risk.mergedFromRiskIds?.length) {
+    for (const id of risk.mergedFromRiskIds) pushSearchToken(tokens, id);
+  }
+
+  if (risk.timeProfile != null) {
+    if (Array.isArray(risk.timeProfile)) {
+      for (const w of risk.timeProfile) pushSearchToken(tokens, w);
+    } else {
+      pushSearchToken(tokens, risk.timeProfile);
+    }
+  }
+
+  const mp = risk.mitigationProfile;
+  if (mp) {
+    pushSearchToken(tokens, mp.status);
+    pushSearchToken(tokens, mp.effectiveness);
+    pushSearchToken(tokens, mp.confidence);
+    pushSearchToken(tokens, mp.reduces);
+    pushSearchToken(tokens, mp.lagMonths);
+  }
+
+  if (risk.scoreHistory?.length) {
+    for (const h of risk.scoreHistory) {
+      pushSearchToken(tokens, h.timestamp);
+      pushSearchToken(tokens, h.compositeScore);
+    }
+  }
+
+  return tokens.join(" ").toLowerCase();
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Single-token queries use non-alphanumeric boundaries so "low" does not match inside "yellow", "below",
+ * "fellow", etc. Multi-word queries stay substring (phrase) match on the haystack.
+ */
+function registerSearchHaystackMatchesQuery(haystack: string, rawQuery: string): boolean {
+  const q = rawQuery.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!q) return true;
+  if (q.includes(" ")) return haystack.includes(q);
+  const escaped = escapeRegExp(q);
+  const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, "i");
+  return re.test(haystack);
+}
+
+function riskMatchesRegisterSearch(risk: Risk, rawQuery: string): boolean {
+  return registerSearchHaystackMatchesQuery(buildRiskSearchText(risk), rawQuery);
 }
 
 /** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
@@ -123,8 +233,11 @@ function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectCon
 
 export type RiskRegisterContentProps = { projectId?: string | null };
 
+/** Tighter top padding under the shell page header; avoids stacking with a large margin below an empty in-page header row. */
+const RISK_REGISTER_MAIN_CLASS = "min-w-0 px-6 pb-6 pt-3 text-[var(--ds-text-primary)]";
+
 export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterContentProps = {}) {
-  const { risks, simulation, addRisk, updateRisk, setRisks, archiveRisk, closeRisk, restoreArchivedRisk, clearRisks } =
+  const { risks, simulation, addRisk, updateRisk, setRisks, archiveRisk, closeRisk, restoreArchivedRisk } =
     useRiskRegister();
   const [saveToServerLoading, setSaveToServerLoading] = useState(false);
   const [saveToServerError, setSaveToServerError] = useState<string | null>(null);
@@ -133,7 +246,10 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const [aiReviewError, setAiReviewError] = useState<string | null>(null);
   const [aiClusters, setAiClusters] = useState<RiskMergeCluster[]>([]);
   const [aiReviewSkippedIds, setAiReviewSkippedIds] = useState<Set<string>>(new Set());
-  const [tableSortState, setTableSortState] = useState<TableSortState>(null);
+  const [tableSortState, setTableSortState] = useState<TableSortState>({
+    column: "riskId",
+    direction: "asc",
+  });
   const [projectContext, setProjectContext] = useState<ReturnType<typeof loadProjectContext>>(null);
   const [gateChecked, setGateChecked] = useState(false);
   const [showAddRiskModal, setShowAddRiskModal] = useState(false);
@@ -143,7 +259,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const [showCreateRiskFileModal, setShowCreateRiskFileModal] = useState(false);
   const [showCreateRiskAIModal, setShowCreateRiskAIModal] = useState(false);
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({});
-  const [registerView, setRegisterView] = useState<"active" | "archived">("active");
+  const [registerSearchQuery, setRegisterSearchQuery] = useState("");
   const [risksLoadError, setRisksLoadError] = useState<string | null>(null);
   const [risksLoading, setRisksLoading] = useState(true);
   const [loadRetryKey, setLoadRetryKey] = useState(0);
@@ -160,11 +276,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   const projectPermissions = useProjectPermissions();
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
-  useEffect(() => {
-    if (!urlProjectId || !setPageHeaderExtras) return;
-    setPageHeaderExtras({ titleSuffix: "Risk Register", end: null });
-    return () => setPageHeaderExtras(null);
-  }, [urlProjectId, setPageHeaderExtras]);
   const contentReadOnly =
     Boolean(urlProjectId) &&
     (projectPermissions == null || !projectPermissions.canEditContent);
@@ -319,14 +430,20 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const scoreDeltaByRiskId = useMemo(() => selectDecisionScoreDelta(state), [state]);
 
   const { filteredRisks, risksForFilterOptions } = useMemo(() => {
-    const baseList =
-      registerView === "active"
-        ? risks.filter((r) => !isRiskStatusArchived(r.status))
-        : risks.filter((r) => isRiskStatusArchived(r.status));
+    const risksForFilterOptions = risks;
+    let list = risks;
 
-    let list = baseList;
-    const risksForFilterOptions = list;
+    const statusFilterValues = columnFilters.status;
+    const statusFilterIncludesArchived =
+      statusFilterValues != null &&
+      statusFilterValues.some((v) => isRiskStatusArchived(v));
+
+    if (!statusFilterIncludesArchived) {
+      list = list.filter((r) => !isRiskStatusArchived(r.status));
+    }
+
     list = applyColumnFilters(list, columnFilters, getRiskColumnValue);
+    list = list.filter((r) => riskMatchesRegisterSearch(r, registerSearchQuery));
 
     if (tableSortState) {
       const { column, direction } = tableSortState;
@@ -346,19 +463,20 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
           case "owner":
             cmp = (a.owner ?? "").localeCompare(b.owner ?? "");
             break;
-          case "appliesTo":
-            cmp = (a.appliesTo ?? "").localeCompare(b.appliesTo ?? "");
-            break;
-          case "preRating":
-            cmp = a.inherentRating.score - b.inherentRating.score;
-            break;
-          case "postRating":
-            cmp = a.residualRating.score - b.residualRating.score;
-            break;
-          case "mitigationMovement": {
-            const deltaA = a.residualRating.score - a.inherentRating.score;
-            const deltaB = b.residualRating.score - b.inherentRating.score;
-            cmp = deltaA - deltaB;
+          case "currentRating": {
+            const naA = isCurrentRiskRatingNA(a);
+            const naB = isCurrentRiskRatingNA(b);
+            if (naA !== naB) {
+              cmp = naA ? 1 : -1;
+              break;
+            }
+            if (naA) {
+              cmp = 0;
+              break;
+            }
+            const sa = getCurrentRiskRatingScoreForSort(a)!;
+            const sb = getCurrentRiskRatingScoreForSort(b)!;
+            cmp = sa - sb;
             break;
           }
           case "status":
@@ -371,19 +489,17 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       });
     }
     return { filteredRisks: list, risksForFilterOptions };
-  }, [risks, columnFilters, tableSortState, registerView]);
+  }, [risks, columnFilters, tableSortState, registerSearchQuery]);
 
   // When opening the detail modal for a newly added risk, it may not be in filteredRisks (e.g. "Show flagged only").
   // Ensure the initial risk is included so the modal shows the correct risk instead of defaulting to the first filtered one.
   const risksForDetailModal = useMemo(() => {
-    const inView = (r: Risk) =>
-      registerView === "active" ? !isRiskStatusArchived(r.status) : isRiskStatusArchived(r.status);
     if (!detailInitialRiskId) return filteredRisks;
     if (filteredRisks.some((r) => r.id === detailInitialRiskId)) return filteredRisks;
     const initialRisk = risks.find((r) => r.id === detailInitialRiskId);
-    if (!initialRisk || !inView(initialRisk)) return filteredRisks;
+    if (!initialRisk) return filteredRisks;
     return [initialRisk, ...filteredRisks];
-  }, [filteredRisks, detailInitialRiskId, risks, registerView]);
+  }, [filteredRisks, detailInitialRiskId, risks]);
 
   useEffect(() => {
     if (!focusRiskId) return;
@@ -480,15 +596,46 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     setLoadRetryKey((k) => k + 1);
   }, []);
 
+  const riskRegisterPageHeaderEnd = useMemo(() => {
+    if (contentReadOnly) return null;
+    return (
+      <div className="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          onClick={() => {
+            void handleSaveToServer();
+          }}
+          disabled={saveToServerLoading}
+        >
+          {saveToServerLoading ? "Saving…" : "Save"}
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={() => setShowAddNewRiskChoiceModal(true)}>
+          Generate AI Risk
+        </Button>
+        <Button type="button" variant="secondary" size="sm" onClick={handleAiReviewClick} disabled={aiReviewLoading}>
+          AI Review
+        </Button>
+      </div>
+    );
+  }, [aiReviewLoading, contentReadOnly, handleAiReviewClick, handleSaveToServer, saveToServerLoading]);
+
+  useEffect(() => {
+    if (!urlProjectId || !setPageHeaderExtras) return;
+    setPageHeaderExtras({ titleSuffix: "Risk Register", end: riskRegisterPageHeaderEnd });
+    return () => setPageHeaderExtras(null);
+  }, [urlProjectId, setPageHeaderExtras, riskRegisterPageHeaderEnd]);
+
   // Show loading until gate is checked and a project id is present (risks are never loaded without it).
   const blockContent = !gateChecked || !projectIdTrimmed;
+  /** Skip bottom margin when the in-page header row is empty (normal edit mode) so the search bar sits closer to the shell header. */
+  const registerHeaderBlockClass = contentReadOnly || saveToServerError ? "mb-3" : undefined;
 
   if (blockContent) {
     return (
       <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
-        <main className="p-6">
-          <LoadingPlaceholderCompact label="Loading risk register" />
-        </main>
+        <NeutralRiskaiLoading variant="main" srLabel="Loading risk register" />
       </RiskRegisterLookupProviders>
     );
   }
@@ -496,8 +643,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   if (risksLoading) {
     return (
       <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
-      <main className="p-6 text-[var(--ds-text-primary)]">
-        <div className="mb-6">
+      <main className={RISK_REGISTER_MAIN_CLASS}>
+        <div className="mb-4">
           <RiskRegisterHeader
             projectContext={projectContext}
             readOnlyContent={contentReadOnly}
@@ -510,7 +657,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             saveToServerLoading={saveToServerLoading}
           />
         </div>
-        <LoadingPlaceholder />
+        <NeutralRiskaiLoading variant="content" srLabel="Loading risks" />
       </main>
       </RiskRegisterLookupProviders>
     );
@@ -519,8 +666,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   if (risksLoadError) {
     return (
       <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
-      <main className="p-6 text-[var(--ds-text-primary)]">
-        <div className="mb-6">
+      <main className={RISK_REGISTER_MAIN_CLASS}>
+        <div className="mb-4">
           <RiskRegisterHeader
             projectContext={projectContext}
             readOnlyContent={contentReadOnly}
@@ -547,8 +694,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   return (
     <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
-    <main className="p-6 text-[var(--ds-text-primary)]">
-      <div className="mb-6">
+    <main className={RISK_REGISTER_MAIN_CLASS}>
+      <div className={registerHeaderBlockClass}>
         <RiskRegisterHeader
           projectContext={projectContext}
           readOnlyContent={contentReadOnly}
@@ -587,81 +734,32 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         </Card>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ds-border-subtle)] pb-3">
-            <Tabs aria-label="Risk register view" className="flex-wrap">
-              <Tab
-                active={registerView === "active"}
-                onClick={() => {
-                  setRegisterView("active");
-                  setColumnFilters({});
-                }}
-              >
-                Active register
-              </Tab>
-              <Tab
-                active={registerView === "archived"}
-                onClick={() => {
-                  setRegisterView("archived");
-                  setColumnFilters({});
-                }}
-              >
-                Archived
-              </Tab>
-            </Tabs>
-            {!contentReadOnly && (
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleSaveToServer()}
-                  disabled={saveToServerLoading}
-                >
-                  {saveToServerLoading ? "Saving…" : "Save"}
-                </Button>
-                <Button type="button" variant="secondary" size="sm" onClick={() => setShowAddNewRiskChoiceModal(true)}>
-                  Generate AI Risk
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={handleAiReviewClick} disabled={aiReviewLoading}>
-                  AI Review
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={clearRisks}>
-                  Clear
-                </Button>
-              </div>
-            )}
+          <div className="w-full min-w-0">
+            <Input
+              type="search"
+              value={registerSearchQuery}
+              onChange={(e) => setRegisterSearchQuery(e.target.value)}
+              placeholder="Search risks (title, ID, description, owner, status, ratings, costs…)"
+              aria-label="Search risks across all fields"
+              className="w-full min-w-0"
+              autoComplete="off"
+            />
           </div>
-          {registerView === "active" &&
-            risks.length > 0 &&
-            risks.every((r) => isRiskStatusArchived(r.status)) && (
-              <p className="mb-3 m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-                All risks are archived. Open the <strong className="font-semibold text-[var(--ds-text-primary)]">Archived</strong> tab to review or restore them.
-              </p>
-            )}
-          {registerView === "archived" && !risks.some((r) => isRiskStatusArchived(r.status)) && (
-            <p className="mb-3 m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">No archived risks.</p>
-          )}
           <RiskRegisterTable
             risks={filteredRisks}
             risksForFilterOptions={risksForFilterOptions}
+            emptyListMessage={
+              risks.length > 0 && filteredRisks.length === 0
+                ? "No risks match your search or column filters. Archived risks stay hidden unless you include Archived in the Status filter."
+                : undefined
+            }
             decisionById={decisionById}
             scoreDeltaByRiskId={scoreDeltaByRiskId}
             onRiskClick={(risk) => {
               setDetailInitialRiskId(risk.id);
               setShowDetailModal(true);
             }}
-            onArchivedRestore={
-              registerView === "archived" && !contentReadOnly
-                ? (risk) => {
-                    restoreArchivedRisk(risk.id);
-                  }
-                : undefined
-            }
-            onAddNewClick={
-              registerView === "active" && !contentReadOnly
-                ? () => setShowAddNewRiskChoiceModal(true)
-                : undefined
-            }
+            onAddNewClick={!contentReadOnly ? () => setShowAddNewRiskChoiceModal(true) : undefined}
             sortState={tableSortState}
             onSortByColumn={(column: SortColumn) => {
               setTableSortState((prev) => {
@@ -688,17 +786,9 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             readOnly={contentReadOnly}
             onClose={() => setShowDetailModal(false)}
             onSave={(risk) => updateRisk(risk.id, risk)}
-            onArchiveRisk={
-              registerView === "active" && !contentReadOnly ? (id) => archiveRisk(id) : undefined
-            }
-            onCloseRisk={
-              registerView === "active" && !contentReadOnly ? (id) => closeRisk(id) : undefined
-            }
-            onRestoreRisk={
-              registerView === "archived" && !contentReadOnly
-                ? (id) => restoreArchivedRisk(id)
-                : undefined
-            }
+            onArchiveRisk={!contentReadOnly ? (id) => archiveRisk(id) : undefined}
+            onCloseRisk={!contentReadOnly ? (id) => closeRisk(id) : undefined}
+            onRestoreRisk={!contentReadOnly ? (id) => restoreArchivedRisk(id) : undefined}
             onAddNew={
               contentReadOnly
                 ? undefined

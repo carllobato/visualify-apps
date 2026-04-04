@@ -4,10 +4,11 @@ const pulse = "animate-pulse";
 type NeutralRiskaiLoadingProps = {
   /**
    * `route` — padded segment fallback (most RiskAI `loading.tsx` files).
-   * `main` — `<main className="p-6">` for simulation routes.
+   * `main` — `<main className="p-6">` for project sub-routes (simulation, risk register).
+   * `content` — full-width stripes only; use inside an already padded `<main>` (overview-style bars).
    * `inset` — bordered block for in-page loading (e.g. snapshot hydrate).
    */
-  variant?: "route" | "main" | "inset";
+  variant?: "route" | "main" | "content" | "inset";
   srLabel?: string;
 };
 
@@ -38,6 +39,14 @@ export function NeutralRiskaiLoading({
       <main className="w-full min-w-0 p-6" aria-busy="true" aria-live="polite">
         {inner}
       </main>
+    );
+  }
+
+  if (variant === "content") {
+    return (
+      <div className="w-full min-w-0" aria-busy="true" aria-live="polite">
+        {inner}
+      </div>
     );
   }
 

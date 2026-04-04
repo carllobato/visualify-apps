@@ -320,19 +320,19 @@ export function AppSidebar() {
               toggleTheme();
               (e.currentTarget as HTMLButtonElement).blur();
             }}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
           >
             {theme === "dark" ? <MoonIcon /> : <SunIcon />}
             <span>{theme === "dark" ? "Dark" : "Light"}</span>
           </button>
         ) : (
-          <span className="inline-block h-9 px-3 rounded-md bg-[var(--ds-surface-muted)]" aria-hidden />
+          <span className="inline-block h-9 px-3 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-muted)]" aria-hidden />
         )}
         {isLoggedIn ? (
           <>
             <Link
               href={riskaiPath("/settings")}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
             >
               <CogIcon />
               <span>Account Settings</span>
@@ -343,7 +343,7 @@ export function AppSidebar() {
                 await supabaseBrowserClient().auth.signOut();
                 window.location.href = "/";
               }}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] text-left"
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] text-left"
             >
               <UserIcon />
               <span>Log out</span>
@@ -352,7 +352,7 @@ export function AppSidebar() {
         ) : useFullPageLinks ? (
           <a
             href={LOGIN_URL}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
           >
             <UserIcon />
             <span>Log in</span>
@@ -360,7 +360,7 @@ export function AppSidebar() {
         ) : (
           <Link
             href={LOGIN_URL}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
           >
             <UserIcon />
             <span>Log in</span>

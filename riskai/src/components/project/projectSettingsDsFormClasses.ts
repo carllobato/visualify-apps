@@ -1,38 +1,26 @@
 /**
- * Project Settings UI: field chrome aligned with @visualify/design-system Form Input.
+ * Project Settings UI: delegates single-line / multiline chrome to the design-system `Form` primitives
+ * (`dsTextInputFieldClassName` / `dsTextareaFieldClassName`) so native `<input>` with refs matches `<Input />`.
  *
- * DS gaps (no exports / missing APIs):
- * - `Input` does not forward refs (focus management uses native inputs + these classes).
- * - No `Select` primitive (native `<select>` uses these classes).
+ * DS gaps:
+ * - `Input` does not forward refs (focus management uses native inputs + these class strings).
+ * - No `Select` primitive (native `<select>` uses {@link dsDocumentTileFieldClass} + sizing below).
  */
 
+import {
+  dsDocumentTileFieldClass,
+  dsFieldChromeClassName,
+  dsTextInputFieldClassName,
+  dsTextareaFieldClassName,
+} from "@visualify/design-system";
+
 export function projectSettingsInputClass(invalid: boolean): string {
-  const invalidClass = invalid
-    ? "border-[var(--ds-status-danger-border)] focus-visible:outline-[var(--ds-status-danger)]"
-    : "border-[var(--ds-border)] focus-visible:outline-[var(--ds-primary)]";
-  return (
-    "w-full rounded-[var(--ds-radius-md)] border bg-[var(--ds-surface-default)] px-3 py-2 h-10 " +
-    "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
-    "placeholder:text-[var(--ds-text-muted)] focus-visible:outline focus-visible:outline-2 " +
-    "focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] " +
-    "disabled:text-[var(--ds-text-muted)] " +
-    invalidClass
-  );
+  return dsTextInputFieldClassName(invalid);
 }
 
 /** Multiline fields (e.g. description) — same chrome as {@link projectSettingsInputClass} without fixed height. */
 export function projectSettingsTextareaClass(invalid: boolean): string {
-  const invalidClass = invalid
-    ? "border-[var(--ds-status-danger-border)] focus-visible:outline-[var(--ds-status-danger)]"
-    : "border-[var(--ds-border)] focus-visible:outline-[var(--ds-primary)]";
-  return (
-    "w-full min-h-[5rem] rounded-[var(--ds-radius-md)] border bg-[var(--ds-surface-default)] px-3 py-2 " +
-    "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
-    "placeholder:text-[var(--ds-text-muted)] focus-visible:outline focus-visible:outline-2 " +
-    "focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] " +
-    "disabled:text-[var(--ds-text-muted)] " +
-    invalidClass
-  );
+  return dsTextareaFieldClassName(invalid);
 }
 
 export function projectSettingsNumberInputClass(invalid: boolean): string {
@@ -44,17 +32,25 @@ export function projectSettingsNumberInputClass(invalid: boolean): string {
 
 export function projectSettingsSelectClass(invalid: boolean, height: "md" | "sm" = "md"): string {
   const h = height === "sm" ? "h-9 py-1" : "h-10 py-2";
-  const invalidClass = invalid
-    ? "border-[var(--ds-status-danger-border)] focus-visible:outline-[var(--ds-status-danger)]"
-    : "border-[var(--ds-border)] focus-visible:outline-[var(--ds-primary)]";
+  /* Asymmetric end padding: native chevron reads inset from the rim (px-3 was flush). */
   return (
-    `w-full rounded-[var(--ds-radius-md)] border bg-[var(--ds-surface-default)] px-3 ${h} ` +
-    "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
+    `w-full rounded-[var(--ds-radius-md)] ps-3 pe-10 ${h} ${dsDocumentTileFieldClass} ` +
+    "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] " +
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 " +
-    "disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] disabled:text-[var(--ds-text-muted)] " +
-    invalidClass
+    "disabled:cursor-not-allowed disabled:shadow-none disabled:bg-[var(--ds-surface-muted)] " +
+    "disabled:text-[var(--ds-text-muted)] " +
+    dsFieldChromeClassName(invalid)
   );
 }
+
+/**
+ * Segmented / radiogroup tray — matches {@link projectSettingsInputClass} outer chrome
+ * (`--ds-document-tile-*`). Inner controls supply interaction; the tray stays static (no hover lift).
+ */
+export const projectSettingsSegmentedControlGroupClass =
+  "inline-flex flex-wrap items-center gap-1 rounded-[var(--ds-radius-md)] border border-[var(--ds-document-tile-border)] " +
+  "bg-[var(--ds-document-tile-bg)] shadow-[var(--ds-document-tile-shadow)] p-1 " +
+  "transition-[box-shadow,background-color] duration-200 ease-out";
 
 /** Shared field width presets for compact settings layouts. */
 export function projectSettingsFieldWidthClass(width: "md" | "sm" | "xsm"): string {
@@ -63,9 +59,10 @@ export function projectSettingsFieldWidthClass(width: "md" | "sm" | "xsm"): stri
   return "max-w-xl";
 }
 
-/** Read-only / permission-locked fields (mirrors disabled surface). */
+/** Read-only / permission-locked fields — flat muted fill, no tile lift (see {@link projectSettingsFieldTileClass}). */
 export const projectSettingsReadOnlyFieldClass =
-  "read-only:cursor-not-allowed read-only:bg-[var(--ds-surface-muted)] read-only:text-[var(--ds-text-muted)]";
+  "read-only:cursor-not-allowed read-only:bg-[var(--ds-surface-muted)] read-only:text-[var(--ds-text-muted)] " +
+  "read-only:shadow-none read-only:hover:!bg-[var(--ds-surface-muted)] read-only:hover:!shadow-none";
 
 /**
  * Members table Actions column and matching Add row: center the fixed slot in the cell (matches Actions

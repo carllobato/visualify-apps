@@ -1,9 +1,20 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ProjectTile } from "@/components/dashboard/ProjectTile";
+import {
+  getProjectTilePayloads,
+  sortProjectTilesAlphabetically,
+} from "@/lib/dashboard/projectTileServerData";
+import type { AccessibleProject } from "@/lib/portfolios-server";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
+import { Card, CardBody } from "@visualify/design-system";
 
 type ProjectRow = { id: string; name: string; created_at: string | null };
+
+/** Same shell rhythm as portfolio overview + project overview document column. */
+const portfolioProjectsMainClass =
+  "min-h-full w-full bg-transparent text-[var(--ds-text-primary)] px-4 sm:px-6 py-8";
 
 /** Portfolio and project list access are enforced by Supabase RLS (owner or portfolio_members). */
 export default async function PortfolioProjectsPage({
@@ -31,61 +42,56 @@ export default async function PortfolioProjectsPage({
     .order("created_at", { ascending: true });
 
   const list: ProjectRow[] = projectsError ? [] : (projects ?? []);
+  const asAccessible: AccessibleProject[] = list.map((p) => ({
+    id: p.id,
+    name: p.name,
+    created_at: p.created_at,
+  }));
+  const projectTiles = sortProjectTilesAlphabetically(
+    await getProjectTilePayloads(supabase, asAccessible)
+  );
+
+  const createHref = `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolioId)}`;
 
   return (
-    <>
-      <main className="w-full px-4 py-10">
-        <p className="text-sm text-[var(--ds-text-secondary)] mb-8">
-          Projects in this portfolio.
-        </p>
+    <main className={portfolioProjectsMainClass}>
+      <p className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+        Open a project for its overview, risk register, and simulation. Create a new project to add it to
+        this portfolio.
+      </p>
 
-        {list.length === 0 ? (
-          <div className="rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] p-6 text-center">
-            <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
-              No projects in this portfolio yet.
-            </p>
-            <Link
-              href={`${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolioId)}`}
-              className="mb-3 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-md)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
-            >
+      {list.length === 0 ? (
+        <Card variant="inset" className="mx-auto max-w-lg text-center">
+          <CardBody className="py-[var(--ds-space-6)]">
+            <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
+            <Link href={createHref} className="ds-dashboard-empty-primary">
               Create project
             </Link>
-            <div />
-            <Link
-              href={riskaiPath("/projects")}
-              className="text-sm text-[var(--ds-text-primary)] underline hover:no-underline"
-            >
-              View all your projects
-            </Link>
-          </div>
-        ) : (
-          <ul className="space-y-2 mb-6">
-            {list.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={riskaiPath(`/projects/${p.id}`)}
-                  className="group flex h-14 items-center justify-between gap-3 rounded-lg border border-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] bg-[var(--ds-surface-elevated)] px-[1.125rem] text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-tile)] outline-none transition-[transform,box-shadow,border-color] duration-200 ease-out hover:-translate-y-px hover:border-[color-mix(in_oklab,var(--ds-border)_80%,transparent)] hover:shadow-[var(--ds-elevation-tile-hover)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]"
-                >
-                  <span className="font-medium">{p.name || p.id}</span>
-                  <span className="ml-2 text-sm text-[var(--ds-text-muted)]">
-                    Open →
-                  </span>
-                </Link>
-              </li>
-            ))}
-            <li>
+            <div className="mt-5">
               <Link
-                href={`${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolioId)}`}
-                aria-label="Create a new project in this portfolio"
-                className="group flex h-14 items-center justify-between gap-3 rounded-lg border border-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] border-dashed bg-[var(--ds-background)] px-[1.125rem] text-[var(--ds-text-primary)] shadow-none outline-none transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:-translate-y-px hover:border-[var(--ds-risk-low-border)] hover:bg-[var(--ds-risk-low-soft-bg)] hover:shadow-none dark:border-[color-mix(in_oklab,var(--ds-border)_70%,transparent)] dark:bg-[var(--ds-background)] dark:hover:border-[var(--ds-risk-low-border)] dark:hover:bg-[color-mix(in_oklab,var(--ds-risk-low)_14%,var(--ds-surface-default))]"
+                href={riskaiPath("/projects")}
+                className="ds-text-link-muted text-[length:var(--ds-text-sm)]"
               >
-                <span className="font-medium">New project</span>
-                <span className="ml-2 text-sm text-[var(--ds-text-muted)]">Create +</span>
+                View all your projects
               </Link>
-            </li>
-          </ul>
-        )}
-      </main>
-    </>
+            </div>
+          </CardBody>
+        </Card>
+      ) : (
+        <div className="flex flex-col gap-[var(--ds-space-4)]">
+          <div className="ds-dashboard-project-grid">
+            {projectTiles.map((payload) => (
+              <ProjectTile key={payload.id} payload={payload} />
+            ))}
+          </div>
+          <Link href={createHref} aria-label="Create a new project in this portfolio" className="ds-dashboard-inline-create">
+            <span className="ds-dashboard-inline-create-label">Create project</span>
+            <span className="ds-dashboard-inline-create-plus" aria-hidden>
+              +
+            </span>
+          </Link>
+        </div>
+      )}
+    </main>
   );
 }

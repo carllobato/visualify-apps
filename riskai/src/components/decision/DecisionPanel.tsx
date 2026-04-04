@@ -117,7 +117,7 @@ export function DecisionPanel() {
   }, [risks, riskForecastsById]);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_52%,var(--ds-surface-default))]">
+    <section className="overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_52%,var(--ds-surface-default))]">
       <div className="p-4 border-b border-[var(--ds-border)]">
         <h2 className="m-0 text-lg font-semibold text-[var(--ds-text-primary)]">Decision</h2>
         <p className="m-0 mt-1 text-sm text-[var(--ds-text-muted)]">
@@ -132,49 +132,49 @@ export function DecisionPanel() {
       </div>
 
       <div className="p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Total Risks
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.totalRisks}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Critical
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.criticalCount}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Accelerating
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.acceleratingCount}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Volatile
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.volatileCount}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Unstable
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.unstableCount}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Emerging
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.emergingCount}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Avg Score
           </div>
           <div className="mt-0.5 text-lg font-semibold">{summary.avgCompositeScore.toFixed(1)}</div>
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             Projected critical (5 cycles)
           </div>
@@ -185,7 +185,7 @@ export function DecisionPanel() {
             </div>
           )}
         </div>
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-3">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">
             EII Summary
           </div>
@@ -209,7 +209,7 @@ export function DecisionPanel() {
       </div>
 
       <div className="px-4 pb-4">
-        <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-4">
+        <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-4">
           <div className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mb-3">
             Instability Drivers
           </div>
@@ -241,7 +241,7 @@ export function DecisionPanel() {
       <div className="px-4 pb-2 flex flex-wrap items-center gap-2">
         <span className="text-sm text-[var(--ds-text-secondary)]">Sort:</span>
         <div
-          className="inline-flex rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5"
+          className="inline-flex rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5"
           role="group"
           aria-label="Decision list sort"
         >
@@ -250,7 +250,7 @@ export function DecisionPanel() {
               key={opt.value}
               type="button"
               onClick={() => setSortBy(opt.value)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`rounded-[var(--ds-radius-sm)] px-3 py-1.5 text-sm font-medium transition-colors ${
                 sortBy === opt.value
                   ? "bg-[var(--ds-surface-hover)] text-[var(--ds-text-primary)] shadow-sm ring-1 ring-[var(--ds-border)] dark:bg-[var(--ds-surface-inset)] dark:text-[var(--ds-text-primary)] dark:ring-[var(--ds-border)]"
                   : "text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)]"
@@ -295,7 +295,7 @@ export function DecisionPanel() {
               return (
                 <li
                   key={row.riskId}
-                  className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]"
+                  className="flex flex-wrap items-center gap-2 py-2 px-3 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]"
                 >
                   <span className="min-w-0 flex-1 truncate font-medium text-[var(--ds-text-primary)]">
                     {row.title || "—"}

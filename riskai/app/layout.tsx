@@ -31,6 +31,18 @@ const themeScript = `
 })();
 `;
 
+/** Mirror sidebar localStorage → cookie before the request pipeline so protected SSR can match rail width (see Sidebar + protected layout). */
+const sideNavPinnedCookieScript = `
+(function() {
+  try {
+    var v = localStorage.getItem('riskai-side-nav-pinned');
+    if (v === 'true' || v === 'false') {
+      document.cookie = 'riskai_side_nav_pinned=' + v + '; Path=/; Max-Age=31536000; SameSite=Lax';
+    }
+  } catch (e) {}
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -40,6 +52,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: sideNavPinnedCookieScript }} />
       </head>
       <body className={`antialiased font-sans ${geist.variable} ${geistMono.variable}`}>
         <ThemeProvider>

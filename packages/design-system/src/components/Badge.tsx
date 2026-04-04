@@ -9,7 +9,8 @@ export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 };
 
 export function Badge({ className = "", status = "neutral", variant = "subtle", ...props }: BadgeProps) {
-  const base = "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium";
+  const base =
+    "inline-flex w-fit max-w-full shrink-0 items-center self-start rounded-full border px-2.5 py-1 text-[11px] font-medium";
   const statusStyles: Record<BadgeStatus, string> = {
     neutral: "bg-[var(--ds-status-neutral-subtle-bg)] text-[var(--ds-status-neutral-subtle-fg)] border-[var(--ds-status-neutral-subtle-border)]",
     success: "bg-[var(--ds-status-success-subtle-bg)] text-[var(--ds-status-success-subtle-fg)] border-[var(--ds-status-success-subtle-border)]",

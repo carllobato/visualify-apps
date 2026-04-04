@@ -2020,7 +2020,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 </p>
               </CardHeader>
               <CardBody className={RUN_CARD_BODY}>
-                <div className="mb-4 inline-flex rounded-md border border-[var(--ds-border)] p-0.5">
+                <div className="mb-4 inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] p-0.5">
                   <button
                     type="button"
                     onClick={() => setMonitoringRecommendationView("cost")}
@@ -2047,7 +2047,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   </button>
                 </div>
                 <dl className="mb-4 grid grid-cols-1 gap-3 text-[length:var(--ds-text-sm)] sm:grid-cols-3">
-                  <div className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
+                  <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
                     <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
                       Eligible Monitoring Risks
                     </dt>
@@ -2055,7 +2055,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       {monitoringRecommendationData.eligibleCount}
                     </dd>
                   </div>
-                  <div className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
+                  <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
                     <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
                       Total Potential Reduction
                     </dt>
@@ -2065,7 +2065,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                         : formatDurationDays(monitoringRecommendationData.totalPotentialReduction)}
                     </dd>
                   </div>
-                  <div className="rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
+                  <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface)] px-3 py-2">
                     <dt className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
                       {monitoringRecommendationView === "cost" ? "Avg Cost Efficiency" : "Avg Time Efficiency"}
                     </dt>

@@ -15,19 +15,19 @@ export function WelcomePage() {
       <div className="flex flex-wrap gap-3">
         <Link
           href={signInHref}
-          className="inline-flex rounded-md border border-[var(--ds-text-primary)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] no-underline hover:opacity-90"
+          className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-text-primary)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] no-underline hover:opacity-90"
         >
           Sign in
         </Link>
         <Link
           href="/privacy"
-          className="inline-flex rounded-md border border-[var(--ds-border)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]"
+          className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]"
         >
           Privacy
         </Link>
         <Link
           href="/terms"
-          className="inline-flex rounded-md border border-[var(--ds-border)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]"
+          className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]"
         >
           Terms
         </Link>

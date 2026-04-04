@@ -84,7 +84,7 @@ export function AddProjectOnboardingModal({
 
   const busy = loading || signingOut;
   const inputClass =
-    "w-full rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
+    "w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
   const labelClass = "mb-1.5 block text-sm font-medium text-[var(--ds-text-secondary)]";
 
   if (resumeProject) {
@@ -95,7 +95,7 @@ export function AddProjectOnboardingModal({
         aria-modal="true"
         aria-labelledby="onboarding-add-project-resume-title"
       >
-        <div className="w-full max-w-md rounded-xl border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
+        <div className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
           <h2
             id="onboarding-add-project-resume-title"
             className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
@@ -114,7 +114,7 @@ export function AddProjectOnboardingModal({
                 type="button"
                 disabled={busy}
                 onClick={() => void onCreated({ id: resumeProject.id, name: resumeProject.name })}
-                className="w-full rounded-lg bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
+                className="w-full rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
               >
                 Continue to project setup
               </button>
@@ -145,7 +145,7 @@ export function AddProjectOnboardingModal({
       aria-modal="true"
       aria-labelledby="onboarding-add-project-title"
     >
-      <div className="w-full max-w-md rounded-xl border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
+      <div className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
         <h2
           id="onboarding-add-project-title"
           className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
@@ -184,7 +184,7 @@ export function AddProjectOnboardingModal({
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full rounded-lg bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
+                className="w-full rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
               >
                 {loading ? "Creating…" : "Continue"}
               </button>

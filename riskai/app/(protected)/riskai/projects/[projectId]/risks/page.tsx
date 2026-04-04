@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { Suspense } from "react";
-import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
+import { NeutralRiskaiLoading } from "@/components/NeutralRiskaiLoading";
 import { RiskRegisterContent } from "../../../risk-register/RiskRegisterContent";
 
 export default function ProjectRisksPage() {
@@ -10,13 +10,7 @@ export default function ProjectRisksPage() {
   const projectId = typeof params?.projectId === "string" ? params.projectId : null;
 
   return (
-    <Suspense
-      fallback={
-        <main className="p-6">
-          <LoadingPlaceholderCompact label="Loading risk register" />
-        </main>
-      }
-    >
+    <Suspense fallback={<NeutralRiskaiLoading variant="main" srLabel="Loading risk register" />}>
       <RiskRegisterContent projectId={projectId} />
     </Suspense>
   );

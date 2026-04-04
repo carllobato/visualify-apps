@@ -191,7 +191,7 @@ export default function DevHealthPage({ projectId }: DevHealthPageProps = {}) {
                 <h2 className="mb-2 border-b border-[var(--ds-border)] pb-1 text-base font-semibold text-[var(--ds-text-primary)]">
                   {group}
                 </h2>
-                <div className="overflow-hidden rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-inset)]">
+                <div className="overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)]">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)]">
@@ -254,7 +254,7 @@ export default function DevHealthPage({ projectId }: DevHealthPageProps = {}) {
               <h2 className="mb-2 border-b border-[var(--ds-border)] pb-1 text-base font-semibold text-[var(--ds-text-primary)]">
                 Introspection payload
               </h2>
-              <div className="overflow-hidden rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-inset)]">
+              <div className="overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-inset)]">
                 <div className="flex items-center justify-between border-b border-[var(--ds-border)] px-3 py-2">
                   <span className="text-sm text-[var(--ds-text-secondary)]">Scenario multipliers, raw vs adjusted params, time weights, mitigation by month</span>
                   <CopyButton text={JSON.stringify(introspectionPayload, null, 2)} label="Copy" />

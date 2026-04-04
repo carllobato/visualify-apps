@@ -9,7 +9,7 @@ type SummaryTileProps = {
  */
 export function SummaryTile({ title, primaryValue, subtext }: SummaryTileProps) {
   return (
-    <div className="rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 flex flex-col min-h-[88px]">
+    <div className="ds-document-tile-panel ds-document-tile-panel--interactive p-4 flex flex-col min-h-[88px]">
       <p className="text-sm font-medium text-[var(--ds-text-secondary)] m-0 mb-1">
         {title}
       </p>

@@ -136,3 +136,11 @@ export function sortProjectTilesByRag(tiles: ProjectTilePayload[]): ProjectTileP
     return an.localeCompare(bn);
   });
 }
+
+export function sortProjectTilesAlphabetically(tiles: ProjectTilePayload[]): ProjectTilePayload[] {
+  return [...tiles].sort((a, b) => {
+    const an = (a.name || a.id).toLocaleLowerCase();
+    const bn = (b.name || b.id).toLocaleLowerCase();
+    return an.localeCompare(bn);
+  });
+}

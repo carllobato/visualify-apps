@@ -33,12 +33,12 @@ export default async function UserSettingsPage() {
         <AccountSettingsTabs
           profilePanel={
             <>
-              <p className="mb-6 rounded-md border border-[var(--ds-status-warning-border)] bg-[var(--ds-status-warning-subtle-bg)] px-3 py-2 text-sm text-[var(--ds-status-warning-fg)]">
+              <p className="mb-6 rounded-[var(--ds-radius-md)] border border-[var(--ds-status-warning-border)] bg-[var(--ds-status-warning-subtle-bg)] px-3 py-2 text-sm text-[var(--ds-status-warning-fg)]">
                 <span className="font-medium">Dev preview:</span> sign in to use profile, delete account, and sign
                 out.
               </p>
               <section className="mb-10">
-                <div className="space-y-2 rounded-lg border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] p-4 text-sm text-[var(--ds-text-muted)]">
+                <div className="space-y-2 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] p-4 text-sm text-[var(--ds-text-muted)]">
                   <p>Form hidden — no session.</p>
                 </div>
               </section>
@@ -52,7 +52,7 @@ export default async function UserSettingsPage() {
         />
         <Link
           href={riskaiPath("/portfolios")}
-          className="inline-flex rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)]"
+          className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)]"
         >
           ← Back to portfolios
         </Link>

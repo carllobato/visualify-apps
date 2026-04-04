@@ -83,6 +83,11 @@ const colorSwatches: { token: string; label: string; style: CSSProperties }[] = 
   { token: "--ds-border", label: "Border", style: { border: "2px solid var(--ds-border)" } },
   { token: "--ds-border-subtle", label: "Border subtle", style: { border: "2px solid var(--ds-border-subtle)", backgroundColor: "var(--ds-surface-default)" } },
   { token: "--ds-surface-hover", label: "Surface hover", style: { backgroundColor: "var(--ds-surface-hover)" } },
+  { token: "--ds-canvas", label: "Canvas (shell backdrop)", style: { backgroundColor: "var(--ds-canvas)" } },
+  { token: "--ds-app-frame-bg", label: "App frame surface", style: { backgroundColor: "var(--ds-app-frame-bg)" } },
+  { token: "--ds-app-main-bg", label: "App main column", style: { backgroundColor: "var(--ds-app-main-bg)" } },
+  { token: "--ds-app-document-bg", label: "App document surface", style: { backgroundColor: "var(--ds-app-document-bg)" } },
+  { token: "--ds-app-sidebar-bg", label: "App sidebar", style: { backgroundColor: "var(--ds-app-sidebar-bg)" } },
 ];
 
 const semanticStatuses = ["success", "warning", "danger", "info", "neutral"] as const;
@@ -97,7 +102,7 @@ const spaceScale = [
   "--ds-space-10",
   "--ds-space-12",
 ] as const;
-const radiusScale = ["--ds-radius-sm", "--ds-radius-md", "--ds-radius-lg", "--ds-radius-xl"] as const;
+const radiusScale = ["--ds-radius-sm", "--ds-radius-md", "--ds-radius-lg"] as const;
 const shadowScale = ["--ds-shadow-sm", "--ds-shadow-md", "--ds-shadow-lg"] as const;
 const typeScale = [
   "--ds-text-xs",
@@ -142,7 +147,7 @@ const surfaceTextPatterns = [
     surfaceClass: "bg-[var(--ds-surface-elevated)]",
     textClass: "text-[var(--ds-text-primary)]",
     helperClass: "text-[var(--ds-text-secondary)]",
-    helper: "Use for raised cards and spotlight regions.",
+    helper: "Raised tiles on the document (alias of card/surface). Use for spotlight regions, not whole-page shells.",
   },
   {
     title: "Inset background layer",
@@ -167,7 +172,7 @@ const riskSemanticLevels = [
 
 function Section({ title, description, children }: { title: string; description: string; children: ReactNode }) {
   return (
-    <section className="border-t border-[var(--ds-border)] pt-8 first:border-t-0 first:pt-0">
+    <section className="border-t border-[var(--ds-border-subtle)] pt-10 first:border-t-0 first:pt-0">
       <header className="mb-4">
         <h2 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">{title}</h2>
         <p className="mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">{description}</p>
@@ -177,25 +182,108 @@ function Section({ title, description, children }: { title: string; description:
   );
 }
 
+/** Static reference for window-style shell tokens (canvas → frame → main → document → tiles). */
+function ApplicationWorkspaceHierarchy() {
+  const layerMeta = [
+    { label: "Canvas", token: "--ds-canvas", hint: "Browser / page backdrop outside the framed product." },
+    {
+      label: "App frame",
+      token: "--ds-elevation-app-frame",
+      hint: "Shadow-led float for the workspace window (no border) — not a second document inside the document.",
+    },
+    { label: "Main column", token: "--ds-app-main-bg", hint: "Gutter behind the sheet; matches .ds-app-main." },
+    { label: "Sidebar", token: "--ds-app-sidebar-bg", hint: "Nav rail; aliases --ds-app-frame-bg by default." },
+    {
+      label: "Document surface",
+      token: "--ds-app-document-bg",
+      hint: "Primary reading plane. Put flows here; use tiles/cards inside, not another full-viewport elevated shell.",
+    },
+    {
+      label: "Inner tile / card",
+      token: "--ds-surface-tile · --ds-elevation-tile",
+      hint: "KPIs, tables, panels — tone + shadow on the document surface (row tiles are borderless).",
+    },
+  ] as const;
+
+  return (
+    <section className="space-y-4">
+      <header>
+        <h2 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
+          Application workspace hierarchy
+        </h2>
+        <p className="mt-1 max-w-3xl text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+          Canonical model for Visualify apps: outer canvas, framed workspace, sidebar + document column, then inner tiles. Prefer this token ladder over nested page-sized cards.
+        </p>
+      </header>
+
+      <div
+        className="rounded-[var(--ds-radius-app-frame)] p-4 shadow-[var(--ds-elevation-app-frame)]"
+        style={{ backgroundColor: "var(--ds-canvas)" }}
+      >
+        <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">var(--ds-canvas)</p>
+        <div
+          className="mt-3 flex min-h-[192px] overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)]"
+          style={{ backgroundColor: "var(--ds-app-main-bg)" }}
+        >
+          <div
+            className="flex w-[96px] shrink-0 flex-col border-r border-[var(--ds-border-subtle)] p-3"
+            style={{ backgroundColor: "var(--ds-app-sidebar-bg)" }}
+          >
+            <p className="font-mono text-[10px] leading-tight text-[var(--ds-text-muted)]">var(--ds-app-sidebar-bg)</p>
+            <span className="mt-auto text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">Nav</span>
+          </div>
+          <div className="min-w-0 flex-1 p-4" style={{ backgroundColor: "var(--ds-app-document-bg)" }}>
+            <p className="font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">var(--ds-app-document-bg)</p>
+            <div className="mt-3 max-w-md rounded-[var(--ds-radius-card)] bg-[var(--ds-surface-tile)] p-4 shadow-[var(--ds-elevation-tile)]">
+              <p className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">Inner tile / panel</p>
+              <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+                Row tiles use <span className="font-mono text-[var(--ds-text-muted)]">--ds-surface-tile</span> plus tile elevation; muted wells use{" "}
+                <span className="font-mono text-[var(--ds-text-muted)]">--ds-surface-muted</span>.
+              </p>
+              <p className="mt-2 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                --ds-surface-tile · --ds-radius-card · --ds-elevation-tile
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ul className="m-0 grid list-none gap-2 p-0 sm:grid-cols-2">
+        {layerMeta.map((row) => (
+          <li
+            key={row.label}
+            className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border-subtle)] px-3 py-2"
+            style={{ backgroundColor: "var(--ds-app-document-bg)" }}
+          >
+            <p className="text-[length:var(--ds-text-xs)] font-semibold text-[var(--ds-text-primary)]">{row.label}</p>
+            <p className="mt-0.5 font-mono text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">{row.token}</p>
+            <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">{row.hint}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-12">
-      <header
-        className="rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-6 shadow-[var(--ds-shadow-sm)] dark:shadow-none"
-      >
+    <div className="mx-auto w-full max-w-6xl space-y-14">
+      <header className="border-b border-[var(--ds-border-subtle)] pb-10">
         <p className="text-[length:var(--ds-text-xs)] uppercase tracking-[0.12em] text-[var(--ds-text-muted)]">Internal reference</p>
         <h1 className="mt-2 text-[length:var(--ds-text-3xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">Visualify design system</h1>
         <p className="mt-2 max-w-2xl text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-          Shared foundation from <code>@visualify/design-system</code>, reviewed in {idPrefix} mode.
+          Shared foundation from <code>@visualify/design-system</code>, reviewed in {idPrefix} mode. Shell layout tokens are documented up front; component examples below sit on a flat reference surface.
         </p>
       </header>
+
+      <ApplicationWorkspaceHierarchy />
 
       <Section
         title="Foundations"
         description="Semantic status, text, surface, spacing, radius, shadow, typography, card and border tokens, and font stack."
       >
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Core tokens</CardTitle>
             </CardHeader>
@@ -214,7 +302,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               ))}
             </CardContent>
           </Card>
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Status tokens</CardTitle>
             </CardHeader>
@@ -239,7 +327,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               ))}
             </CardContent>
           </Card>
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Surface + text tokens</CardTitle>
             </CardHeader>
@@ -268,7 +356,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               ))}
             </CardContent>
           </Card>
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Scales</CardTitle>
             </CardHeader>
@@ -343,7 +431,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         title="Focus and control tokens"
         description="Row and keyboard-focus highlight surfaces, plus strong control border steps for primary actions."
       >
-        <Card variant="elevated">
+        <Card variant="default">
           <CardContent className="grid gap-[var(--ds-space-6)] md:grid-cols-2">
             <div className="space-y-[var(--ds-space-2)]">
               <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">Focus highlight</p>
@@ -392,9 +480,9 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         </Card>
       </Section>
 
-      <Section title="Buttons" description="Primary, secondary, ghost variants, size support, icons, and disabled states."><Card variant="elevated"><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Button>Primary</Button><Button variant="secondary">Secondary</Button><Button variant="ghost">Ghost</Button></div><div className="flex flex-wrap items-center gap-2"><Button size="sm">Small</Button><Button size="md">Medium</Button><Button size="lg">Large</Button></div><div className="flex flex-wrap gap-2"><Button leftIcon="+" rightIcon="→">Create report</Button><Button variant="secondary" disabled>Disabled secondary</Button><Button variant="ghost" disabled>Disabled ghost</Button></div></CardContent></Card></Section>
+      <Section title="Buttons" description="Primary, secondary, ghost variants, size support, icons, and disabled states."><Card variant="default"><CardContent className="space-y-4"><div className="flex flex-wrap gap-2"><Button>Primary</Button><Button variant="secondary">Secondary</Button><Button variant="ghost">Ghost</Button></div><div className="flex flex-wrap items-center gap-2"><Button size="sm">Small</Button><Button size="md">Medium</Button><Button size="lg">Large</Button></div><div className="flex flex-wrap gap-2"><Button leftIcon="+" rightIcon="→">Create report</Button><Button variant="secondary" disabled>Disabled secondary</Button><Button variant="ghost" disabled>Disabled ghost</Button></div></CardContent></Card></Section>
 
-      <Section title="Form primitives" description="Input/Textarea states with Label, HelperText, and FieldError patterns."><div className="grid gap-4 md:grid-cols-2"><Card variant="elevated"><CardContent className="space-y-4"><div><Label htmlFor={`${idPrefix}-email`}>Email</Label><Input id={`${idPrefix}-email`} placeholder="jane@visualify.ai" /><HelperText>Used for report notifications.</HelperText></div><div><Label htmlFor={`${idPrefix}-name-invalid`}>Workspace name</Label><Input id={`${idPrefix}-name-invalid`} aria-invalid="true" defaultValue="!" /><FieldError>Name must be at least 3 characters.</FieldError></div><div><Label htmlFor={`${idPrefix}-disabled-input`}>Disabled input</Label><Input id={`${idPrefix}-disabled-input`} disabled defaultValue="Readonly value" /></div></CardContent></Card><Card variant="elevated"><CardContent className="space-y-4"><div><Label htmlFor={`${idPrefix}-notes`}>Notes</Label><Textarea id={`${idPrefix}-notes`} placeholder="Write team notes..." /><HelperText>Multiline field with muted placeholder text.</HelperText></div><div><Label htmlFor={`${idPrefix}-error-textarea`}>Issue details</Label><Textarea id={`${idPrefix}-error-textarea`} aria-invalid defaultValue="broken" /><FieldError>Please include at least 20 characters.</FieldError></div></CardContent></Card></div></Section>
+      <Section title="Form primitives" description="Input/Textarea states with Label, HelperText, and FieldError patterns."><div className="grid gap-4 md:grid-cols-2"><Card variant="default"><CardContent className="space-y-4"><div><Label htmlFor={`${idPrefix}-email`}>Email</Label><Input id={`${idPrefix}-email`} placeholder="jane@visualify.ai" /><HelperText>Used for report notifications.</HelperText></div><div><Label htmlFor={`${idPrefix}-name-invalid`}>Workspace name</Label><Input id={`${idPrefix}-name-invalid`} aria-invalid="true" defaultValue="!" /><FieldError>Name must be at least 3 characters.</FieldError></div><div><Label htmlFor={`${idPrefix}-disabled-input`}>Disabled input</Label><Input id={`${idPrefix}-disabled-input`} disabled defaultValue="Readonly value" /></div></CardContent></Card><Card variant="default"><CardContent className="space-y-4"><div><Label htmlFor={`${idPrefix}-notes`}>Notes</Label><Textarea id={`${idPrefix}-notes`} placeholder="Write team notes..." /><HelperText>Multiline field with muted placeholder text.</HelperText></div><div><Label htmlFor={`${idPrefix}-error-textarea`}>Issue details</Label><Textarea id={`${idPrefix}-error-textarea`} aria-invalid defaultValue="broken" /><FieldError>Please include at least 20 characters.</FieldError></div></CardContent></Card></div></Section>
 
       <Section
         title="Cards and panels"
@@ -856,7 +944,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
 
       <Section title="Table primitives" description="Clean headers, consistent row borders, and compact realistic data examples.">
         <div className="space-y-4">
-          <Card variant="elevated">
+          <Card variant="default">
             <CardContent className="overflow-x-auto">
               <div className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
                 <Table>
@@ -887,7 +975,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
               </div>
             </CardContent>
           </Card>
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Compact data example</CardTitle>
             </CardHeader>
@@ -975,7 +1063,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
 
       <Section title="Status and feedback" description="Semantic badge usage and lightweight info/warning/danger/success callouts.">
         <div className="space-y-4">
-          <Card variant="elevated">
+          <Card variant="default">
             <CardContent className="flex flex-wrap gap-2">
               <Badge status="neutral">Neutral</Badge>
               <Badge status="success">Success</Badge>
@@ -1043,7 +1131,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         description="Scrim and overlay for modals, glass and auth shells for elevated surfaces, vignettes, and photo backdrops."
       >
         <div className="grid gap-[var(--ds-space-6)] lg:grid-cols-2">
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Overlay / scrim tokens</CardTitle>
             </CardHeader>
@@ -1078,7 +1166,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
             </CardContent>
           </Card>
 
-          <Card variant="elevated">
+          <Card variant="default">
             <CardHeader>
               <CardTitle>Glass / auth surface tokens</CardTitle>
             </CardHeader>
@@ -1181,7 +1269,7 @@ function DsReference({ idPrefix }: { idPrefix: "light" | "dark" }) {
         title="Chart colours"
         description="Global CSS custom properties for categorical series, plot chrome, and insight accents. These power the Dashboard chart type cards (Pie, Donut, Bar, Column, Line) and ChartShowcase primitives."
       >
-        <Card variant="elevated">
+        <Card variant="default">
           <CardHeader>
             <CardTitle>Tokens</CardTitle>
           </CardHeader>

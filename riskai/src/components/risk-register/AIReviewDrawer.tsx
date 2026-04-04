@@ -17,7 +17,7 @@ import {
 } from "./RiskOwnerPicker";
 
 const panelClass =
-  "rounded-lg border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]/50 p-3 text-sm";
+  "rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]/50 p-3 text-sm";
 const labelClass = "text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mt-2 first:mt-0";
 const valueClass = "text-[var(--ds-text-primary)] mt-0.5";
 
@@ -266,14 +266,14 @@ function ClusterBlock({
   .filter((r: Risk | undefined): r is Risk => r != null);
 
   return (
-    <section className="border border-[var(--ds-border)] rounded-xl p-5 bg-[var(--ds-surface-muted)]">
+    <section className="border border-[var(--ds-border)] rounded-[var(--ds-radius-md)] p-5 bg-[var(--ds-surface-muted)]">
       <h3 className="font-semibold text-[var(--ds-text-primary)] text-lg">
         Cluster #{cluster.clusterId} – Similar risks
       </h3>
       <p className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide mt-2">Why these are similar</p>
       <p className="text-sm text-[var(--ds-text-secondary)] mt-0.5 mb-4">{cluster.rationale}</p>
 
-      <div className="overflow-x-auto rounded-lg border border-[var(--ds-border)]">
+      <div className="overflow-x-auto rounded-[var(--ds-radius-md)] border border-[var(--ds-border)]">
         <table className="w-full min-w-[800px] text-sm border-collapse">
           <thead>
             <tr className="bg-[var(--ds-surface-muted)]/80">
@@ -405,14 +405,14 @@ function ClusterBlock({
             <button
               type="button"
               onClick={() => void handleAccept()}
-              className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] hover:opacity-90 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)]"
+              className="px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] hover:opacity-90 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)]"
             >
               Accept merge (new risk + archive merged)
             </button>
             <button
               type="button"
               onClick={() => onSkip(cluster.clusterId)}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
+              className="px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
             >
               Skip
             </button>
@@ -424,7 +424,7 @@ function ClusterBlock({
           <button
             type="button"
             onClick={() => onSkip(cluster.clusterId)}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
+            className="px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)]"
           >
             Skip
           </button>
@@ -481,7 +481,7 @@ export function AIReviewDrawer({
         aria-modal="true"
       >
         <div
-          className="pointer-events-auto w-full max-w-[70vw] max-h-[90vh] flex flex-col bg-[var(--ds-surface-elevated)] border border-[var(--ds-border)] rounded-xl shadow-2xl overflow-hidden"
+          className="pointer-events-auto w-full max-w-[70vw] max-h-[90vh] flex flex-col bg-[var(--ds-surface-elevated)] border border-[var(--ds-border)] rounded-[var(--ds-radius-md)] shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-4 border-b border-[var(--ds-border)] shrink-0">
@@ -491,7 +491,7 @@ export function AIReviewDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
+              className="p-2 rounded-[var(--ds-radius-sm)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
               aria-label="Close"
             >
               <span aria-hidden className="text-xl leading-none">×</span>

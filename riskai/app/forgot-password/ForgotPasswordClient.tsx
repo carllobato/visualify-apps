@@ -6,14 +6,14 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { Callout } from "@visualify/design-system";
 
 const inputClass =
-  "w-full rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] transition-[border-color,box-shadow] duration-200 ease-out placeholder:text-[var(--ds-text-muted)] " +
+  "w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] transition-[border-color,box-shadow] duration-200 ease-out placeholder:text-[var(--ds-text-muted)] " +
   "focus:border-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_oklab,var(--ds-text-primary)_18%,transparent)] " +
   "disabled:cursor-not-allowed disabled:opacity-50 " +
   "dark:border-[var(--ds-border)] dark:bg-[var(--ds-surface-inset)] dark:text-[var(--ds-text-primary)] dark:placeholder:text-[var(--ds-text-muted)] " +
   "dark:focus:border-[var(--ds-border-subtle)] dark:focus:ring-[color-mix(in_oklab,var(--ds-border-subtle)_22%,transparent)]";
 
 const primaryButtonClass =
-  "mt-1 w-full cursor-pointer rounded-md border border-transparent bg-[var(--ds-text-primary)] px-4 py-3 text-sm font-semibold text-[var(--ds-text-inverse)] transition-[background-color,border-color] duration-200 ease-out hover:border-[var(--ds-control-strong-border-hover)] hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_88%,var(--ds-surface-default))] active:border-[var(--ds-control-strong-border-active)] active:bg-[color-mix(in_oklab,var(--ds-text-primary)_78%,var(--ds-surface-default))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 " +
+  "mt-1 w-full cursor-pointer rounded-[var(--ds-radius-sm)] border border-transparent bg-[var(--ds-text-primary)] px-4 py-3 text-sm font-semibold text-[var(--ds-text-inverse)] transition-[background-color,border-color] duration-200 ease-out hover:border-[var(--ds-control-strong-border-hover)] hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_88%,var(--ds-surface-default))] active:border-[var(--ds-control-strong-border-active)] active:bg-[color-mix(in_oklab,var(--ds-text-primary)_78%,var(--ds-surface-default))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)] disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50 " +
   "dark:border-[var(--ds-border)]/50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:border-[var(--ds-border)]/75 dark:hover:bg-[var(--ds-surface-hover)] dark:active:border-[var(--ds-border)]/85 dark:active:bg-[var(--ds-surface-muted)] dark:focus-visible:outline-[var(--ds-border)]";
 
 const subtleLinkClass =

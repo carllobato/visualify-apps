@@ -197,7 +197,7 @@ export function RiskRegisterImportCard() {
   if (allImported && !completeExpanded) {
     return (
       <div
-        className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] px-4 py-2.5"
+        className="mb-4 flex flex-wrap items-center gap-2 rounded-[var(--ds-radius-md)] border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] px-4 py-2.5"
         style={{ marginBottom: 16 }}
       >
         <span className="text-sm font-medium text-[var(--ds-text-primary)]">
@@ -226,7 +226,7 @@ export function RiskRegisterImportCard() {
 
   return (
     <div
-      className={`rounded-lg border p-4 mb-4 ${
+      className={`rounded-[var(--ds-radius-md)] border p-4 mb-4 ${
         isCompleteView
           ? "border-[var(--ds-status-success-border)] bg-[color-mix(in_oklab,var(--ds-status-success)_10%,var(--ds-surface-default))]"
           : "border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
@@ -270,7 +270,7 @@ export function RiskRegisterImportCard() {
             {storedFiles.map((f) => (
               <li
                 key={f.id}
-                className={`flex flex-wrap items-center gap-2 py-2 px-3 rounded-md border ${
+                className={`flex flex-wrap items-center gap-2 py-2 px-3 rounded-[var(--ds-radius-md)] border ${
                   selectedFileId === f.id
                     ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
                     : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)]"
@@ -320,7 +320,7 @@ export function RiskRegisterImportCard() {
             type="button"
             onClick={handleGenerateRisks}
             disabled={!hasData || importStatus === "loading" || isCompleteView}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
+            className="px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 disabled:pointer-events-none"
           >
             Generate Risks with AI
             {selectedFile ? ` (from ${selectedFile.name})` : ""}
