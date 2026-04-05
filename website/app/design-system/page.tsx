@@ -174,7 +174,7 @@ function Section({ title, description, children }: { title: string; description:
   return (
     <section className="border-t border-[var(--ds-border-subtle)] pt-10 first:border-t-0 first:pt-0">
       <header className="mb-4">
-        <h2 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">{title}</h2>
+        <h2 className="ds-heading-2">{title}</h2>
         <p className="mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">{description}</p>
       </header>
       {children}
@@ -208,9 +208,7 @@ function ApplicationWorkspaceHierarchy() {
   return (
     <section className="space-y-4">
       <header>
-        <h2 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
-          Application workspace hierarchy
-        </h2>
+        <h2 className="ds-heading-2">Application workspace hierarchy</h2>
         <p className="mt-1 max-w-3xl text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
           Canonical model for Visualify apps: outer canvas, framed workspace, sidebar + document column, then inner tiles. Prefer this token ladder over nested page-sized cards.
         </p>

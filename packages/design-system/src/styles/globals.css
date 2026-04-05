@@ -219,6 +219,8 @@
 
   /* Ink for scrims, shadows, vignettes (independent of semantic text colour) */
   --ds-scrim-ink: #111111;
+  /* Charcoal app surface — same hex as dark-mode `--ds-surface`; marketing / inverse bands on light pages */
+  --ds-charcoal: #1a1a1d;
   /* Modal / drawer backdrop — single system app-wide */
   --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 50%, transparent);
   /* Marketing / photo washes behind glass (login hero) */
@@ -404,6 +406,7 @@
    */
   --ds-bg: #131318;
   --ds-surface: #1a1a1d;
+  --ds-charcoal: var(--ds-surface);
   /* Inset / grouped — visibly below document surface without heavy nested frames */
   --ds-surface-muted: #222228;
   --ds-surface-subtle: #35353e;
@@ -779,6 +782,30 @@ textarea:disabled {
   text-decoration: underline;
   text-decoration-color: color-mix(in oklab, var(--ds-text-primary) 32%, transparent);
   text-decoration-thickness: 1px;
+}
+
+/* Second-level page / section titles — one scale site-wide (pair with `--inverse` on dark bands). */
+.ds-heading-2 {
+  margin: 0;
+  font-size: 1.625rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: var(--ds-text-primary);
+}
+@media (min-width: 640px) {
+  .ds-heading-2 {
+    font-size: 1.875rem;
+    line-height: 1.15;
+  }
+}
+@media (min-width: 1024px) {
+  .ds-heading-2 {
+    font-size: 2rem;
+  }
+}
+.ds-heading-2--inverse {
+  color: var(--ds-text-inverse);
 }
 
 /* Semantic ghost-action accents for lightweight row/form actions */
