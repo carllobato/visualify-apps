@@ -2,15 +2,15 @@
 
 import { type FormEvent, useState } from "react";
 
-const CONTACT_EMAIL = "help@visualify.com.au";
-const CONTACT_SUBJECT = "Visualify — Get in touch";
+export const CONTACT_EMAIL = "help@visualify.com.au";
+export const CONTACT_SUBJECT = "Visualify — Get in touch";
 
 const inputClassName =
   "w-full rounded-lg border border-black/[0.1] bg-white/92 px-3.5 py-2.5 text-[15px] text-foreground placeholder:text-muted/70 outline-none transition-[border-color,box-shadow] focus:border-black/[0.2] focus:ring-2 focus:ring-black/[0.06] dark:border-white/[0.14] dark:bg-zinc-950/70 dark:focus:border-white/[0.2] dark:focus:ring-white/[0.08]";
 
 const inputDisabledClassName = "disabled:cursor-not-allowed disabled:opacity-60";
 
-function contactMailtoHref(body?: string): string {
+export function contactMailtoHref(body?: string): string {
   const q = new URLSearchParams();
   q.set("subject", CONTACT_SUBJECT);
   if (body) q.set("body", body);
