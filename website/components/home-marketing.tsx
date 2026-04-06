@@ -581,7 +581,7 @@ export function HomeMarketing() {
                   <CardContent className="flex flex-1 flex-col gap-3 px-6 py-9 sm:px-7 sm:py-10">
                     <div className={pricingTierHeaderClass}>
                       <CardTitle className="text-[length:var(--ds-text-lg)] font-semibold leading-snug text-[var(--ds-text-primary)] sm:text-xl sm:leading-snug">
-                        $200 / month / project
+                        $400 / month / project
                       </CardTitle>
                       <p className={`text-[length:var(--ds-text-sm)] leading-relaxed ${bodySecondaryClass}`}>
                         Start with a full-featured project, free for your first month.
