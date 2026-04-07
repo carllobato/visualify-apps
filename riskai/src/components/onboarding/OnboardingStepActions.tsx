@@ -1,6 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 type Props = {
   /** Omit on the first step (e.g. profile). */
@@ -9,7 +14,24 @@ type Props = {
   /** Primary action (usually a submit button). */
   forwardSlot: ReactNode;
   busy?: boolean;
+  /**
+   * Classes merged onto `forwardSlot` when it is a single React element. Rules are defined in
+   * `@visualify/design-system` `globals.css` (`.ds-onboarding-modal-primary`, etc.).
+   * Omit for default primary + `--auto-sm`. Pass `""` to attach no default classes.
+   */
+  forwardPrimaryClassName?: string;
 };
+
+/** Default forward CTA — see `.ds-onboarding-modal-primary` in design-system `globals.css`. */
+export const ONBOARDING_STEP_FORWARD_PRIMARY_CLASSES =
+  "ds-onboarding-modal-primary ds-onboarding-modal-primary--auto-sm";
+
+function mergeForwardPrimaryClass(slot: ReactNode, classNameToMerge: string | undefined): ReactNode {
+  if (!classNameToMerge?.trim() || !isValidElement(slot)) return slot;
+  const el = slot as ReactElement<{ className?: string }>;
+  const merged = [classNameToMerge, el.props.className].filter(Boolean).join(" ");
+  return cloneElement(el, { className: merged });
+}
 
 /**
  * Shared footer for onboarding modals: optional Back + primary forward control.
@@ -19,22 +41,29 @@ export function OnboardingStepActions({
   backLabel = "Back",
   forwardSlot,
   busy,
+  forwardPrimaryClassName,
 }: Props) {
+  const primaryClasses =
+    forwardPrimaryClassName === undefined
+      ? ONBOARDING_STEP_FORWARD_PRIMARY_CLASSES
+      : forwardPrimaryClassName || undefined;
+  const forward = mergeForwardPrimaryClass(forwardSlot, primaryClasses);
+
   if (!onBack) {
-    return <div className="mt-6 space-y-3">{forwardSlot}</div>;
+    return <div className="ds-onboarding-step-actions--solo">{forward}</div>;
   }
 
   return (
-    <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-stretch sm:justify-between sm:gap-4">
+    <div className="ds-onboarding-step-actions">
       <button
         type="button"
         onClick={onBack}
         disabled={busy}
-        className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-transparent px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] transition-opacity hover:bg-[var(--ds-surface-hover)] disabled:opacity-50 sm:min-w-[100px]"
+        className="ds-onboarding-step-actions__back"
       >
         {backLabel}
       </button>
-      <div className="min-w-0 flex-1 sm:max-w-sm sm:flex-none">{forwardSlot}</div>
+      <div className="ds-onboarding-step-actions__forward">{forward}</div>
     </div>
   );
 }

@@ -1,56 +1,66 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import {
+  DEFAULT_REPORTING_CURRENCY,
+  DEFAULT_REPORTING_UNIT,
+  REPORTING_CURRENCY_OPTIONS,
+  REPORTING_UNIT_LABELS,
+  REPORTING_UNIT_OPTIONS,
+} from "@/lib/portfolio/reportingPreferences";
+import {
+  projectSettingsFieldWidthClass,
+  projectSettingsSelectClass,
+} from "@/components/project/projectSettingsDsFormClasses";
 import { Callout } from "@visualify/design-system";
+import {
+  OnboardingStepLabel,
+  PORTFOLIO_ONBOARDING_STEP_TOTAL,
+} from "./OnboardingStepLabel";
+import { OnboardingModalCloseIcon } from "./OnboardingModalCloseIcon";
 import { OnboardingStepActions } from "./OnboardingStepActions";
 
 type Props = {
   open: boolean;
   portfolioId: string;
-  initialName: string;
   onContinue: () => void | Promise<void>;
   onBack: () => void;
+  /** Close (×) — dismisses the whole portfolio wizard, same as step 1. */
+  onDismiss: () => void;
 };
 
 export function PortfolioOnboardingDetailModal({
   open,
   portfolioId,
-  initialName,
   onContinue,
   onBack,
+  onDismiss,
 }: Props) {
-  const [name, setName] = useState(initialName);
-  const [description, setDescription] = useState("");
+  const [reportingCurrency, setReportingCurrency] = useState(DEFAULT_REPORTING_CURRENCY);
+  const [reportingUnit, setReportingUnit] = useState(DEFAULT_REPORTING_UNIT);
   const [saving, setSaving] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setName(initialName);
-    setDescription("");
+    setReportingCurrency(DEFAULT_REPORTING_CURRENCY);
+    setReportingUnit(DEFAULT_REPORTING_UNIT);
     setError(null);
-  }, [open, initialName, portfolioId]);
+  }, [open, portfolioId]);
 
   if (!open) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError("Portfolio name is required.");
-      return;
-    }
     setSaving(true);
     try {
       const res = await fetch(`/api/portfolios/${portfolioId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: trimmed,
-          description: description.trim() || null,
+          reporting_currency: reportingCurrency,
+          reporting_unit: reportingUnit,
         }),
         credentials: "include",
       });
@@ -65,95 +75,87 @@ export function PortfolioOnboardingDetailModal({
     }
   }
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    await supabaseBrowserClient().auth.signOut();
-    window.location.href = "/";
-  }
-
-  const busy = saving || signingOut;
-  const inputClass =
-    "w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
-  const labelClass = "mb-1.5 block text-sm font-medium text-[var(--ds-text-secondary)]";
-
   return (
     <div
-      className="fixed inset-0 z-[102] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-[2px]"
+      className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[102]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-portfolio-detail-title"
     >
-      <div className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
-        <h2
-          id="onboarding-portfolio-detail-title"
-          className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
-        >
-          Set up your portfolio
-        </h2>
-        <p className="mt-1 text-sm text-[var(--ds-text-secondary)]">
-          You can change this anytime in portfolio settings.
-        </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="onb-portfolio-detail-name" className={labelClass}>
-              Name <span className="text-[var(--ds-status-danger)]">*</span>
-            </label>
-            <input
-              id="onb-portfolio-detail-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputClass}
-              autoComplete="organization"
-              disabled={busy}
-              required
-            />
+      <div className="ds-onboarding-modal-panel">
+        <div className="ds-onboarding-modal-panel-header">
+          <div className="min-w-0 flex-1 space-y-1">
+            <OnboardingStepLabel step={2} of={PORTFOLIO_ONBOARDING_STEP_TOTAL} />
+            <h2 id="onboarding-portfolio-detail-title" className="ds-onboarding-modal-title">
+              Reporting preferences
+            </h2>
           </div>
-          <div>
-            <label htmlFor="onb-portfolio-detail-desc" className={labelClass}>
-              Description <span className="font-normal text-[var(--ds-text-muted)]">(optional)</span>
+          <button
+            type="button"
+            className="ds-onboarding-modal-close"
+            onClick={onDismiss}
+            disabled={saving}
+            aria-label="Close"
+          >
+            <OnboardingModalCloseIcon />
+          </button>
+        </div>
+        <p className="ds-onboarding-modal-lede">
+          Choose how financial amounts are labeled for this portfolio. You can change this anytime in
+          portfolio settings.
+        </p>
+
+        <form onSubmit={handleSubmit} className="ds-onboarding-modal-form">
+          <div className={projectSettingsFieldWidthClass("sm")}>
+            <label htmlFor="onb-portfolio-reporting-currency" className="ds-onboarding-modal-label">
+              Reporting currency
             </label>
-            <textarea
-              id="onb-portfolio-detail-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className={`${inputClass} min-h-[88px] resize-y`}
-              placeholder="What this portfolio is for"
-              disabled={busy}
-              rows={3}
-            />
+            <select
+              id="onb-portfolio-reporting-currency"
+              value={reportingCurrency}
+              onChange={(e) => setReportingCurrency(e.target.value)}
+              disabled={saving}
+              className={projectSettingsSelectClass(false, "sm")}
+            >
+              {REPORTING_CURRENCY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={projectSettingsFieldWidthClass("sm")}>
+            <label htmlFor="onb-portfolio-reporting-unit" className="ds-onboarding-modal-label">
+              Reporting unit
+            </label>
+            <select
+              id="onb-portfolio-reporting-unit"
+              value={reportingUnit}
+              onChange={(e) => setReportingUnit(e.target.value)}
+              disabled={saving}
+              className={projectSettingsSelectClass(false, "sm")}
+            >
+              {REPORTING_UNIT_OPTIONS.map((u) => (
+                <option key={u} value={u}>
+                  {REPORTING_UNIT_LABELS[u]}
+                </option>
+              ))}
+            </select>
           </div>
           {error && (
-            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+            <Callout status="danger" role="alert" className="ds-onboarding-modal-callout">
               {error}
             </Callout>
           )}
           <OnboardingStepActions
             onBack={onBack}
-            busy={busy}
+            busy={saving}
             forwardSlot={
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
-              >
+              <button type="submit" disabled={saving}>
                 {saving ? "Saving…" : "Continue"}
               </button>
             }
           />
-          <div className="border-t border-[var(--ds-border)] pt-4 text-center">
-            <p className="mb-2 text-xs text-[var(--ds-text-muted)]">
-              Don&apos;t want to continue right now?
-            </p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSignOut}
-              className="text-sm font-medium text-[var(--ds-text-secondary)] underline-offset-2 hover:text-[var(--ds-text-primary)] hover:underline disabled:opacity-50"
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
         </form>
       </div>
     </div>

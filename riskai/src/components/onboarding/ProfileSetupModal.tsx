@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { ACCOUNT_PROFILE_UPDATED_EVENT } from "@/lib/onboarding/types";
 import { saveUserProfileThroughApi } from "@/lib/profiles/profileDb";
-import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { Callout } from "@visualify/design-system";
+import { OnboardingStepLabel } from "./OnboardingStepLabel";
 import { OnboardingStepActions } from "./OnboardingStepActions";
 
 type Props = {
@@ -29,7 +29,6 @@ export function ProfileSetupModal({
   const [company, setCompany] = useState(initialCompany);
   const [role, setRole] = useState(initialRole);
   const [saving, setSaving] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -81,36 +80,24 @@ export function ProfileSetupModal({
     }
   }
 
-  async function handleSignOut() {
-    setSigningOut(true);
-    await supabaseBrowserClient().auth.signOut();
-    window.location.href = "/";
-  }
-
-  const inputClass =
-    "w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
-  const labelClass = "mb-1.5 block text-sm font-medium text-[var(--ds-text-secondary)]";
-
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-[2px]"
+      className="ds-onboarding-modal-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-profile-title"
     >
-      <div className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
-        <h2
-          id="onboarding-profile-title"
-          className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
-        >
+      <div className="ds-onboarding-modal-panel">
+        <OnboardingStepLabel step={1} of={1} />
+        <h2 id="onboarding-profile-title" className="ds-onboarding-modal-title">
           Welcome — set up your profile
         </h2>
-        <p className="mt-1 text-sm text-[var(--ds-text-secondary)]">
+        <p className="ds-onboarding-modal-lede">
           A few details so we can personalise your workspace.
         </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="ds-onboarding-modal-form">
           <div>
-            <label htmlFor="onb-first-name" className={labelClass}>
+            <label htmlFor="onb-first-name" className="ds-onboarding-modal-label">
               First name <span className="text-[var(--ds-status-danger)]">*</span>
             </label>
             <input
@@ -118,14 +105,14 @@ export function ProfileSetupModal({
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className={inputClass}
+              className="ds-onboarding-modal-input"
               autoComplete="given-name"
               required
-              disabled={saving || signingOut}
+              disabled={saving}
             />
           </div>
           <div>
-            <label htmlFor="onb-last-name" className={labelClass}>
+            <label htmlFor="onb-last-name" className="ds-onboarding-modal-label">
               Surname <span className="text-[var(--ds-status-danger)]">*</span>
             </label>
             <input
@@ -133,14 +120,14 @@ export function ProfileSetupModal({
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className={inputClass}
+              className="ds-onboarding-modal-input"
               autoComplete="family-name"
               required
-              disabled={saving || signingOut}
+              disabled={saving}
             />
           </div>
           <div>
-            <label htmlFor="onb-company" className={labelClass}>
+            <label htmlFor="onb-company" className="ds-onboarding-modal-label">
               Company <span className="text-[var(--ds-status-danger)]">*</span>
             </label>
             <input
@@ -148,14 +135,14 @@ export function ProfileSetupModal({
               type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              className={inputClass}
+              className="ds-onboarding-modal-input"
               autoComplete="organization"
               required
-              disabled={saving || signingOut}
+              disabled={saving}
             />
           </div>
           <div>
-            <label htmlFor="onb-role" className={labelClass}>
+            <label htmlFor="onb-role" className="ds-onboarding-modal-label">
               Role <span className="font-normal text-[var(--ds-text-muted)]">(optional)</span>
             </label>
             <input
@@ -163,42 +150,26 @@ export function ProfileSetupModal({
               type="text"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className={inputClass}
+              className="ds-onboarding-modal-input"
               placeholder="e.g. Risk manager"
               autoComplete="organization-title"
-              disabled={saving || signingOut}
+              disabled={saving}
             />
           </div>
           {error && (
-            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+            <Callout status="danger" role="alert" className="ds-onboarding-modal-callout">
               {error}
             </Callout>
           )}
           <OnboardingStepActions
-            busy={saving || signingOut}
+            busy={saving}
+            forwardPrimaryClassName="ds-onboarding-modal-primary"
             forwardSlot={
-              <button
-                type="submit"
-                disabled={saving || signingOut}
-                className="w-full rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)]"
-              >
+              <button type="submit" disabled={saving}>
                 {saving ? "Saving…" : "Continue"}
               </button>
             }
           />
-          <div className="mt-5 border-t border-[var(--ds-border)] pt-4 text-center">
-            <p className="mb-2 text-xs text-[var(--ds-text-muted)]">
-              Don&apos;t want to continue right now?
-            </p>
-            <button
-              type="button"
-              disabled={saving || signingOut}
-              onClick={handleSignOut}
-              className="text-sm font-medium text-[var(--ds-text-secondary)] underline-offset-2 hover:text-[var(--ds-text-primary)] hover:underline disabled:opacity-50"
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
         </form>
       </div>
     </div>

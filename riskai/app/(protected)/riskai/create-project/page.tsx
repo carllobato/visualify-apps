@@ -44,16 +44,13 @@ function CreateProjectForm() {
           return;
         }
         const list = json.portfolios ?? [];
-        if (!cancelled && list.length === 0) {
-          if (!cancelled) setLoadError("Create a portfolio first (from the dashboard or onboarding).");
-          return;
-        }
         if (cancelled) return;
         setPortfolios(list);
         const fromQuery =
           paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
         const validFromQuery = fromQuery && list.some((p) => p.id === fromQuery) ? fromQuery : null;
-        setSelectedPortfolioId(validFromQuery ?? list[0]!.id);
+        // Default to no portfolio unless ?portfolioId= points at a valid row.
+        setSelectedPortfolioId(validFromQuery ?? "");
       } catch {
         if (!cancelled) setLoadError("Could not load portfolios.");
       }
@@ -66,16 +63,15 @@ function CreateProjectForm() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    if (!selectedPortfolioId) {
-      setMessage({ type: "error", text: "Select a portfolio." });
-      return;
-    }
     setLoading(true);
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({ name, portfolioId: selectedPortfolioId }),
+      body: JSON.stringify({
+        name,
+        ...(selectedPortfolioId.trim() ? { portfolioId: selectedPortfolioId.trim() } : {}),
+      }),
     });
     const json = (await res.json().catch(() => ({}))) as {
       project?: { id: string };
@@ -137,13 +133,13 @@ function CreateProjectForm() {
       <main className="mx-auto max-w-md">
         <h1 className="mb-2 text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">Create project</h1>
         <p className="mb-6 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-          Projects are stored under a portfolio. You can move or add more portfolios later from the app.
+          Linking a project to a portfolio is optional. You can assign or change it later from the app.
         </p>
         <form onSubmit={handleCreate} className="space-y-4">
-          {portfolios.length > 1 ? (
+          {portfolios.length > 0 ? (
             <div>
               <Label htmlFor="create-project-portfolio" className="text-[var(--ds-text-secondary)]">
-                Portfolio
+                Portfolio (optional)
               </Label>
               <select
                 id="create-project-portfolio"
@@ -151,8 +147,8 @@ function CreateProjectForm() {
                 onChange={(e) => setSelectedPortfolioId(e.target.value)}
                 className={SELECT_FIELD_CLASS}
                 disabled={loading}
-                required
               >
+                <option value="">No portfolio</option>
                 {portfolios.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name || p.id}
@@ -162,8 +158,8 @@ function CreateProjectForm() {
             </div>
           ) : (
             <HelperText className="!mt-0">
-              Portfolio:{" "}
-              <span className="font-medium text-[var(--ds-text-primary)]">{portfolios[0]?.name}</span>
+              No portfolios yet — this project will not be linked to one. You can create a portfolio from
+              the dashboard and assign it later.
             </HelperText>
           )}
           <div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ProjectRow } from "@/lib/projects";
 import { fetchProjectsClient } from "@/lib/projects";
@@ -90,12 +91,11 @@ export function ProjectListPageClient() {
             <p className="m-0 mt-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
               Create a project to manage risks and simulations.
             </p>
-            <Link
-              href={riskaiPath("/create-project")}
+            <OpenProjectOnboardingLink
               className="mt-6 inline-flex h-9 items-center justify-center rounded-[var(--ds-radius-sm)] px-4 text-[length:var(--ds-text-sm)] font-medium no-underline transition-all duration-150 ease-out bg-[var(--ds-primary)] text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] hover:brightness-[1.07] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]"
             >
               Create your first project
-            </Link>
+            </OpenProjectOnboardingLink>
           </CardBody>
         </Card>
       ) : (
@@ -112,12 +112,11 @@ export function ProjectListPageClient() {
               </li>
             ))}
           </ul>
-          <Link
-            href={riskaiPath("/create-project")}
+          <OpenProjectOnboardingLink
             className="inline-flex px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)]"
           >
             + New project
-          </Link>
+          </OpenProjectOnboardingLink>
         </>
       )}
     </main>

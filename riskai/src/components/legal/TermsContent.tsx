@@ -22,6 +22,12 @@ export function TermsContent({ fullWidth = false, inModal = false }: { fullWidth
         </header>
       )}
 
+      {inModal ? (
+        <h2 className="mb-3 text-base font-semibold tracking-tight text-[var(--ds-text-secondary)] sm:mb-4 sm:text-[17px]">
+          Rules for using Visualify and RiskAI
+        </h2>
+      ) : null}
+
       <div className={`${inModal ? "mt-0" : "mt-5"} space-y-3 ${legalBodyClass}`}>
         <p>
           These terms govern your use of RiskAI, a product offered by Visualify (&quot;we&quot;, &quot;us&quot;). By

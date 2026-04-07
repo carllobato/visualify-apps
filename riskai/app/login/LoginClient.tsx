@@ -197,7 +197,8 @@ export function LoginClient() {
     resetFormState();
     setLoading(true);
     try {
-      const { error: err } = await supabaseBrowserClient().auth.signInWithPassword({
+      const supabase = supabaseBrowserClient();
+      const { error: err } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -205,6 +206,23 @@ export function LoginClient() {
         setError(formatAuthError(err));
         return;
       }
+
+      const { data: aalData, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (
+        !aalErr &&
+        aalData?.nextLevel === "aal2" &&
+        aalData.currentLevel !== "aal2"
+      ) {
+        const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : DASHBOARD_PATH;
+        const verifyUrl = new URL("/mfa/verify", window.location.origin);
+        verifyUrl.searchParams.set("next", safeNext);
+        if (inviteToken) {
+          verifyUrl.searchParams.set("invite_token", inviteToken);
+        }
+        window.location.href = `${verifyUrl.pathname}${verifyUrl.search}`;
+        return;
+      }
+
       redirectAfterAuth();
     } catch (err) {
       setError(formatAuthError(err));

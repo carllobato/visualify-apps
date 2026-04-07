@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import type { ProjectTilePayload } from "@/lib/dashboard/projectTileServerData";
 import { riskaiPath } from "@/lib/routes";
 
@@ -75,24 +76,15 @@ export type NewProjectTileProps = {
  * Create-project tile: muted surface (no border); + aligned right like the RAG dot on project rows.
  */
 export function NewProjectTile({ portfolioId = null }: NewProjectTileProps) {
-  const href =
-    portfolioId != null && portfolioId !== ""
-      ? `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolioId)}`
-      : riskaiPath("/create-project");
-
   return (
-    <Link
-      href={href}
-      className={NEW_PROJECT_TILE_LINK_CLASSES}
-      aria-label="Create project"
-    >
+    <OpenProjectOnboardingLink className={NEW_PROJECT_TILE_LINK_CLASSES} portfolioId={portfolioId}>
       <span className="min-w-0 flex-1 truncate text-[length:var(--ds-text-sm)] font-semibold leading-tight tracking-tight text-[var(--ds-text-primary)]">
         Create project
       </span>
       <span className={CREATE_ROW_PLUS_GLYPH_CLASSES} aria-hidden>
         +
       </span>
-    </Link>
+    </OpenProjectOnboardingLink>
   );
 }
 

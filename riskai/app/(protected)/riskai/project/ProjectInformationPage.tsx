@@ -61,6 +61,7 @@ import {
   projectSettingsSelectClass,
 } from "@/components/project/projectSettingsDsFormClasses";
 import { PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE } from "@/lib/settings/settingsPermissionMessages";
+import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
 
 const RISK_APPETITE_OPTIONS: { value: RiskAppetite; label: string }[] = [
   { value: "P10", label: "P10" },
@@ -80,11 +81,9 @@ const CURRENCY_OPTIONS: { value: ProjectCurrency; label: string }[] = [
   { value: "GBP", label: "GBP" },
 ];
 
-const FINANCIAL_UNIT_OPTIONS: { value: FinancialUnit; label: string }[] = [
-  { value: "THOUSANDS", label: "Thousands ($k)" },
-  { value: "MILLIONS", label: "Millions ($m)" },
-  { value: "BILLIONS", label: "Billions ($b)" },
-];
+const FINANCIAL_UNIT_OPTIONS: { value: FinancialUnit; label: string }[] = REPORTING_UNIT_OPTIONS.map(
+  (u) => ({ value: u, label: REPORTING_UNIT_LABELS[u] }),
+);
 
 const MAX_MONTHS = 600;
 const MAX_WEEKS = 520;

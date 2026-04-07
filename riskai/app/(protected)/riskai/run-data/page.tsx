@@ -80,6 +80,14 @@ function formatCost(value: number): string {
 
 type MonitoringRecommendationView = "cost" | "schedule";
 
+/** Simulation Input Audit table: show rows with a given flag, no flags, or all. */
+type SimulationInputAuditFlagFilter =
+  | "all"
+  | "mismatchStatusVsSource"
+  | "postDataIncomplete"
+  | "probabilityMismatch"
+  | "none";
+
 type MonitoringRecommendation = {
   riskId: string;
   title: string;
@@ -169,6 +177,8 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const [reportingSnapshotRow, setReportingSnapshotRow] = useState<SimulationSnapshotRow>(null);
   const [reportingLockedByLabel, setReportingLockedByLabel] = useState<string | null>(null);
   const [sortAuditByPotentialReduction, setSortAuditByPotentialReduction] = useState(false);
+  const [simulationInputAuditFlagFilter, setSimulationInputAuditFlagFilter] =
+    useState<SimulationInputAuditFlagFilter>("all");
   const [monitoringRecommendationView, setMonitoringRecommendationView] = useState<MonitoringRecommendationView>("cost");
 
   useEffect(() => {
@@ -767,7 +777,24 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const monitoringRecommendationData = monitoringRecommendationDataByView[monitoringRecommendationView];
 
   const simulationInputAuditRows = useMemo(() => {
-    const r = [...simulationInputAuditRowsRaw];
+    let r = [...simulationInputAuditRowsRaw];
+    if (simulationInputAuditFlagFilter !== "all") {
+      r = r.filter((row) => {
+        const f = row.flags;
+        switch (simulationInputAuditFlagFilter) {
+          case "mismatchStatusVsSource":
+            return f.mismatchStatusVsSource;
+          case "postDataIncomplete":
+            return f.postDataIncomplete;
+          case "probabilityMismatch":
+            return f.probabilityMismatch;
+          case "none":
+            return !f.mismatchStatusVsSource && !f.postDataIncomplete && !f.probabilityMismatch;
+          default:
+            return true;
+        }
+      });
+    }
     if (sortAuditByPotentialReduction) {
       r.sort((a, b) => {
         const pa = a.potentialReductionCost ?? -Infinity;
@@ -776,7 +803,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       });
     }
     return r;
-  }, [simulationInputAuditRowsRaw, sortAuditByPotentialReduction]);
+  }, [simulationInputAuditRowsRaw, sortAuditByPotentialReduction, simulationInputAuditFlagFilter]);
 
   /** Consistency Checks: cross-section reconciliation. Uses existing page data only; no re-run. */
   const CONSISTENCY_EPS_COST = 1;
@@ -2178,19 +2205,48 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                       </dd>
                     </div>
                   </dl>
-                  <label className="flex cursor-pointer items-center gap-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-                    <input
-                      type="checkbox"
-                      checked={sortAuditByPotentialReduction}
-                      onChange={(e) => setSortAuditByPotentialReduction(e.target.checked)}
-                      className="rounded border-[var(--ds-border)]"
-                    />
-                    Sort by monitoring opportunity (desc)
-                  </label>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <label className="flex cursor-pointer items-center gap-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                      <span className="whitespace-nowrap text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
+                        Filter by flag
+                      </span>
+                      <select
+                        value={simulationInputAuditFlagFilter}
+                        onChange={(e) =>
+                          setSimulationInputAuditFlagFilter(e.target.value as SimulationInputAuditFlagFilter)
+                        }
+                        className="min-w-[12rem] rounded-md border border-[var(--ds-border)] bg-[var(--ds-surface)] px-2 py-1 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]"
+                      >
+                        <option value="all">All rows</option>
+                        <option value="mismatchStatusVsSource">Status ≠ source (status≠src)</option>
+                        <option value="postDataIncomplete">Incomplete post data (post gap)</option>
+                        <option value="probabilityMismatch">Probability alignment (p align)</option>
+                        <option value="none">No flags</option>
+                      </select>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                      <input
+                        type="checkbox"
+                        checked={sortAuditByPotentialReduction}
+                        onChange={(e) => setSortAuditByPotentialReduction(e.target.checked)}
+                        className="rounded border-[var(--ds-border)]"
+                      />
+                      Sort by monitoring opportunity (desc)
+                    </label>
+                  </div>
                 </div>
-                {simulationInputAuditRows.length === 0 ? (
+                {simulationInputAuditFlagFilter !== "all" && simulationInputAuditRowsRaw.length > 0 ? (
+                  <p className="m-0 mb-3 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                    Showing {simulationInputAuditRows.length} of {simulationInputAuditRowsRaw.length} rows
+                  </p>
+                ) : null}
+                {simulationInputAuditRowsRaw.length === 0 ? (
                   <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
                     No risks to audit. Add risks or run a simulation.
+                  </p>
+                ) : simulationInputAuditRows.length === 0 ? (
+                  <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                    No rows match the selected flag filter.
                   </p>
                 ) : (
                   <div className={DRIVER_TABLE_WRAP}>

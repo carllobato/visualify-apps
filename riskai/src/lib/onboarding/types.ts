@@ -16,6 +16,14 @@ export const OnboardingMetaKey = {
 /** Dispatched on `window` after first name / surname / company are saved (settings or welcome modal). */
 export const ACCOUNT_PROFILE_UPDATED_EVENT = "riskai-account-profile-updated";
 
+/** Query on `/riskai/dashboard` (and `/riskai/onboarding/portfolio` redirect): opens create-portfolio modal. */
+export const ONBOARDING_PORTFOLIO_QP = "onboarding_portfolio";
+
+/** Dispatched on `window` so in-app links can open the portfolio modal without navigation. */
+export const OPEN_PORTFOLIO_ONBOARDING_EVENT = "riskai-open-portfolio-onboarding";
+/** Dispatched on `window` so links can open project onboarding modal without navigation. */
+export const OPEN_PROJECT_ONBOARDING_EVENT = "riskai-open-project-onboarding";
+
 /** Future: drive checklist / product tours without renaming routes. */
 export type OnboardingStepId = "profile" | "portfolio" | "dashboard";
 

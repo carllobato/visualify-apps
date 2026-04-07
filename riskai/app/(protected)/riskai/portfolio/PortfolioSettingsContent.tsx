@@ -21,6 +21,13 @@ import type { PortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAcc
 import { getPortfolioSettingsPermissionNotice } from "@/lib/settings/settingsPermissionMessages";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import {
+  DEFAULT_REPORTING_CURRENCY,
+  DEFAULT_REPORTING_UNIT,
+  REPORTING_CURRENCY_OPTIONS,
+  REPORTING_UNIT_LABELS,
+  REPORTING_UNIT_OPTIONS,
+} from "@/lib/portfolio/reportingPreferences";
+import {
   Button,
   Callout,
   Card,
@@ -44,12 +51,6 @@ export type PortfolioSettingsInitial = {
 };
 
 const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
-
-const DEFAULT_REPORTING_CURRENCY = "AUD";
-const DEFAULT_REPORTING_UNIT = "MILLIONS";
-
-const REPORTING_CURRENCY_OPTIONS = ["AUD", "USD", "GBP"] as const;
-const REPORTING_UNIT_OPTIONS = ["THOUSANDS", "MILLIONS", "BILLIONS"] as const;
 
 /** Details tab values: Geist Mono via `font-mono`, matches Portfolio ID row. */
 const portfolioDetailsValueClass =
@@ -254,7 +255,7 @@ export default function PortfolioSettingsContent({
                   >
                     {REPORTING_UNIT_OPTIONS.map((u) => (
                       <option key={u} value={u}>
-                        {u}
+                        {REPORTING_UNIT_LABELS[u]}
                       </option>
                     ))}
                   </select>

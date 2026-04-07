@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@visualify/design-system";
+import { isVisualifyStaffEmail } from "@/lib/auth/visualifyStaff";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { setSideNavPinnedCookie } from "@/lib/sideNavPinnedCookie";
 import {
@@ -197,6 +198,7 @@ export function Sidebar({
   const projectIdFromUrlRef = useRef(projectIdFromUrl);
   const [portfolioIdForProject, setPortfolioIdForProject] = useState<string | null>(null);
   const [projectIdFromStorage, setProjectIdFromStorage] = useState<string | null>(null);
+  const [showDebugNav, setShowDebugNav] = useState(false);
 
   useEffect(() => {
     projectIdFromUrlRef.current = projectIdFromUrl;
@@ -245,6 +247,19 @@ export function Sidebar({
     return () => {
       cancelled = true;
     };
+  }, [supabase]);
+
+  useEffect(() => {
+    const sync = (email: string | null | undefined) => {
+      setShowDebugNav(isVisualifyStaffEmail(email));
+    };
+    void supabase.auth.getUser().then(({ data: { user } }) => sync(user?.email ?? null));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      sync(session?.user?.email ?? null);
+    });
+    return () => subscription.unsubscribe();
   }, [supabase]);
 
   useEffect(() => {
@@ -342,31 +357,33 @@ export function Sidebar({
       ? "ml-0 max-w-0 opacity-0 pointer-events-none"
       : "ml-2 max-w-[min(12rem,100%)] opacity-100");
 
-  /** Collapsed: horizontal rule through vertical center of the block (not top-aligned border). */
+  /** Collapsed: horizontal rule centered on the label line (outer pt/mt must not skew top-1/2). */
   const sectionHeader = (label: string, isFirst = false) => (
     <div
       className={
-        "ds-sidebar-section-header relative px-3 pb-1 pt-4 first:pt-1 " +
+        "ds-sidebar-section-header px-3 pb-1 pt-4 first:pt-1 " +
         (!isFirst ? "mt-1" : "")
       }
     >
-      {visuallyCollapsed ? (
-        <div
-          className="pointer-events-none absolute left-3 right-3 top-1/2 z-0 h-px -translate-y-1/2 bg-[var(--ds-status-neutral-subtle-border)]"
-          aria-hidden
-        />
-      ) : null}
-      <span
-        className={
-          "ds-sidebar-section-header-label relative z-10 block overflow-hidden whitespace-nowrap transition-[max-width,opacity] " +
-          navTransition +
-          " " +
-          (visuallyCollapsed ? "max-w-0 opacity-0" : "max-w-[min(12rem,100%)] opacity-100")
-        }
-        aria-hidden={visuallyCollapsed}
-      >
-        {label}
-      </span>
+      <div className="relative">
+        {visuallyCollapsed ? (
+          <div
+            className="pointer-events-none absolute inset-x-0 top-1/2 z-0 h-px -translate-y-1/2 bg-[var(--ds-status-neutral-subtle-border)]"
+            aria-hidden
+          />
+        ) : null}
+        <span
+          className={
+            "ds-sidebar-section-header-label relative z-10 block overflow-hidden whitespace-nowrap transition-[max-width,opacity] " +
+            navTransition +
+            " " +
+            (visuallyCollapsed ? "max-w-0 opacity-0" : "max-w-[min(12rem,100%)] opacity-100")
+          }
+          aria-hidden={visuallyCollapsed}
+        >
+          {label}
+        </span>
+      </div>
     </div>
   );
 
@@ -523,7 +540,7 @@ export function Sidebar({
             </>
           ) : null}
 
-          {showProjectNav && projectNavBase ? (
+          {showProjectNav && projectNavBase && showDebugNav ? (
             <>
               {sectionHeader("De-Bug", false)}
               <ul className="space-y-0.5">

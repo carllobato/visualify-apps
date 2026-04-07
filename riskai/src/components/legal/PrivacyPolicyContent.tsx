@@ -22,6 +22,12 @@ export function PrivacyPolicyContent({ fullWidth = false, inModal = false }: { f
         </header>
       )}
 
+      {inModal ? (
+        <h2 className="mb-3 text-base font-semibold tracking-tight text-[var(--ds-text-secondary)] sm:mb-4 sm:text-[17px]">
+          How Visualify handles your data
+        </h2>
+      ) : null}
+
       <div className={`${inModal ? "mt-0" : "mt-5"} space-y-3 ${legalBodyClass}`}>
         <p>
           RiskAI is a product of Visualify. This policy describes what we collect when you use the service, how we use

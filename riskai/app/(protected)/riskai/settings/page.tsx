@@ -10,9 +10,11 @@ import { DeleteAccountSection } from "./DeleteAccountSection";
 import { AccountSettingsTabs } from "./AccountSettingsTabs";
 import { LastLoginPanel } from "./LastLoginPanel";
 import { ChangePasswordForm } from "./ChangePasswordForm";
+import { TwoFactorSetup } from "./TwoFactorSetup";
 import { Card, CardBody, CardFooter, CardHeader } from "@visualify/design-system";
 import { riskaiPath } from "@/lib/routes";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
+import { listFactorsIndicatesVerifiedTotp } from "@/lib/auth/mfa";
 
 /** User settings: authenticated users only (enforced by (protected) layout). */
 export default async function UserSettingsPage() {
@@ -44,6 +46,11 @@ export default async function UserSettingsPage() {
               </section>
             </>
           }
+          authenticationPanel={
+            <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
+              Sign in to manage password, two-factor authentication, and session options.
+            </p>
+          }
           dangerPanel={
             <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
               Sign in to review account deletion options.
@@ -70,6 +77,9 @@ export default async function UserSettingsPage() {
     .order("last_seen_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  const { data: mfaFactors } = await supabase.auth.mfa.listFactors();
+  const totpAlreadyEnabled = listFactorsIndicatesVerifiedTotp(mfaFactors ?? null);
 
   return (
     <main className="w-full px-4 py-6 sm:px-6">
@@ -115,7 +125,10 @@ export default async function UserSettingsPage() {
                 </dl>
               </CardBody>
             </Card>
-
+          </section>
+        }
+        authenticationPanel={
+          <section className="space-y-4">
             <Card>
               <CardHeader className="!px-4 !py-2.5">
                 <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Password</h2>
@@ -126,6 +139,20 @@ export default async function UserSettingsPage() {
                   confirm.
                 </p>
                 <ChangePasswordForm />
+              </CardBody>
+            </Card>
+
+            <Card>
+              <CardHeader className="!px-4 !py-2.5">
+                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">
+                  Two-Factor Authentication
+                </h2>
+              </CardHeader>
+              <CardBody className="!px-4 !py-3">
+                <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
+                  Add an authenticator app for extra account security.
+                </p>
+                <TwoFactorSetup totpAlreadyEnabled={totpAlreadyEnabled} />
               </CardBody>
             </Card>
 

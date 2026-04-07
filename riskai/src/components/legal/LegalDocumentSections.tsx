@@ -8,7 +8,7 @@ export const legalInlineLinkClass =
 export function LegalSection({ title, children, inModal = false }: { title: string; children: React.ReactNode; inModal?: boolean }) {
   return (
     <section
-      className={`border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] pt-7 first:border-0 first:pt-0 ${
+      className={`border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] pt-7 ${
         inModal ? "sm:pt-8" : "sm:pt-7"
       }`}
     >

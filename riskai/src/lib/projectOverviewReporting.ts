@@ -3,7 +3,7 @@
  * Reuses the same driver and CDF construction patterns as Run Data / Simulation (no duplicated engine math).
  */
 
-import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
+import type { SimulationSnapshotPayload, SimulationSnapshotRow } from "@/lib/db/snapshots";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
 import type { SimulationSnapshot } from "@/domain/simulation/simulation.types";
@@ -11,7 +11,13 @@ import type { MonteCarloNeutralSnapshot } from "@/domain/simulation/simulation.t
 import type { Risk } from "@/domain/risk/risk.schema";
 import { computePortfolioExposure } from "@/engine/forwardExposure";
 import type { PortfolioExposure } from "@/engine/forwardExposure";
-import { appliesToExcludesCost } from "@/domain/risk/riskFieldSemantics";
+import { appliesToExcludesCost, isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
+import {
+  buildRating,
+  costToConsequenceScale,
+  probabilityPctToScale,
+  timeDaysToConsequenceScale,
+} from "@/domain/risk/risk.logic";
 import {
   binSamplesIntoHistogram,
   binSamplesIntoTimeHistogram,
@@ -390,4 +396,73 @@ export function timeGapVersusTargetPercentile(
   const atTarget = timeAtPercentile(timeCdf, targetPercent);
   if (atTarget == null || !Number.isFinite(atTarget)) return null;
   return contingencyDays - atTarget;
+}
+
+/**
+ * Same 5×5 matrix as portfolio dashboard tiles (`computeRag`), using effective MC inputs
+ * persisted on the snapshot (`inputs_used`: trigger probability 0–1, cost_ml, time_ml).
+ */
+function ratingLevelFromSnapshotInputsLine(line: {
+  probability: number;
+  cost_ml: number;
+  time_ml: number;
+}): ReturnType<typeof buildRating>["level"] {
+  const p = Number(line.probability);
+  const probScale = probabilityPctToScale((Number.isFinite(p) ? p : 0) * 100);
+  const cons = Math.max(
+    costToConsequenceScale(Number(line.cost_ml) || 0),
+    timeDaysToConsequenceScale(Number(line.time_ml) || 0)
+  );
+  return buildRating(probScale, cons).level;
+}
+
+/** Count high + extreme rows from persisted simulation inputs (reporting run). */
+export function reportingRunHighExtremeCountFromInputsUsed(
+  inputs: SimulationSnapshotPayload["inputs_used"] | null | undefined
+): number {
+  if (!inputs?.length) return 0;
+  let n = 0;
+  for (const line of inputs) {
+    const lv = ratingLevelFromSnapshotInputsLine(line);
+    if (lv === "high" || lv === "extreme") n += 1;
+  }
+  return n;
+}
+
+/** Active risks included in the locked run: prefers `inputs_used`, then `risk_count`, then payload risk list length. */
+export function reportingRunActiveRiskCount(row: SimulationSnapshotRow | null | undefined): number {
+  if (!row) return 0;
+  const inputs = row.payload?.inputs_used;
+  if (Array.isArray(inputs) && inputs.length > 0) return inputs.length;
+  const rc = row.risk_count;
+  if (rc != null && Number.isFinite(Number(rc))) return Math.max(0, Math.floor(Number(rc)));
+  const pr = row.payload?.risks;
+  if (Array.isArray(pr)) return pr.length;
+  return 0;
+}
+
+/**
+ * High / extreme count for the reporting run: from `inputs_used` when present; otherwise current
+ * register residual levels limited to risk IDs present in the snapshot payload (legacy snapshots).
+ */
+export function reportingRunHighExtremeCount(
+  row: SimulationSnapshotRow | null | undefined,
+  liveRisks: Risk[]
+): number {
+  const inputs = row?.payload?.inputs_used;
+  if (Array.isArray(inputs) && inputs.length > 0) {
+    return reportingRunHighExtremeCountFromInputsUsed(inputs);
+  }
+  const ids = new Set<string>();
+  const pr = row?.payload?.risks;
+  if (Array.isArray(pr)) {
+    for (const r of pr as { id?: string }[]) {
+      if (r && typeof r.id === "string") ids.add(r.id);
+    }
+  }
+  if (ids.size === 0) return 0;
+  return liveRisks.filter((r) => ids.has(r.id) && !isRiskStatusArchived(r.status)).filter((r) => {
+    const lv = r.residualRating?.level;
+    return lv === "high" || lv === "extreme";
+  }).length;
 }

@@ -1,35 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { OnboardingMetaKey } from "@/lib/onboarding/types";
+import { useEffect, useRef, useState } from "react";
 import { Callout } from "@visualify/design-system";
+import {
+  OnboardingStepLabel,
+  PORTFOLIO_ONBOARDING_STEP_TOTAL,
+} from "./OnboardingStepLabel";
+import { OnboardingModalCloseIcon } from "./OnboardingModalCloseIcon";
 import { OnboardingStepActions } from "./OnboardingStepActions";
 
 type Props = {
   open: boolean;
-  /** After “Back” from portfolio details — confirm before returning to the detail step. */
-  postCreateBridge: { id: string; name: string } | null;
-  onBackToProfile: () => void;
-  onForwardFromPostCreateBridge: () => void;
+  /** When set (e.g. user went Back from reporting), PATCH name instead of POST create. */
+  resumePortfolio: { id: string; name: string } | null;
   onCreated: (portfolio: { id: string; name: string }) => void | Promise<void>;
-  /** Skip creates a default portfolio so projects can be added without the naming step. */
-  onSkipped: (payload: { portfolioId: string }) => void | Promise<void>;
+  onDismiss: () => void;
 };
 
 export function PortfolioSetupModal({
   open,
-  postCreateBridge,
-  onBackToProfile,
-  onForwardFromPostCreateBridge,
+  resumePortfolio,
   onCreated,
-  onSkipped,
+  onDismiss,
 }: Props) {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [skipping, setSkipping] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const prevOpenRef = useRef(false);
+  const prevResumeIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      prevOpenRef.current = false;
+      return;
+    }
+    const resumeId = resumePortfolio?.id ?? null;
+    if (!prevOpenRef.current || prevResumeIdRef.current !== resumeId) {
+      setName(resumePortfolio?.name ?? "");
+      setError(null);
+    }
+    prevOpenRef.current = true;
+    prevResumeIdRef.current = resumeId;
+  }, [open, resumePortfolio]);
 
   if (!open) return null;
 
@@ -43,6 +55,24 @@ export function PortfolioSetupModal({
     }
     setLoading(true);
     try {
+      if (resumePortfolio) {
+        const res = await fetch(`/api/portfolios/${resumePortfolio.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmed }),
+          credentials: "include",
+        });
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) {
+          setError(json.error ?? "Could not update portfolio name.");
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
+        await onCreated({ id: resumePortfolio.id, name: trimmed });
+        return;
+      }
+
       const res = await fetch("/api/portfolios", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -65,119 +95,39 @@ export function PortfolioSetupModal({
     }
   }
 
-  async function handleSkip() {
-    setError(null);
-    setSkipping(true);
-    try {
-      const res = await fetch("/api/portfolios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "My portfolio" }),
-      });
-      const json = (await res.json().catch(() => ({}))) as {
-        error?: string;
-        portfolio?: { id: string };
-      };
-      if (!res.ok || !json.portfolio?.id) {
-        setError(json.error ?? "Could not create a portfolio.");
-        return;
-      }
-      const supabase = supabaseBrowserClient();
-      const { error: err } = await supabase.auth.updateUser({
-        data: { [OnboardingMetaKey.portfolioSkipped]: true },
-      });
-      if (err) {
-        setError(err.message);
-        return;
-      }
-      await onSkipped({ portfolioId: json.portfolio.id });
-    } finally {
-      setSkipping(false);
-    }
-  }
-
-  async function handleSignOut() {
-    setSigningOut(true);
-    await supabaseBrowserClient().auth.signOut();
-    window.location.href = "/";
-  }
-
-  const busy = loading || skipping || signingOut;
-  const inputClass =
-    "w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2.5 text-sm text-[var(--ds-text-primary)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]";
-  const labelClass = "mb-1.5 block text-sm font-medium text-[var(--ds-text-secondary)]";
-
-  if (postCreateBridge) {
-    return (
-      <div
-        className="fixed inset-0 z-[101] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-[2px]"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="onboarding-portfolio-bridge-title"
-      >
-        <div className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
-          <h2
-            id="onboarding-portfolio-bridge-title"
-            className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
-          >
-            Portfolio created
-          </h2>
-          <p className="mt-1 text-sm text-[var(--ds-text-secondary)]">
-            <span className="font-medium text-[var(--ds-text-primary)]">{postCreateBridge.name}</span> is
-            ready. Continue to add a description, or go back to your profile.
-          </p>
-          <OnboardingStepActions
-            onBack={onBackToProfile}
-            busy={busy}
-            forwardSlot={
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void onForwardFromPostCreateBridge()}
-                className="w-full rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
-              >
-                Continue to portfolio details
-              </button>
-            }
-          />
-          <div className="mt-5 border-t border-[var(--ds-border)] pt-4 text-center">
-            <p className="mb-2 text-xs text-[var(--ds-text-muted)]">
-              Don&apos;t want to continue right now?
-            </p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSignOut}
-              className="text-sm font-medium text-[var(--ds-text-secondary)] underline-offset-2 hover:text-[var(--ds-text-primary)] hover:underline disabled:opacity-50"
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const busy = loading;
 
   return (
     <div
-      className="fixed inset-0 z-[101] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-[2px]"
+      className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-portfolio-title"
     >
-      <div className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]">
-        <h2
-          id="onboarding-portfolio-title"
-          className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
-        >
-          Name your portfolio
-        </h2>
-        <p className="mt-1 text-sm text-[var(--ds-text-secondary)]">
-          Portfolios group your projects. Skip creates a default portfolio you can rename later.
+      <div className="ds-onboarding-modal-panel">
+        <div className="ds-onboarding-modal-panel-header">
+          <div className="min-w-0 flex-1 space-y-1">
+            <OnboardingStepLabel step={1} of={PORTFOLIO_ONBOARDING_STEP_TOTAL} />
+            <h2 id="onboarding-portfolio-title" className="ds-onboarding-modal-title">
+              Name your portfolio
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="ds-onboarding-modal-close"
+            onClick={onDismiss}
+            disabled={busy}
+            aria-label="Close"
+          >
+            <OnboardingModalCloseIcon />
+          </button>
+        </div>
+        <p className="ds-onboarding-modal-lede">
+          Portfolios group your projects. You can add a description later in portfolio settings.
         </p>
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={handleSubmit} className="ds-onboarding-modal-form">
           <div>
-            <label htmlFor="onboarding-portfolio-name" className={labelClass}>
+            <label htmlFor="onboarding-portfolio-name" className="ds-onboarding-modal-label">
               Portfolio name
             </label>
             <input
@@ -185,51 +135,25 @@ export function PortfolioSetupModal({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={inputClass}
-              placeholder="e.g. Capital projects 2025"
+              className="ds-onboarding-modal-input"
+              placeholder="e.g. Company Name"
               autoComplete="organization"
               disabled={busy}
             />
           </div>
-          {error && (
-            <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
+          {error ? (
+            <Callout status="danger" role="alert" className="ds-onboarding-modal-callout">
               {error}
             </Callout>
-          )}
+          ) : null}
           <OnboardingStepActions
-            onBack={onBackToProfile}
             busy={busy}
             forwardSlot={
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] px-4 py-2.5 text-sm font-medium text-[var(--ds-text-inverse)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] sm:w-auto sm:min-w-[200px]"
-              >
-                {loading ? "Creating…" : "Continue"}
+              <button type="submit" disabled={busy}>
+                {loading ? (resumePortfolio ? "Saving…" : "Creating…") : "Continue"}
               </button>
             }
           />
-          <button
-            type="button"
-            disabled={busy}
-            onClick={handleSkip}
-            className="w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-transparent px-4 py-2.5 text-sm font-medium text-[var(--ds-text-primary)] transition-opacity hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
-          >
-            {skipping ? "Skipping…" : "Skip for now"}
-          </button>
-          <div className="border-t border-[var(--ds-border)] pt-4 text-center">
-            <p className="mb-2 text-xs text-[var(--ds-text-muted)]">
-              Don&apos;t want to continue right now?
-            </p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={handleSignOut}
-              className="text-sm font-medium text-[var(--ds-text-secondary)] underline-offset-2 hover:text-[var(--ds-text-primary)] hover:underline disabled:opacity-50"
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </button>
-          </div>
         </form>
       </div>
     </div>

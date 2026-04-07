@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ProjectionScenarioProvider } from "@/context/ProjectionScenarioContext";
 import { LegalDocumentProvider } from "@/components/legal/LegalDocumentProvider";
@@ -17,7 +18,19 @@ export const metadata: Metadata = {
   description: "AI-powered Risk Register",
 };
 
-const themeScript = `
+const themeScriptLightOnly = `
+(function() {
+  try {
+    var root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add('light');
+    root.setAttribute('data-theme', 'light');
+    localStorage.setItem('riskai-theme', 'light');
+  } catch (e) {}
+})();
+`;
+
+const themeScriptFull = `
 (function() {
   try {
     var stored = localStorage.getItem('riskai-theme');
@@ -30,6 +43,8 @@ const themeScript = `
   } catch (e) {}
 })();
 `;
+
+const themeScript = THEME_LIGHT_ONLY_MVP ? themeScriptLightOnly : themeScriptFull;
 
 /** Mirror sidebar localStorage → cookie before the request pipeline so protected SSR can match rail width (see Sidebar + protected layout). */
 const sideNavPinnedCookieScript = `

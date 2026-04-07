@@ -5,12 +5,19 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchPublicProfile } from "@/lib/profiles/profileDb";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { isOnboardingProfileComplete, isOnboardingWizardComplete } from "@/lib/onboarding/guards";
-import { ACCOUNT_PROFILE_UPDATED_EVENT, OnboardingMetaKey } from "@/lib/onboarding/types";
-import { AddProjectOnboardingModal } from "./AddProjectOnboardingModal";
+import {
+  ACCOUNT_PROFILE_UPDATED_EVENT,
+  OnboardingMetaKey,
+  ONBOARDING_PORTFOLIO_QP,
+  OPEN_PROJECT_ONBOARDING_EVENT,
+  OPEN_PORTFOLIO_ONBOARDING_EVENT,
+} from "@/lib/onboarding/types";
+import { ProjectOnboardingCreateModal } from "./ProjectOnboardingCreateModal";
+import { ProjectOnboardingInviteModal } from "./ProjectOnboardingInviteModal";
 import { PortfolioOnboardingDetailModal } from "./PortfolioOnboardingDetailModal";
+import { PortfolioOnboardingInviteModal } from "./PortfolioOnboardingInviteModal";
 import { PortfolioSetupModal } from "./PortfolioSetupModal";
 import { ProfileSetupModal } from "./ProfileSetupModal";
-import { ProjectOnboardingSetupModal } from "./ProjectOnboardingSetupModal";
 import { riskaiPath } from "@/lib/routes";
 
 async function fetchProjects(): Promise<{ id: string }[]> {
@@ -24,8 +31,7 @@ async function fetchProjects(): Promise<{ id: string }[]> {
 }
 
 /**
- * Central place for first-run onboarding UI. MVP: profile completion only (first name, surname,
- * company, role). Portfolio/project modals remain mounted but are not opened automatically.
+ * First-run onboarding: profile, then optional portfolio wizard (name → reporting → invite/skip).
  */
 export function OnboardingHost() {
   const router = useRouter();
@@ -37,28 +43,54 @@ export function OnboardingHost() {
   const [profileGateTick, setProfileGateTick] = useState(0);
   const [ready, setReady] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showPortfolioModal, setShowPortfolioModal] = useState(false);
-  const [showPortfolioDetailModal, setShowPortfolioDetailModal] = useState(false);
-  const [portfolioDetailId, setPortfolioDetailId] = useState<string | null>(null);
-  const [portfolioDetailInitialName, setPortfolioDetailInitialName] = useState("");
-  const [showAddProjectModal, setShowAddProjectModal] = useState(false);
-  const [addProjectPortfolioId, setAddProjectPortfolioId] = useState<string | null>(null);
-  const [showProjectSetupModal, setShowProjectSetupModal] = useState(false);
-  const [projectSetupId, setProjectSetupId] = useState<string | null>(null);
-  const [projectSetupInitialName, setProjectSetupInitialName] = useState("");
+  const [showPortfolioNameModal, setShowPortfolioNameModal] = useState(false);
+  const [showPortfolioReportingModal, setShowPortfolioReportingModal] = useState(false);
+  const [showPortfolioInviteModal, setShowPortfolioInviteModal] = useState(false);
+  const [showProjectCreateModal, setShowProjectCreateModal] = useState(false);
+  const [showProjectInviteModal, setShowProjectInviteModal] = useState(false);
+  const [projectCreateInitialStep, setProjectCreateInitialStep] = useState<1 | 5>(1);
+  const [projectPreferredPortfolioId, setProjectPreferredPortfolioId] = useState<string | null>(null);
+  const [projectWizardId, setProjectWizardId] = useState<string | null>(null);
+  const [portfolioWizardId, setPortfolioWizardId] = useState<string | null>(null);
+  const [portfolioWizardName, setPortfolioWizardName] = useState("");
+  /** When user returns from step 2, step 1 PATCHes name instead of POST create. */
+  const [portfolioResumeForNameStep, setPortfolioResumeForNameStep] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [initialFirstName, setInitialFirstName] = useState("");
   const [initialLastName, setInitialLastName] = useState("");
   const [initialCompany, setInitialCompany] = useState("");
   const [initialRole, setInitialRole] = useState("");
-  /** After creating a portfolio, user can go back from the detail step to this bridge UI. */
-  const [portfolioPostCreateBridge, setPortfolioPostCreateBridge] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  /** Add-project step was opened after portfolio details (vs skip naming / skip detail). */
-  const [addProjectEnteredFromDetail, setAddProjectEnteredFromDetail] = useState(false);
-  /** Returning from project-setup step to re-open add-project without creating another row. */
-  const [addProjectResume, setAddProjectResume] = useState<{ id: string; name: string } | null>(null);
+
+  const resetPortfolioWizard = useCallback(() => {
+    setPortfolioResumeForNameStep(null);
+    setPortfolioWizardId(null);
+    setPortfolioWizardName("");
+    setShowPortfolioNameModal(false);
+    setShowPortfolioReportingModal(false);
+    setShowPortfolioInviteModal(false);
+  }, []);
+
+  const openPortfolioOnboardingModal = useCallback(() => {
+    resetPortfolioWizard();
+    setShowPortfolioNameModal(true);
+  }, [resetPortfolioWizard]);
+
+  const resetProjectWizard = useCallback(() => {
+    setShowProjectCreateModal(false);
+    setShowProjectInviteModal(false);
+    setProjectCreateInitialStep(1);
+    setProjectPreferredPortfolioId(null);
+    setProjectWizardId(null);
+  }, []);
+
+  const openProjectOnboardingModal = useCallback((portfolioId?: string) => {
+    resetProjectWizard();
+    setProjectCreateInitialStep(1);
+    setProjectPreferredPortfolioId(portfolioId?.trim() ? portfolioId.trim() : null);
+    setShowProjectCreateModal(true);
+  }, [resetProjectWizard]);
 
   const markWizardCompleteIfHasProjects = useCallback(
     async (
@@ -80,6 +112,21 @@ export function OnboardingHost() {
     window.addEventListener(ACCOUNT_PROFILE_UPDATED_EVENT, bump);
     return () => window.removeEventListener(ACCOUNT_PROFILE_UPDATED_EVENT, bump);
   }, []);
+
+  useEffect(() => {
+    const onOpen = () => openPortfolioOnboardingModal();
+    window.addEventListener(OPEN_PORTFOLIO_ONBOARDING_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_PORTFOLIO_ONBOARDING_EVENT, onOpen);
+  }, [openPortfolioOnboardingModal]);
+
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ portfolioId?: string }>).detail;
+      openProjectOnboardingModal(detail?.portfolioId);
+    };
+    window.addEventListener(OPEN_PROJECT_ONBOARDING_EVENT, onOpen as EventListener);
+    return () => window.removeEventListener(OPEN_PROJECT_ONBOARDING_EVENT, onOpen as EventListener);
+  }, [openProjectOnboardingModal]);
 
   useEffect(() => {
     if (prevPathnameRef.current !== null && prevPathnameRef.current !== pathname) {
@@ -112,12 +159,8 @@ export function OnboardingHost() {
       const profileRow = await fetchPublicProfile(supabase, user.id);
 
       if (!isOnboardingProfileComplete(meta, profileRow)) {
-        setPortfolioPostCreateBridge(null);
-        setAddProjectResume(null);
-        setShowPortfolioModal(false);
-        setShowPortfolioDetailModal(false);
-        setShowAddProjectModal(false);
-        setShowProjectSetupModal(false);
+        resetPortfolioWizard();
+        resetProjectWizard();
         const settingsAppPath = riskaiPath("/settings");
         const onSettingsRoute =
           pathname === settingsAppPath || (pathname?.startsWith(`${settingsAppPath}/`) ?? false);
@@ -156,13 +199,19 @@ export function OnboardingHost() {
 
       setShowProfileModal(false);
 
+      if (searchParams.get(ONBOARDING_PORTFOLIO_QP) === "1") {
+        openPortfolioOnboardingModal();
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete(ONBOARDING_PORTFOLIO_QP);
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname);
+        setReady(true);
+        return;
+      }
+
       if (inviteAcceptedSuppressRef.current) {
-        setPortfolioPostCreateBridge(null);
-        setAddProjectResume(null);
-        setShowPortfolioModal(false);
-        setShowPortfolioDetailModal(false);
-        setShowAddProjectModal(false);
-        setShowProjectSetupModal(false);
+        resetPortfolioWizard();
+        resetProjectWizard();
         setReady(true);
         return;
       }
@@ -181,126 +230,101 @@ export function OnboardingHost() {
     return () => {
       cancelled = true;
     };
-  }, [markWizardCompleteIfHasProjects, pathname, profileGateTick, router, searchParams]);
+  }, [
+    markWizardCompleteIfHasProjects,
+    openPortfolioOnboardingModal,
+    pathname,
+    profileGateTick,
+    resetProjectWizard,
+    resetPortfolioWizard,
+    router,
+    searchParams,
+  ]);
 
   const onProfileComplete = useCallback(() => {
     setShowProfileModal(false);
     router.refresh();
   }, [router]);
 
-  const onBackFromPortfolioToProfile = useCallback(() => {
-    setShowPortfolioModal(false);
-    setPortfolioPostCreateBridge(null);
-    setShowProfileModal(true);
+  const onDismissPortfolioSetup = useCallback(() => {
+    resetPortfolioWizard();
     router.refresh();
-  }, [router]);
+  }, [resetPortfolioWizard, router]);
 
-  const onForwardPortfolioPostCreateBridge = useCallback(() => {
-    setShowPortfolioModal(false);
-    setPortfolioPostCreateBridge(null);
-    setShowPortfolioDetailModal(true);
+  const onDismissProjectSetup = useCallback(() => {
+    resetProjectWizard();
     router.refresh();
-  }, [router]);
+  }, [resetProjectWizard, router]);
 
-  const onBackFromPortfolioDetail = useCallback(() => {
-    const id = portfolioDetailId;
-    const name = portfolioDetailInitialName;
-    setShowPortfolioDetailModal(false);
+  const onBackFromPortfolioReporting = useCallback(() => {
+    const id = portfolioWizardId;
+    const name = portfolioWizardName;
+    setShowPortfolioReportingModal(false);
     if (id && name) {
-      setPortfolioPostCreateBridge({ id, name });
+      setPortfolioResumeForNameStep({ id, name });
     }
-    setShowPortfolioModal(true);
+    setShowPortfolioNameModal(true);
     router.refresh();
-  }, [portfolioDetailId, portfolioDetailInitialName, router]);
+  }, [portfolioWizardId, portfolioWizardName, router]);
 
-  const onPortfolioCreated = useCallback(
+  const onPortfolioNameContinue = useCallback(
     async ({ id, name }: { id: string; name: string }) => {
-      setPortfolioPostCreateBridge(null);
-      setPortfolioDetailId(id);
-      setPortfolioDetailInitialName(name);
-      setShowPortfolioModal(false);
-      setShowPortfolioDetailModal(true);
+      setPortfolioResumeForNameStep(null);
+      setPortfolioWizardId(id);
+      setPortfolioWizardName(name);
+      setShowPortfolioNameModal(false);
+      setShowPortfolioReportingModal(true);
       router.refresh();
     },
     [router],
   );
 
-  const onPortfolioSkipped = useCallback(
-    async ({ portfolioId }: { portfolioId: string }) => {
-      setPortfolioPostCreateBridge(null);
-      setAddProjectEnteredFromDetail(false);
-      setShowPortfolioModal(false);
-      setAddProjectPortfolioId(portfolioId);
-      setShowAddProjectModal(true);
-      router.refresh();
-    },
-    [router],
-  );
-
-  const onPortfolioDetailContinue = useCallback(() => {
-    const pid = portfolioDetailId;
-    setShowPortfolioDetailModal(false);
-    if (pid) {
-      setAddProjectEnteredFromDetail(true);
-      setAddProjectPortfolioId(pid);
-      setAddProjectResume(null);
-      setShowAddProjectModal(true);
-    }
-    router.refresh();
-  }, [portfolioDetailId, router]);
-
-  const onBackFromAddProject = useCallback(() => {
-    setShowAddProjectModal(false);
-    setAddProjectResume(null);
-    if (addProjectEnteredFromDetail) {
-      setShowPortfolioDetailModal(true);
-    } else {
-      setPortfolioPostCreateBridge(null);
-      setShowPortfolioModal(true);
-    }
-    router.refresh();
-  }, [addProjectEnteredFromDetail, router]);
-
-  const onBackFromAddProjectResume = useCallback(() => {
-    setAddProjectResume(null);
-    setShowAddProjectModal(false);
-    if (addProjectEnteredFromDetail) {
-      setShowPortfolioDetailModal(true);
-    } else {
-      setShowPortfolioModal(true);
-    }
-    router.refresh();
-  }, [addProjectEnteredFromDetail, router]);
-
-  const onAddProjectCreated = useCallback(
-    async ({ id, name }: { id: string; name: string }) => {
-      setAddProjectResume(null);
-      setShowAddProjectModal(false);
-      setProjectSetupId(id);
-      setProjectSetupInitialName(name);
-      setShowProjectSetupModal(true);
-      router.refresh();
-    },
-    [router],
-  );
-
-  const onBackFromProjectSetup = useCallback(() => {
-    const id = projectSetupId;
-    const name = projectSetupInitialName;
-    if (!id) return;
-    setShowProjectSetupModal(false);
-    setAddProjectResume({ id, name });
-    setShowAddProjectModal(true);
-    router.refresh();
-  }, [projectSetupId, projectSetupInitialName, router]);
-
-  const onProjectSetupFinished = useCallback(() => {
-    setShowProjectSetupModal(false);
-    setProjectSetupId(null);
-    setAddProjectResume(null);
-    router.replace("/");
+  const onPortfolioReportingContinue = useCallback(() => {
+    setShowPortfolioReportingModal(false);
+    setShowPortfolioInviteModal(true);
     router.refresh();
   }, [router]);
+
+  const onBackFromPortfolioInvite = useCallback(() => {
+    setShowPortfolioInviteModal(false);
+    setShowPortfolioReportingModal(true);
+    router.refresh();
+  }, [router]);
+
+  const onPortfolioWizardFinished = useCallback(() => {
+    const id = portfolioWizardId;
+    resetPortfolioWizard();
+    if (id) {
+      router.push(`${riskaiPath(`/portfolios/${id}`)}?onboarding_first_project=1`);
+    }
+    router.refresh();
+  }, [portfolioWizardId, resetPortfolioWizard, router]);
+
+  const onProjectCreateContinue = useCallback(
+    async ({ id }: { id: string; name: string }) => {
+      setProjectWizardId(id);
+      setShowProjectCreateModal(false);
+      setShowProjectInviteModal(true);
+      router.refresh();
+    },
+    [router],
+  );
+
+  const onBackFromProjectInvite = useCallback(() => {
+    setShowProjectInviteModal(false);
+    setProjectCreateInitialStep(5);
+    setShowProjectCreateModal(true);
+    router.refresh();
+  }, [router]);
+
+  const onProjectWizardFinished = useCallback(() => {
+    const id = projectWizardId;
+    resetProjectWizard();
+    if (id) {
+      router.push(riskaiPath(`/projects/${id}`));
+    }
+    router.refresh();
+  }, [projectWizardId, resetProjectWizard, router]);
 
   if (!ready) return null;
 
@@ -315,36 +339,45 @@ export function OnboardingHost() {
         onComplete={onProfileComplete}
       />
       <PortfolioSetupModal
-        open={showPortfolioModal}
-        postCreateBridge={portfolioPostCreateBridge}
-        onBackToProfile={onBackFromPortfolioToProfile}
-        onForwardFromPostCreateBridge={onForwardPortfolioPostCreateBridge}
-        onCreated={onPortfolioCreated}
-        onSkipped={onPortfolioSkipped}
+        open={showPortfolioNameModal}
+        resumePortfolio={portfolioResumeForNameStep}
+        onCreated={onPortfolioNameContinue}
+        onDismiss={onDismissPortfolioSetup}
       />
-      {portfolioDetailId ? (
+      {portfolioWizardId ? (
         <PortfolioOnboardingDetailModal
-          open={showPortfolioDetailModal}
-          portfolioId={portfolioDetailId}
-          initialName={portfolioDetailInitialName}
-          onContinue={onPortfolioDetailContinue}
-          onBack={onBackFromPortfolioDetail}
+          open={showPortfolioReportingModal}
+          portfolioId={portfolioWizardId}
+          onContinue={onPortfolioReportingContinue}
+          onBack={onBackFromPortfolioReporting}
+          onDismiss={onDismissPortfolioSetup}
         />
       ) : null}
-      <AddProjectOnboardingModal
-        open={showAddProjectModal}
-        portfolioId={addProjectPortfolioId}
-        resumeProject={addProjectResume}
-        onCreated={onAddProjectCreated}
-        onBack={addProjectResume ? onBackFromAddProjectResume : onBackFromAddProject}
+      {portfolioWizardId ? (
+        <PortfolioOnboardingInviteModal
+          open={showPortfolioInviteModal}
+          portfolioId={portfolioWizardId}
+          onFinished={onPortfolioWizardFinished}
+          onBack={onBackFromPortfolioInvite}
+          onDismiss={onDismissPortfolioSetup}
+        />
+      ) : null}
+      <ProjectOnboardingCreateModal
+        open={showProjectCreateModal}
+        portfolioId={projectPreferredPortfolioId}
+        initialStep={projectCreateInitialStep}
+        onCreated={onProjectCreateContinue}
+        onDismiss={onDismissProjectSetup}
       />
-      <ProjectOnboardingSetupModal
-        open={showProjectSetupModal}
-        projectId={projectSetupId}
-        initialName={projectSetupInitialName}
-        onComplete={onProjectSetupFinished}
-        onBack={onBackFromProjectSetup}
-      />
+      {projectWizardId ? (
+        <ProjectOnboardingInviteModal
+          open={showProjectInviteModal}
+          projectId={projectWizardId}
+          onFinished={onProjectWizardFinished}
+          onBack={onBackFromProjectInvite}
+          onDismiss={onDismissProjectSetup}
+        />
+      ) : null}
     </>
   );
 }

@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 const STORAGE_KEY = "riskai-theme";
@@ -16,6 +17,7 @@ const STORAGE_KEY = "riskai-theme";
 export type Theme = "light" | "dark";
 
 function getInitialTheme(): Theme {
+  if (THEME_LIGHT_ONLY_MVP) return "light";
   if (typeof window === "undefined") return "light";
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "dark" || stored === "light") return stored;
@@ -27,10 +29,11 @@ function getInitialTheme(): Theme {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
+  const effective: Theme = THEME_LIGHT_ONLY_MVP ? "light" : theme;
   root.classList.remove("light", "dark");
-  root.classList.add(theme);
-  root.setAttribute("data-theme", theme);
-  localStorage.setItem(STORAGE_KEY, theme);
+  root.classList.add(effective);
+  root.setAttribute("data-theme", effective);
+  localStorage.setItem(STORAGE_KEY, effective);
 }
 
 function parseThemePreference(raw: unknown): Theme | null {
@@ -39,6 +42,7 @@ function parseThemePreference(raw: unknown): Theme | null {
 }
 
 async function persistThemePreferenceToSupabase(theme: Theme): Promise<void> {
+  if (THEME_LIGHT_ONLY_MVP) return;
   try {
     const supabase = supabaseBrowserClient();
     const {
@@ -68,6 +72,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [theme]);
 
   useEffect(() => {
+    if (THEME_LIGHT_ONLY_MVP) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -99,11 +104,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setTheme = useCallback((next: Theme) => {
+    if (THEME_LIGHT_ONLY_MVP) return;
     setThemeState(next);
     void persistThemePreferenceToSupabase(next);
   }, []);
 
   const toggleTheme = useCallback(() => {
+    if (THEME_LIGHT_ONLY_MVP) return;
     setThemeState((prev) => {
       const next: Theme = prev === "dark" ? "light" : "dark";
       void persistThemePreferenceToSupabase(next);

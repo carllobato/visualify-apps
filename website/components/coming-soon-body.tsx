@@ -4,7 +4,6 @@ import { useId, useState } from "react";
 import { ContactForm } from "@/components/contact-form";
 import { EarlyAccessForm } from "@/components/early-access-form";
 import { LiquidDialog } from "@/components/liquid-dialog";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 type Dialog = "none" | "early-access" | "early-access-success" | "contact";
 
@@ -21,7 +20,6 @@ export function ComingSoonBody() {
         <span className="text-[17px] font-semibold tracking-tight text-foreground sm:text-[18px]">
           Visualify
         </span>
-        <ThemeToggle />
       </header>
 
       <div className="relative z-10 flex min-h-[calc(100svh-3.5rem)] flex-col sm:min-h-[calc(100svh-4rem)]">

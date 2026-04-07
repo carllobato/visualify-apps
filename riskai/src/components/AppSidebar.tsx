@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { useTheme } from "@/context/ThemeContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
@@ -309,25 +310,26 @@ export function AppSidebar() {
 
       {/* Bottom: theme + user - grey to match top bar */}
       <div className="flex flex-col gap-1 border-t border-[var(--ds-border)] p-2">
-        {mounted ? (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={theme === "dark"}
-            aria-label="Toggle theme"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={(e) => {
-              toggleTheme();
-              (e.currentTarget as HTMLButtonElement).blur();
-            }}
-            className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
-          >
-            {theme === "dark" ? <MoonIcon /> : <SunIcon />}
-            <span>{theme === "dark" ? "Dark" : "Light"}</span>
-          </button>
-        ) : (
-          <span className="inline-block h-9 px-3 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-muted)]" aria-hidden />
-        )}
+        {!THEME_LIGHT_ONLY_MVP &&
+          (mounted ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === "dark"}
+              aria-label="Toggle theme"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={(e) => {
+                toggleTheme();
+                (e.currentTarget as HTMLButtonElement).blur();
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
+            >
+              {theme === "dark" ? <MoonIcon /> : <SunIcon />}
+              <span>{theme === "dark" ? "Dark" : "Light"}</span>
+            </button>
+          ) : (
+            <span className="inline-block h-9 px-3 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-muted)]" aria-hidden />
+          ))}
         {isLoggedIn ? (
           <>
             <Link

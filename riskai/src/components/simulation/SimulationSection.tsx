@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@visualify/design-system";
 import {
   Area,
   ComposedChart,
@@ -37,15 +36,12 @@ import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.type
 const CHART_HEIGHT = 300;
 const CHART_MARGIN = { top: 10, right: 16, left: 8, bottom: 28 };
 const DISTRIBUTION_BIN_COUNT = 100;
-const SIMULATION_TOP_RISKS_COUNT = 5;
 
 /** Titled panels: `DashboardCard`-style shell (static — no hover lift). */
 const SIM_SECTION_SHELL = "ds-document-tile-panel overflow-hidden";
 
 /** Inline KPI tiles: `SummaryTile`-style chrome + hover. */
 const SIM_KPI_TILE_CLASS = "ds-document-tile-panel ds-document-tile-panel--interactive";
-
-const SIM_NESTED_PANEL_CLASS = "overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border)]";
 
 /** Offset (px) to shift label left/right from the line so two labels on same row don't clash. */
 const REF_LINE_LABEL_OFFSET_X = 8;
@@ -276,8 +272,6 @@ export type SimulationSectionProps = {
   costCdf?: CostCdfPoint[] | null;
   /** Time CDF for current P / delta (precomputed by page). */
   timeCdf?: TimeCdfPoint[] | null;
-  /** Extra label appended to the top-risks table title (e.g. "Top Cost Drivers (proxy)"). */
-  tableSubtitle?: string | null;
   /** Format cost (dollars) for display in project unit (e.g. $m). If omitted, uses raw $ formatting. */
   formatCostValue?: (dollars: number) => string;
   /** For cost mode: contingency value in dollars. When provided, first tile = P at contingency; third tile = (cost at target P) − contingency. */
@@ -1282,7 +1276,6 @@ export function SimulationSection(props: SimulationSectionProps) {
     isDebug,
     costCdf,
     timeCdf,
-    tableSubtitle,
     formatCostValue,
     contingencyValueDollars,
     contingencyTimeDays,
@@ -1358,22 +1351,6 @@ export function SimulationSection(props: SimulationSectionProps) {
 
   const costResults = mode === "cost" ? (results as CostResults) : null;
   const timeResults = mode === "time" ? (results as TimeResults) : null;
-
-  const topRisks = useMemo(() => {
-    const r = mode === "cost" ? costResults : timeResults;
-    if (!r?.risks?.length) return [];
-    if (mode === "cost") {
-      return [...r.risks]
-        .sort((a, b) => (b.simMeanCost ?? b.expectedCost) - (a.simMeanCost ?? a.expectedCost))
-        .slice(0, SIMULATION_TOP_RISKS_COUNT);
-    }
-    return [...r.risks]
-      .sort((a, b) => (b.simMeanDays ?? b.expectedDays) - (a.simMeanDays ?? a.expectedDays))
-      .slice(0, SIMULATION_TOP_RISKS_COUNT);
-  }, [mode, costResults, timeResults]);
-
-  const tableLabel = mode === "cost" ? "Top 5 Cost Risks" : "Top 5 Time Risks";
-  const tableLabelDisplay = tableSubtitle ? `${tableLabel} (${tableSubtitle})` : tableLabel;
 
   return (
     <section className={`${SIM_SECTION_SHELL} text-[var(--ds-text-secondary)]`}>
@@ -1505,57 +1482,6 @@ export function SimulationSection(props: SimulationSectionProps) {
             deltaToTargetP={deltaToTargetP}
           />
         )}
-
-        <div className={SIM_NESTED_PANEL_CLASS}>
-          <div className="border-b border-[var(--ds-border)] px-4 py-2">
-            <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">{tableLabelDisplay}</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableHeaderCell className="py-2 pl-3 pr-3 text-left normal-case tracking-normal">#</TableHeaderCell>
-                  <TableHeaderCell className="py-2 pl-3 pr-3 text-left normal-case tracking-normal">Risk</TableHeaderCell>
-                  {mode === "cost" ? (
-                    <TableHeaderCell className="py-2 pl-3 pr-3 text-right normal-case tracking-normal">Cost impact</TableHeaderCell>
-                  ) : (
-                    <TableHeaderCell className="py-2 pl-3 pr-3 text-right normal-case tracking-normal">Time impact (days)</TableHeaderCell>
-                  )}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {topRisks.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="py-4 text-center text-[var(--ds-text-muted)]">
-                      No risks in simulation
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  topRisks.map((risk, i) => (
-                    <TableRow
-                      key={risk.id}
-                      className="hover:bg-[color-mix(in_oklab,var(--ds-muted)_35%,transparent)]"
-                    >
-                      <TableCell className="py-2.5 pl-3 pr-3 text-[var(--ds-text-muted)]">{i + 1}</TableCell>
-                      <TableCell className="max-w-[200px] truncate py-2.5 pl-3 pr-3 text-[var(--ds-text-primary)]" title={risk.title}>
-                        {risk.title}
-                      </TableCell>
-                      {mode === "cost" ? (
-                        <TableCell className="py-2.5 pl-3 pr-3 text-right font-medium">
-                          {formatCostDisplay(risk.simMeanCost ?? risk.expectedCost)}
-                        </TableCell>
-                      ) : (
-                        <TableCell className="py-2.5 pl-3 pr-3 text-right font-medium">
-                          {formatDurationDays(risk.simMeanDays ?? risk.expectedDays)}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
       </div>
     </section>
   );

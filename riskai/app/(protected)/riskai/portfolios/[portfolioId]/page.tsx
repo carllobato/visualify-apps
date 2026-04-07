@@ -53,6 +53,7 @@ export default async function PortfolioOverviewPage({
   return (
     <>
       <PortfolioOverviewContent
+        portfolioId={portfolioId}
         projectCount={projectCount ?? 0}
         activeRiskCount={activeRiskCount}
         contingencyPrimaryValue={contingencyTile.primaryValue}

@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/requireUser";
 import { getAccessiblePortfolios } from "@/lib/portfolios-server";
 import { getRiskAIProductId } from "@/lib/products";
 import type { OnboardingPortfolioInsertPayload } from "@/lib/onboarding/types";
+import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,9 @@ const CACHE_HEADERS = {
 };
 
 /**
- * POST /api/portfolios — Create a portfolio owned by the current user (RLS: owner_user_id = auth.uid()).
- * Always attaches the RiskAI product from `public.visualify_products` (key = 'riskai'); `product_id` is never omitted.
+ * POST /api/portfolios — Create a portfolio owned by the current user.
+ * Uses the service-role client after `requireUser()` so the row is written reliably (same pattern as
+ * `me/profile` demo clone). `owner_user_id` is always the authenticated user id from the session.
  */
 export async function POST(request: Request) {
   const user = await requireUser();
@@ -43,10 +45,10 @@ export async function POST(request: Request) {
   const codeTrimmed =
     typeof rawCode === "string" && rawCode.trim().length > 0 ? rawCode.trim() : undefined;
 
-  const supabase = await supabaseServerClient();
+  const admin = supabaseAdminClient();
   let productId: string;
   try {
-    productId = await getRiskAIProductId(supabase);
+    productId = await getRiskAIProductId(admin);
   } catch {
     return NextResponse.json(
       { error: "RiskAI product not found in visualify_products table" },
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
     ...(codeTrimmed !== undefined ? { code: codeTrimmed } : {}),
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("visualify_portfolios")
     .insert(insertPayload)
     .select("id, name, created_at")

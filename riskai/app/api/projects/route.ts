@@ -42,7 +42,7 @@ type CreateProjectBody = {
 async function resolveCreatablePortfolioIdForUser(
   userId: string,
   preferredPortfolioId?: string
-): Promise<{ portfolioId: string } | { error: "not_found" | "forbidden" }> {
+): Promise<{ portfolioId: string | null } | { error: "not_found" | "forbidden" }> {
   const supabase = await supabaseServerClient();
 
   if (preferredPortfolioId) {
@@ -51,38 +51,8 @@ async function resolveCreatablePortfolioIdForUser(
     if (!viewer.canInviteMembers) return { error: "forbidden" };
     return { portfolioId: preferredPortfolioId };
   }
-
-  const { data: ownedPortfolios, error: ownedErr } = await supabase
-    .from("visualify_portfolios")
-    .select("id, created_at")
-    .eq("owner_user_id", userId)
-    .order("created_at", { ascending: true });
-  if (ownedErr) return { error: "not_found" };
-  if ((ownedPortfolios ?? []).length > 0) {
-    return { portfolioId: ownedPortfolios![0]!.id as string };
-  }
-
-  const { data: editableMemberships, error: memberErr } = await supabase
-    .from("visualify_portfolio_members")
-    .select("portfolio_id, created_at")
-    .eq("user_id", userId)
-    .in("role", ["owner", "editor", "admin"])
-    .order("created_at", { ascending: true });
-  if (memberErr) return { error: "not_found" };
-  if ((editableMemberships ?? []).length > 0) {
-    return { portfolioId: editableMemberships![0]!.portfolio_id as string };
-  }
-
-  const { data: viewerMemberships, error: viewerErr } = await supabase
-    .from("visualify_portfolio_members")
-    .select("portfolio_id")
-    .eq("user_id", userId)
-    .limit(1);
-  if (!viewerErr && (viewerMemberships ?? []).length > 0) {
-    return { error: "forbidden" };
-  }
-
-  return { error: "not_found" };
+  // If no portfolio is explicitly chosen, create an unscoped project (portfolio_id = null).
+  return { portfolioId: null };
 }
 
 export async function POST(request: Request) {

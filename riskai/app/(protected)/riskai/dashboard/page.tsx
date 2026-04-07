@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { OpenPortfolioOnboardingLink } from "@/components/onboarding/OpenPortfolioOnboardingLink";
+import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import { GreetingHeader } from "@/components/GreetingHeader";
 import { PROJECT_TILE_LIST_LINK_CLASSES, ProjectTile } from "@/components/dashboard/ProjectTile";
 import {
@@ -56,11 +58,6 @@ export default async function DashboardPage() {
     "ds-dashboard-portfolio-grid" +
     (portfolios.length >= 2 ? " ds-dashboard-portfolio-grid--multi" : "");
 
-  const createProjectHref =
-    portfolios[0]?.id != null && portfolios[0].id !== ""
-      ? `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolios[0].id)}`
-      : riskaiPath("/create-project");
-
   return (
     <div className="ds-dashboard-page">
       {devBypass && !user ? (
@@ -88,9 +85,9 @@ export default async function DashboardPage() {
           <Card variant="inset" className="text-center">
             <CardBody className="py-[var(--ds-space-6)]">
               <p className="ds-dashboard-empty-title">No portfolios yet</p>
-              <Link href={riskaiPath("/onboarding/portfolio")} className="ds-dashboard-empty-primary">
+              <OpenPortfolioOnboardingLink className="ds-dashboard-empty-primary">
                 Create portfolio
-              </Link>
+              </OpenPortfolioOnboardingLink>
             </CardBody>
           </Card>
         ) : (
@@ -105,12 +102,12 @@ export default async function DashboardPage() {
                 </li>
               ))}
             </ul>
-            <Link href={riskaiPath("/onboarding/portfolio")} className="ds-dashboard-inline-create">
+            <OpenPortfolioOnboardingLink className="ds-dashboard-inline-create">
               <span className="ds-dashboard-inline-create-label">Create portfolio</span>
               <span className="ds-dashboard-inline-create-plus" aria-hidden>
                 +
               </span>
-            </Link>
+            </OpenPortfolioOnboardingLink>
           </div>
         )}
       </section>
@@ -125,18 +122,9 @@ export default async function DashboardPage() {
           <Card variant="inset" className="text-center">
             <CardBody className="py-[var(--ds-space-6)]">
               <p className="ds-dashboard-empty-title">No projects yet</p>
-              {portfolios.length > 0 ? (
-                <Link
-                  href={
-                    portfolios[0]?.id
-                      ? `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolios[0].id)}`
-                      : riskaiPath("/create-project")
-                  }
-                  className="ds-dashboard-empty-primary"
-                >
-                  Create project
-                </Link>
-              ) : null}
+              <OpenProjectOnboardingLink className="ds-dashboard-empty-primary">
+                Create project
+              </OpenProjectOnboardingLink>
             </CardBody>
           </Card>
         ) : (
@@ -146,18 +134,12 @@ export default async function DashboardPage() {
                 <ProjectTile key={payload.id} payload={payload} />
               ))}
             </div>
-            {portfolios.length > 0 ? (
-              <Link
-                href={createProjectHref}
-                aria-label="Create project"
-                className="ds-dashboard-inline-create"
-              >
-                <span className="ds-dashboard-inline-create-label">Create project</span>
-                <span className="ds-dashboard-inline-create-plus" aria-hidden>
-                  +
-                </span>
-              </Link>
-            ) : null}
+            <OpenProjectOnboardingLink className="ds-dashboard-inline-create">
+              <span className="ds-dashboard-inline-create-label">Create project</span>
+              <span className="ds-dashboard-inline-create-plus" aria-hidden>
+                +
+              </span>
+            </OpenProjectOnboardingLink>
           </div>
         )}
       </section>

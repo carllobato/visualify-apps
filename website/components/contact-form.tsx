@@ -11,10 +11,11 @@ const inputClassName =
 const inputDisabledClassName = "disabled:cursor-not-allowed disabled:opacity-60";
 
 export function contactMailtoHref(body?: string): string {
-  const q = new URLSearchParams();
-  q.set("subject", CONTACT_SUBJECT);
-  if (body) q.set("body", body);
-  return `mailto:${CONTACT_EMAIL}?${q.toString()}`;
+  // Use encodeURIComponent (not URLSearchParams) so spaces become %20, not + — many mail clients
+  // show literal "+" in the subject line when + is used for spaces.
+  const params = [`subject=${encodeURIComponent(CONTACT_SUBJECT)}`];
+  if (body) params.push(`body=${encodeURIComponent(body)}`);
+  return `mailto:${CONTACT_EMAIL}?${params.join("&")}`;
 }
 
 export function ContactForm() {

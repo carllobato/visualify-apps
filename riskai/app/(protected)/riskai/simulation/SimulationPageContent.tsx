@@ -1677,6 +1677,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const [setReportingSaving, setSetReportingSaving] = useState(false);
   const [triggeredBy, setTriggeredBy] = useState<string | null>(null);
   const [driversView, setDriversView] = useState<"cost" | "schedule">("cost");
+  /** Risk Drivers table: first 5 rows, then "Show 5 more" for up to 10. */
+  const [driversTableExpanded, setDriversTableExpanded] = useState(false);
   const [mitigationImpactView, setMitigationImpactView] = useState<"cost" | "schedule">("cost");
   /** Shared expand/collapse for Cost & contingency and Duration & schedule contingency breakdown rows. */
   const [projectPositionBreakdownOpen, setProjectPositionBreakdownOpen] = useState(false);
@@ -2283,8 +2285,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       ...r,
       contributionPct: sum > 0 ? (r.value / sum) * 100 : 0,
     }));
-    const top3ConcentrationPct = rows.slice(0, 3).reduce((s, r) => s + r.contributionPct, 0);
-    return { rows, top3ConcentrationPct, hasAny: items.length > 0 };
+    const top5ConcentrationPct = rows.slice(0, 5).reduce((s, r) => s + r.contributionPct, 0);
+    return { rows, top5ConcentrationPct, hasAny: items.length > 0 };
   }, [snapshotRisks]);
 
   const driversScheduleRanked = useMemo(() => {
@@ -2301,8 +2303,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       ...r,
       contributionPct: sum > 0 ? (r.value / sum) * 100 : 0,
     }));
-    const top3ConcentrationPct = rows.slice(0, 3).reduce((s, r) => s + r.contributionPct, 0);
-    return { rows, top3ConcentrationPct, hasAny: items.length > 0 };
+    const top5ConcentrationPct = rows.slice(0, 5).reduce((s, r) => s + r.contributionPct, 0);
+    return { rows, top5ConcentrationPct, hasAny: items.length > 0 };
   }, [snapshotRisks]);
 
   const driversActive =
@@ -2754,14 +2756,20 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                 <Button
                   type="button"
                   variant={driversView === "cost" ? "primary" : "secondary"}
-                  onClick={() => setDriversView("cost")}
+                  onClick={() => {
+                    setDriversView("cost");
+                    setDriversTableExpanded(false);
+                  }}
                 >
                   Cost
                 </Button>
                 <Button
                   type="button"
                   variant={driversView === "schedule" ? "primary" : "secondary"}
-                  onClick={() => setDriversView("schedule")}
+                  onClick={() => {
+                    setDriversView("schedule");
+                    setDriversTableExpanded(false);
+                  }}
                 >
                   Schedule
                 </Button>
@@ -2769,11 +2777,11 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
               <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
                 {driversView === "cost"
                   ? driversActive.hasAny
-                    ? `Top 3 risks account for ${driversActive.top3ConcentrationPct.toFixed(1)}% of total cost exposure`
-                    : "Top 3 risks account for — of total cost exposure"
+                    ? `Top 5 risks account for ${driversActive.top5ConcentrationPct.toFixed(1)}% of total cost exposure`
+                    : "Top 5 risks account for — of total cost exposure"
                   : driversActive.hasAny
-                    ? `Top 3 risks account for ${driversActive.top3ConcentrationPct.toFixed(1)}% of total schedule exposure`
-                    : "Top 3 risks account for — of total schedule exposure"}
+                    ? `Top 5 risks account for ${driversActive.top5ConcentrationPct.toFixed(1)}% of total schedule exposure`
+                    : "Top 5 risks account for — of total schedule exposure"}
               </p>
               <div className="overflow-x-auto">
                 <Table>
@@ -2803,7 +2811,10 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                         </TableCell>
                       </TableRow>
                     ) : (
-                      driversActive.rows.map((row, i) => (
+                      (driversTableExpanded
+                        ? driversActive.rows
+                        : driversActive.rows.slice(0, 5)
+                      ).map((row, i) => (
                         <TableRow
                           key={row.id}
                           className="hover:bg-[color-mix(in_oklab,var(--ds-muted)_35%,transparent)]"
@@ -2836,6 +2847,17 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                   </TableBody>
                 </Table>
               </div>
+              {driversActive.rows.length > 5 ? (
+                <div className="flex justify-start">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setDriversTableExpanded((e) => !e)}
+                  >
+                    {driversTableExpanded ? "Show less" : "Show 5 more"}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </section>
 

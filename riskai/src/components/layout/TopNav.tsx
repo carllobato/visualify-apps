@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { riskaiPath } from "@/lib/routes";
+import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { useTheme } from "@/context/ThemeContext";
 import type { User } from "@supabase/supabase-js";
 
@@ -143,29 +144,30 @@ export function TopNav({
       </div>
 
       <div className="flex items-center gap-[var(--ds-space-2)]">
-        {mounted ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="md"
-            role="switch"
-            aria-checked={theme === "dark"}
-            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            title={theme === "dark" ? "Light mode" : "Dark mode"}
-            className="!h-9 !w-9 !min-w-9 shrink-0 !px-0 [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]"
-            onClick={(e) => {
-              toggleTheme();
-              (e.currentTarget as HTMLButtonElement).blur();
-            }}
-          >
-            {theme === "dark" ? <MoonIcon /> : <SunIcon />}
-          </Button>
-        ) : (
-          <span
-            className="inline-block h-9 w-9 shrink-0 rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
-            aria-hidden
-          />
-        )}
+        {!THEME_LIGHT_ONLY_MVP &&
+          (mounted ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              role="switch"
+              aria-checked={theme === "dark"}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Light mode" : "Dark mode"}
+              className="!h-9 !w-9 !min-w-9 shrink-0 !px-0 [&_svg]:text-[var(--ds-text-muted)] hover:[&_svg]:text-[var(--ds-text-primary)]"
+              onClick={(e) => {
+                toggleTheme();
+                (e.currentTarget as HTMLButtonElement).blur();
+              }}
+            >
+              {theme === "dark" ? <MoonIcon /> : <SunIcon />}
+            </Button>
+          ) : (
+            <span
+              className="inline-block h-9 w-9 shrink-0 rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
+              aria-hidden
+            />
+          ))}
 
         {user !== null && user !== "loading" ? (
           <div className="relative flex items-center" ref={menuRef}>

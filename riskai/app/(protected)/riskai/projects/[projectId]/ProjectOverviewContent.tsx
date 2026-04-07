@@ -29,7 +29,6 @@ import { formatDurationDays } from "@/lib/formatDuration";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import { usePageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import type { Risk } from "@/domain/risk/risk.schema";
-import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
 import { computeRag, type RagStatus } from "@/lib/dashboard/projectTileServerData";
 import {
   buildCostDriverLines,
@@ -43,6 +42,8 @@ import {
   snapshotTimeAtAnchor,
   topCostRiskTitleFromSnapshotPayload,
   topTimeRiskTitleFromSnapshotPayload,
+  reportingRunActiveRiskCount,
+  reportingRunHighExtremeCount,
 } from "@/lib/projectOverviewReporting";
 
 type CdfChartPoint = { x: number; p: number };
@@ -199,17 +200,6 @@ function ragPresentation(status: RagStatus): { label: string; badgeStatus: "succ
         badgeStatus: "neutral",
       };
   }
-}
-
-function countActiveRisks(risks: Risk[]): number {
-  return risks.filter((r) => !isRiskStatusArchived(r.status)).length;
-}
-
-function countHighSeverityActive(risks: Risk[]): number {
-  return risks.filter((r) => !isRiskStatusArchived(r.status)).filter((r) => {
-    const lv = r.residualRating?.level;
-    return lv === "high" || lv === "extreme";
-  }).length;
 }
 
 function DashCard({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -648,11 +638,16 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const ragStatus = useMemo(() => {
     const lastAt = reportingSnapshot?.locked_at ?? reportingSnapshot?.created_at ?? null;
     return computeRag({
-      riskCount: countActiveRisks(risks),
-      highSeverityCount: countHighSeverityActive(risks),
+      riskCount: reportingRunActiveRiskCount(reportingSnapshot),
+      highSeverityCount: reportingRunHighExtremeCount(reportingSnapshot, risks),
       lastSimulationAt: lastAt,
     });
-  }, [risks, reportingSnapshot?.created_at, reportingSnapshot?.locked_at]);
+  }, [reportingSnapshot, risks]);
+
+  /** RAG subline can use snapshot `inputs_used` without waiting for the risk register. */
+  const projectStatusStatsNeedRegister =
+    !reportingSnapshot?.payload?.inputs_used?.length;
+  const showProjectStatusSkeleton = loadingRisks && projectStatusStatsNeedRegister;
 
   const reportingMonthHeader =
     reportingSnapshot?.report_month && formatReportMonthLabel(reportingSnapshot.report_month) !== "—"
@@ -723,9 +718,9 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     );
   }
 
-  const rag = loadingRisks ? null : ragPresentation(ragStatus);
-  const activeN = loadingRisks ? 0 : countActiveRisks(risks);
-  const highN = loadingRisks ? 0 : countHighSeverityActive(risks);
+  const rag = showProjectStatusSkeleton ? null : ragPresentation(ragStatus);
+  const activeN = reportingRunActiveRiskCount(reportingSnapshot);
+  const highN = reportingRunHighExtremeCount(reportingSnapshot, risks);
 
   const targetLabelShort = targetAppetite;
 
@@ -745,7 +740,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <DashCard>
           <p className={`${overviewTileTitleClass} mb-2`}>Project status</p>
-          {loadingRisks ? (
+          {showProjectStatusSkeleton ? (
             <OverviewProjectStatusSkeleton />
           ) : (
             <>
@@ -757,7 +752,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
                 {rag!.label}
               </Badge>
               <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] m-0 mt-3 tabular-nums">
-                {activeN} active risk{activeN === 1 ? "" : "s"}
+                {activeN} risk{activeN === 1 ? "" : "s"} in reporting run
                 {highN > 0 ? ` · ${highN} high / extreme` : ""}
               </p>
             </>

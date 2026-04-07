@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
+import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import {
   getProjectTilePayloads,
   sortProjectTilesAlphabetically,
@@ -51,8 +52,6 @@ export default async function PortfolioProjectsPage({
     await getProjectTilePayloads(supabase, asAccessible)
   );
 
-  const createHref = `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolioId)}`;
-
   return (
     <main className={portfolioProjectsMainClass}>
       <p className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
@@ -64,9 +63,9 @@ export default async function PortfolioProjectsPage({
         <Card variant="inset" className="mx-auto max-w-lg text-center">
           <CardBody className="py-[var(--ds-space-6)]">
             <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
-            <Link href={createHref} className="ds-dashboard-empty-primary">
+            <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
               Create project
-            </Link>
+            </OpenProjectOnboardingLink>
             <div className="mt-5">
               <Link
                 href={riskaiPath("/projects")}
@@ -84,12 +83,15 @@ export default async function PortfolioProjectsPage({
               <ProjectTile key={payload.id} payload={payload} />
             ))}
           </div>
-          <Link href={createHref} aria-label="Create a new project in this portfolio" className="ds-dashboard-inline-create">
+          <OpenProjectOnboardingLink
+            className="ds-dashboard-inline-create"
+            portfolioId={portfolioId}
+          >
             <span className="ds-dashboard-inline-create-label">Create project</span>
             <span className="ds-dashboard-inline-create-plus" aria-hidden>
               +
             </span>
-          </Link>
+          </OpenProjectOnboardingLink>
         </div>
       )}
     </main>

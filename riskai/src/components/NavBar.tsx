@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { useTheme } from "@/context/ThemeContext";
 import { useProjectionScenario } from "@/context/ProjectionScenarioContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -189,35 +190,36 @@ export function NavBar() {
       </div>
 
       <div className="ml-auto flex items-center gap-3 shrink-0">
-        {mounted ? (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={theme === "dark"}
-            aria-label="Toggle theme"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            onClick={(e) => {
-              toggleTheme();
-              (e.currentTarget as HTMLButtonElement).blur();
-            }}
-            className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5 transition-colors hover:bg-[var(--ds-surface-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-border)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]"
-          >
-            <span className="pointer-events-none absolute left-0.5 top-1/2 -translate-y-1/2 text-[var(--ds-text-muted)]">
-              <SunIcon />
-            </span>
-            <span className="pointer-events-none absolute right-0.5 top-1/2 -translate-y-1/2 text-[var(--ds-text-muted)]">
-              <MoonIcon />
-            </span>
-            <span
-              className={
-                "pointer-events-none absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[color-mix(in_oklab,var(--ds-text-muted)_72%,var(--ds-surface-default))] shadow-sm transition-transform duration-200 ease-out " +
-                (theme === "dark" ? "translate-x-4" : "translate-x-0")
-              }
-            />
-          </button>
-        ) : (
-          <span className="inline-block h-5 w-9 shrink-0 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]" aria-hidden />
-        )}
+        {!THEME_LIGHT_ONLY_MVP &&
+          (mounted ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === "dark"}
+              aria-label="Toggle theme"
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              onClick={(e) => {
+                toggleTheme();
+                (e.currentTarget as HTMLButtonElement).blur();
+              }}
+              className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] p-0.5 transition-colors hover:bg-[var(--ds-surface-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-border)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-background)]"
+            >
+              <span className="pointer-events-none absolute left-0.5 top-1/2 -translate-y-1/2 text-[var(--ds-text-muted)]">
+                <SunIcon />
+              </span>
+              <span className="pointer-events-none absolute right-0.5 top-1/2 -translate-y-1/2 text-[var(--ds-text-muted)]">
+                <MoonIcon />
+              </span>
+              <span
+                className={
+                  "pointer-events-none absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[color-mix(in_oklab,var(--ds-text-muted)_72%,var(--ds-surface-default))] shadow-sm transition-transform duration-200 ease-out " +
+                  (theme === "dark" ? "translate-x-4" : "translate-x-0")
+                }
+              />
+            </button>
+          ) : (
+            <span className="inline-block h-5 w-9 shrink-0 rounded-full border border-[var(--ds-border)] bg-[var(--ds-surface-muted)]" aria-hidden />
+          ))}
         <div
           className="relative shrink-0"
           onMouseEnter={() => setUserMenuOpen(true)}

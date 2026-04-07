@@ -6,18 +6,13 @@ import { TermsContent } from "./TermsContent";
 
 export type LegalDocumentId = "privacy" | "terms";
 
-const documentMeta: Record<
-  LegalDocumentId,
-  { title: string; subtitle: string; effectiveDate: string }
-> = {
+const documentMeta: Record<LegalDocumentId, { title: string; effectiveDate: string }> = {
   privacy: {
     title: "Privacy Policy",
-    subtitle: "How Visualify handles your data",
     effectiveDate: "March 21, 2026",
   },
   terms: {
     title: "Terms & Conditions",
-    subtitle: "Rules for using Visualify and RiskAI",
     effectiveDate: "March 21, 2026",
   },
 };
@@ -84,7 +79,6 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
             >
               {meta.title}
             </h1>
-            <p className="mt-2 text-sm text-[var(--ds-text-muted)]">{meta.subtitle}</p>
             <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wider text-[var(--ds-text-muted)]">
               Effective {meta.effectiveDate}
             </p>

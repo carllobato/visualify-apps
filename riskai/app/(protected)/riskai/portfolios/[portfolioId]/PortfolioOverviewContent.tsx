@@ -1,7 +1,15 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SummaryTile } from "@/components/dashboard/SummaryTile";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { FirstProjectPromptModal } from "@/components/onboarding/FirstProjectPromptModal";
+import { dispatchOpenProjectOnboarding } from "@/components/onboarding/OpenProjectOnboardingLink";
+import { riskaiPath } from "@/lib/routes";
 
 type PortfolioOverviewContentProps = {
+  portfolioId: string;
   projectCount: number;
   activeRiskCount: number;
   contingencyPrimaryValue: string;
@@ -9,11 +17,41 @@ type PortfolioOverviewContentProps = {
 };
 
 export function PortfolioOverviewContent({
+  portfolioId,
   projectCount,
   activeRiskCount,
   contingencyPrimaryValue,
   contingencySubtext,
 }: PortfolioOverviewContentProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [showFirstProjectPrompt, setShowFirstProjectPrompt] = useState(false);
+
+  useEffect(() => {
+    const shouldPrompt =
+      projectCount === 0 && searchParams.get("onboarding_first_project") === "1";
+    setShowFirstProjectPrompt(shouldPrompt);
+  }, [projectCount, searchParams]);
+
+  const clearFirstProjectQueryParam = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("onboarding_first_project");
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
+  }, [pathname, router, searchParams]);
+
+  const onDismissFirstProjectPrompt = useCallback(() => {
+    setShowFirstProjectPrompt(false);
+    clearFirstProjectQueryParam();
+  }, [clearFirstProjectQueryParam]);
+
+  const onStartFirstProjectOnboarding = useCallback(() => {
+    setShowFirstProjectPrompt(false);
+    clearFirstProjectQueryParam();
+    dispatchOpenProjectOnboarding(portfolioId);
+  }, [clearFirstProjectQueryParam, portfolioId]);
+
   return (
     <main className="ds-document-page">
       {/* Section A — Portfolio KPI Summary */}
@@ -26,6 +64,7 @@ export function PortfolioOverviewContent({
             title="Projects"
             primaryValue={String(projectCount)}
             subtext={projectCount === 1 ? "1 project" : `${projectCount} projects`}
+            href={riskaiPath(`/portfolios/${portfolioId}/projects`)}
           />
           <SummaryTile
             title="Active Risks"
@@ -71,6 +110,11 @@ export function PortfolioOverviewContent({
           </p>
         </DashboardCard>
       </section>
+      <FirstProjectPromptModal
+        open={showFirstProjectPrompt}
+        onStartProjectOnboarding={onStartFirstProjectOnboarding}
+        onDismiss={onDismissFirstProjectPrompt}
+      />
     </main>
   );
 }
