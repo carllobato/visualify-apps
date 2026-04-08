@@ -64,7 +64,7 @@ export function DeleteAccountSection() {
 
       {open ? (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-[2px]"
+          className="ds-modal-backdrop z-[120]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-account-title"

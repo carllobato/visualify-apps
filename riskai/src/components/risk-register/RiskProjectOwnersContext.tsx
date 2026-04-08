@@ -14,6 +14,29 @@ import { dlog } from "@/lib/debug";
 
 export type RiskaiProjectOwnerRow = { id: string; name: string };
 
+/** Stable synthetic ids for owner names that appear on risks but not (yet) in `riskai_project_owners`. */
+const SYNTHETIC_OWNER_ID_PREFIX = "synth:";
+
+function syntheticProjectOwnerId(name: string): string {
+  return `${SYNTHETIC_OWNER_ID_PREFIX}${encodeURIComponent(name)}`;
+}
+
+/** Distinct non-empty owner strings from risks (excludes "Unassigned"), for merging into the owner picker. */
+export function distinctOwnerNamesFromRisks(
+  risks: { owner?: string | null }[]
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of risks) {
+    const raw = r.owner?.trim() ?? "";
+    if (!raw || raw === "Unassigned") continue;
+    if (seen.has(raw)) continue;
+    seen.add(raw);
+    out.push(raw);
+  }
+  return out;
+}
+
 type RiskProjectOwnersContextValue = {
   projectId: string;
   owners: RiskaiProjectOwnerRow[];
@@ -29,9 +52,12 @@ const RiskProjectOwnersContext = createContext<RiskProjectOwnersContextValue | n
 
 export function RiskProjectOwnersProvider({
   projectId,
+  extraOwnerNamesFromRisks,
   children,
 }: {
   projectId: string;
+  /** Names present on `riskai_risks.owner` that may be missing from `riskai_project_owners` (e.g. seeded/demo rows). */
+  extraOwnerNamesFromRisks?: string[];
   children: ReactNode;
 }) {
   const [owners, setOwners] = useState<RiskaiProjectOwnerRow[]>([]);
@@ -87,17 +113,33 @@ export function RiskProjectOwnersProvider({
     [projectId, loadOwners]
   );
 
+  const ownersForPicker = useMemo(() => {
+    const fromDb = owners;
+    const dbNames = new Set(fromDb.map((o) => o.name));
+    const synthetic: RiskaiProjectOwnerRow[] = [];
+    for (const name of extraOwnerNamesFromRisks ?? []) {
+      const n = name.trim();
+      if (!n || dbNames.has(n)) continue;
+      dbNames.add(n);
+      synthetic.push({ id: syntheticProjectOwnerId(n), name: n });
+    }
+    if (synthetic.length === 0) return fromDb;
+    return [...fromDb, ...synthetic].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    );
+  }, [owners, extraOwnerNamesFromRisks]);
+
   const value = useMemo<RiskProjectOwnersContextValue>(
     () => ({
       projectId,
-      owners,
-      ownerNames: owners.map((o) => o.name),
+      owners: ownersForPicker,
+      ownerNames: ownersForPicker.map((o) => o.name),
       loading,
       error,
       refetch: loadOwners,
       createProjectOwner,
     }),
-    [projectId, owners, loading, error, loadOwners, createProjectOwner]
+    [projectId, ownersForPicker, loading, error, loadOwners, createProjectOwner]
   );
 
   return (

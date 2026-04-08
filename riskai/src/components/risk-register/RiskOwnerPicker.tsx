@@ -2,7 +2,12 @@
 
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
-import { Callout, FieldError } from "@visualify/design-system";
+import {
+  Callout,
+  dsNativeSelectFieldClassName,
+  dsTextInputFieldClassName,
+  FieldError,
+} from "@visualify/design-system";
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { dlog } from "@/lib/debug";
 
@@ -61,6 +66,14 @@ type RiskOwnerPickerProps = {
 
 const fieldStackClass = "flex flex-col gap-[var(--ds-space-2)]";
 
+function mergeSelectClass(className?: string) {
+  return [dsNativeSelectFieldClassName(false), className].filter(Boolean).join(" ");
+}
+
+function mergeTextFieldClass(className?: string) {
+  return [dsTextInputFieldClassName(false), className].filter(Boolean).join(" ");
+}
+
 export function RiskOwnerPicker({
   id,
   selectValue,
@@ -90,7 +103,7 @@ export function RiskOwnerPicker({
       <select
         id={id}
         disabled
-        className={className}
+        className={mergeSelectClass(className)}
         style={style}
         aria-busy="true"
         aria-label="Owner"
@@ -110,7 +123,7 @@ export function RiskOwnerPicker({
         <input
           id={id}
           type="text"
-          className={className}
+          className={mergeTextFieldClass(className)}
           style={style}
           value={selectValue === NEW_RISK_OWNER_SENTINEL ? newNameDraft : selectValue}
           onChange={(e) => {
@@ -136,7 +149,7 @@ export function RiskOwnerPicker({
       )}
       <select
         id={id}
-        className={className}
+        className={mergeSelectClass(className)}
         style={style}
         value={toSelectElementValue(selectValue, ownersForOptions)}
         onChange={(e) => {
@@ -170,7 +183,7 @@ export function RiskOwnerPicker({
         <input
           id={`${id}-new-name`}
           type="text"
-          className={className}
+          className={mergeTextFieldClass(className)}
           style={style}
           value={newNameDraft}
           onChange={(e) => onNewNameDraftChange(e.target.value)}

@@ -43,6 +43,11 @@ export function dsTextInputFieldClassName(invalid: boolean): string {
   return fieldClass(invalid, "input");
 }
 
+/** Native `<select>` — same document-tile chrome as {@link Input} (border uses `--ds-document-tile-border`, typically transparent). */
+export function dsNativeSelectFieldClassName(invalid: boolean): string {
+  return fieldClass(invalid, "input");
+}
+
 /** Full class string for `<textarea>` (same tile chrome as {@link dsTextInputFieldClassName}). */
 export function dsTextareaFieldClassName(invalid: boolean): string {
   return fieldClass(invalid, "textarea");

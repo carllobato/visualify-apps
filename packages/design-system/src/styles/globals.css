@@ -97,9 +97,9 @@
   --ds-status-success-bg: color-mix(in oklab, var(--ds-status-success) 18%, var(--ds-surface-default));
   --ds-status-success-fg: color-mix(in oklab, var(--ds-status-success) 78%, var(--ds-text-primary));
   --ds-status-success-border: color-mix(in oklab, var(--ds-status-success) 34%, var(--ds-border));
-  --ds-status-success-subtle-bg: color-mix(in oklab, var(--ds-status-success) 12%, var(--ds-surface-default));
-  --ds-status-success-subtle-fg: color-mix(in oklab, var(--ds-status-success) 70%, var(--ds-text-primary));
-  --ds-status-success-subtle-border: color-mix(in oklab, var(--ds-status-success) 22%, var(--ds-border));
+  --ds-status-success-subtle-bg: color-mix(in oklab, var(--ds-status-success) 22%, var(--ds-surface-default));
+  --ds-status-success-subtle-fg: color-mix(in oklab, var(--ds-status-success) 76%, var(--ds-text-primary));
+  --ds-status-success-subtle-border: color-mix(in oklab, var(--ds-status-success) 28%, var(--ds-border));
   --ds-status-success-strong-bg: var(--ds-status-success);
   --ds-status-success-strong-fg: var(--ds-text-inverse);
   --ds-status-success-strong-border: color-mix(in oklab, var(--ds-status-success) 62%, var(--ds-text-primary));
@@ -108,9 +108,9 @@
   --ds-status-warning-bg: color-mix(in oklab, var(--ds-status-warning) 18%, var(--ds-surface-default));
   --ds-status-warning-fg: color-mix(in oklab, var(--ds-status-warning) 78%, var(--ds-text-primary));
   --ds-status-warning-border: color-mix(in oklab, var(--ds-status-warning) 34%, var(--ds-border));
-  --ds-status-warning-subtle-bg: color-mix(in oklab, var(--ds-status-warning) 12%, var(--ds-surface-default));
-  --ds-status-warning-subtle-fg: color-mix(in oklab, var(--ds-status-warning) 70%, var(--ds-text-primary));
-  --ds-status-warning-subtle-border: color-mix(in oklab, var(--ds-status-warning) 22%, var(--ds-border));
+  --ds-status-warning-subtle-bg: color-mix(in oklab, var(--ds-status-warning) 22%, var(--ds-surface-default));
+  --ds-status-warning-subtle-fg: color-mix(in oklab, var(--ds-status-warning) 76%, var(--ds-text-primary));
+  --ds-status-warning-subtle-border: color-mix(in oklab, var(--ds-status-warning) 28%, var(--ds-border));
   --ds-status-warning-strong-bg: var(--ds-status-warning);
   --ds-status-warning-strong-fg: var(--ds-text-inverse);
   --ds-status-warning-strong-border: color-mix(in oklab, var(--ds-status-warning) 62%, var(--ds-text-primary));
@@ -119,9 +119,9 @@
   --ds-status-danger-bg: color-mix(in oklab, var(--ds-status-danger) 18%, var(--ds-surface-default));
   --ds-status-danger-fg: color-mix(in oklab, var(--ds-status-danger) 78%, var(--ds-text-primary));
   --ds-status-danger-border: color-mix(in oklab, var(--ds-status-danger) 34%, var(--ds-border));
-  --ds-status-danger-subtle-bg: color-mix(in oklab, var(--ds-status-danger) 12%, var(--ds-surface-default));
-  --ds-status-danger-subtle-fg: color-mix(in oklab, var(--ds-status-danger) 70%, var(--ds-text-primary));
-  --ds-status-danger-subtle-border: color-mix(in oklab, var(--ds-status-danger) 22%, var(--ds-border));
+  --ds-status-danger-subtle-bg: color-mix(in oklab, var(--ds-status-danger) 28%, var(--ds-surface-default));
+  --ds-status-danger-subtle-fg: color-mix(in oklab, var(--ds-status-danger) 82%, var(--ds-text-primary));
+  --ds-status-danger-subtle-border: color-mix(in oklab, var(--ds-status-danger) 34%, var(--ds-border));
   --ds-status-danger-strong-bg: var(--ds-status-danger);
   --ds-status-danger-strong-fg: var(--ds-text-inverse);
   --ds-status-danger-strong-border: color-mix(in oklab, var(--ds-status-danger) 62%, var(--ds-text-primary));
@@ -130,9 +130,9 @@
   --ds-status-info-bg: color-mix(in oklab, var(--ds-status-info) 18%, var(--ds-surface-default));
   --ds-status-info-fg: color-mix(in oklab, var(--ds-status-info) 78%, var(--ds-text-primary));
   --ds-status-info-border: color-mix(in oklab, var(--ds-status-info) 34%, var(--ds-border));
-  --ds-status-info-subtle-bg: color-mix(in oklab, var(--ds-status-info) 12%, var(--ds-surface-default));
-  --ds-status-info-subtle-fg: color-mix(in oklab, var(--ds-status-info) 70%, var(--ds-text-primary));
-  --ds-status-info-subtle-border: color-mix(in oklab, var(--ds-status-info) 22%, var(--ds-border));
+  --ds-status-info-subtle-bg: color-mix(in oklab, var(--ds-status-info) 22%, var(--ds-surface-default));
+  --ds-status-info-subtle-fg: color-mix(in oklab, var(--ds-status-info) 76%, var(--ds-text-primary));
+  --ds-status-info-subtle-border: color-mix(in oklab, var(--ds-status-info) 28%, var(--ds-border));
   --ds-status-info-strong-bg: var(--ds-status-info);
   --ds-status-info-strong-fg: var(--ds-text-inverse);
   --ds-status-info-strong-border: color-mix(in oklab, var(--ds-status-info) 62%, var(--ds-text-primary));
@@ -141,9 +141,9 @@
   --ds-status-neutral-bg: color-mix(in oklab, var(--ds-status-neutral) 18%, var(--ds-surface-default));
   --ds-status-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-status-neutral));
   --ds-status-neutral-border: color-mix(in oklab, var(--ds-status-neutral) 34%, var(--ds-border));
-  --ds-status-neutral-subtle-bg: color-mix(in oklab, var(--ds-status-neutral) 12%, var(--ds-surface-default));
-  --ds-status-neutral-subtle-fg: color-mix(in oklab, var(--ds-text-primary) 82%, var(--ds-status-neutral));
-  --ds-status-neutral-subtle-border: color-mix(in oklab, var(--ds-status-neutral) 22%, var(--ds-border));
+  --ds-status-neutral-subtle-bg: color-mix(in oklab, var(--ds-status-neutral) 22%, var(--ds-surface-default));
+  --ds-status-neutral-subtle-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-status-neutral));
+  --ds-status-neutral-subtle-border: color-mix(in oklab, var(--ds-status-neutral) 28%, var(--ds-border));
   --ds-status-neutral-strong-bg: color-mix(in oklab, var(--ds-status-neutral) 78%, var(--ds-text-primary));
   --ds-status-neutral-strong-fg: var(--ds-text-inverse);
   --ds-status-neutral-strong-border: color-mix(in oklab, var(--ds-status-neutral) 62%, var(--ds-text-primary));
@@ -223,6 +223,8 @@
   --ds-charcoal: #1a1a1d;
   /* Modal / drawer backdrop — single system app-wide */
   --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 50%, transparent);
+  /* Frosted scrim behind dialogs (matches onboarding modals; change once for all `.ds-modal-backdrop` surfaces) */
+  --ds-modal-backdrop-blur: 2px;
   /* Marketing / photo washes behind glass (login hero) */
   --ds-backdrop-photo-light: color-mix(in oklab, var(--ds-text-inverse) 48%, transparent);
   --ds-backdrop-photo-dark: color-mix(in oklab, var(--ds-scrim-ink) 80%, transparent);
@@ -473,9 +475,9 @@
   --ds-status-success-bg: color-mix(in oklab, var(--ds-status-success) 22%, var(--ds-surface-default));
   --ds-status-success-fg: color-mix(in oklab, var(--ds-status-success) 82%, var(--ds-text-primary));
   --ds-status-success-border: color-mix(in oklab, var(--ds-status-success) 38%, var(--ds-border));
-  --ds-status-success-subtle-bg: color-mix(in oklab, var(--ds-status-success) 16%, var(--ds-surface-default));
-  --ds-status-success-subtle-fg: color-mix(in oklab, var(--ds-status-success) 76%, var(--ds-text-primary));
-  --ds-status-success-subtle-border: color-mix(in oklab, var(--ds-status-success) 28%, var(--ds-border));
+  --ds-status-success-subtle-bg: color-mix(in oklab, var(--ds-status-success) 26%, var(--ds-surface-default));
+  --ds-status-success-subtle-fg: color-mix(in oklab, var(--ds-status-success) 82%, var(--ds-text-primary));
+  --ds-status-success-subtle-border: color-mix(in oklab, var(--ds-status-success) 34%, var(--ds-border));
   --ds-status-success-strong-bg: var(--ds-status-success);
   --ds-status-success-strong-fg: var(--ds-text-inverse);
   --ds-status-success-strong-border: color-mix(in oklab, var(--ds-status-success) 64%, var(--ds-text-primary));
@@ -484,9 +486,9 @@
   --ds-status-warning-bg: color-mix(in oklab, var(--ds-status-warning) 22%, var(--ds-surface-default));
   --ds-status-warning-fg: color-mix(in oklab, var(--ds-status-warning) 82%, var(--ds-text-primary));
   --ds-status-warning-border: color-mix(in oklab, var(--ds-status-warning) 38%, var(--ds-border));
-  --ds-status-warning-subtle-bg: color-mix(in oklab, var(--ds-status-warning) 16%, var(--ds-surface-default));
-  --ds-status-warning-subtle-fg: color-mix(in oklab, var(--ds-status-warning) 76%, var(--ds-text-primary));
-  --ds-status-warning-subtle-border: color-mix(in oklab, var(--ds-status-warning) 28%, var(--ds-border));
+  --ds-status-warning-subtle-bg: color-mix(in oklab, var(--ds-status-warning) 26%, var(--ds-surface-default));
+  --ds-status-warning-subtle-fg: color-mix(in oklab, var(--ds-status-warning) 82%, var(--ds-text-primary));
+  --ds-status-warning-subtle-border: color-mix(in oklab, var(--ds-status-warning) 34%, var(--ds-border));
   --ds-status-warning-strong-bg: var(--ds-status-warning);
   --ds-status-warning-strong-fg: var(--ds-text-inverse);
   --ds-status-warning-strong-border: color-mix(in oklab, var(--ds-status-warning) 64%, var(--ds-text-primary));
@@ -495,9 +497,9 @@
   --ds-status-danger-bg: color-mix(in oklab, var(--ds-status-danger) 22%, var(--ds-surface-default));
   --ds-status-danger-fg: color-mix(in oklab, var(--ds-status-danger) 82%, var(--ds-text-primary));
   --ds-status-danger-border: color-mix(in oklab, var(--ds-status-danger) 38%, var(--ds-border));
-  --ds-status-danger-subtle-bg: color-mix(in oklab, var(--ds-status-danger) 16%, var(--ds-surface-default));
-  --ds-status-danger-subtle-fg: color-mix(in oklab, var(--ds-status-danger) 76%, var(--ds-text-primary));
-  --ds-status-danger-subtle-border: color-mix(in oklab, var(--ds-status-danger) 28%, var(--ds-border));
+  --ds-status-danger-subtle-bg: color-mix(in oklab, var(--ds-status-danger) 32%, var(--ds-surface-default));
+  --ds-status-danger-subtle-fg: color-mix(in oklab, var(--ds-status-danger) 86%, var(--ds-text-primary));
+  --ds-status-danger-subtle-border: color-mix(in oklab, var(--ds-status-danger) 40%, var(--ds-border));
   --ds-status-danger-strong-bg: var(--ds-status-danger);
   --ds-status-danger-strong-fg: var(--ds-text-inverse);
   --ds-status-danger-strong-border: color-mix(in oklab, var(--ds-status-danger) 64%, var(--ds-text-primary));
@@ -506,9 +508,9 @@
   --ds-status-info-bg: color-mix(in oklab, var(--ds-status-info) 22%, var(--ds-surface-default));
   --ds-status-info-fg: color-mix(in oklab, var(--ds-status-info) 82%, var(--ds-text-primary));
   --ds-status-info-border: color-mix(in oklab, var(--ds-status-info) 38%, var(--ds-border));
-  --ds-status-info-subtle-bg: color-mix(in oklab, var(--ds-status-info) 16%, var(--ds-surface-default));
-  --ds-status-info-subtle-fg: color-mix(in oklab, var(--ds-status-info) 76%, var(--ds-text-primary));
-  --ds-status-info-subtle-border: color-mix(in oklab, var(--ds-status-info) 28%, var(--ds-border));
+  --ds-status-info-subtle-bg: color-mix(in oklab, var(--ds-status-info) 26%, var(--ds-surface-default));
+  --ds-status-info-subtle-fg: color-mix(in oklab, var(--ds-status-info) 82%, var(--ds-text-primary));
+  --ds-status-info-subtle-border: color-mix(in oklab, var(--ds-status-info) 34%, var(--ds-border));
   --ds-status-info-strong-bg: var(--ds-status-info);
   --ds-status-info-strong-fg: var(--ds-text-inverse);
   --ds-status-info-strong-border: color-mix(in oklab, var(--ds-status-info) 64%, var(--ds-text-primary));
@@ -517,9 +519,9 @@
   --ds-status-neutral-bg: color-mix(in oklab, var(--ds-status-neutral) 22%, var(--ds-surface-default));
   --ds-status-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 90%, var(--ds-status-neutral));
   --ds-status-neutral-border: color-mix(in oklab, var(--ds-status-neutral) 38%, var(--ds-border));
-  --ds-status-neutral-subtle-bg: color-mix(in oklab, var(--ds-status-neutral) 16%, var(--ds-surface-default));
-  --ds-status-neutral-subtle-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-status-neutral));
-  --ds-status-neutral-subtle-border: color-mix(in oklab, var(--ds-status-neutral) 28%, var(--ds-border));
+  --ds-status-neutral-subtle-bg: color-mix(in oklab, var(--ds-status-neutral) 26%, var(--ds-surface-default));
+  --ds-status-neutral-subtle-fg: color-mix(in oklab, var(--ds-text-primary) 90%, var(--ds-status-neutral));
+  --ds-status-neutral-subtle-border: color-mix(in oklab, var(--ds-status-neutral) 34%, var(--ds-border));
   --ds-status-neutral-strong-bg: color-mix(in oklab, var(--ds-status-neutral) 74%, var(--ds-text-primary));
   --ds-status-neutral-strong-fg: var(--ds-text-inverse);
   --ds-status-neutral-strong-border: color-mix(in oklab, var(--ds-status-neutral) 64%, var(--ds-text-primary));
@@ -622,6 +624,7 @@
 
   --ds-scrim-ink: #0e0e10;
   --ds-overlay: color-mix(in oklab, var(--ds-scrim-ink) 58%, transparent);
+  --ds-modal-backdrop-blur: 2px;
   --ds-backdrop-photo-light: color-mix(in oklab, var(--ds-text-inverse) 48%, transparent);
   --ds-backdrop-photo-dark: color-mix(in oklab, var(--ds-scrim-ink) 80%, transparent);
   --ds-surface-glass: color-mix(in oklab, var(--ds-text-inverse) 64%, transparent);
@@ -1003,7 +1006,7 @@ ul[role="listbox"] button:focus-visible {
   color: inherit;
 }
 
-/* Legal footer content spans full width of the footer (no content max-width cap) */
+/* Legal footer: full width inside padded shell; use same horizontal inset as document `<main>` (e.g. risk register `px-6`, `.ds-document-page` at sm+). */
 .ds-site-footer-inner {
   width: 100%;
   max-width: none;
@@ -1213,6 +1216,32 @@ ul[role="listbox"] button:focus-visible {
 }
 
 /*
+ * Segmented control — inset track grouping small `Button`s (Applies to, Mitigation mode, …).
+ * Track uses `--ds-radius-lg` so outer corners read clearly round; segments are concentric
+ * (`lg` minus track padding). `!important` wins over `Button`’s Tailwind `rounded-sm` utility.
+ */
+.ds-segmented-control {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-self: flex-start;
+  box-sizing: border-box;
+  gap: var(--ds-space-1);
+  padding: var(--ds-space-1);
+  border-radius: var(--ds-radius-lg);
+  border: none;
+  /* Align track with native selects / inputs (`--ds-document-tile-bg` in Form.tsx field chrome) */
+  background-color: var(--ds-document-tile-bg);
+}
+
+.ds-segmented-control__segment {
+  border-radius: calc(var(--ds-radius-lg) - var(--ds-space-1)) !important;
+  box-shadow: none !important;
+  /* Same body size as inputs / textareas (`fieldClass` uses `--ds-text-sm`); overrides `Button` size `sm` */
+  font-size: var(--ds-text-sm) !important;
+  padding-inline: var(--ds-space-3) !important;
+}
+
+/*
  * Project settings — section cards and tabs use the same density tokens as dashboard blocks
  * (`--ds-dashboard-section-*`) and the design-system documentation examples.
  */
@@ -1244,24 +1273,37 @@ ul[role="listbox"] button:focus-visible {
 }
 
 /*
- * Onboarding / first-run modals — shell, form, and step actions (RiskAI onboarding flow).
+ * Modal backdrops — shared tint + blur (same as onboarding). Use `ds-modal-backdrop` + a z-index utility,
+ * or `ds-onboarding-modal-backdrop` (+ optional `--raised`) for first-run flows. Nested dim layers: `ds-modal-backdrop-surface`.
  */
+.ds-modal-backdrop,
 .ds-onboarding-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--ds-space-4);
   background-color: var(--ds-overlay);
-  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(var(--ds-modal-backdrop-blur));
+  backdrop-filter: blur(var(--ds-modal-backdrop-blur));
+}
+
+.ds-onboarding-modal-backdrop {
+  z-index: 100;
 }
 
 .ds-onboarding-modal-backdrop--raised {
   z-index: 101;
 }
 
+.ds-modal-backdrop-surface {
+  background-color: var(--ds-overlay);
+  -webkit-backdrop-filter: blur(var(--ds-modal-backdrop-blur));
+  backdrop-filter: blur(var(--ds-modal-backdrop-blur));
+}
+
+/* Onboarding / first-run modals — panel chrome (RiskAI onboarding flow). */
 .ds-onboarding-modal-panel {
   width: 100%;
   max-width: 28rem;

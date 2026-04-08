@@ -95,15 +95,8 @@ export function InactivityGuard() {
       role="alertdialog"
       aria-modal="true"
       aria-label="Inactivity warning"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--ds-overlay)",
-      }}
+      className="ds-modal-backdrop"
+      style={{ zIndex: 9999 }}
     >
       <div
         style={{

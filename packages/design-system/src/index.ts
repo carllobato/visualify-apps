@@ -17,6 +17,7 @@ export { Callout } from "./components/Callout";
 export {
   dsDocumentTileFieldClass,
   dsFieldChromeClassName,
+  dsNativeSelectFieldClassName,
   dsTextInputFieldClassName,
   dsTextareaFieldClassName,
   FieldError,

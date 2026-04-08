@@ -51,6 +51,12 @@ export function RiskAppliesToOptionsProvider({ children }: { children: ReactNode
           return;
         }
         const rows = (data ?? []) as RiskaiRiskAppliesToRow[];
+        rows.sort((a, b) => {
+          const aCompound = a.name.includes("&") ? 1 : 0;
+          const bCompound = b.name.includes("&") ? 1 : 0;
+          if (aCompound !== bCompound) return aCompound - bCompound;
+          return a.name.localeCompare(b.name);
+        });
         dlog("[risk applies_to] fetched", rows);
         setAppliesToOptions(rows);
       } catch (e) {

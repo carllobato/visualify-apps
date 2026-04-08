@@ -61,7 +61,7 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 cursor-default bg-[var(--ds-overlay)] backdrop-blur-md transition-opacity"
+        className="ds-modal-backdrop-surface absolute inset-0 cursor-default transition-opacity"
         onClick={onClose}
       />
       <div

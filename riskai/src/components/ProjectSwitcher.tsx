@@ -230,7 +230,7 @@ export function ProjectSwitcher({ currentProjectId: currentProjectIdFromUrl }: P
 
       {modalOpen && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--ds-overlay)] p-4"
+          className="ds-modal-backdrop z-[100]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="new-project-title"

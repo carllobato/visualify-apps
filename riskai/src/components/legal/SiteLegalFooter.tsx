@@ -8,7 +8,7 @@ export function SiteLegalFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="shrink-0 bg-transparent px-[var(--ds-space-4)]">
+    <footer className="shrink-0 bg-transparent px-6">
       <div className="ds-site-footer-inner flex min-h-12 items-center border-t border-[var(--ds-border-subtle)]">
         <div className="flex flex-wrap items-center gap-y-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-tertiary)]">
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-y-1">

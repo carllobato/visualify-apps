@@ -1,6 +1,6 @@
 /**
  * Onboarding metadata keys (Supabase `user.user_metadata`).
- * Name + company in `public.visualify_profiles`; optional job title (`role`) + step flags in metadata.
+ * Name + company + optional job title (`role`) in `public.visualify_profiles`; step flags (+ legacy `role` copy) in metadata.
  * Keep step IDs stable so guided tours / checklists can layer on later.
  */
 export const OnboardingMetaKey = {

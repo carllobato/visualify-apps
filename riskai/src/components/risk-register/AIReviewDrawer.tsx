@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Callout, Card, CardBody } from "@visualify/design-system";
+import { Callout, Card, CardBody, dsNativeSelectFieldClassName } from "@visualify/design-system";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { probabilityScaleToDisplayPct } from "@/domain/risk/risk.logic";
 import type { RiskMergeCluster, MergeRiskDraft } from "@/domain/risk/risk-merge.types";
@@ -345,7 +345,7 @@ function ClusterBlock({
                           return setDraftValue(d, "owner", resolved);
                         });
                       }}
-                      className={inputClass}
+                      className="min-w-0"
                       allowEmptyPlaceholder
                     />
                   ) : inputType === "select" && selectOptions != null ? (
@@ -363,7 +363,7 @@ function ClusterBlock({
                       }
                       return (
                         <select
-                          className={inputClass}
+                          className={`${dsNativeSelectFieldClassName(false)} min-w-0`}
                           value={value}
                           onChange={(e) => setEditingDraft(setDraftValue(draft, key, e.target.value))}
                           aria-label={label}
@@ -470,7 +470,7 @@ export function AIReviewDrawer({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-[var(--ds-overlay)]"
+        className="fixed inset-0 z-40 ds-modal-backdrop-surface"
         aria-hidden
         onClick={onClose}
       />

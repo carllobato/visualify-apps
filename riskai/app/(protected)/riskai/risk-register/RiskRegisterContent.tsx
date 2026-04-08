@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { selectDecisionByRiskId, selectDecisionScoreDelta } from "@/store/selectors";
@@ -29,6 +30,7 @@ import { CreateRiskAIModal } from "@/components/risk-register/CreateRiskAIModal"
 import { AddNewRiskChoiceModal } from "@/components/risk-register/AddNewRiskChoiceModal";
 import { AIReviewDrawer } from "@/components/risk-register/AIReviewDrawer";
 import { RiskRegisterLookupProviders } from "@/components/risk-register/RiskRegisterLookupProviders";
+import { distinctOwnerNamesFromRisks } from "@/components/risk-register/RiskProjectOwnersContext";
 import {
   getCurrentRiskRatingLetter,
   getCurrentRiskRatingScoreForSort,
@@ -44,6 +46,7 @@ import {
   Button,
   Card,
   CardBody,
+  CardContent,
   Callout,
   FieldError,
   Input,
@@ -177,21 +180,14 @@ function buildRiskSearchText(risk: Risk): string {
   return tokens.join(" ").toLowerCase();
 }
 
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /**
- * Single-token queries use non-alphanumeric boundaries so "low" does not match inside "yellow", "below",
- * "fellow", etc. Multi-word queries stay substring (phrase) match on the haystack.
+ * Substring match on the lowercased haystack (single- and multi-token), so partial words match titles,
+ * descriptions, etc. Multi-word queries match as a contiguous phrase.
  */
 function registerSearchHaystackMatchesQuery(haystack: string, rawQuery: string): boolean {
   const q = rawQuery.trim().toLowerCase().replace(/\s+/g, " ");
   if (!q) return true;
-  if (q.includes(" ")) return haystack.includes(q);
-  const escaped = escapeRegExp(q);
-  const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, "i");
-  return re.test(haystack);
+  return haystack.includes(q);
 }
 
 function riskMatchesRegisterSearch(risk: Risk, rawQuery: string): boolean {
@@ -236,8 +232,24 @@ export type RiskRegisterContentProps = { projectId?: string | null };
 /** Tighter top padding under the shell page header; avoids stacking with a large margin below an empty in-page header row. */
 const RISK_REGISTER_MAIN_CLASS = "min-w-0 px-6 pb-6 pt-3 text-[var(--ds-text-primary)]";
 
+/** Stable JSON for “persisted vs local” comparison (sorted risk ids, sorted keys, drop volatile fields). */
+function risksToPersistSnapshot(risks: Risk[]): string {
+  const exclude = new Set(["updatedAt", "createdAt", "lastMitigationUpdate", "scoreHistory"]);
+  function sortKeys(obj: unknown): unknown {
+    if (obj === null || typeof obj !== "object") return obj;
+    if (Array.isArray(obj)) return obj.map(sortKeys);
+    const rec = obj as Record<string, unknown>;
+    const keys = Object.keys(rec).filter((k) => !exclude.has(k)).sort();
+    const out: Record<string, unknown> = {};
+    for (const k of keys) out[k] = sortKeys(rec[k]);
+    return out;
+  }
+  const sorted = [...risks].sort((a, b) => a.id.localeCompare(b.id));
+  return JSON.stringify(sorted.map((r) => sortKeys(r as Record<string, unknown>)));
+}
+
 export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterContentProps = {}) {
-  const { risks, simulation, addRisk, updateRisk, setRisks, archiveRisk, closeRisk, restoreArchivedRisk } =
+  const { risks, simulation, addRisk, updateRisk, setRisks, restoreArchivedRisk } =
     useRiskRegister();
   const [saveToServerLoading, setSaveToServerLoading] = useState(false);
   const [saveToServerError, setSaveToServerError] = useState<string | null>(null);
@@ -263,6 +275,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const [risksLoadError, setRisksLoadError] = useState<string | null>(null);
   const [risksLoading, setRisksLoading] = useState(true);
   const [loadRetryKey, setLoadRetryKey] = useState(0);
+  const [lastPersistedRisksSnapshot, setLastPersistedRisksSnapshot] = useState<string | null>(null);
+  const [navLeaveTarget, setNavLeaveTarget] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusRiskId = searchParams.get("focusRiskId");
@@ -279,6 +293,10 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const contentReadOnly =
     Boolean(urlProjectId) &&
     (projectPermissions == null || !projectPermissions.canEditContent);
+
+  useEffect(() => {
+    setLastPersistedRisksSnapshot(null);
+  }, [projectIdTrimmed]);
 
   // Gate: load project context for gate/display. Project routes: Supabase first, then project-scoped localStorage; legacy: global localStorage only.
   useEffect(() => {
@@ -350,12 +368,14 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     listRisks(pid)
       .then((loaded) => {
         setRisks(loaded);
+        setLastPersistedRisksSnapshot(risksToPersistSnapshot(loaded));
         setRisksLoadError(null);
       })
       .catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         setRisksLoadError(msg);
         setRisks([]);
+        setLastPersistedRisksSnapshot(null);
         if (process.env.NODE_ENV === "development") {
           console.error("[risks] listRisks failed", err);
         }
@@ -400,17 +420,20 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     []
   );
 
-  const handleSaveToServer = useCallback(async () => {
+  const persistRisksToServer = useCallback(async (): Promise<boolean> => {
     const pid = urlProjectId?.trim();
     if (!pid) {
       console.error("[risk-register] replaceRisks skipped: projectId is required for risk access");
-      return;
+      return false;
     }
     setSaveToServerLoading(true);
     setSaveToServerError(null);
     try {
       const saved = await replaceRisks(risks, pid);
-      setRisks(mergeServerRisksWithLocal(saved, risks, true));
+      const merged = mergeServerRisksWithLocal(saved, risks, true);
+      setRisks(merged);
+      setLastPersistedRisksSnapshot(risksToPersistSnapshot(merged));
+      return true;
     } catch (err) {
       const msg =
         err instanceof Error
@@ -420,10 +443,131 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             : String(err);
       setSaveToServerError(msg);
       console.error("[risks]", err);
+      return false;
     } finally {
       setSaveToServerLoading(false);
     }
   }, [risks, setRisks, urlProjectId, mergeServerRisksWithLocal]);
+
+  const handleSaveToServer = useCallback(() => {
+    void persistRisksToServer();
+  }, [persistRisksToServer]);
+
+  const currentRisksPersistSnapshot = useMemo(() => risksToPersistSnapshot(risks), [risks]);
+  const extraOwnerNamesFromRisks = useMemo(() => distinctOwnerNamesFromRisks(risks), [risks]);
+  const registerHasUnsavedServerChanges =
+    !contentReadOnly &&
+    lastPersistedRisksSnapshot !== null &&
+    currentRisksPersistSnapshot !== lastPersistedRisksSnapshot;
+
+  useEffect(() => {
+    if (contentReadOnly || !registerHasUnsavedServerChanges) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [contentReadOnly, registerHasUnsavedServerChanges]);
+
+  useEffect(() => {
+    if (contentReadOnly || !registerHasUnsavedServerChanges) return;
+    const onClickCapture = (e: MouseEvent) => {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      const hrefAttr = a.getAttribute("href");
+      if (!hrefAttr || hrefAttr.startsWith("#") || hrefAttr.startsWith("mailto:") || hrefAttr.startsWith("tel:"))
+        return;
+      let url: URL;
+      try {
+        url = new URL(hrefAttr, window.location.origin);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      const next = `${url.pathname}${url.search}`;
+      const here = `${window.location.pathname}${window.location.search}`;
+      if (next === here) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setNavLeaveTarget(next + url.hash);
+    };
+    document.addEventListener("click", onClickCapture, true);
+    return () => document.removeEventListener("click", onClickCapture, true);
+  }, [contentReadOnly, registerHasUnsavedServerChanges]);
+
+  const dismissNavLeaveDialog = useCallback(() => setNavLeaveTarget(null), []);
+
+  const confirmLeaveWithoutSaving = useCallback(() => {
+    const href = navLeaveTarget;
+    setNavLeaveTarget(null);
+    if (href) router.push(href);
+  }, [navLeaveTarget, router]);
+
+  const confirmLeaveAfterSave = useCallback(async () => {
+    const href = navLeaveTarget;
+    if (!href) return;
+    const ok = await persistRisksToServer();
+    if (ok) {
+      setNavLeaveTarget(null);
+      router.push(href);
+    }
+  }, [navLeaveTarget, persistRisksToServer, router]);
+
+  const leaveRegisterConfirmPortal =
+    navLeaveTarget && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="risk-register-leave-title"
+            onClick={dismissNavLeaveDialog}
+          >
+            <Card
+              variant="elevated"
+              className="max-w-sm w-full shadow-[var(--ds-shadow-md)]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CardContent className="flex flex-col gap-3">
+                <p
+                  id="risk-register-leave-title"
+                  className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]"
+                >
+                  You have unsaved changes to the risk register. Save before leaving?
+                </p>
+                <div className="flex gap-2 justify-end flex-wrap">
+                  <Button type="button" variant="secondary" size="md" onClick={dismissNavLeaveDialog}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={confirmLeaveWithoutSaving}
+                    disabled={saveToServerLoading}
+                  >
+                    Don&apos;t save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="md"
+                    onClick={() => void confirmLeaveAfterSave()}
+                    disabled={saveToServerLoading}
+                    aria-busy={saveToServerLoading}
+                  >
+                    {saveToServerLoading ? "Saving…" : "Save"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>,
+          document.body
+        )
+      : null;
 
   const state = useMemo(() => ({ simulation }), [simulation]);
   const decisionById = useMemo(() => selectDecisionByRiskId(state), [state]);
@@ -598,16 +742,16 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   const riskRegisterPageHeaderEnd = useMemo(() => {
     if (contentReadOnly) return null;
+    const saveDisabled = saveToServerLoading || !registerHasUnsavedServerChanges;
     return (
       <div className="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
         <Button
           type="button"
           variant="primary"
           size="sm"
-          onClick={() => {
-            void handleSaveToServer();
-          }}
-          disabled={saveToServerLoading}
+          onClick={handleSaveToServer}
+          disabled={saveDisabled}
+          title={saveDisabled && !saveToServerLoading ? "No changes to save" : undefined}
         >
           {saveToServerLoading ? "Saving…" : "Save"}
         </Button>
@@ -619,7 +763,14 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         </Button>
       </div>
     );
-  }, [aiReviewLoading, contentReadOnly, handleAiReviewClick, handleSaveToServer, saveToServerLoading]);
+  }, [
+    aiReviewLoading,
+    contentReadOnly,
+    handleAiReviewClick,
+    handleSaveToServer,
+    registerHasUnsavedServerChanges,
+    saveToServerLoading,
+  ]);
 
   useEffect(() => {
     if (!urlProjectId || !setPageHeaderExtras) return;
@@ -634,7 +785,10 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   if (blockContent) {
     return (
-      <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
+      <RiskRegisterLookupProviders
+        projectId={projectIdTrimmed}
+        extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+      >
         <NeutralRiskaiLoading variant="main" srLabel="Loading risk register" />
       </RiskRegisterLookupProviders>
     );
@@ -642,58 +796,74 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
 
   if (risksLoading) {
     return (
-      <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
-      <main className={RISK_REGISTER_MAIN_CLASS}>
-        <div className="mb-4">
-          <RiskRegisterHeader
-            projectContext={projectContext}
-            readOnlyContent={contentReadOnly}
-            onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
-            aiReviewLoading={aiReviewLoading}
-            onGenerateAiRiskClick={
-              contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
-            }
-            onSaveToServer={contentReadOnly ? undefined : handleSaveToServer}
-            saveToServerLoading={saveToServerLoading}
-          />
-        </div>
-        <NeutralRiskaiLoading variant="content" srLabel="Loading risks" />
-      </main>
+      <RiskRegisterLookupProviders
+        projectId={projectIdTrimmed}
+        extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+      >
+        <>
+          <main className={RISK_REGISTER_MAIN_CLASS}>
+            <div className="mb-4">
+              <RiskRegisterHeader
+                projectContext={projectContext}
+                readOnlyContent={contentReadOnly}
+                onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
+                aiReviewLoading={aiReviewLoading}
+                onGenerateAiRiskClick={
+                  contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
+                }
+                onSaveToServer={contentReadOnly ? undefined : handleSaveToServer}
+                saveToServerLoading={saveToServerLoading}
+              />
+            </div>
+            <NeutralRiskaiLoading variant="content" srLabel="Loading risks" />
+          </main>
+          {leaveRegisterConfirmPortal}
+        </>
       </RiskRegisterLookupProviders>
     );
   }
 
   if (risksLoadError) {
     return (
-      <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
-      <main className={RISK_REGISTER_MAIN_CLASS}>
-        <div className="mb-4">
-          <RiskRegisterHeader
-            projectContext={projectContext}
-            readOnlyContent={contentReadOnly}
-            onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
-            aiReviewLoading={aiReviewLoading}
-            onGenerateAiRiskClick={
-              contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
-            }
-            onSaveToServer={contentReadOnly ? undefined : handleSaveToServer}
-            saveToServerLoading={saveToServerLoading}
-          />
-        </div>
-        <Callout status="danger" role="alert">
-          <p className="m-0 text-[length:var(--ds-text-sm)] font-medium">Failed to load risks</p>
-          <p className="mt-1 m-0 text-[length:var(--ds-text-sm)]">{risksLoadError}</p>
-          <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={handleRetryLoad}>
-            Retry
-          </Button>
-        </Callout>
-      </main>
+      <RiskRegisterLookupProviders
+        projectId={projectIdTrimmed}
+        extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+      >
+        <>
+          <main className={RISK_REGISTER_MAIN_CLASS}>
+            <div className="mb-4">
+              <RiskRegisterHeader
+                projectContext={projectContext}
+                readOnlyContent={contentReadOnly}
+                onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
+                aiReviewLoading={aiReviewLoading}
+                onGenerateAiRiskClick={
+                  contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
+                }
+                onSaveToServer={contentReadOnly ? undefined : handleSaveToServer}
+                saveToServerLoading={saveToServerLoading}
+              />
+            </div>
+            <Callout status="danger" role="alert">
+              <p className="m-0 text-[length:var(--ds-text-sm)] font-medium">Failed to load risks</p>
+              <p className="mt-1 m-0 text-[length:var(--ds-text-sm)]">{risksLoadError}</p>
+              <Button type="button" variant="secondary" size="sm" className="mt-3" onClick={handleRetryLoad}>
+                Retry
+              </Button>
+            </Callout>
+          </main>
+          {leaveRegisterConfirmPortal}
+        </>
       </RiskRegisterLookupProviders>
     );
   }
 
   return (
-    <RiskRegisterLookupProviders projectId={projectIdTrimmed}>
+    <RiskRegisterLookupProviders
+      projectId={projectIdTrimmed}
+      extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+    >
+    <>
     <main className={RISK_REGISTER_MAIN_CLASS}>
       <div className={registerHeaderBlockClass}>
         <RiskRegisterHeader
@@ -780,20 +950,23 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             }}
           />
           <RiskDetailModal
+            key={`${showDetailModal}-${detailInitialRiskId ?? ""}`}
             open={showDetailModal}
             risks={risksForDetailModal}
             initialRiskId={detailInitialRiskId}
             readOnly={contentReadOnly}
-            onClose={() => setShowDetailModal(false)}
+            onClose={() => {
+              setShowDetailModal(false);
+              setDetailInitialRiskId(null);
+            }}
             onSave={(risk) => updateRisk(risk.id, risk)}
-            onArchiveRisk={!contentReadOnly ? (id) => archiveRisk(id) : undefined}
-            onCloseRisk={!contentReadOnly ? (id) => closeRisk(id) : undefined}
             onRestoreRisk={!contentReadOnly ? (id) => restoreArchivedRisk(id) : undefined}
             onAddNew={
               contentReadOnly
                 ? undefined
                 : () => {
                     setShowDetailModal(false);
+                    setDetailInitialRiskId(null);
                     setShowAddRiskModal(true);
                   }
             }
@@ -802,6 +975,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
                 ? undefined
                 : () => {
                     setShowDetailModal(false);
+                    setDetailInitialRiskId(null);
                     setShowCreateRiskFileModal(true);
                   }
             }
@@ -810,6 +984,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
                 ? undefined
                 : () => {
                     setShowDetailModal(false);
+                    setDetailInitialRiskId(null);
                     setShowAddNewRiskChoiceModal(true);
                   }
             }
@@ -861,6 +1036,8 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         onSkipCluster={handleSkipCluster}
       />
     </main>
+    {leaveRegisterConfirmPortal}
+    </>
     </RiskRegisterLookupProviders>
   );
 }

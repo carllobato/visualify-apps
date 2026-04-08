@@ -1,7 +1,7 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { OnboardingMetaKey } from "@/lib/onboarding/types";
 
-/** `public.visualify_profiles` — id matches `auth.users.id`. Job title (`role`) stays in `user_metadata.role`. */
+/** `public.visualify_profiles` — id matches `auth.users.id`. Job title is `role` (optional text column). */
 export const USER_PROFILE_TABLE = "visualify_profiles";
 
 /** PostgREST / DB error when the table is missing from the API (narrow — avoids silent fallback on RLS errors). */
@@ -53,7 +53,7 @@ export type PublicProfileRow = {
   email: string | null;
   company: string | null;
   user_type: string | null;
-  /** Always from auth metadata in the app; not read from `public.visualify_profiles`. */
+  /** Job title / function — `public.visualify_profiles.role` (legacy: `user_metadata.role`). */
   role: string | null;
 };
 
@@ -77,7 +77,7 @@ export async function fetchPublicProfile(
 ): Promise<PublicProfileRow | null> {
   const { data, error } = await supabase
     .from(USER_PROFILE_TABLE)
-    .select("first_name,surname,company,email,user_type")
+    .select("first_name,surname,company,email,user_type,role")
     .eq("id", userId)
     .maybeSingle();
   if (error || !data) return null;
@@ -87,8 +87,9 @@ export async function fetchPublicProfile(
     company: string | null;
     email: string | null;
     user_type: string | null;
+    role: string | null;
   };
-  return { ...row, role: null };
+  return row;
 }
 
 /**
@@ -114,7 +115,7 @@ export function formatProfileAuditLabel(
 }
 
 /**
- * Persist name / company in `public.visualify_profiles`; role + onboarding flag in auth metadata.
+ * Persist name / company / role in `public.visualify_profiles`; onboarding flag (+ legacy role) in auth metadata.
  */
 export async function upsertPublicProfile(
   supabase: SupabaseClient,
@@ -132,6 +133,7 @@ export async function upsertPublicProfile(
       first_name: fields.first_name,
       surname: fields.last_name,
       company: fields.company,
+      role: fields.role,
     },
     { onConflict: "id" },
   );

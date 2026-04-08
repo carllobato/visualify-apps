@@ -24,7 +24,7 @@ export function CreateRiskAIModal({
 
   const overlay = (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--ds-overlay)] p-4 backdrop-blur-sm"
+      className="ds-modal-backdrop z-[60]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-risk-ai-dialog-title"

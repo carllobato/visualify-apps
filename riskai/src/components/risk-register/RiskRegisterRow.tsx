@@ -44,9 +44,6 @@ function ratingLetterToBadgeTone(letter: "L" | "M" | "H" | "E"): DsBadgeTone {
 const RATING_BADGE_CIRCLE =
   "!inline-flex !h-7 !w-7 !min-h-[1.75rem] !min-w-[1.75rem] !rounded-full !p-0 items-center justify-center text-[length:var(--ds-text-xs)]";
 
-const DS_NATIVE_SELECT =
-  "w-full min-w-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)] px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]";
-
 /** Category, Owner, Status, Rating — `max-w-0` helps ellipsis; column widths come from table `<colgroup>`. */
 const EQUAL_QUARTET_TD = "max-w-0 min-w-0 overflow-hidden align-middle";
 
@@ -207,7 +204,7 @@ export function RiskRegisterRow({
               id={`risk-row-category-${risk.id}`}
               value={risk.category ?? ""}
               onChange={(name) => updateRisk(risk.id, { category: name })}
-              className={`${DS_NATIVE_SELECT} truncate`}
+              className="truncate"
               allowEmptyPlaceholder={isDraft || !risk.category?.trim()}
             />
           </TableCell>
@@ -250,7 +247,7 @@ export function RiskRegisterRow({
                   dlog("[risk register row] status change", name);
                   updateRisk(risk.id, { status: name });
                 }}
-                className={`${DS_NATIVE_SELECT} truncate`}
+                className="truncate"
               />
             )}
           </div>

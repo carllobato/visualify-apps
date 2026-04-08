@@ -1,4 +1,5 @@
 import type { MitigationMode, Risk } from "./risk.schema";
+import { normalizeRiskStatusKey } from "./riskFieldSemantics";
 
 /**
  * Merge forward-exposure `mitigationProfile` from the modelling mitigation mode.
@@ -25,13 +26,17 @@ export function mergeMitigationProfileForMode(
 }
 
 /**
- * Resolve modelling mitigation mode from `mitigationProfile` and legacy mitigation text (not persisted in Supabase).
+ * Resolve modelling mitigation mode from `mitigationProfile`, lifecycle `status`, and legacy mitigation text.
+ * Priority: explicit mitigationProfile → lifecycle status → mitigation text presence → none.
  */
 export function mitigationModeFromRisk(risk: Risk): MitigationMode {
   const s = risk.mitigationProfile?.status;
   if (s === "none") return "none";
   if (s === "active") return "active";
   if (s === "planned" || s === "completed") return "forecast";
+  const lifecycle = normalizeRiskStatusKey(risk.status);
+  if (lifecycle === "mitigating" || lifecycle === "mitigated") return "active";
+  if (lifecycle === "monitoring") return "forecast";
   if (risk.mitigation?.trim()) return "active";
   return "none";
 }

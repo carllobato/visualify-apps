@@ -421,7 +421,7 @@ export function Sidebar({
       {mobileOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-[var(--ds-overlay)] md:hidden"
+          className="fixed inset-0 z-40 ds-modal-backdrop-surface md:hidden"
           aria-label="Close navigation"
           onClick={onMobileClose}
         />

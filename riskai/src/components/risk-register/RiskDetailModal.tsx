@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Risk, RiskStatus, AppliesTo, MitigationMode } from "@/domain/risk/risk.schema";
 import { mergeMitigationProfileForMode, mitigationModeFromRisk } from "@/domain/risk/mitigationMode";
@@ -17,7 +17,8 @@ import {
   isRiskStatusArchived,
   isRiskStatusClosed,
   isRiskStatusDraft,
-  RISK_STATUS_CLOSED_LOOKUP,
+  normalizeAppliesToKey,
+  normalizeRiskStatusKey,
   statusAutoFromMitigationMode,
 } from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
@@ -27,29 +28,19 @@ import {
   Badge,
   Button,
   Callout,
-  Card,
-  CardContent,
   Input,
   Label,
   Textarea,
 } from "@visualify/design-system";
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
-import { RiskAppliesToSelect } from "./RiskAppliesToSelect";
 import { RiskCategorySelect } from "./RiskCategorySelect";
+import { RiskStatusSelect } from "./RiskStatusSelect";
 import {
   RiskOwnerPicker,
   getResolvedOwnerPickerValue,
   shouldPersistNewOwnerOnSubmit,
 } from "./RiskOwnerPicker";
-import { RiskStatusSelect } from "./RiskStatusSelect";
 import { useRiskStatusOptions } from "./RiskStatusOptionsContext";
-
-/** Native `<select>` / special inputs: matches design-system Form field chrome (no exported primitive). */
-const nativeSelectClass =
-  "w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 h-9 py-1 " +
-  "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
-  "disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] disabled:text-[var(--ds-text-muted)]";
 
 const rangeTrackClass =
   "col-span-2 min-w-0 h-2 rounded-[var(--ds-radius-sm)] appearance-none bg-[var(--ds-surface-muted)] accent-[var(--ds-primary)]";
@@ -121,10 +112,10 @@ function validateNonDraftRisk(form: {
   if (!form.appliesTo.trim()) errors.push("Applies to");
   if (isRiskStatusDraft(form.status)) return errors;
   if (!form.title.trim()) errors.push("Title");
-  if (!form.description.trim()) errors.push("Description");
+  if (!form.description.trim()) errors.push("Risk Description");
   if (!form.category.trim()) errors.push("Category");
   const ownerResolved = getResolvedOwnerPickerValue(form.ownerSelect, form.ownerNewDraft);
-  if (!ownerResolved) errors.push("Owner");
+  if (!ownerResolved) errors.push("Risk Manager");
   const prePct = parseFloat(form.preMitigationProbabilityPct);
   if (!Number.isFinite(prePct) || prePct < 0 || prePct > 100) errors.push("Pre-Mitigation Probability %");
   if (appliesToAffectsCost(form.appliesTo)) {
@@ -147,7 +138,7 @@ function validateNonDraftRisk(form: {
     const postPctRaw = form.postMitigationProbabilityPct.trim();
     if (postPctRaw !== "") {
       const postPct = parseFloat(postPctRaw);
-      if (!Number.isFinite(postPct) || postPct < 0 || postPct > 100) errors.push("Post-Mitigation Probability %");
+      if (!Number.isFinite(postPct) || postPct < 0 || postPct > 100) errors.push("Post-Mitigation Probability");
     }
     if (appliesToAffectsCost(form.appliesTo)) {
       if (form.postMitigationCostMin.trim() !== "") {
@@ -191,8 +182,6 @@ export function RiskDetailModal({
   onAddNew,
   onAddNewWithFile,
   onAddNewWithAI,
-  onArchiveRisk,
-  onCloseRisk,
   onRestoreRisk,
 }: {
   open: boolean;
@@ -207,10 +196,6 @@ export function RiskDetailModal({
   onAddNewWithFile?: () => void;
   /** Open flow: Create Risk with AI (text entry) */
   onAddNewWithAI?: () => void;
-  /** Soft-delete: set status to Archived (persist with Save to server). */
-  onArchiveRisk?: (riskId: string) => void;
-  /** Set lifecycle status to Closed (persist with Save to server). */
-  onCloseRisk?: (riskId: string) => void;
   /** Restore archived risk to Open. */
   onRestoreRisk?: (riskId: string) => void;
 }) {
@@ -221,7 +206,7 @@ export function RiskDetailModal({
     return i >= 0 ? i : 0;
   }, [initialRiskId, risks]);
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(getInitialIndex);
   // Header (risk ID is read-only model id; title is editable)
   const [title, setTitle] = useState("");
   // General
@@ -253,9 +238,11 @@ export function RiskDetailModal({
   const [postMitigationTimeML, setPostMitigationTimeML] = useState("");
   const [postMitigationTimeMax, setPostMitigationTimeMax] = useState("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const validationBlockRef = useRef<HTMLDivElement>(null);
+  const pendingScrollValidationRef = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { statuses: riskStatusOptions } = useRiskStatusOptions();
   const modalRef = useRef<HTMLDivElement>(null);
-  const didInitialSyncRef = useRef(false);
   /** After a successful Save, store a snapshot so we treat the form as not dirty until the user edits or switches risk. */
   const lastSavedSnapshotRef = useRef<{ id: string; snapshot: string } | null>(null);
   const prevRiskIdRef = useRef<string | null>(null);
@@ -335,27 +322,6 @@ export function RiskDetailModal({
     }
   }, []);
 
-  useEffect(() => {
-    if (!open) {
-      didInitialSyncRef.current = false;
-      lastSavedSnapshotRef.current = null;
-      prevRiskIdRef.current = null;
-      lastSyncedRiskIdRef.current = null;
-      lastSyncedBaselineRef.current = null;
-      return;
-    }
-    if (!didInitialSyncRef.current) {
-      didInitialSyncRef.current = true;
-      const idx = getInitialIndex();
-      const risk = risks[idx];
-      setCurrentIndex(idx);
-      if (risk) {
-        syncFormFromRisk(risk);
-        lastSyncedRiskIdRef.current = risk.id;
-      }
-    }
-  }, [open, getInitialIndex, risks, syncFormFromRisk]);
-
   /** Normalize a risk the same way buildUpdatedRisk normalizes form output, so we can compare without false positives (e.g. "" vs undefined). When mitigation mode is none, post-mitigation fields are undefined to match buildUpdatedRisk. When mitigation exists but post min/max are missing (e.g. old DB), derive same defaults as buildUpdatedRisk (0 for min, ML for max) so dirty check does not false-positive. Pre-mitigation min/max use same defaults as buildUpdatedRisk (0 for min, Math.max(ML, min) for max) so undefined does not trigger a false dirty. */
   const normalizeRiskForComparison = useCallback((risk: Risk): Risk => {
     const toNum = (v: unknown): number | undefined =>
@@ -431,15 +397,21 @@ export function RiskDetailModal({
     };
   }, []);
 
-  // Sync form when the risk we're viewing changes (e.g. open modal or switch risk). Ref guard avoids re-syncing when only currentRisk reference changed (same id). Deps use currentRisk?.id so effect runs only when id/index change, not on object reference change.
-  useEffect(() => {
+  // Sync form from the current risk. Runs as useLayoutEffect so the form is populated before paint (no flash of empty fields on open or Prev/Next navigation). The parent's `key` prop forces a fresh mount for each open, so `currentIndex` starts correct via useState(getInitialIndex) and this effect syncs the form on mount. On Prev/Next, currentIndex changes → currentRisk changes → ref mismatch → re-syncs.
+  useLayoutEffect(() => {
     if (!open || !currentRisk || currentIndex === risks.length) return;
-    if (lastSyncedRiskIdRef.current === currentRisk.id) return;
-    syncFormFromRisk(currentRisk);
-    lastSyncedRiskIdRef.current = currentRisk.id;
-    lastSyncedBaselineRef.current = toComparableSnapshot(
-      normalizeRiskForComparison(currentRisk) as Record<string, unknown>
-    );
+    if (lastSyncedRiskIdRef.current !== currentRisk.id) {
+      syncFormFromRisk(currentRisk);
+      lastSyncedRiskIdRef.current = currentRisk.id;
+      lastSyncedBaselineRef.current = toComparableSnapshot(
+        normalizeRiskForComparison(currentRisk) as Record<string, unknown>
+      );
+    } else if (lastSyncedBaselineRef.current == null) {
+      // Baseline missing after open / target change — without this, isDirty stays false forever.
+      lastSyncedBaselineRef.current = toComparableSnapshot(
+        normalizeRiskForComparison(currentRisk) as Record<string, unknown>
+      );
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- currentRisk?.id intentionally used instead of currentRisk to avoid re-runs on same-risk reference change
   }, [currentIndex, open, currentRisk?.id, risks.length, syncFormFromRisk, normalizeRiskForComparison]);
 
@@ -524,6 +496,24 @@ export function RiskDetailModal({
     },
     [status, riskStatusOptions]
   );
+
+  /** Header status dropdown: keep modelling mitigation mode aligned with lifecycle (same mapping as mitigationModeFromRisk). */
+  const handleLifecycleStatusChange = useCallback((next: string) => {
+    setStatus(next as RiskStatus);
+    if (isRiskStatusClosed(next) || isRiskStatusArchived(next)) return;
+    const k = normalizeRiskStatusKey(next);
+    if (k === "monitoring") {
+      setMitigationMode("forecast");
+      return;
+    }
+    if (k === "mitigating" || k === "mitigated") {
+      setMitigationMode("active");
+      return;
+    }
+    if (k === "open") {
+      setMitigationMode("none");
+    }
+  }, []);
 
   const parseNum = (s: string): number | undefined => {
     const v = parseFloat(s);
@@ -670,8 +660,22 @@ export function RiskDetailModal({
 
   const isDirty = isDirtyState;
 
-  const [pendingNav, setPendingNav] = useState<"prev" | "next" | "close" | "generateAI" | null>(null);
-  const showSavePrompt = pendingNav !== null && !readOnly;
+  const clearAutoSaveTimer = useCallback(() => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) clearAutoSaveTimer();
+  }, [open, clearAutoSaveTimer]);
+
+  useEffect(() => {
+    if (!pendingScrollValidationRef.current || validationErrors.length === 0) return;
+    pendingScrollValidationRef.current = false;
+    validationBlockRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [validationErrors]);
 
   const handleSave = useCallback(async (): Promise<boolean> => {
     if (readOnly) return false;
@@ -703,6 +707,7 @@ export function RiskDetailModal({
       postMitigationTimeMax,
     });
     if (errors.length > 0) {
+      pendingScrollValidationRef.current = true;
       setValidationErrors(errors);
       return false;
     }
@@ -714,6 +719,7 @@ export function RiskDetailModal({
         setValidationErrors([
           err instanceof Error ? err.message : "Could not save new owner. Try again.",
         ]);
+        pendingScrollValidationRef.current = true;
         return false;
       }
     }
@@ -765,73 +771,69 @@ export function RiskDetailModal({
     createProjectOwner,
   ]);
 
-  const handleArchiveRiskAction = useCallback(() => {
-    if (!currentRisk || isAddNewSlot || isRiskStatusArchived(currentRisk.status)) return;
-    onArchiveRisk?.(currentRisk.id);
-    onClose();
-  }, [currentRisk, isAddNewSlot, onArchiveRisk, onClose]);
+  /** Persist pending edits immediately (clears debounced auto-save timer). Used before Prev/Next/Close. */
+  const flushPendingSave = useCallback(async (): Promise<boolean> => {
+    clearAutoSaveTimer();
+    if (readOnly || !currentRisk || currentIndex === risks.length) return true;
+    if (lastSyncedBaselineRef.current == null) return true;
+    const updated = buildUpdatedRisk();
+    if (!updated) return true;
+    const snap = toComparableSnapshot(updated as Record<string, unknown>);
+    if (snap === lastSyncedBaselineRef.current) return true;
+    return handleSave();
+  }, [readOnly, currentRisk, currentIndex, risks.length, buildUpdatedRisk, handleSave, clearAutoSaveTimer]);
 
-  const handleCloseRiskAction = useCallback(() => {
-    if (!currentRisk || isAddNewSlot || isRiskStatusArchived(currentRisk.status)) return;
-    onCloseRisk?.(currentRisk.id);
-    const closedName =
-      (findRiskStatusNameByKeys(riskStatusOptions, ["closed"]) as RiskStatus | undefined) ??
-      (RISK_STATUS_CLOSED_LOOKUP as RiskStatus);
-    setStatus(closedName);
-    const patched: Risk = { ...currentRisk, status: closedName, updatedAt: nowIso() };
-    const baseline = toComparableSnapshot(
-      normalizeRiskForComparison(patched) as Record<string, unknown>
-    );
-    lastSyncedBaselineRef.current = baseline;
-    lastSavedSnapshotRef.current = { id: currentRisk.id, snapshot: baseline };
-  }, [currentRisk, isAddNewSlot, onCloseRisk, riskStatusOptions, normalizeRiskForComparison]);
+  /** Debounced persist while editing (buildUpdatedRisk in deps resets the timer on each change). */
+  useEffect(() => {
+    if (!open || readOnly || !currentRisk || currentIndex === risks.length || !isDirty) {
+      clearAutoSaveTimer();
+      return;
+    }
+    clearAutoSaveTimer();
+    autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = null;
+      void handleSave();
+    }, 450);
+    return () => {
+      clearAutoSaveTimer();
+    };
+  }, [
+    open,
+    readOnly,
+    currentRisk?.id,
+    currentIndex,
+    risks.length,
+    isDirty,
+    buildUpdatedRisk,
+    handleSave,
+    clearAutoSaveTimer,
+  ]);
 
   const handleRestoreRiskAction = useCallback(() => {
     if (!currentRisk || isAddNewSlot || !isRiskStatusArchived(currentRisk.status)) return;
-    onRestoreRisk?.(currentRisk.id);
-    onClose();
-  }, [currentRisk, isAddNewSlot, onRestoreRisk, onClose]);
-
-  const handleSaveThenNav = useCallback(() => {
-    if (pendingNav === null) return;
-    const nav = pendingNav;
-    void (async () => {
-      if (!(await handleSave())) return;
-      if (nav === "prev" && currentIndex > 0) setCurrentIndex((i) => i - 1);
-      else if (nav === "next" && currentIndex < risks.length) setCurrentIndex((i) => i + 1);
-      else if (nav === "close") onClose();
-      else if (nav === "generateAI") onAddNewWithAI?.();
-      setPendingNav(null);
-    })();
-  }, [pendingNav, handleSave, currentIndex, risks.length, onClose, onAddNewWithAI]);
-
-  const handleDiscardThenNav = useCallback(() => {
-    if (pendingNav === null) return;
-    if (pendingNav === "prev" && currentIndex > 0) setCurrentIndex((i) => i - 1);
-    else if (pendingNav === "next" && currentIndex < risks.length) setCurrentIndex((i) => i + 1);
-    else if (pendingNav === "close") onClose();
-    else if (pendingNav === "generateAI") onAddNewWithAI?.();
-    setPendingNav(null);
-  }, [pendingNav, currentIndex, risks.length, onClose, onAddNewWithAI]);
-
-  const handleCancelNav = useCallback(() => setPendingNav(null), []);
-
-  const requestGenerateAI = useCallback(() => {
-    if (readOnly) return;
-    if (isDirty && currentRisk && currentIndex !== risks.length) {
-      setPendingNav("generateAI");
-      return;
-    }
-    onAddNewWithAI?.();
-  }, [readOnly, isDirty, currentRisk, currentIndex, risks.length, onAddNewWithAI]);
+    void flushPendingSave().then((ok) => {
+      if (!ok) return;
+      onRestoreRisk?.(currentRisk.id);
+      onClose();
+    });
+  }, [currentRisk, isAddNewSlot, onRestoreRisk, onClose, flushPendingSave]);
 
   const requestClose = useCallback(() => {
-    if (isDirty && currentRisk && currentIndex !== risks.length) {
-      setPendingNav("close");
-      return;
+    void flushPendingSave().then((ok) => {
+      if (ok) onClose();
+    });
+  }, [flushPendingSave, onClose]);
+
+  const [explicitSavePending, setExplicitSavePending] = useState(false);
+  const handleExplicitSave = useCallback(async () => {
+    clearAutoSaveTimer();
+    setExplicitSavePending(true);
+    try {
+      await handleSave();
+    } finally {
+      setExplicitSavePending(false);
     }
-    onClose();
-  }, [isDirty, currentRisk, currentIndex, risks.length, onClose]);
+  }, [handleSave, clearAutoSaveTimer]);
 
   useEffect(() => {
     if (!open) return;
@@ -845,23 +847,21 @@ export function RiskDetailModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [open, requestClose]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (currentIndex <= 0) return;
-    if (isDirty) {
-      setPendingNav("prev");
-      return;
-    }
-    setCurrentIndex((i) => i - 1);
-  };
+    void flushPendingSave().then((ok) => {
+      if (!ok) return;
+      setCurrentIndex((i) => i - 1);
+    });
+  }, [currentIndex, flushPendingSave]);
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     if (currentIndex >= risks.length) return;
-    if (isDirty) {
-      setPendingNav("next");
-      return;
-    }
-    setCurrentIndex((i) => i + 1);
-  };
+    void flushPendingSave().then((ok) => {
+      if (!ok) return;
+      setCurrentIndex((i) => i + 1);
+    });
+  }, [currentIndex, risks.length, flushPendingSave]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) requestClose();
@@ -870,9 +870,7 @@ export function RiskDetailModal({
   if (!open) return null;
   if (typeof document === "undefined") return null;
 
-  const overlayScrimClass =
-    "fixed inset-0 z-50 flex items-center justify-center p-4 relative " +
-    "bg-[var(--ds-overlay)] backdrop-blur-sm";
+  const overlayScrimClass = "ds-modal-backdrop z-[100]";
 
   const overlay = (
     <div
@@ -888,7 +886,7 @@ export function RiskDetailModal({
         className="w-full max-w-[70vw] max-h-[90vh] min-h-[400px] shrink-0 flex flex-col overflow-hidden outline-none rounded-[var(--ds-radius-lg)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-[var(--ds-shadow-lg)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
+        <div className="flex items-center gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {isAddNewSlot ? (
               <h2 id="risk-detail-dialog-title" className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
@@ -921,15 +919,14 @@ export function RiskDetailModal({
                   aria-label="Risk title"
                   id="risk-detail-dialog-title"
                 />
-                <Badge
-                  status="neutral"
-                  variant="subtle"
-                  className="shrink-0 text-[length:var(--ds-text-xs)] font-normal"
-                  title="Lifecycle status (same as Status in the form below)."
-                  aria-label={`Risk status: ${status}`}
-                >
-                  {status}
-                </Badge>
+                <RiskStatusSelect
+                  id="risk-detail-header-status"
+                  value={status}
+                  onChange={handleLifecycleStatusChange}
+                  disabled={readOnly}
+                  className="!h-9 max-w-[13rem] min-w-[8.5rem] shrink-0 py-1 text-[length:var(--ds-text-sm)]"
+                  title="Lifecycle status"
+                />
                 {isRiskStatusArchived(currentRisk.status) && (
                   <Badge status="neutral" variant="subtle" className="shrink-0" aria-label="Archived risk">
                     Archived
@@ -938,54 +935,14 @@ export function RiskDetailModal({
               </div>
             ) : null}
           </div>
-          {hasMultipleOrAddNew && !isAddNewSlot && (
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={goPrev}
-                disabled={currentIndex === 0}
-                aria-label="Previous risk"
-              >
-                Previous
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={goNext}
-                disabled={currentIndex === risks.length || (isLast && !hasAddNewSlot)}
-                aria-label="Next risk"
-              >
-                Next
-              </Button>
-            </div>
-          )}
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="md"
             onClick={requestClose}
-            className="h-9 w-9 shrink-0 p-0"
-            aria-label="Close dialog"
+            className="p-2 rounded-[var(--ds-radius-sm)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors shrink-0"
+            aria-label="Close"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="shrink-0 text-[var(--ds-text-primary)]"
-              aria-hidden
-            >
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </Button>
+            <span aria-hidden className="text-xl leading-none">×</span>
+          </button>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5 flex flex-col">
@@ -1031,13 +988,18 @@ export function RiskDetailModal({
                   ) : null;
                 })()}
                 {validationErrors.length > 0 && (
-                  <Callout status="danger" role="alert">
-                    <p className="font-medium mb-1 text-[length:var(--ds-text-sm)]">Complete all required fields before saving (non-draft risks):</p>
-                    <ul className="list-disc list-inside text-[length:var(--ds-text-sm)] space-y-0.5">{validationErrors.map((e) => <li key={e}>{e}</li>)}</ul>
-                  </Callout>
+                  <div ref={validationBlockRef}>
+                    <Callout status="danger" role="alert">
+                      <p className="font-medium mb-1 text-[length:var(--ds-text-sm)]">Complete all required fields before saving (non-draft risks):</p>
+                      <ul className="list-disc list-inside text-[length:var(--ds-text-sm)] space-y-0.5">{validationErrors.map((e) => <li key={e}>{e}</li>)}</ul>
+                    </Callout>
+                  </div>
                 )}
-                {/* General */}
+                {/* Risk details */}
                 <section>
+                  <h2 className="text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)] mb-3">
+                    Risk Details
+                  </h2>
                   <div className="space-y-3">
                     {isRiskStatusDraft(status) && (
                       <Callout status="warning">
@@ -1046,9 +1008,53 @@ export function RiskDetailModal({
                         </p>
                       </Callout>
                     )}
+                    <div className="flex flex-col">
+                      <Label className="block mb-2">
+                        Applies To
+                      </Label>
+                      <div
+                        className="ds-segmented-control"
+                        role="group"
+                        aria-label="Applies to"
+                      >
+                        <Button
+                          type="button"
+                          variant={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time" ? "primary" : "ghost"}
+                          size="sm"
+                          onClick={() => setAppliesTo("both")}
+                          disabled={readOnly}
+                          className="ds-segmented-control__segment"
+                          aria-pressed={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time"}
+                        >
+                          Cost &amp; Time
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={normalizeAppliesToKey(appliesTo) === "cost" ? "primary" : "ghost"}
+                          size="sm"
+                          onClick={() => setAppliesTo("cost")}
+                          disabled={readOnly}
+                          className="ds-segmented-control__segment"
+                          aria-pressed={normalizeAppliesToKey(appliesTo) === "cost"}
+                        >
+                          Cost
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={normalizeAppliesToKey(appliesTo) === "time" ? "primary" : "ghost"}
+                          size="sm"
+                          onClick={() => setAppliesTo("time")}
+                          disabled={readOnly}
+                          className="ds-segmented-control__segment"
+                          aria-pressed={normalizeAppliesToKey(appliesTo) === "time"}
+                        >
+                          Time
+                        </Button>
+                      </div>
+                    </div>
                     <div>
                       <Label htmlFor="detail-description" className="block">
-                        Description {!isRiskStatusDraft(status) && <RequiredStar />}
+                        Risk Description {!isRiskStatusDraft(status) && <RequiredStar />}
                       </Label>
                       <Textarea
                         id="detail-description"
@@ -1068,13 +1074,12 @@ export function RiskDetailModal({
                           id="detail-category"
                           value={category}
                           onChange={setCategory}
-                          className={nativeSelectClass}
                           allowEmptyPlaceholder
                         />
                       </div>
                       <div>
                         <Label htmlFor="detail-owner" className="block">
-                          Owner {!isRiskStatusDraft(status) && <RequiredStar />}
+                          Risk Manager {!isRiskStatusDraft(status) && <RequiredStar />}
                         </Label>
                         <RiskOwnerPicker
                           id="detail-owner"
@@ -1082,30 +1087,7 @@ export function RiskDetailModal({
                           newNameDraft={ownerNewDraft}
                           onSelectChange={setOwnerSelect}
                           onNewNameDraftChange={setOwnerNewDraft}
-                          className={nativeSelectClass}
                           allowEmptyPlaceholder
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-status" className="block">
-                          Status {!isRiskStatusDraft(status) && <RequiredStar />}
-                        </Label>
-                        <RiskStatusSelect
-                          id="detail-status"
-                          value={status}
-                          onChange={setStatus}
-                          className={nativeSelectClass}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-applies-to" className="block">
-                          Applies To {!isRiskStatusDraft(status) && <RequiredStar />}
-                        </Label>
-                        <RiskAppliesToSelect
-                          id="detail-applies-to"
-                          value={appliesTo}
-                          onChange={setAppliesTo}
-                          className={nativeSelectClass}
                         />
                       </div>
                     </div>
@@ -1114,7 +1096,6 @@ export function RiskDetailModal({
 
                 {/* Pre-Mitigation */}
                 <section>
-                  <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Pre-Mitigation</h3>
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="detail-pre-prob" className="block">
@@ -1143,47 +1124,53 @@ export function RiskDetailModal({
                         />
                       </div>
                     </div>
+                    {appliesToAffectsCost(appliesTo) && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label htmlFor="detail-pre-cost-min" className="block">Cost Min ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-pre-cost-min" className="block">Cost Min ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="detail-pre-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMin)} onChange={(e) => setPreMitigationCostMin(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-pre-cost-ml" className="block">Cost Most Likely ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-pre-cost-ml" className="block">Cost Most Likely ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="detail-pre-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostML)} onChange={(e) => setPreMitigationCostML(parseCostInput(e.target.value))} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-pre-cost-max" className="block">Cost Max ($) {(!isRiskStatusDraft(status) && appliesToAffectsCost(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-pre-cost-max" className="block">Cost Max ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="detail-pre-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMax)} onChange={(e) => setPreMitigationCostMax(parseCostInput(e.target.value))} />
                       </div>
                     </div>
+                    )}
+                    {appliesToAffectsTime(appliesTo) && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label htmlFor="detail-pre-time-min" className="block">Time Min (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-pre-time-min" className="block">Time Min (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="detail-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-pre-time-ml" className="block">Time ML (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-pre-time-ml" className="block">Time ML (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="detail-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} />
                       </div>
                       <div>
-                        <Label htmlFor="detail-pre-time-max" className="block">Time Max (days) {(!isRiskStatusDraft(status) && appliesToAffectsTime(appliesTo)) && <RequiredStar />}</Label>
+                        <Label htmlFor="detail-pre-time-max" className="block">Time Max (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="detail-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
                       </div>
                     </div>
+                    )}
                   </div>
                 </section>
 
                 {/* Mitigation: 3-state mode + optional detail / post */}
                 <section>
-                  <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Mitigation</h3>
+                  <h2 className="text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)] mb-3">
+                    Mitigation
+                  </h2>
                   <div className="space-y-3">
-                    <div>
-                      <Label className="block mb-2">Mitigation</Label>
+                    <div className="flex flex-col">
+                      <Label className="block mb-2">Mitigation Status</Label>
                       <div
-                        className="inline-flex flex-wrap rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] p-0.5 bg-[var(--ds-surface-inset)] gap-0.5 w-full sm:w-auto"
+                        className="ds-segmented-control"
                         role="group"
-                        aria-label="Mitigation mode"
+                        aria-label="Mitigation status"
                       >
                         <Button
                           type="button"
@@ -1191,10 +1178,10 @@ export function RiskDetailModal({
                           size="sm"
                           onClick={() => handleMitigationModeChange("none")}
                           disabled={readOnly}
-                          className="rounded-[var(--ds-radius-sm)] shadow-none flex-1 min-w-[3.5rem] sm:flex-initial"
+                          className="ds-segmented-control__segment"
                           aria-pressed={mitigationMode === "none"}
                         >
-                          No
+                          No Mitigation
                         </Button>
                         <Button
                           type="button"
@@ -1202,7 +1189,7 @@ export function RiskDetailModal({
                           size="sm"
                           onClick={() => handleMitigationModeChange("forecast")}
                           disabled={readOnly}
-                          className="rounded-[var(--ds-radius-sm)] shadow-none flex-1 min-w-[7rem] sm:flex-initial text-[length:var(--ds-text-xs)] px-2"
+                          className="ds-segmented-control__segment"
                           aria-pressed={mitigationMode === "forecast"}
                         >
                           Forecast Mitigation
@@ -1213,7 +1200,7 @@ export function RiskDetailModal({
                           size="sm"
                           onClick={() => handleMitigationModeChange("active")}
                           disabled={readOnly}
-                          className="rounded-[var(--ds-radius-sm)] shadow-none flex-1 min-w-[7rem] sm:flex-initial text-[length:var(--ds-text-xs)] px-2"
+                          className="ds-segmented-control__segment"
                           aria-pressed={mitigationMode === "active"}
                         >
                           Active Mitigation
@@ -1259,7 +1246,7 @@ export function RiskDetailModal({
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="detail-post-prob" className="block">
-                        Probability %
+                        Post-Mitigation Probability
                       </Label>
                       <div className="grid grid-cols-3 gap-2 items-center">
                         <input
@@ -1270,7 +1257,7 @@ export function RiskDetailModal({
                           value={Math.min(100, Math.max(0, parseFloat(postMitigationProbabilityPct) || 0))}
                           onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
                           className={rangeTrackClass}
-                          aria-label="Post-Mitigation Probability %"
+                          aria-label="Post-Mitigation Probability (percent)"
                         />
                         <Input
                           id="detail-post-prob"
@@ -1284,6 +1271,7 @@ export function RiskDetailModal({
                         />
                       </div>
                     </div>
+                    {appliesToAffectsCost(appliesTo) && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <Label htmlFor="detail-post-cost-min" className="block">Cost Min ($)</Label>
@@ -1298,6 +1286,8 @@ export function RiskDetailModal({
                         <Input id="detail-post-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMax)} onChange={(e) => setPostMitigationCostMax(parseCostInput(e.target.value))} />
                       </div>
                     </div>
+                    )}
+                    {appliesToAffectsTime(appliesTo) && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <Label htmlFor="detail-post-time-min" className="block">Time Min (days)</Label>
@@ -1312,6 +1302,7 @@ export function RiskDetailModal({
                         <Input id="detail-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
                       </div>
                     </div>
+                    )}
                   </div>
                 </section>
                   </>
@@ -1322,93 +1313,68 @@ export function RiskDetailModal({
           )}
         </div>
 
-        {(!isEmpty || isAddNewSlot) && !readOnly && (
-          <div className="flex flex-wrap justify-between items-center gap-3 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]">
-            <div className="flex gap-2">
-              {onAddNewWithAI && (
-                <Button type="button" variant="secondary" size="md" onClick={requestGenerateAI} aria-label="Generate AI Risk">
-                  Generate AI Risk
-                </Button>
-              )}
-              {isAddNewSlot && onAddNew && onAddNewWithFile == null && onAddNewWithAI == null && (
+        {(!isEmpty || isAddNewSlot) && (!readOnly || (hasMultipleOrAddNew && !isAddNewSlot)) && (
+          <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] w-full">
+            {!readOnly && currentRisk && !isAddNewSlot && (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => void handleExplicitSave()}
+                disabled={explicitSavePending || !isDirty}
+                aria-busy={explicitSavePending}
+                title={!isDirty && !explicitSavePending ? "No changes to save" : undefined}
+              >
+                {explicitSavePending ? "Saving…" : "Save"}
+              </Button>
+            )}
+            {!readOnly &&
+              isAddNewSlot &&
+              onAddNew &&
+              onAddNewWithFile == null &&
+              onAddNewWithAI == null && (
                 <Button type="button" variant="primary" size="md" onClick={onAddNew}>
                   Add new risk
                 </Button>
               )}
-            </div>
-            <div className="flex flex-wrap gap-2 ml-auto items-center justify-end">
-              {!isAddNewSlot && currentRisk && onCloseRisk && !isRiskStatusArchived(currentRisk.status) && (
+            {!readOnly && !isAddNewSlot && currentRisk && onRestoreRisk && isRiskStatusArchived(currentRisk.status) && (
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={handleRestoreRiskAction}
+                aria-label="Restore risk to Open status"
+              >
+                Restore to Open
+              </Button>
+            )}
+            {hasMultipleOrAddNew && !isAddNewSlot && (
+              <>
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  onClick={handleCloseRiskAction}
-                  aria-label="Close risk — set status to Closed"
+                  onClick={goPrev}
+                  disabled={currentIndex === 0}
+                  aria-label="Previous risk"
                 >
-                  Close risk
+                  Previous
                 </Button>
-              )}
-              {!isAddNewSlot && currentRisk && onArchiveRisk && !isRiskStatusArchived(currentRisk.status) && (
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  onClick={handleArchiveRiskAction}
-                  className="border-[var(--ds-status-danger-border)] text-[var(--ds-status-danger-fg)] hover:bg-[var(--ds-status-danger-subtle-bg)]"
-                  aria-label="Archive risk — move to archived list"
+                  onClick={goNext}
+                  disabled={currentIndex === risks.length || (isLast && !hasAddNewSlot)}
+                  aria-label="Next risk"
                 >
-                  Archive risk
+                  Next
                 </Button>
-              )}
-              {!isAddNewSlot && currentRisk && onRestoreRisk && isRiskStatusArchived(currentRisk.status) && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  onClick={handleRestoreRiskAction}
-                  aria-label="Restore risk to Open status"
-                >
-                  Restore to Open
-                </Button>
-              )}
-              {!isAddNewSlot && (
-                <Button type="button" variant="primary" size="md" onClick={() => void handleSave()}>
-                  Save
-                </Button>
-              )}
-            </div>
+              </>
+            )}
           </div>
         )}
       </div>
-
-      {showSavePrompt && (
-        <div
-          className="absolute inset-0 z-10 flex items-center justify-center rounded-[var(--ds-radius-lg)] bg-[var(--ds-overlay)] p-4"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="save-prompt-title"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Card variant="elevated" className="max-w-sm w-full shadow-[var(--ds-shadow-md)]">
-            <CardContent className="flex flex-col gap-3">
-              <p id="save-prompt-title" className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
-                You have unsaved changes. Do you want to save the risk?
-              </p>
-              <div className="flex gap-2 justify-end flex-wrap">
-                <Button type="button" variant="secondary" size="md" onClick={handleCancelNav}>
-                  Cancel
-                </Button>
-                <Button type="button" variant="secondary" size="md" onClick={handleDiscardThenNav}>
-                  Don&apos;t save
-                </Button>
-                <Button type="button" variant="primary" size="md" onClick={handleSaveThenNav}>
-                  Save
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 

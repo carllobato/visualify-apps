@@ -155,6 +155,7 @@ export async function POST(request: Request) {
       surname: last_name,
       email: user.email ?? null,
       company,
+      role,
     },
     { onConflict: "id" },
   );

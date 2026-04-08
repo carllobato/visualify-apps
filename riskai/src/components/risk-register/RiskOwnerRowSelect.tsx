@@ -9,9 +9,6 @@ import {
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { dlog } from "@/lib/debug";
 
-const DS_ROW_FIELD =
-  "w-full min-w-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-default)] px-3 py-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]";
-
 /**
  * Inline owner cell: updates the risk when choosing an existing owner immediately;
  * for “Add new owner…”, inserts on blur of the text field then commits the name.
@@ -74,7 +71,7 @@ export function RiskOwnerRowSelect({
       onSelectChange={handleSelectChange}
       onNewNameDraftChange={setNewNameDraft}
       onNewNameInputBlur={handleNewBlur}
-      className={[DS_ROW_FIELD, className].filter(Boolean).join(" ")}
+      className={["min-w-0", className].filter(Boolean).join(" ")}
       allowEmptyPlaceholder={normalized === ""}
     />
   );

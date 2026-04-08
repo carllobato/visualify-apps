@@ -14,6 +14,7 @@ import {
   appliesToAffectsTime,
   getDefaultUserCreatedRiskStatusName,
   isRiskStatusDraft,
+  normalizeAppliesToKey,
 } from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
 import {
@@ -23,10 +24,8 @@ import {
   Label,
   Textarea,
 } from "@visualify/design-system";
-import { useRiskAppliesToOptions } from "./RiskAppliesToOptionsContext";
 import { useRiskProjectOwners } from "./RiskProjectOwnersContext";
 import { useRiskStatusOptions } from "./RiskStatusOptionsContext";
-import { RiskAppliesToSelect } from "./RiskAppliesToSelect";
 import { RiskCategorySelect } from "./RiskCategorySelect";
 import {
   RiskOwnerPicker,
@@ -34,13 +33,6 @@ import {
   shouldPersistNewOwnerOnSubmit,
 } from "./RiskOwnerPicker";
 import { RiskStatusSelect } from "./RiskStatusSelect";
-
-/** Native `<select>` / special inputs: matches design-system Form field chrome (no exported primitive). */
-const nativeSelectClass =
-  "w-full rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 h-9 py-1 " +
-  "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] transition-colors duration-150 " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
-  "disabled:cursor-not-allowed disabled:bg-[var(--ds-surface-muted)] disabled:text-[var(--ds-text-muted)]";
 
 function RequiredStar() {
   return <span className="text-[var(--ds-status-danger-fg)]" aria-label="required">*</span>;
@@ -136,8 +128,6 @@ export function AddRiskModal({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const { statuses, loading: statusesLoading } = useRiskStatusOptions();
-  const { appliesToOptions, loading: appliesToOptionsLoading } = useRiskAppliesToOptions();
-  const defaultAppliesToName = appliesToOptions[0]?.name ?? "both";
   const { createProjectOwner } = useRiskProjectOwners();
   const [ownerSelect, setOwnerSelect] = useState("");
   const [ownerNewDraft, setOwnerNewDraft] = useState("");
@@ -242,9 +232,9 @@ export function AddRiskModal({
   }, [open, statusesLoading, statuses]);
 
   useEffect(() => {
-    if (!open || appliesToOptionsLoading) return;
-    setAppliesTo((prev: string) => (prev === "" ? defaultAppliesToName : prev));
-  }, [open, appliesToOptionsLoading, defaultAppliesToName]);
+    if (!open) return;
+    setAppliesTo((prev: string) => (prev === "" ? "both" : prev));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -388,9 +378,7 @@ export function AddRiskModal({
   if (!open) return null;
   if (typeof document === "undefined") return null;
 
-  const overlayScrimClass =
-    "fixed inset-0 z-50 flex items-center justify-center p-4 relative " +
-    "bg-[var(--ds-overlay)] backdrop-blur-sm";
+  const overlayScrimClass = "ds-modal-backdrop z-[100]";
 
   const overlay = (
     <div
@@ -475,7 +463,6 @@ export function AddRiskModal({
                       id="add-risk-category"
                       value={category}
                       onChange={setCategory}
-                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
@@ -489,7 +476,6 @@ export function AddRiskModal({
                       newNameDraft={ownerNewDraft}
                       onSelectChange={setOwnerSelect}
                       onNewNameDraftChange={setOwnerNewDraft}
-                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
@@ -499,19 +485,47 @@ export function AddRiskModal({
                       id="add-risk-status"
                       value={status}
                       onChange={setStatus}
-                      className={nativeSelectClass}
                       allowEmptyPlaceholder
                     />
                   </div>
                   <div>
-                    <Label htmlFor="add-risk-applies-to" className="block">Applies To</Label>
-                    <RiskAppliesToSelect
-                      id="add-risk-applies-to"
-                      value={appliesTo}
-                      onChange={setAppliesTo}
-                      className={nativeSelectClass}
-                      allowEmptyPlaceholder
-                    />
+                    <Label className="block mb-2">Applies To</Label>
+                    <div
+                      className="ds-segmented-control w-full sm:w-auto"
+                      role="group"
+                      aria-label="Applies to"
+                    >
+                      <Button
+                        type="button"
+                        variant={normalizeAppliesToKey(appliesTo) === "cost" ? "primary" : "ghost"}
+                        size="sm"
+                        onClick={() => setAppliesTo("cost")}
+                        className="ds-segmented-control__segment flex-1 min-w-[3.5rem] sm:flex-initial"
+                        aria-pressed={normalizeAppliesToKey(appliesTo) === "cost"}
+                      >
+                        Cost
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={normalizeAppliesToKey(appliesTo) === "time" ? "primary" : "ghost"}
+                        size="sm"
+                        onClick={() => setAppliesTo("time")}
+                        className="ds-segmented-control__segment flex-1 min-w-[3.5rem] sm:flex-initial"
+                        aria-pressed={normalizeAppliesToKey(appliesTo) === "time"}
+                      >
+                        Time
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time" ? "primary" : "ghost"}
+                        size="sm"
+                        onClick={() => setAppliesTo("both")}
+                        className="ds-segmented-control__segment flex-1 min-w-[5rem] sm:flex-initial"
+                        aria-pressed={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time"}
+                      >
+                        Cost &amp; Time
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -525,6 +539,7 @@ export function AddRiskModal({
                   <Label htmlFor="add-risk-pre-prob" className="block">Probability %</Label>
                   <Input id="add-risk-pre-prob" type="number" min={0} max={100} step={1} value={preMitigationProbabilityPct} onChange={(e) => setPreMitigationProbabilityPct(e.target.value)} placeholder="0–100" />
                 </div>
+                {appliesToAffectsCost(appliesTo) && (
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label htmlFor="add-risk-pre-cost-min" className="block">Cost Min ($)</Label>
@@ -539,6 +554,8 @@ export function AddRiskModal({
                     <Input id="add-risk-pre-cost-max" type="number" min={0} step={1000} value={preMitigationCostMax} onChange={(e) => setPreMitigationCostMax(e.target.value)} />
                   </div>
                 </div>
+                )}
+                {appliesToAffectsTime(appliesTo) && (
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label htmlFor="add-risk-pre-time-min" className="block">Time Min (days)</Label>
@@ -553,6 +570,7 @@ export function AddRiskModal({
                     <Input id="add-risk-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
                   </div>
                 </div>
+                )}
               </div>
             </section>
 
@@ -586,6 +604,7 @@ export function AddRiskModal({
                   <Label htmlFor="add-risk-post-prob" className="block">Probability %</Label>
                   <Input id="add-risk-post-prob" type="number" min={0} max={100} step={1} value={postMitigationProbabilityPct} onChange={(e) => setPostMitigationProbabilityPct(e.target.value)} placeholder="0–100" />
                 </div>
+                {appliesToAffectsCost(appliesTo) && (
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label htmlFor="add-risk-post-cost-min" className="block">Cost Min ($)</Label>
@@ -600,6 +619,8 @@ export function AddRiskModal({
                     <Input id="add-risk-post-cost-max" type="number" min={0} step={1000} value={postMitigationCostMax} onChange={(e) => setPostMitigationCostMax(e.target.value)} />
                   </div>
                 </div>
+                )}
+                {appliesToAffectsTime(appliesTo) && (
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <Label htmlFor="add-risk-post-time-min" className="block">Time Min (days)</Label>
@@ -614,6 +635,7 @@ export function AddRiskModal({
                     <Input id="add-risk-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
                   </div>
                 </div>
+                )}
               </div>
             </section>
           </div>

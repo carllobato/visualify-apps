@@ -29,6 +29,7 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { RiskDetailModal } from "@/components/risk-register/RiskDetailModal";
 import { RiskRegisterLookupProviders } from "@/components/risk-register/RiskRegisterLookupProviders";
+import { distinctOwnerNamesFromRisks } from "@/components/risk-register/RiskProjectOwnersContext";
 import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
@@ -241,6 +242,10 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         .filter((r) => isRiskStatusArchived(r.status))
         .sort((a, b) => (a.riskNumber ?? 0) - (b.riskNumber ?? 0)),
     [risks]
+  );
+  const extraOwnerNamesFromRisks = useMemo(
+    () => distinctOwnerNamesFromRisks(archivedRisks),
+    [archivedRisks]
   );
   const savedHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectNameRef = useRef<HTMLInputElement>(null);
@@ -864,7 +869,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
 
       {showClearConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ds-overlay)] p-4"
+          className="ds-modal-backdrop z-50"
           role="dialog"
           aria-modal="true"
           aria-labelledby="clear-dialog-title"
@@ -900,7 +905,10 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       )}
 
       {projectId && (
-        <RiskRegisterLookupProviders projectId={projectId}>
+        <RiskRegisterLookupProviders
+          projectId={projectId}
+          extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+        >
           <RiskDetailModal
             open={showArchivedReviewModal}
             risks={archivedRisks}
