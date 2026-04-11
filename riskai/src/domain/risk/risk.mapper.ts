@@ -1,6 +1,10 @@
 import type { Risk, RiskDraft, RiskStatus } from "./risk.schema";
 import type { IntelligentExtractDraft } from "./risk.schema";
-import { normalizeAppliesToKey } from "./riskFieldSemantics";
+import {
+  findRiskStatusNameByKeys,
+  normalizeAppliesToKey,
+  resolveCanonicalCategoryLabel,
+} from "./riskFieldSemantics";
 import { buildRating, probabilityPctToScale, costToConsequenceScale, timeDaysToConsequenceScale } from "./risk.logic";
 import { makeId } from "@/lib/id";
 import { nowIso } from "@/lib/time";
@@ -54,11 +58,21 @@ export function draftsToRisks(drafts: RiskDraft[]): Risk[] {
   return drafts.map(draftToRisk);
 }
 
+/** Optional lookup labels so AI-created risks match `riskai_risk_categories` / `riskai_risk_statuses` casing. */
+export type IntelligentExtractLookupOptions = {
+  categoryNames?: string[];
+  statusNames?: string[];
+};
+
 /**
  * Convert an intelligent extraction draft (single free-text → structured risk) into a full Risk.
  * Pre-mitigation fields are populated; when post-mitigation fields are present, residual rating is derived from them.
+ * Cost/time magnitudes come from extract-risk; when the chat flow passed guided impact flags, extraction avoids inventing those fields.
  */
-export function intelligentDraftToRisk(draft: IntelligentExtractDraft): Risk {
+export function intelligentDraftToRisk(
+  draft: IntelligentExtractDraft,
+  lookup?: IntelligentExtractLookupOptions,
+): Risk {
   const createdAt = nowIso();
   const prePct = draft.probability;
   const preCost = draft.costMostLikely;
@@ -86,13 +100,26 @@ export function intelligentDraftToRisk(draft: IntelligentExtractDraft): Risk {
   const postProb01 = postPct / 100;
   const appliesKey = normalizeAppliesToKey(draft.appliesTo);
 
+  const statusResolved: RiskStatus =
+    lookup?.statusNames?.length && lookup.statusNames.length > 0
+      ? (findRiskStatusNameByKeys(
+          lookup.statusNames.map((name) => ({ name })),
+          ["draft"],
+        ) ?? AI_DRAFT_STATUS)
+      : AI_DRAFT_STATUS;
+
+  const categoryResolved =
+    lookup?.categoryNames?.length && lookup.categoryNames.length > 0
+      ? resolveCanonicalCategoryLabel(draft.category, lookup.categoryNames)
+      : draft.category;
+
   return {
     id: makeId(),
     title: draft.title,
     description: draft.description,
 
-    category: draft.category,
-    status: AI_DRAFT_STATUS,
+    category: categoryResolved,
+    status: statusResolved,
 
     owner: draft.owner,
     mitigation: draft.mitigation,

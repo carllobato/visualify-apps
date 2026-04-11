@@ -64,9 +64,12 @@ const btnSecondary =
 export function CreateRiskFileModal({
   open,
   onClose,
+  onRisksImported,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Called after risks are imported from the file */
+  onRisksImported?: (riskIds: string[]) => void;
 }) {
   const { appendRisks } = useRiskRegister();
   const [fileDragOver, setFileDragOver] = useState(false);
@@ -171,11 +174,12 @@ export function CreateRiskFileModal({
       await markFileImported(lastSavedFileId);
       setGenerateStatus("success");
       setGenerateMessage(`Imported ${list.length} risks.`);
+      onRisksImported?.(list.map((r) => r.id));
     } catch (e) {
       setGenerateMessage(e instanceof Error ? e.message : "Network or unexpected error");
       setGenerateStatus("error");
     }
-  }, [lastSavedFileId, appendRisks]);
+  }, [lastSavedFileId, appendRisks, onRisksImported]);
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();

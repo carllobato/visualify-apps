@@ -89,6 +89,101 @@ export function findRiskStatusNameByKeys(rows: { name: string }[], keys: string[
 }
 
 /**
+ * Map a free-text label to the canonical string from a lookup list (trim; case-insensitive match).
+ * Use for `riskai_risk_categories.name` / `riskai_risk_statuses.name` when persisting AI or imports.
+ * Returns trimmed `raw` when there is no match (unknown or legacy value).
+ */
+export function resolveCanonicalLookupLabel(raw: string | undefined | null, candidates: string[]): string {
+  const t = (raw ?? "").trim();
+  if (!t || candidates.length === 0) return t;
+  const key = normalizeRiskStatusKey(t);
+  const hit = candidates.find((c) => normalizeRiskStatusKey(c) === key);
+  return hit ?? t;
+}
+
+/** Fold for fuzzy category matching (alphanumeric only, lowercased). */
+function foldCategoryKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * Legacy slug keys from older extract prompts (lowercase single tokens) → tokens to match inside
+ * canonical `riskai_risk_categories.name` (folded substring checks).
+ */
+const LEGACY_CATEGORY_SLUG_HINTS: Record<string, readonly string[]> = {
+  hse: ["safety", "health", "environment", "hse"],
+  commercial: ["commercial"],
+  programme: ["programme", "schedule"],
+  design: ["design"],
+  construction: ["construction"],
+  procurement: ["procurement", "supplier", "vendor", "lead", "equipment"],
+  authority: ["authority", "approval", "permit", "utility", "planning", "consent"],
+  operations: ["operations", "handover"],
+  other: ["other"],
+};
+
+/**
+ * Map a free-text or legacy-slug category string to the canonical label from `candidates`
+ * (tenant category names). Uses case-insensitive equality first, then legacy slug / synonym
+ * scoring against candidate names, then light token overlap. Does not invent labels outside
+ * the candidate list.
+ */
+export function resolveCanonicalCategoryLabel(raw: string | undefined | null, candidates: string[]): string {
+  const t = (raw ?? "").trim();
+  if (!t || candidates.length === 0) return t;
+
+  const exact = candidates.find((c) => normalizeRiskStatusKey(c) === normalizeRiskStatusKey(t));
+  if (exact) return exact;
+
+  const rawKey = normalizeRiskStatusKey(t);
+  const rawFold = foldCategoryKey(t);
+  const slugHints = LEGACY_CATEGORY_SLUG_HINTS[rawKey];
+
+  let bestLabel: string | null = null;
+  let bestScore = 0;
+  const consider = (label: string, score: number) => {
+    if (score <= 0) return;
+    if (score > bestScore || (score === bestScore && (bestLabel === null || label < bestLabel))) {
+      bestLabel = label;
+      bestScore = score;
+    }
+  };
+
+  for (const c of candidates) {
+    const ck = normalizeRiskStatusKey(c);
+    const cFold = foldCategoryKey(c);
+    let score = 0;
+
+    if (rawFold.length >= 3 && rawFold === cFold) {
+      score += 40;
+    }
+
+    if (slugHints) {
+      for (const h of slugHints) {
+        if (ck.includes(h) || cFold.includes(foldCategoryKey(h))) score += h.length;
+      }
+    }
+
+    const rawTokens = rawKey.split(/[^a-z0-9]+/).filter((x) => x.length >= 3);
+    for (const tok of rawTokens) {
+      if (tok.length >= 3 && (ck.includes(tok) || cFold.includes(tok))) score += tok.length;
+    }
+
+    if (rawFold.length >= 4 && (cFold.includes(rawFold) || rawFold.includes(cFold))) {
+      score += 12;
+    }
+
+    consider(c, score);
+  }
+
+  if (bestLabel !== null && bestScore >= 6) {
+    return bestLabel;
+  }
+
+  return t;
+}
+
+/**
  * Default lifecycle status for risks created manually in Add Risk (not AI extraction).
  * Matches `riskai_risk_statuses.name` for "open".
  */

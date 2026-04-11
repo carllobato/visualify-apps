@@ -1273,6 +1273,31 @@ ul[role="listbox"] button:focus-visible {
 }
 
 /*
+ * Risk register modals — section cards share dashboard density tokens (same shell as project settings cards).
+ */
+.ds-risk-detail-section-card {
+  margin-bottom: var(--ds-space-4);
+}
+
+.ds-risk-detail-card-header {
+  border-bottom: 1px solid var(--ds-border-subtle);
+  padding-inline: var(--ds-dashboard-section-header-padding-x);
+  padding-block: var(--ds-dashboard-section-header-padding-y);
+}
+
+.ds-risk-detail-card-body {
+  padding-inline: var(--ds-dashboard-section-body-padding);
+  padding-block: var(--ds-dashboard-section-body-padding);
+}
+
+.ds-risk-detail-card-title {
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  color: var(--ds-text-primary);
+}
+
+/*
  * Modal backdrops — shared tint + blur (same as onboarding). Use `ds-modal-backdrop` + a z-index utility,
  * or `ds-onboarding-modal-backdrop` (+ optional `--raised`) for first-run flows. Nested dim layers: `ds-modal-backdrop-surface`.
  */
@@ -1301,6 +1326,79 @@ ul[role="listbox"] button:focus-visible {
   background-color: var(--ds-overlay);
   -webkit-backdrop-filter: blur(var(--ds-modal-backdrop-blur));
   backdrop-filter: blur(var(--ds-modal-backdrop-blur));
+}
+
+/*
+ * Generic centered modal panels — dialog shell + choice grids (e.g. Add new risk).
+ * Pair with `.ds-modal-backdrop` + a z-index utility on the backdrop.
+ */
+.ds-modal-panel {
+  display: flex;
+  width: 100%;
+  max-width: 70vw;
+  max-height: 90vh;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-width: 280px;
+  min-height: 320px;
+  overflow: hidden;
+  border-radius: var(--ds-radius-md);
+  border: 1px solid var(--ds-border);
+  background-color: var(--ds-surface-elevated);
+  box-shadow: var(--ds-shadow-modal-panel);
+}
+
+.ds-modal-panel-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ds-border);
+  padding: var(--ds-space-3) var(--ds-space-4);
+}
+
+@media (min-width: 640px) {
+  .ds-modal-panel-header {
+    padding-right: var(--ds-space-6);
+    padding-left: var(--ds-space-6);
+  }
+}
+
+.ds-modal-panel-title {
+  margin: 0;
+  font-size: var(--ds-text-xl);
+  font-weight: 600;
+  color: var(--ds-text-primary);
+}
+
+.ds-modal-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ds-space-6);
+}
+
+.ds-modal-panel-body-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ds-space-4);
+}
+
+@media (min-width: 640px) {
+  .ds-modal-panel-body-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ds-modal-panel-body-grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.ds-modal-panel-close-icon {
+  font-size: var(--ds-text-xl);
+  line-height: 1;
 }
 
 /* Onboarding / first-run modals — panel chrome (RiskAI onboarding flow). */

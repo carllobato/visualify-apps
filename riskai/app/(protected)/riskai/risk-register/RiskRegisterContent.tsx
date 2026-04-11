@@ -993,29 +993,42 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       )}
       <AddNewRiskChoiceModal
         open={showAddNewRiskChoiceModal}
-        projectId={projectIdTrimmed || null}
         onClose={() => setShowAddNewRiskChoiceModal(false)}
         onAddManualRisk={() => {
           setShowAddNewRiskChoiceModal(false);
           setShowAddRiskModal(true);
         }}
-        onRisksAdded={(riskIds) => {
-          setColumnFilters({});
+        onGenerateWithText={() => {
           setShowAddNewRiskChoiceModal(false);
+          setShowCreateRiskAIModal(true);
+        }}
+        onGenerateWithFile={() => {
+          setShowAddNewRiskChoiceModal(false);
+          setShowCreateRiskFileModal(true);
+        }}
+      />
+      <CreateRiskFileModal
+        open={showCreateRiskFileModal}
+        onClose={() => setShowCreateRiskFileModal(false)}
+        onRisksImported={(riskIds) => {
+          setColumnFilters({});
           if (riskIds.length > 0) {
             setDetailInitialRiskId(riskIds[0]);
             setShowDetailModal(true);
           }
         }}
       />
-      <CreateRiskFileModal
-        open={showCreateRiskFileModal}
-        onClose={() => setShowCreateRiskFileModal(false)}
-      />
       <CreateRiskAIModal
         open={showCreateRiskAIModal}
         onClose={() => setShowCreateRiskAIModal(false)}
         projectId={projectIdTrimmed || null}
+        onRiskCreated={(riskId) => {
+          setDetailInitialRiskId(riskId);
+          setShowDetailModal(true);
+          // Defer closing the AI layer so detail modal state commits first (same mechanism as row/import;
+          // avoids portal unmount racing the detail modal open in one synchronous turn).
+          queueMicrotask(() => setShowCreateRiskAIModal(false));
+        }}
       />
       <AddRiskModal
         open={showAddRiskModal}

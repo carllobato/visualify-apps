@@ -28,6 +28,9 @@ import {
   Badge,
   Button,
   Callout,
+  Card,
+  CardBody,
+  CardHeader,
   Input,
   Label,
   Textarea,
@@ -995,319 +998,325 @@ export function RiskDetailModal({
                     </Callout>
                   </div>
                 )}
-                {/* Risk details */}
-                <section>
-                  <h2 className="text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)] mb-3">
-                    Risk Details
-                  </h2>
-                  <div className="space-y-3">
-                    {isRiskStatusDraft(status) && (
-                      <Callout status="warning">
-                        <p className="text-[length:var(--ds-text-sm)]">
-                          This risk is in draft. Change status to Open and save to include it in simulation.
-                        </p>
-                      </Callout>
-                    )}
-                    <div className="flex flex-col">
-                      <Label className="block mb-2">
-                        Applies To
-                      </Label>
-                      <div
-                        className="ds-segmented-control"
-                        role="group"
-                        aria-label="Applies to"
-                      >
-                        <Button
-                          type="button"
-                          variant={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time" ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => setAppliesTo("both")}
-                          disabled={readOnly}
-                          className="ds-segmented-control__segment"
-                          aria-pressed={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time"}
-                        >
-                          Cost &amp; Time
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={normalizeAppliesToKey(appliesTo) === "cost" ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => setAppliesTo("cost")}
-                          disabled={readOnly}
-                          className="ds-segmented-control__segment"
-                          aria-pressed={normalizeAppliesToKey(appliesTo) === "cost"}
-                        >
-                          Cost
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={normalizeAppliesToKey(appliesTo) === "time" ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => setAppliesTo("time")}
-                          disabled={readOnly}
-                          className="ds-segmented-control__segment"
-                          aria-pressed={normalizeAppliesToKey(appliesTo) === "time"}
-                        >
-                          Time
-                        </Button>
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="detail-description" className="block">
-                        Risk Description {!isRiskStatusDraft(status) && <RequiredStar />}
-                      </Label>
-                      <Textarea
-                        id="detail-description"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="min-h-[80px]"
-                        placeholder="Include a detailed description of the risk."
-                        rows={2}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="detail-category" className="block">
-                          Category {!isRiskStatusDraft(status) && <RequiredStar />}
+                {/* Risk details + Pre-Mitigation — single risk detail card */}
+                <Card className="ds-risk-detail-section-card">
+                  <CardHeader className="ds-risk-detail-card-header">
+                    <h2 className="ds-risk-detail-card-title">Risk Details</h2>
+                  </CardHeader>
+                  <CardBody className="ds-risk-detail-card-body">
+                    <div className="space-y-3">
+                      {isRiskStatusDraft(status) && (
+                        <Callout status="warning">
+                          <p className="text-[length:var(--ds-text-sm)]">
+                            This risk is in draft. Change status to Open and save to include it in simulation.
+                          </p>
+                        </Callout>
+                      )}
+                      <div className="flex flex-col">
+                        <Label className="block mb-2">
+                          Applies To
                         </Label>
-                        <RiskCategorySelect
-                          id="detail-category"
-                          value={category}
-                          onChange={setCategory}
-                          allowEmptyPlaceholder
-                        />
+                        <div
+                          className="ds-segmented-control"
+                          role="group"
+                          aria-label="Applies to"
+                        >
+                          <Button
+                            type="button"
+                            variant={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time" ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => setAppliesTo("both")}
+                            disabled={readOnly}
+                            className="ds-segmented-control__segment"
+                            aria-pressed={normalizeAppliesToKey(appliesTo) !== "cost" && normalizeAppliesToKey(appliesTo) !== "time"}
+                          >
+                            Cost &amp; Time
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={normalizeAppliesToKey(appliesTo) === "cost" ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => setAppliesTo("cost")}
+                            disabled={readOnly}
+                            className="ds-segmented-control__segment"
+                            aria-pressed={normalizeAppliesToKey(appliesTo) === "cost"}
+                          >
+                            Cost
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={normalizeAppliesToKey(appliesTo) === "time" ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => setAppliesTo("time")}
+                            disabled={readOnly}
+                            className="ds-segmented-control__segment"
+                            aria-pressed={normalizeAppliesToKey(appliesTo) === "time"}
+                          >
+                            Time
+                          </Button>
+                        </div>
                       </div>
                       <div>
-                        <Label htmlFor="detail-owner" className="block">
-                          Risk Manager {!isRiskStatusDraft(status) && <RequiredStar />}
+                        <Label htmlFor="detail-description" className="block">
+                          Risk Description {!isRiskStatusDraft(status) && <RequiredStar />}
                         </Label>
-                        <RiskOwnerPicker
-                          id="detail-owner"
-                          selectValue={ownerSelect}
-                          newNameDraft={ownerNewDraft}
-                          onSelectChange={setOwnerSelect}
-                          onNewNameDraftChange={setOwnerNewDraft}
-                          allowEmptyPlaceholder
+                        <Textarea
+                          id="detail-description"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          className="min-h-[80px]"
+                          placeholder="Include a detailed description of the risk."
+                          rows={2}
                         />
                       </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="detail-category" className="block">
+                            Category {!isRiskStatusDraft(status) && <RequiredStar />}
+                          </Label>
+                          <RiskCategorySelect
+                            id="detail-category"
+                            value={category}
+                            onChange={setCategory}
+                            allowEmptyPlaceholder
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="detail-owner" className="block">
+                            Risk Manager {!isRiskStatusDraft(status) && <RequiredStar />}
+                          </Label>
+                          <RiskOwnerPicker
+                            id="detail-owner"
+                            selectValue={ownerSelect}
+                            newNameDraft={ownerNewDraft}
+                            onSelectChange={setOwnerSelect}
+                            onNewNameDraftChange={setOwnerNewDraft}
+                            allowEmptyPlaceholder
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </section>
+                    <div className="mt-6 border-t border-[var(--ds-border-subtle)] pt-6">
+                      <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">
+                        Pre-Mitigation
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <Label htmlFor="detail-pre-prob" className="block">
+                            Probability % {!isRiskStatusDraft(status) && <RequiredStar />}
+                          </Label>
+                          <div className="grid grid-cols-3 gap-2 items-center">
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={5}
+                              value={Math.min(100, Math.max(0, parseFloat(preMitigationProbabilityPct) || 0))}
+                              onChange={(e) => setPreMitigationProbabilityPct(e.target.value)}
+                              className={rangeTrackClass}
+                              aria-label="Pre-Mitigation Probability %"
+                            />
+                            <Input
+                              id="detail-pre-prob"
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={preMitigationProbabilityPct}
+                              onChange={(e) => setPreMitigationProbabilityPct(e.target.value)}
+                              placeholder="0–100"
+                            />
+                          </div>
+                        </div>
+                        {appliesToAffectsCost(appliesTo) && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label htmlFor="detail-pre-cost-min" className="block">Cost Min ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                            <Input id="detail-pre-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMin)} onChange={(e) => setPreMitigationCostMin(parseCostInput(e.target.value))} />
+                          </div>
+                          <div>
+                            <Label htmlFor="detail-pre-cost-ml" className="block">Cost Most Likely ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                            <Input id="detail-pre-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostML)} onChange={(e) => setPreMitigationCostML(parseCostInput(e.target.value))} />
+                          </div>
+                          <div>
+                            <Label htmlFor="detail-pre-cost-max" className="block">Cost Max ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                            <Input id="detail-pre-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMax)} onChange={(e) => setPreMitigationCostMax(parseCostInput(e.target.value))} />
+                          </div>
+                        </div>
+                        )}
+                        {appliesToAffectsTime(appliesTo) && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <Label htmlFor="detail-pre-time-min" className="block">Time Min (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                            <Input id="detail-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} />
+                          </div>
+                          <div>
+                            <Label htmlFor="detail-pre-time-ml" className="block">Time ML (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                            <Input id="detail-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} />
+                          </div>
+                          <div>
+                            <Label htmlFor="detail-pre-time-max" className="block">Time Max (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                            <Input id="detail-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
+                          </div>
+                        </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardBody>
+                </Card>
 
-                {/* Pre-Mitigation */}
-                <section>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="detail-pre-prob" className="block">
-                        Probability % {!isRiskStatusDraft(status) && <RequiredStar />}
-                      </Label>
-                      <div className="grid grid-cols-3 gap-2 items-center">
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={Math.min(100, Math.max(0, parseFloat(preMitigationProbabilityPct) || 0))}
-                          onChange={(e) => setPreMitigationProbabilityPct(e.target.value)}
-                          className={rangeTrackClass}
-                          aria-label="Pre-Mitigation Probability %"
-                        />
-                        <Input
-                          id="detail-pre-prob"
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={preMitigationProbabilityPct}
-                          onChange={(e) => setPreMitigationProbabilityPct(e.target.value)}
-                          placeholder="0–100"
-                        />
-                      </div>
-                    </div>
-                    {appliesToAffectsCost(appliesTo) && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor="detail-pre-cost-min" className="block">Cost Min ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
-                        <Input id="detail-pre-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMin)} onChange={(e) => setPreMitigationCostMin(parseCostInput(e.target.value))} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-pre-cost-ml" className="block">Cost Most Likely ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
-                        <Input id="detail-pre-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostML)} onChange={(e) => setPreMitigationCostML(parseCostInput(e.target.value))} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-pre-cost-max" className="block">Cost Max ($) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
-                        <Input id="detail-pre-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(preMitigationCostMax)} onChange={(e) => setPreMitigationCostMax(parseCostInput(e.target.value))} />
-                      </div>
-                    </div>
-                    )}
-                    {appliesToAffectsTime(appliesTo) && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor="detail-pre-time-min" className="block">Time Min (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
-                        <Input id="detail-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-pre-time-ml" className="block">Time ML (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
-                        <Input id="detail-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-pre-time-max" className="block">Time Max (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
-                        <Input id="detail-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
-                      </div>
-                    </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* Mitigation: 3-state mode + optional detail / post */}
-                <section>
-                  <h2 className="text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)] mb-3">
-                    Mitigation
-                  </h2>
-                  <div className="space-y-3">
-                    <div className="flex flex-col">
-                      <Label className="block mb-2">Mitigation Status</Label>
-                      <div
-                        className="ds-segmented-control"
-                        role="group"
-                        aria-label="Mitigation status"
-                      >
-                        <Button
-                          type="button"
-                          variant={mitigationMode === "none" ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => handleMitigationModeChange("none")}
-                          disabled={readOnly}
-                          className="ds-segmented-control__segment"
-                          aria-pressed={mitigationMode === "none"}
+                {/* Mitigation + Post-Mitigation — risk detail card */}
+                <Card className="ds-risk-detail-section-card">
+                  <CardHeader className="ds-risk-detail-card-header">
+                    <h2 className="ds-risk-detail-card-title">Mitigation</h2>
+                  </CardHeader>
+                  <CardBody className="ds-risk-detail-card-body">
+                    <div className="space-y-3">
+                      <div className="flex flex-col">
+                        <Label className="block mb-2">Mitigation Status</Label>
+                        <div
+                          className="ds-segmented-control"
+                          role="group"
+                          aria-label="Mitigation status"
                         >
-                          No Mitigation
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={mitigationMode === "forecast" ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => handleMitigationModeChange("forecast")}
-                          disabled={readOnly}
-                          className="ds-segmented-control__segment"
-                          aria-pressed={mitigationMode === "forecast"}
-                        >
-                          Forecast Mitigation
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={mitigationMode === "active" ? "primary" : "ghost"}
-                          size="sm"
-                          onClick={() => handleMitigationModeChange("active")}
-                          disabled={readOnly}
-                          className="ds-segmented-control__segment"
-                          aria-pressed={mitigationMode === "active"}
-                        >
-                          Active Mitigation
-                        </Button>
+                          <Button
+                            type="button"
+                            variant={mitigationMode === "none" ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => handleMitigationModeChange("none")}
+                            disabled={readOnly}
+                            className="ds-segmented-control__segment"
+                            aria-pressed={mitigationMode === "none"}
+                          >
+                            No Mitigation
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={mitigationMode === "forecast" ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => handleMitigationModeChange("forecast")}
+                            disabled={readOnly}
+                            className="ds-segmented-control__segment"
+                            aria-pressed={mitigationMode === "forecast"}
+                          >
+                            Forecast Mitigation
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={mitigationMode === "active" ? "primary" : "ghost"}
+                            size="sm"
+                            onClick={() => handleMitigationModeChange("active")}
+                            disabled={readOnly}
+                            className="ds-segmented-control__segment"
+                            aria-pressed={mitigationMode === "active"}
+                          >
+                            Active Mitigation
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                {mitigationMode !== "none" && (
-                  <>
-                <div className="space-y-3 mt-1">
-                    <div>
-                      <Label htmlFor="detail-mitigation" className="block">
-                        Description
-                      </Label>
-                      <Textarea
-                        id="detail-mitigation"
-                        value={mitigation}
-                        onChange={(e) => setMitigation(e.target.value)}
-                        className="min-h-[60px]"
-                        placeholder="Mitigation strategy"
-                        rows={2}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="detail-mitigation-cost" className="block">
-                        Mitigation Cost ($)
-                      </Label>
-                      <Input
-                        id="detail-mitigation-cost"
-                        type="text"
-                        inputMode="numeric"
-                        value={formatCostDisplay(mitigationCost)}
-                        onChange={(e) => setMitigationCost(parseCostInput(e.target.value))}
-                        placeholder="—"
-                      />
-                    </div>
-                  </div>
+                    {mitigationMode !== "none" && (
+                      <>
+                        <div className="mt-6 border-t border-[var(--ds-border-subtle)] pt-6">
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor="detail-mitigation" className="block">
+                                Description
+                              </Label>
+                              <Textarea
+                                id="detail-mitigation"
+                                value={mitigation}
+                                onChange={(e) => setMitigation(e.target.value)}
+                                className="min-h-[60px]"
+                                placeholder="Mitigation strategy"
+                                rows={2}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="detail-mitigation-cost" className="block">
+                                Mitigation Cost ($)
+                              </Label>
+                              <Input
+                                id="detail-mitigation-cost"
+                                type="text"
+                                inputMode="numeric"
+                                value={formatCostDisplay(mitigationCost)}
+                                onChange={(e) => setMitigationCost(parseCostInput(e.target.value))}
+                                placeholder="—"
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                {/* Post-Mitigation */}
-                <section>
-                  <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Post-Mitigation</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="detail-post-prob" className="block">
-                        Post-Mitigation Probability
-                      </Label>
-                      <div className="grid grid-cols-3 gap-2 items-center">
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={Math.min(100, Math.max(0, parseFloat(postMitigationProbabilityPct) || 0))}
-                          onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
-                          className={rangeTrackClass}
-                          aria-label="Post-Mitigation Probability (percent)"
-                        />
-                        <Input
-                          id="detail-post-prob"
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={postMitigationProbabilityPct}
-                          onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
-                          placeholder="0–100"
-                        />
-                      </div>
-                    </div>
-                    {appliesToAffectsCost(appliesTo) && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor="detail-post-cost-min" className="block">Cost Min ($)</Label>
-                        <Input id="detail-post-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMin)} onChange={(e) => setPostMitigationCostMin(parseCostInput(e.target.value))} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-post-cost-ml" className="block">Cost Most Likely ($)</Label>
-                        <Input id="detail-post-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostML)} onChange={(e) => setPostMitigationCostML(parseCostInput(e.target.value))} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-post-cost-max" className="block">Cost Max ($)</Label>
-                        <Input id="detail-post-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMax)} onChange={(e) => setPostMitigationCostMax(parseCostInput(e.target.value))} />
-                      </div>
-                    </div>
+                        <div className="mt-6 border-t border-[var(--ds-border-subtle)] pt-6">
+                          <h3 className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] mb-3">Post-Mitigation</h3>
+                          <div className="space-y-3">
+                            <div>
+                              <Label htmlFor="detail-post-prob" className="block">
+                                Post-Mitigation Probability
+                              </Label>
+                              <div className="grid grid-cols-3 gap-2 items-center">
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={100}
+                                  step={5}
+                                  value={Math.min(100, Math.max(0, parseFloat(postMitigationProbabilityPct) || 0))}
+                                  onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
+                                  className={rangeTrackClass}
+                                  aria-label="Post-Mitigation Probability (percent)"
+                                />
+                                <Input
+                                  id="detail-post-prob"
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  step={1}
+                                  value={postMitigationProbabilityPct}
+                                  onChange={(e) => setPostMitigationProbabilityPct(e.target.value)}
+                                  placeholder="0–100"
+                                />
+                              </div>
+                            </div>
+                            {appliesToAffectsCost(appliesTo) && (
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <Label htmlFor="detail-post-cost-min" className="block">Cost Min ($)</Label>
+                                <Input id="detail-post-cost-min" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMin)} onChange={(e) => setPostMitigationCostMin(parseCostInput(e.target.value))} />
+                              </div>
+                              <div>
+                                <Label htmlFor="detail-post-cost-ml" className="block">Cost Most Likely ($)</Label>
+                                <Input id="detail-post-cost-ml" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostML)} onChange={(e) => setPostMitigationCostML(parseCostInput(e.target.value))} />
+                              </div>
+                              <div>
+                                <Label htmlFor="detail-post-cost-max" className="block">Cost Max ($)</Label>
+                                <Input id="detail-post-cost-max" type="text" inputMode="numeric" value={formatCostDisplay(postMitigationCostMax)} onChange={(e) => setPostMitigationCostMax(parseCostInput(e.target.value))} />
+                              </div>
+                            </div>
+                            )}
+                            {appliesToAffectsTime(appliesTo) && (
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <Label htmlFor="detail-post-time-min" className="block">Time Min (days)</Label>
+                                <Input id="detail-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} />
+                              </div>
+                              <div>
+                                <Label htmlFor="detail-post-time-ml" className="block">Time ML (days)</Label>
+                                <Input id="detail-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} />
+                              </div>
+                              <div>
+                                <Label htmlFor="detail-post-time-max" className="block">Time Max (days)</Label>
+                                <Input id="detail-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
+                              </div>
+                            </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
-                    {appliesToAffectsTime(appliesTo) && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <Label htmlFor="detail-post-time-min" className="block">Time Min (days)</Label>
-                        <Input id="detail-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-post-time-ml" className="block">Time ML (days)</Label>
-                        <Input id="detail-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label htmlFor="detail-post-time-max" className="block">Time Max (days)</Label>
-                        <Input id="detail-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
-                      </div>
-                    </div>
-                    )}
-                  </div>
-                </section>
-                  </>
-                )}
-                </section>
+                  </CardBody>
+                </Card>
               </div>
             )
           )}

@@ -1,19 +1,21 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { RiskExtractPanel } from "@/components/risk-register/RiskExtractPanel";
-
-const btnSecondary =
-  "px-4 py-2 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-[var(--ds-text-primary)] text-sm font-medium hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0";
+import { Button } from "@visualify/design-system";
+import { RiskChatPanel } from "@/components/risk-register/RiskChatPanel";
 
 export function CreateRiskAIModal({
   open,
   onClose,
   projectId,
+  onRiskCreated,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Passed through to extract-risk for usage logging when creating from chat. */
   projectId?: string | null;
+  /** Called after a risk is created from chat; parent may close this modal after applying detail state. */
+  onRiskCreated?: (riskId: string) => void;
 }) {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -31,35 +33,43 @@ export function CreateRiskAIModal({
       onClick={handleBackdropClick}
     >
       <div
-        style={{ width: "90vw", maxWidth: 560, maxHeight: "90vh" }}
-        className="shrink-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-xl flex flex-col overflow-hidden"
+        className="flex h-[90vh] max-h-[90vh] w-full max-w-[min(70vw,720px)] shrink-0 flex-col overflow-hidden rounded-[var(--ds-radius-lg)] border-0 bg-[var(--ds-surface-elevated)] shadow-[var(--ds-elevation-tile)] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-4 shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
-          <h2 id="create-risk-ai-dialog-title" className="text-lg font-semibold text-[var(--ds-text-primary)]">
-            Create Risk with AI
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 rounded-[var(--ds-radius-sm)] border border-transparent text-[var(--ds-text-secondary)] hover:text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
-            aria-label="Close"
+        <div className="flex shrink-0 items-center justify-between gap-4 bg-[var(--ds-surface-muted)] px-4 py-3 sm:px-6">
+          <h2
+            id="create-risk-ai-dialog-title"
+            className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            Generate risk with AI
+          </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="md"
+            onClick={onClose}
+            className="h-9 w-9 shrink-0 p-0"
+            aria-label="Close dialog"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0 text-[var(--ds-text-primary)]"
+              aria-hidden
+            >
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-5">
-          <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
-            Describe your risk including mitigation, cost and time data. AI will extract structured risk fields.
-          </p>
-          <RiskExtractPanel hideTitle showStatus projectId={projectId} />
-        </div>
-        <div className="flex justify-end gap-2 shrink-0 px-4 sm:px-6 py-4 border-t border-[var(--ds-border)]">
-          <button type="button" onClick={onClose} className={btnSecondary}>
-            Close
-          </button>
+        <div className="flex min-h-0 flex-1 flex-col px-0">
+          <RiskChatPanel projectId={projectId} onRiskCreated={onRiskCreated} />
         </div>
       </div>
     </div>
