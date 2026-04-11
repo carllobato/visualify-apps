@@ -993,24 +993,30 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       )}
       <AddNewRiskChoiceModal
         open={showAddNewRiskChoiceModal}
-        projectId={projectIdTrimmed || null}
         onClose={() => setShowAddNewRiskChoiceModal(false)}
         onAddManualRisk={() => {
           setShowAddNewRiskChoiceModal(false);
           setShowAddRiskModal(true);
         }}
-        onRisksAdded={(riskIds) => {
-          setColumnFilters({});
+        onGenerateWithText={() => {
           setShowAddNewRiskChoiceModal(false);
-          if (riskIds.length > 0) {
-            setDetailInitialRiskId(riskIds[0]);
-            setShowDetailModal(true);
-          }
+          setShowCreateRiskAIModal(true);
+        }}
+        onGenerateWithFile={() => {
+          setShowAddNewRiskChoiceModal(false);
+          setShowCreateRiskFileModal(true);
         }}
       />
       <CreateRiskFileModal
         open={showCreateRiskFileModal}
         onClose={() => setShowCreateRiskFileModal(false)}
+        onRisksImported={(riskIds) => {
+          setColumnFilters({});
+          if (riskIds.length > 0) {
+            setDetailInitialRiskId(riskIds[0]);
+            setShowDetailModal(true);
+          }
+        }}
       />
       <CreateRiskAIModal
         open={showCreateRiskAIModal}

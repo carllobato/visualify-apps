@@ -1,269 +1,27 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { saveFile, loadFiles, markFileImported } from "@/lib/uploadedRiskRegisterStore";
-import { parseExcel, sheetToDocumentText } from "@/lib/riskImportExcel";
-import type { Risk, RiskDraft } from "@/domain/risk/risk.schema";
-import { RiskDraftSchema, RiskSchema } from "@/domain/risk/risk.schema";
-import { draftsToRisks, intelligentDraftToRisk } from "@/domain/risk/risk.mapper";
-import { useRiskRegister } from "@/store/risk-register.store";
-import { Callout } from "@visualify/design-system";
-
-function isDraftLike(item: unknown): item is RiskDraft {
-  if (!item || typeof item !== "object") return false;
-  const o = item as Record<string, unknown>;
-  return (
-    typeof o.probability === "number" &&
-    typeof o.consequence === "number" &&
-    o.inherentRating === undefined
-  );
-}
-
-function isRiskLike(item: unknown): item is Risk {
-  if (!item || typeof item !== "object") return false;
-  const o = item as Record<string, unknown>;
-  return o.inherentRating != null && typeof o.inherentRating === "object";
-}
-
-function normalizeRisks(raw: unknown): Risk[] {
-  const list = Array.isArray(raw) ? raw : [];
-  const result: Risk[] = [];
-  for (const item of list) {
-    if (isRiskLike(item)) {
-      const parsed = RiskSchema.safeParse(item);
-      if (parsed.success) result.push(parsed.data);
-    } else if (isDraftLike(item)) {
-      const parsed = RiskDraftSchema.safeParse(item);
-      if (parsed.success) result.push(draftsToRisks([parsed.data])[0]);
-    }
-  }
-  return result;
-}
-
-function hasMeaningfulTitle(risk: Risk): boolean {
-  const t = risk.title && String(risk.title).trim();
-  return !!t && t.length > 0;
-}
-
-function deduplicateByTitle(risks: Risk[]): Risk[] {
-  const seen = new Set<string>();
-  return risks.filter((r) => {
-    const key = String(r.title).trim().toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-const containerClass =
-  "rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-4 flex flex-col min-h-[280px] min-w-0";
-const boxTitleClass =
-  "text-base font-medium text-[var(--ds-text-primary)] mb-2 border-b border-[var(--ds-border)] pb-2";
-const btnPrimary =
-  "px-4 py-2 rounded-[var(--ds-radius-sm)] bg-[var(--ds-text-primary)] text-[var(--ds-text-inverse)] text-sm font-medium hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] shrink-0 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:bg-[var(--ds-surface-hover)]";
-
-/** Context of the uploaded file – used to determine which API to run (not yet passed to API). */
-export type FileContext =
-  | "risk_register"
-  | "variation_change"
-  | "early_warning"
-  | "delay_extension";
-
-const FILE_CONTEXT_OPTIONS: { value: FileContext; label: string }[] = [
-  { value: "risk_register", label: "Risk Register" },
-  { value: "variation_change", label: "Variation/Change" },
-  { value: "early_warning", label: "Early Warning" },
-  { value: "delay_extension", label: "Delay/Extension" },
-];
+/** Same document tile surface as `SummaryTile` / dashboard KPI cards (`ds-document-tile-panel`). */
+const choiceTileClass =
+  "ds-document-tile-panel ds-document-tile-panel--interactive w-full min-w-0 p-4 flex flex-col min-h-[140px] text-left cursor-pointer font-inherit outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-document-tile-bg)]";
+const choiceTitleClass = "text-base font-medium text-[var(--ds-text-primary)] m-0 mb-2";
+const choiceDescClass = "text-sm text-[var(--ds-text-secondary)] flex-1 m-0";
 
 export function AddNewRiskChoiceModal({
   open,
   onClose,
-  onRisksAdded,
   onAddManualRisk,
-  projectId,
+  onGenerateWithText,
+  onGenerateWithFile,
 }: {
   open: boolean;
   onClose: () => void;
-  /** Called after risks are successfully extracted/imported; use to e.g. open detail for first risk */
-  onRisksAdded?: (riskIds: string[]) => void;
-  /** Called when user chooses to add a risk manually (form); parent should close this modal and open AddRiskModal */
+  /** Opens manual add form (empty risk) */
   onAddManualRisk?: () => void;
-  /** Optional; sent with extract-risk for usage logging */
-  projectId?: string | null;
+  /** Opens AI chat to generate a risk */
+  onGenerateWithText?: () => void;
+  /** Opens file upload flow */
+  onGenerateWithFile?: () => void;
 }) {
-  const { appendRisks } = useRiskRegister();
-  const [documentText, setDocumentText] = useState("");
-  const [fileDragOver, setFileDragOver] = useState(false);
-  const [fileUploadStatus, setFileUploadStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [fileUploadMessage, setFileUploadMessage] = useState<string | null>(null);
-  const [lastSavedFileId, setLastSavedFileId] = useState<string | null>(null);
-  const [lastSavedFileName, setLastSavedFileName] = useState<string | null>(null);
-  /** Context of the uploaded file (required when using file path; used later for API selection). */
-  const [fileContext, setFileContext] = useState<FileContext | null>(null);
-  const [generateStatus, setGenerateStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [generateMessage, setGenerateMessage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const hasFile = !!lastSavedFileId;
-  const hasText = documentText.trim().length > 0;
-  const canGenerate =
-    (hasFile ? !!fileContext : true) && (hasFile || hasText) && generateStatus !== "loading";
-
-  const handleFileSave = useCallback(async (file: File) => {
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      setFileUploadStatus("error");
-      setFileUploadMessage("Only .xlsx files are allowed.");
-      return;
-    }
-    setFileUploadStatus("loading");
-    setFileUploadMessage(null);
-    setGenerateMessage(null);
-    setFileContext(null);
-    try {
-      const id = await saveFile(file);
-      setLastSavedFileId(id);
-      setLastSavedFileName(file.name);
-      setFileUploadStatus("success");
-    } catch (e) {
-      setFileUploadStatus("error");
-      setFileUploadMessage(e instanceof Error ? e.message : "Failed to save file.");
-    }
-  }, []);
-
-  const onFileDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setFileDragOver(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) handleFileSave(file);
-    },
-    [handleFileSave]
-  );
-
-  const onFileDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFileDragOver(true);
-  }, []);
-
-  const onFileDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFileDragOver(false);
-  }, []);
-
-  const onFileInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      e.target.value = "";
-      if (file) handleFileSave(file);
-    },
-    [handleFileSave]
-  );
-
-  const handleGenerateRisk = useCallback(async () => {
-    if (!lastSavedFileId) {
-      setGenerateStatus("error");
-      setGenerateMessage("Upload a file first, then click Generate Risk.");
-      return;
-    }
-    setGenerateStatus("loading");
-    setGenerateMessage(null);
-    try {
-      const files = await loadFiles();
-      const file = files.find((f) => f.id === lastSavedFileId);
-      if (!file) {
-        setGenerateStatus("error");
-        setGenerateMessage("File not found. Upload it again.");
-        return;
-      }
-      const parsed = await parseExcel(file.blob);
-      if (parsed.rows.length === 0 && parsed.headers.length === 0) {
-        setGenerateStatus("error");
-        setGenerateMessage("Sheet is empty.");
-        return;
-      }
-      const documentText = sheetToDocumentText(parsed);
-      const res = await fetch("/api/risks/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentText }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = typeof data?.error === "string" ? data.error : "AI extraction failed";
-        setGenerateMessage(msg);
-        setGenerateStatus("error");
-        return;
-      }
-      let list = normalizeRisks(data?.risks);
-      list = list.filter(hasMeaningfulTitle);
-      list = deduplicateByTitle(list);
-      appendRisks(list);
-      await markFileImported(lastSavedFileId);
-      setGenerateStatus("success");
-      setGenerateMessage(`Imported ${list.length} risks.`);
-      onRisksAdded?.(list.map((r) => r.id));
-    } catch (e) {
-      setGenerateMessage(e instanceof Error ? e.message : "Network or unexpected error");
-      setGenerateStatus("error");
-    }
-  }, [lastSavedFileId, appendRisks, onRisksAdded]);
-
-  const handleExtractFromText = useCallback(async () => {
-    const text = documentText.trim();
-    if (!text) {
-      setGenerateStatus("error");
-      setGenerateMessage("Enter risk description in text, or upload a file.");
-      return;
-    }
-    setGenerateStatus("loading");
-    setGenerateMessage(null);
-    try {
-      const res = await fetch("/api/ai/extract-risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          documentText: text,
-          ...(projectId != null && projectId.trim() !== "" ? { projectId: projectId.trim() } : {}),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = typeof data?.error === "string" ? data.error : "Extract failed";
-        setGenerateMessage(msg);
-        setGenerateStatus("error");
-        return;
-      }
-      const draft = data?.risk;
-      if (!draft) {
-        setGenerateMessage("Invalid response: missing risk");
-        setGenerateStatus("error");
-        return;
-      }
-      const risk = intelligentDraftToRisk(draft);
-      appendRisks([risk]);
-      setGenerateStatus("success");
-      setGenerateMessage("Risk extracted. You can edit and save in the detail view.");
-      onRisksAdded?.([risk.id]);
-    } catch (e) {
-      setGenerateMessage(e instanceof Error ? e.message : "Network or unexpected error");
-      setGenerateStatus("error");
-    }
-  }, [documentText, appendRisks, onRisksAdded, projectId]);
-
-  const handleGenerate = useCallback(() => {
-    if (hasFile) {
-      handleGenerateRisk();
-    } else if (hasText) {
-      handleExtractFromText();
-    } else {
-      setGenerateStatus("error");
-      setGenerateMessage("Enter risk description in text, or upload a file.");
-    }
-  }, [hasFile, hasText, handleGenerateRisk, handleExtractFromText]);
-
   if (!open) return null;
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -278,170 +36,74 @@ export function AddNewRiskChoiceModal({
       aria-labelledby="add-new-risk-choice-title"
       onClick={handleBackdropClick}
     >
-      <div
-        className="w-full max-w-[70vw] max-h-[90vh] shrink-0 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] shadow-2xl overflow-hidden flex flex-col min-h-[400px] min-w-[280px]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between shrink-0 border-b border-[var(--ds-border)] px-4 sm:px-6 py-3">
-          <h2 id="add-new-risk-choice-title" className="text-xl font-semibold text-[var(--ds-text-primary)]">
+      <div className="ds-modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="ds-modal-panel-header">
+          <h2 id="add-new-risk-choice-title" className="ds-modal-panel-title">
             Add new risk
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-[var(--ds-radius-sm)] hover:bg-[var(--ds-surface-hover)] text-[var(--ds-text-secondary)] transition-colors"
+            className="ds-onboarding-modal-close"
             aria-label="Close"
           >
-            <span aria-hidden className="text-xl leading-none">×</span>
+            <span aria-hidden className="ds-modal-panel-close-icon">
+              ×
+            </span>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6 min-h-0">
-          <p className="text-sm text-[var(--ds-text-secondary)] mb-4">
-            Choose how you want to add a risk:
-          </p>
-          {onAddManualRisk && (
-            <div className="mb-4">
+        <div className="ds-modal-panel-body">
+          <div
+            className={
+              onAddManualRisk
+                ? "ds-modal-panel-body-grid ds-modal-panel-body-grid--three"
+                : "ds-modal-panel-body-grid"
+            }
+          >
+            {onAddManualRisk && (
               <button
                 type="button"
+                className={choiceTileClass}
                 onClick={() => {
                   onClose();
                   onAddManualRisk();
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-[var(--ds-radius-sm)] border-2 border-dashed border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] text-[var(--ds-text-secondary)] text-sm font-medium hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
               >
-                Add risk manually
+                <span className={choiceTitleClass}>Add risk manually</span>
+                <span className={choiceDescClass}>
+                  Fill in the risk form (title, category, ratings, mitigation, etc.)
+                </span>
               </button>
-              <p className="text-xs text-[var(--ds-text-muted)] mt-1.5">
-                Fill in the risk form (title, category, ratings, mitigation, etc.)
-              </p>
-            </div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className={containerClass}>
-              <h3 className={boxTitleClass}>Generate Risk with Text Entry</h3>
-              <textarea
-                value={documentText}
-                onChange={(e) => setDocumentText(e.target.value)}
-                placeholder="Describe your risk including any mitigation, cost and time data."
-                rows={6}
-                className="flex-1 min-h-[120px] w-full box-border px-3 py-2.5 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm font-[inherit] resize-y focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)] focus:border-transparent mt-1"
-              />
-            </div>
-            <div className={containerClass}>
-              <h3 className={boxTitleClass}>Generate Risk with a file</h3>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx"
-                onChange={onFileInputChange}
-                className="hidden"
-                aria-label="Upload Excel file"
-              />
-              <div
-                onDragOver={onFileDragOver}
-                onDragLeave={onFileDragLeave}
-                onDrop={onFileDrop}
-                className={`border-2 border-dashed rounded-[var(--ds-radius-md)] p-4 text-center text-sm transition-colors flex-1 min-h-[80px] flex flex-col justify-center ${
-                  fileDragOver
-                    ? "border-[var(--ds-status-info-border)] bg-[var(--ds-status-info-bg)]"
-                    : "border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] dark:bg-[color-mix(in_oklab,var(--ds-surface-muted)_30%,transparent)] hover:border-[var(--ds-border)]"
-                }`}
+            )}
+            {onGenerateWithText && (
+              <button
+                type="button"
+                className={choiceTileClass}
+                onClick={() => {
+                  onClose();
+                  onGenerateWithText();
+                }}
               >
-                {lastSavedFileId && lastSavedFileName ? (
-                  <>
-                    <span className="inline-flex items-center rounded px-2 py-0.5 text-xs font-medium bg-[var(--ds-surface-muted)] text-[var(--ds-text-secondary)]">
-                      XLSX
-                    </span>
-                    <p className="text-[var(--ds-text-primary)] font-medium mt-2 truncate" title={lastSavedFileName}>
-                      {lastSavedFileName}
-                    </p>
-                    <p className="text-[var(--ds-text-muted)] text-xs mt-1">
-                      Drop another file to replace
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[var(--ds-text-secondary)] mb-2">
-                      {fileDragOver ? "Drop file here…" : "Drag and drop .xlsx here, or"}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={fileUploadStatus === "loading"}
-                      className="px-3 py-1.5 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-muted)] text-[var(--ds-text-primary)] hover:bg-[var(--ds-surface-hover)] disabled:opacity-50"
-                    >
-                      Choose file
-                    </button>
-                  </>
-                )}
-              </div>
-              {fileUploadStatus === "loading" && (
-                <div className="mt-2 flex items-center gap-2" aria-busy="true">
-                  <div className="h-3 w-24 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
-                  <span className="sr-only">Saving file</span>
-                </div>
-              )}
-              {fileUploadStatus === "error" && fileUploadMessage && (
-                <Callout status="danger" role="alert" className="mt-2 text-[length:var(--ds-text-sm)]">
-                  {fileUploadMessage}
-                </Callout>
-              )}
-              {lastSavedFileId && (
-                <div className="mt-4 pt-3 border-t border-[var(--ds-border)]">
-                  <label className="block text-sm font-medium text-[var(--ds-text-primary)] mb-2">
-                    Define the context of the file
-                  </label>
-                  <p className="text-xs text-[var(--ds-text-muted)] mb-2">
-                    Used to run the appropriate process for this file.
-                  </p>
-                  <select
-                    value={fileContext ?? ""}
-                    onChange={(e) =>
-                      setFileContext((e.target.value as FileContext) || null)
-                    }
-                    className="w-full px-3 py-2 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] text-sm text-[var(--ds-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--ds-border)]"
-                    aria-label="File context"
-                  >
-                    <option value="">Select context…</option>
-                    {FILE_CONTEXT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mt-6 pt-4 border-t border-[var(--ds-border)]">
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={!canGenerate}
-              className={`${btnPrimary} w-full sm:w-auto min-w-[160px]`}
-            >
-              Generate
-            </button>
-            {hasFile && !fileContext && (
-              <Callout status="warning" role="status" className="mt-2 text-[length:var(--ds-text-sm)]">
-                Select the context of the file above (Risk Register, Variation/Change, etc.) to enable Generate.
-              </Callout>
+                <span className={choiceTitleClass}>Generate risk with text</span>
+                <span className={choiceDescClass}>
+                  Chat with AI to describe the risk, then create a structured record.
+                </span>
+              </button>
             )}
-            {generateStatus === "loading" && (
-              <div className="mt-2 flex items-center gap-2" aria-busy="true">
-                <div className="h-3 w-32 animate-pulse rounded bg-[var(--ds-surface-muted)]" />
-                <span className="sr-only">Extracting risks</span>
-              </div>
-            )}
-            {generateStatus === "success" && generateMessage && (
-              <Callout status="success" role="status" className="mt-2 text-[length:var(--ds-text-sm)]">
-                {generateMessage}
-              </Callout>
-            )}
-            {generateStatus === "error" && generateMessage && (
-              <Callout status="danger" role="alert" className="mt-2 text-[length:var(--ds-text-sm)]">
-                {generateMessage}
-              </Callout>
+            {onGenerateWithFile && (
+              <button
+                type="button"
+                className={choiceTileClass}
+                onClick={() => {
+                  onClose();
+                  onGenerateWithFile();
+                }}
+              >
+                <span className={choiceTitleClass}>Generate risk with a file</span>
+                <span className={choiceDescClass}>
+                  Upload an Excel file to extract one or more risks.
+                </span>
+              </button>
             )}
           </div>
         </div>
