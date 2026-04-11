@@ -1022,6 +1022,13 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         open={showCreateRiskAIModal}
         onClose={() => setShowCreateRiskAIModal(false)}
         projectId={projectIdTrimmed || null}
+        onRiskCreated={(riskId) => {
+          setDetailInitialRiskId(riskId);
+          setShowDetailModal(true);
+          // Defer closing the AI layer so detail modal state commits first (same mechanism as row/import;
+          // avoids portal unmount racing the detail modal open in one synchronous turn).
+          queueMicrotask(() => setShowCreateRiskAIModal(false));
+        }}
       />
       <AddRiskModal
         open={showAddRiskModal}

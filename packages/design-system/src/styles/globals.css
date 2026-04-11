@@ -1273,6 +1273,31 @@ ul[role="listbox"] button:focus-visible {
 }
 
 /*
+ * Risk register modals — section cards share dashboard density tokens (same shell as project settings cards).
+ */
+.ds-risk-detail-section-card {
+  margin-bottom: var(--ds-space-4);
+}
+
+.ds-risk-detail-card-header {
+  border-bottom: 1px solid var(--ds-border-subtle);
+  padding-inline: var(--ds-dashboard-section-header-padding-x);
+  padding-block: var(--ds-dashboard-section-header-padding-y);
+}
+
+.ds-risk-detail-card-body {
+  padding-inline: var(--ds-dashboard-section-body-padding);
+  padding-block: var(--ds-dashboard-section-body-padding);
+}
+
+.ds-risk-detail-card-title {
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  color: var(--ds-text-primary);
+}
+
+/*
  * Modal backdrops — shared tint + blur (same as onboarding). Use `ds-modal-backdrop` + a z-index utility,
  * or `ds-onboarding-modal-backdrop` (+ optional `--raised`) for first-run flows. Nested dim layers: `ds-modal-backdrop-surface`.
  */

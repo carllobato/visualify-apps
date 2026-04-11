@@ -8,11 +8,14 @@ export function CreateRiskAIModal({
   open,
   onClose,
   projectId,
+  onRiskCreated,
 }: {
   open: boolean;
   onClose: () => void;
   /** Passed through to extract-risk for usage logging when creating from chat. */
   projectId?: string | null;
+  /** Called after a risk is created from chat; parent may close this modal after applying detail state. */
+  onRiskCreated?: (riskId: string) => void;
 }) {
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose();
@@ -30,7 +33,7 @@ export function CreateRiskAIModal({
       onClick={handleBackdropClick}
     >
       <div
-        className="w-full max-w-[min(70vw,720px)] max-h-[90vh] min-h-[380px] shrink-0 flex flex-col overflow-hidden rounded-[var(--ds-radius-lg)] border-0 bg-[var(--ds-surface-elevated)] shadow-[var(--ds-elevation-tile)] outline-none"
+        className="flex h-[90vh] max-h-[90vh] w-full max-w-[min(70vw,720px)] shrink-0 flex-col overflow-hidden rounded-[var(--ds-radius-lg)] border-0 bg-[var(--ds-surface-elevated)] shadow-[var(--ds-elevation-tile)] outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between gap-4 bg-[var(--ds-surface-muted)] px-4 py-3 sm:px-6">
@@ -65,8 +68,8 @@ export function CreateRiskAIModal({
             </svg>
           </Button>
         </div>
-        <div className="flex flex-1 min-h-0 flex-col px-0">
-          <RiskChatPanel projectId={projectId} onRiskCreated={() => onClose()} />
+        <div className="flex min-h-0 flex-1 flex-col px-0">
+          <RiskChatPanel projectId={projectId} onRiskCreated={onRiskCreated} />
         </div>
       </div>
     </div>

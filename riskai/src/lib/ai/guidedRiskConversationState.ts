@@ -6,12 +6,14 @@ const appliesToSchema = z.enum(["Cost", "Time", "Cost & Time"]);
 
 const mitigationStatusSchema = z.enum(["Open", "Monitoring", "Mitigating"]);
 
+const probabilityValueSchema = z.union([z.string(), z.number()]);
+
 const nextQuestionFocusSchema = z.enum([
   "risk_clarity",
-  "category",
-  "impact",
+  "inherent",
   "mitigation",
-  "owner",
+  "mitigation_in_place",
+  "residual",
   "confirm",
 ]);
 
@@ -23,24 +25,43 @@ export const GuidedRiskConversationStateSchema = z.object({
   fields: z.object({
     category: z.string().optional(),
     owner: z.string().optional(),
-    impact: z.object({
-      appliesTo: appliesToSchema.optional(),
-      costDetail: z.string().optional(),
-      timeDetail: z.string().optional(),
-    }),
-    mitigation: z.object({
-      exists: z.boolean().nullable(),
-      description: z.string().optional(),
-      status: mitigationStatusSchema.optional(),
-      rationale: z.string().optional(),
-    }),
+    impact: z
+      .object({
+        appliesTo: appliesToSchema.optional(),
+        costDetail: z.string().optional(),
+        timeDetail: z.string().optional(),
+      })
+      .default({}),
+    inherent: z
+      .object({
+        probability: probabilityValueSchema.optional(),
+        cost: z.string().optional(),
+        time: z.string().optional(),
+      })
+      .default({}),
+    residual: z
+      .object({
+        probability: probabilityValueSchema.optional(),
+        cost: z.string().optional(),
+        time: z.string().optional(),
+      })
+      .default({}),
+    mitigation: z
+      .object({
+        exists: z.boolean().nullable().default(null),
+        inPlace: z.boolean().nullable().optional(),
+        description: z.string().optional(),
+        status: mitigationStatusSchema.optional(),
+        rationale: z.string().optional(),
+      })
+      .default({ exists: null }),
   }),
   sufficiency: z.object({
     riskClear: z.boolean(),
-    categorySet: z.boolean(),
-    impactClear: z.boolean(),
+    inherentClear: z.boolean(),
     mitigationClear: z.boolean(),
-    ownerSet: z.boolean(),
+    mitigationInPlaceClear: z.boolean(),
+    residualClear: z.boolean(),
     readyToCreate: z.boolean(),
   }),
   nextQuestionFocus: nextQuestionFocusSchema.optional(),
@@ -56,16 +77,19 @@ export function createEmptyGuidedRiskConversationState(): GuidedRiskConversation
     },
     fields: {
       impact: {},
+      inherent: {},
+      residual: {},
       mitigation: {
         exists: null,
+        inPlace: null,
       },
     },
     sufficiency: {
       riskClear: false,
-      categorySet: false,
-      impactClear: false,
+      inherentClear: false,
       mitigationClear: false,
-      ownerSet: false,
+      mitigationInPlaceClear: false,
+      residualClear: false,
       readyToCreate: false,
     },
     missingFields: [],

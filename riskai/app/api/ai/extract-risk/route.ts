@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { requireUser } from "@/lib/auth/requireUser";
 import { IntelligentExtractDraftSchema } from "@/domain/risk/risk.schema";
+import {
+  GuidedRiskConversationStateSchema,
+  type GuidedRiskConversationState,
+} from "@/lib/ai/guidedRiskConversationState";
 import { checkAiRateLimit, buildRateLimit429Payload } from "@/server/ai/rate-limit";
 import { estimateOpenAiChatCostUsd } from "@/server/ai/openai-usage-cost";
 import { env } from "@/lib/env";
@@ -11,7 +15,107 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 
 const USAGE_LOG_PREFIX = "[visualify_ai_usage extract-risk]";
 
-const EXTRACT_SYSTEM = `You are an expert risk analyst for a decision intelligence platform. Your job is to turn free-text risk descriptions into a fully populated, structured risk record. You must EXTRACT explicit values and INFER missing values from context. Never leave fields blank when reasonable inference can be made.
+const EXTRACT_CATEGORY_LEGACY = `## 4. Category (exactly one)
+Classify using keywords; use lowercase. Valid: commercial, programme, design, construction, procurement, hse, authority, operations, other.
+- procurement: supplier, long lead, manufacturing, capacity, switchgear, equipment, factory
+- design: IFC, approval, design review
+- authority: grid, utility, planning
+- commercial: variation, claim, contract
+- construction: site, labour, weather
+- programme: delay, schedule, programme
+- hse: safety, health, environment
+- operations: operations, handover
+- other: when none of the above fit`;
+
+function buildExtractCategorySection(categories: string[]): string {
+  if (categories.length === 0) {
+    return EXTRACT_CATEGORY_LEGACY;
+  }
+  const listed = categories.map((c) => `- "${c}"`).join("\n");
+  return `## 4. Category (exactly one)
+You MUST set "category" to exactly one of the following strings from this project's configured risk categories. Copy the value verbatim (spelling, spacing, casing, punctuation):
+${listed}
+
+Do not output internal slugs or generic lowercase keys (for example do not use "hse" or "authority" unless that exact string appears in the list above). Choose the single best-matching label from the list.`;
+}
+
+/** Optional flags from risk-chat so extraction does not invent cost/time when impact was never established. */
+type GuidedExtractImpact = {
+  impactClear?: boolean;
+  appliesTo?: "Cost" | "Time" | "Cost & Time";
+};
+
+function parseConversationState(raw: unknown): GuidedRiskConversationState | null {
+  const r = GuidedRiskConversationStateSchema.safeParse(raw);
+  return r.success ? r.data : null;
+}
+
+/**
+ * When the guided chat supplied a full structured state, attach it so extraction maps
+ * inherent → pre-mitigation fields and residual → post-mitigation fields conservatively.
+ */
+function buildStructuredConversationStateAppendix(state: GuidedRiskConversationState): string {
+  const payload = {
+    summary: state.summary,
+    sufficiency: state.sufficiency,
+    fields: {
+      inherent: state.fields.inherent,
+      mitigation: {
+        description: state.fields.mitigation.description,
+        inPlace: state.fields.mitigation.inPlace ?? null,
+      },
+      residual: state.fields.residual,
+      impact: state.fields.impact,
+      category: state.fields.category,
+      owner: state.fields.owner,
+    },
+  };
+  const json = JSON.stringify(payload);
+  return `## STRUCTURED CONVERSATION STATE
+The client sent this JSON from the guided risk chat (normalized server state). It is **supporting context** for the same conversation as the user transcript.
+
+\`\`\`json
+${json}
+\`\`\`
+
+### How to use this block
+- Prefer mapping these fields into the extraction output **together with** the user-message transcript.
+- If the transcript **clearly contradicts** this JSON on a specific fact, **use the transcript** for that fact.
+- **Do not invent** dollar amounts, day counts, or probability percentages that are not grounded in either this JSON or the transcript. If a numeric value cannot be justified, use **0** for required pre-mitigation cost/time fields (and set \`appliesTo\` consistently: cost-only / time-only / both from what is evidenced).
+- **Inherent mapping (pre-mitigation):** interpret \`fields.inherent.probability\`, \`.cost\`, and \`.time\` into \`probability\` (0–100), \`costMin\` / \`costMostLikely\` / \`costMax\`, \`timeMin\` / \`timeMostLikely\` / \`timeMax\`. Use qualitative text only to derive numeric bands when the wording supports a defensible conversion; otherwise **0**.
+- **Residual mapping (post-mitigation):** interpret \`fields.residual.*\` into \`postProbability\`, \`postCostMin\` / \`postCostMostLikely\` / \`postCostMax\`, \`postTimeMin\` / \`postTimeMostLikely\` / \`postTimeMax\` **only when** residual figures are present in this JSON or clearly in the transcript. If residual impact was **not** captured, **omit all post\*** keys (do not guess revised values).
+- **Mitigation:** set output \`mitigation\` from \`fields.mitigation.description\` when present; otherwise derive only from the transcript.
+- **Mitigation in place:** use \`fields.mitigation.inPlace\` as context — \`true\` = controls already active (residual should reflect current remaining exposure); \`false\` = not yet implemented (do not confuse with \`mitigationCost\`, which is spend to implement a plan). Do not invent \`mitigationCost\` unless the transcript or structured context states a spend.
+- **Category/owner:** you may take hints from \`fields.category\` / \`fields.owner\` when consistent with the category list rules elsewhere in this prompt.`;
+}
+
+function buildGuidedImpactSection(guided: GuidedExtractImpact | undefined): string {
+  if (guided?.impactClear === false) {
+    return `## Guided impact mode (STRICT — overrides conflicting instructions below)
+The accompanying risk-chat flow did **not** firmly establish whether this risk affects cost, time, or both (impact remained unclear).
+
+**Follow these even where other sections ask you to infer or fill pre-mitigation fields:**
+- Do **not** invent dollar amounts, day counts, or cost/time **bands** from vague language (severity, concern, "material", "major", priority) or from the fact that a risk exists.
+- Use **0** for costMin, costMostLikely, costMax and for timeMin, timeMostLikely, timeMax unless the transcript states **explicit** numbers, currency, or calendar durations tied to this risk.
+- Set appliesTo to "cost", "time", or "both" only according to explicit transcript evidence; if cost vs time was never distinguished, use "both" with **all** cost and time magnitudes at **0**.
+- Probability may still reflect stated likelihood; do not use probability to justify fabricated cost or time values.`;
+  }
+  if (guided?.impactClear === true && guided.appliesTo) {
+    const atJson =
+      guided.appliesTo === "Cost"
+        ? "cost"
+        : guided.appliesTo === "Time"
+          ? "time"
+          : "both";
+    return `## Guided impact mode (from risk chat)
+The user confirmed impact type in dialogue (${guided.appliesTo}; JSON appliesTo "${atJson}").
+- Prefer appliesTo "${atJson}" unless the transcript clearly contradicts it.
+- Infer cost/time magnitudes only from explicit numbers, ranges, or units in the text; otherwise use 0 for dimensions not quantified.`;
+  }
+  return "";
+}
+
+const EXTRACT_SYSTEM_PREFIX = `You are an expert risk analyst for a decision intelligence platform. Your job is to turn free-text risk descriptions into a fully populated, structured risk record. You must EXTRACT explicit values and INFER missing values from context. Never leave fields blank when reasonable inference can be made.
 
 ## Critical rule
 Prefer intelligent estimation over leaving blanks. We are building a decision intelligence platform — not a literal transcription tool. Populate ALL pre-mitigation fields wherever possible.
@@ -46,20 +150,9 @@ Prefer intelligent estimation over leaving blanks. We are building a decision in
   - Medium (35–55%): "possible", "risk that", "may impact", "could slip"
   - Low (15–30%): "unlikely", "contingent on", "remote"
 - Set probability to the midpoint of the inferred band. Default to 50 if truly ambiguous.
+`;
 
-## 4. Category (exactly one)
-Classify using keywords; use lowercase. Valid: commercial, programme, design, construction, procurement, hse, authority, operations, other.
-- procurement: supplier, long lead, manufacturing, capacity, switchgear, equipment, factory
-- design: IFC, approval, design review
-- authority: grid, utility, planning
-- commercial: variation, claim, contract
-- construction: site, labour, weather
-- programme: delay, schedule, programme
-- hse: safety, health, environment
-- operations: operations, handover
-- other: when none of the above fit
-
-## 5. Owner
+const EXTRACT_SYSTEM_SUFFIX = `## 5. Owner
 Infer from category/keywords:
 - Procurement keywords → "Procurement Manager"
 - Design keywords → "Design Manager"
@@ -136,6 +229,21 @@ Also allow: "contingency" (string or omit).
 Example with full mitigation (residual = 0): { "title": "Supplier Delivery Slip", "probability": 60, "costMin": 500000, "costMostLikely": 750000, "costMax": 1000000, "timeMin": 28, "timeMostLikely": 42, "timeMax": 56, "appliesTo": "both", "mitigation": "Expedite with premium supplier", "mitigationCost": 250000, "postProbability": 0, "postCostMin": 0, "postCostMostLikely": 0, "postCostMax": 0, "postTimeMin": 0, "postTimeMostLikely": 0, "postTimeMax": 0 }
 Example with partial mitigation (residual reduced): postProbability = 30, postCost/postTime = 50% of pre; mitigationCost = 250000 (separate).`;
 
+function buildExtractSystem(
+  categories: string[],
+  guided?: GuidedExtractImpact,
+  structuredConversationAppendix?: string,
+): string {
+  const guidedBlock = buildGuidedImpactSection(guided);
+  const prefix = EXTRACT_SYSTEM_PREFIX.trimEnd();
+  const glue = guidedBlock !== "" ? `\n\n${guidedBlock}\n\n` : "\n\n";
+  const core = `${prefix}${glue}${buildExtractCategorySection(categories)}\n\n${EXTRACT_SYSTEM_SUFFIX.trimStart()}`;
+  if (structuredConversationAppendix !== undefined && structuredConversationAppendix.trim() !== "") {
+    return `${core}\n\n${structuredConversationAppendix}`;
+  }
+  return core;
+}
+
 export async function POST(req: Request) {
   const auth = await requireUser();
   if (auth instanceof NextResponse) return auth;
@@ -177,9 +285,43 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const documentText = typeof body?.documentText === "string" ? body.documentText : "";
+    const rawCategories = body?.categories;
+    const categories = Array.isArray(rawCategories)
+      ? rawCategories
+          .filter((c): c is string => typeof c === "string")
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+      : [];
     const rawProjectId = body?.projectId;
     const projectIdForUsage =
       typeof rawProjectId === "string" && rawProjectId.trim().length > 0 ? rawProjectId.trim() : null;
+
+    const rawGuidedClear = body?.guidedImpactClear;
+    const guidedImpactClearLegacy =
+      typeof rawGuidedClear === "boolean" ? rawGuidedClear : undefined;
+    const rawGuidedApplies = body?.guidedAppliesTo;
+    const guidedAppliesToLegacy =
+      rawGuidedApplies === "Cost" || rawGuidedApplies === "Time" || rawGuidedApplies === "Cost & Time"
+        ? rawGuidedApplies
+        : undefined;
+
+    const conversationStateParsed = parseConversationState(body?.conversationState);
+    const structuredAppendix =
+      conversationStateParsed !== null
+        ? buildStructuredConversationStateAppendix(conversationStateParsed)
+        : undefined;
+
+    let guidedExtract: GuidedExtractImpact | undefined;
+    if (conversationStateParsed !== null) {
+      guidedExtract = {
+        impactClear: conversationStateParsed.sufficiency.inherentClear,
+        appliesTo: conversationStateParsed.fields.impact.appliesTo,
+      };
+    } else if (guidedImpactClearLegacy !== undefined || guidedAppliesToLegacy !== undefined) {
+      guidedExtract = { impactClear: guidedImpactClearLegacy, appliesTo: guidedAppliesToLegacy };
+    } else {
+      guidedExtract = undefined;
+    }
 
     if (!documentText.trim()) {
       return NextResponse.json({ error: "documentText is required" }, { status: 400 });
@@ -194,7 +336,10 @@ export async function POST(req: Request) {
       model: "gpt-4o-mini",
       temperature: 0.2,
       messages: [
-        { role: "system", content: EXTRACT_SYSTEM },
+        {
+          role: "system",
+          content: buildExtractSystem(categories, guidedExtract, structuredAppendix),
+        },
         { role: "user", content: documentText },
       ],
     });

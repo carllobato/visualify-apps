@@ -6,12 +6,46 @@ const CONFIDENCE_VALUES = new Set<GuidedRiskConversationState["summary"]["confid
   "high",
 ]);
 
+function nonEmptyProbability(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "number" && !Number.isNaN(value)) return true;
+  if (typeof value === "string" && value.trim().length > 0) return true;
+  return false;
+}
+
+function nonEmptyText(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function deriveAppliesToFromInherent(
+  inherent: GuidedRiskConversationState["fields"]["inherent"],
+): GuidedRiskConversationState["fields"]["impact"]["appliesTo"] | undefined {
+  const hasCost = nonEmptyText(inherent.cost);
+  const hasTime = nonEmptyText(inherent.time);
+  if (hasCost && hasTime) return "Cost & Time";
+  if (hasCost) return "Cost";
+  if (hasTime) return "Time";
+  return undefined;
+}
+
 const MISSING_ORDER = [
   { key: "risk_clarity" as const, satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.riskClear },
-  { key: "category" as const, satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.categorySet },
-  { key: "impact" as const, satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.impactClear },
-  { key: "mitigation" as const, satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.mitigationClear },
-  { key: "owner" as const, satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.ownerSet },
+  {
+    key: "inherent" as const,
+    satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.inherentClear,
+  },
+  {
+    key: "mitigation" as const,
+    satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.mitigationClear,
+  },
+  {
+    key: "mitigation_in_place" as const,
+    satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.mitigationInPlaceClear,
+  },
+  {
+    key: "residual" as const,
+    satisfied: (s: GuidedRiskConversationState["sufficiency"]) => s.residualClear,
+  },
 ];
 
 export function normalizeGuidedRiskConversationState(
@@ -21,14 +55,22 @@ export function normalizeGuidedRiskConversationState(
   const confidence = CONFIDENCE_VALUES.has(rawConfidence) ? rawConfidence : "low";
 
   const { sufficiency: sIn } = state;
-  const readyToCreate =
-    sIn.riskClear &&
-    sIn.categorySet &&
-    sIn.impactClear &&
-    sIn.mitigationClear &&
-    sIn.ownerSet;
+  const inherent = { ...state.fields.inherent };
+  const residual = { ...state.fields.residual };
+
+  /** LLM flags alone are not enough — require concrete inherent P / cost / time text. */
+  const inherentClear =
+    sIn.inherentClear &&
+    nonEmptyProbability(inherent.probability) &&
+    nonEmptyText(inherent.cost) &&
+    nonEmptyText(inherent.time);
 
   const mitigation = { ...state.fields.mitigation };
+  if (mitigation.inPlace === true) {
+    mitigation.exists = true;
+  } else if (mitigation.inPlace === false) {
+    mitigation.exists = false;
+  }
   if (mitigation.status === "Monitoring" || mitigation.status === "Mitigating") {
     mitigation.exists = true;
   } else if (mitigation.status === "Open") {
@@ -37,8 +79,39 @@ export function normalizeGuidedRiskConversationState(
     mitigation.status = "Open";
   }
 
+  const mitigationClear =
+    sIn.mitigationClear && nonEmptyText(mitigation.description);
+
+  const inPlaceKnown = mitigation.inPlace === true || mitigation.inPlace === false;
+  const mitigationInPlaceClear = sIn.mitigationInPlaceClear && inPlaceKnown;
+
+  const residualClear =
+    sIn.residualClear &&
+    nonEmptyProbability(residual.probability) &&
+    nonEmptyText(residual.cost) &&
+    nonEmptyText(residual.time);
+
+  const appliesTo = inherentClear ? deriveAppliesToFromInherent(inherent) : undefined;
+  const impact = {
+    ...state.fields.impact,
+    ...(appliesTo !== undefined ? { appliesTo } : {}),
+    ...(nonEmptyText(inherent.cost) ? { costDetail: inherent.cost } : {}),
+    ...(nonEmptyText(inherent.time) ? { timeDetail: inherent.time } : {}),
+  };
+
+  const readyToCreate =
+    inherentClear &&
+    mitigationClear &&
+    mitigationInPlaceClear &&
+    residualClear &&
+    sIn.riskClear;
+
   const sufficiency: GuidedRiskConversationState["sufficiency"] = {
-    ...sIn,
+    riskClear: sIn.riskClear,
+    inherentClear,
+    mitigationClear,
+    mitigationInPlaceClear,
+    residualClear,
     readyToCreate,
   };
 
@@ -62,7 +135,9 @@ export function normalizeGuidedRiskConversationState(
     },
     fields: {
       ...state.fields,
-      impact: { ...state.fields.impact },
+      inherent,
+      residual,
+      impact,
       mitigation,
     },
     sufficiency,
