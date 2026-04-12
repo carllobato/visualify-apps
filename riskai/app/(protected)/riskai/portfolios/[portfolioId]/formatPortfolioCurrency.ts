@@ -1,4 +1,5 @@
 import type { ProjectCurrency } from "@/lib/projectContext";
+import type { PortfolioNeedsAttentionHealthRun } from "@/lib/dashboard/needsAttentionHealthRun";
 import type { RagStatus } from "@/lib/dashboard/projectTileServerData";
 import { formatCurrencyCompact } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
@@ -215,14 +216,30 @@ export function scheduleCoverageRatioRagStatus(ratio: number | null): RagStatus 
   return "green";
 }
 
-export function needsAttentionTileCopy(count: number): {
+function needsAttentionTileSubtext(health: PortfolioNeedsAttentionHealthRun): string {
+  const sim =
+    health.projectsWithActiveRisksCount === 0
+      ? "no active-risk projects"
+      : `${health.staleSimulationProjectCount}/${health.projectsWithActiveRisksCount} active projects not simulated this month (UTC)`;
+  const top =
+    health.topDriverPoolSize === 0
+      ? "no top cost/schedule driver pool"
+      : `${health.topDriversWithoutMitigationCount}/${health.topDriverPoolSize} top drivers lack mitigation`;
+  const reg = `${health.registerGapCount} register gap${health.registerGapCount === 1 ? "" : "s"}`;
+  const opp =
+    health.materialOpportunityProjectCount === 0
+      ? "no top-list mitigation upside"
+      : `${health.materialOpportunityProjectCount} project${health.materialOpportunityProjectCount === 1 ? "" : "s"} with material upside (monitoring)`;
+  return `Health run · ${sim} · ${top} · ${reg} · ${opp}`;
+}
+
+export function needsAttentionTileCopy(health: PortfolioNeedsAttentionHealthRun): {
   primaryValue: string;
   subtext: string;
   primaryValueClassName?: string;
   primaryRagDot: RagStatus;
 } {
-  const n = Math.max(0, count);
-  const rag: RagStatus = n === 0 ? "green" : n <= 3 ? "amber" : "red";
+  const rag = health.primaryRagDot as RagStatus;
   const primaryValueClassName =
     rag === "red"
       ? "text-[var(--ds-status-danger)]"
@@ -230,11 +247,8 @@ export function needsAttentionTileCopy(count: number): {
         ? "text-[var(--ds-status-warning)]"
         : "text-[var(--ds-status-success)]";
   return {
-    primaryValue: String(count),
-    subtext:
-      n === 0
-        ? "No currently high or extreme risks need attention"
-        : "Currently High / Extreme with no owner or no mitigation plan",
+    primaryValue: String(health.healthScore),
+    subtext: needsAttentionTileSubtext(health),
     primaryValueClassName,
     primaryRagDot: rag,
   };

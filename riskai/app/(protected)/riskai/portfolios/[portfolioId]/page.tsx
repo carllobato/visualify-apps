@@ -93,7 +93,7 @@ export default async function PortfolioOverviewPage({
     riskCategoryCounts,
     riskStatusCounts,
     riskOwnerCounts,
-    risksRequiringAttentionRows,
+    needsAttentionHealthRun,
   } = await loadPortfolioTopRiskConcentrationRows(supabase, portfolioId, reportingUnit);
 
   // Aggregate per-project cost exposure slices into a per-currency total in millions.
@@ -117,7 +117,7 @@ export default async function PortfolioOverviewPage({
     totalScheduleContingencyWeeks,
     scheduleCoverageRatio
   );
-  const needsAttentionTile = needsAttentionTileCopy(risksRequiringAttentionRows.length);
+  const needsAttentionTile = needsAttentionTileCopy(needsAttentionHealthRun);
 
   // Per-project coverage table: join contingency rows (all projects) with exposure slices (projects with cost risks).
   const exposureAbsByProjectId = new Map(projectCostExposureSlices.map((s) => [s.projectId, s.value]));
@@ -192,7 +192,7 @@ export default async function PortfolioOverviewPage({
         riskCategoryCounts={riskCategoryCounts}
         riskStatusCounts={riskStatusCounts}
         riskOwnerCounts={riskOwnerCounts}
-        risksRequiringAttentionRows={risksRequiringAttentionRows}
+        needsAttentionHealthRun={needsAttentionHealthRun}
       />
     </>
   );

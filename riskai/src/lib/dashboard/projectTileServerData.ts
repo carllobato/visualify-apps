@@ -45,8 +45,14 @@ import {
   preMitigationCostExpectedForOpportunity,
 } from "@/lib/opportunityMetrics";
 import type { PortfolioReportingFooterRow } from "@/lib/dashboard/reportingPositionRag";
+import {
+  computeNeedsAttentionHealthRun,
+  simulationTimestampInCurrentUtcMonth,
+  type PortfolioNeedsAttentionHealthRun,
+} from "@/lib/dashboard/needsAttentionHealthRun";
 
 export type { PortfolioReportingFooterRow };
+export type { PortfolioNeedsAttentionHealthRun } from "@/lib/dashboard/needsAttentionHealthRun";
 
 export type RagStatus = "green" | "amber" | "red";
 
@@ -679,6 +685,8 @@ export type PortfolioTopRiskConcentration = {
   riskStatusCounts: PortfolioRiskStatusCount[];
   riskOwnerCounts: PortfolioRiskOwnerCount[];
   risksRequiringAttentionRows: PortfolioRisksRequiringAttentionRow[];
+  /** Composite 0–100 health run for the Needs Attention KPI (tile + modal). */
+  needsAttentionHealthRun: PortfolioNeedsAttentionHealthRun;
 };
 
 /**
@@ -704,6 +712,16 @@ export async function loadPortfolioTopRiskConcentrationRows(
     riskStatusCounts: [],
     riskOwnerCounts: [],
     risksRequiringAttentionRows: [],
+    needsAttentionHealthRun: {
+      healthScore: 100,
+      primaryRagDot: "green",
+      projectsWithActiveRisksCount: 0,
+      staleSimulationProjectCount: 0,
+      topDriverPoolSize: 0,
+      topDriversWithoutMitigationCount: 0,
+      materialOpportunityProjectCount: 0,
+      registerGapCount: 0,
+    },
   };
 
   const { data: projects, error: pErr } = await supabase
@@ -734,10 +752,13 @@ export async function loadPortfolioTopRiskConcentrationRows(
     currencyByProject.set(pid, asProjectCurrency(row.currency));
   }
 
-  const { data: riskRowsRaw, error: rErr } = await supabase
-    .from("riskai_risks")
-    .select(RISK_DB_SELECT_COLUMNS)
-    .in("project_id", projectIds);
+  const [
+    { data: riskRowsRaw, error: rErr },
+    { data: snapshotRowsRaw, error: sErr },
+  ] = await Promise.all([
+    supabase.from("riskai_risks").select(RISK_DB_SELECT_COLUMNS).in("project_id", projectIds),
+    supabase.from("riskai_simulation_snapshots").select("project_id, created_at").in("project_id", projectIds),
+  ]);
 
   if (rErr) return empty;
 
@@ -747,7 +768,28 @@ export async function loadPortfolioTopRiskConcentrationRows(
     projectIdByRiskId.set(row.id, row.project_id);
   }
 
+  const latestSimulationAtByProject = new Map<string, string | null>();
+  for (const pid of projectIds) latestSimulationAtByProject.set(pid, null);
+  for (const row of snapshotRowsRaw ?? []) {
+    const raw = row as { project_id?: string; created_at?: string | null };
+    const pid = typeof raw.project_id === "string" ? raw.project_id : "";
+    if (!pid) continue;
+    const ca = typeof raw.created_at === "string" ? raw.created_at : null;
+    const cur = latestSimulationAtByProject.get(pid) ?? null;
+    if (cur == null || (ca != null && new Date(ca).getTime() > new Date(cur).getTime())) {
+      latestSimulationAtByProject.set(pid, ca);
+    }
+  }
+
   const allMapped = riskRows.map(mapRiskRowToDomain);
+
+  const activeRisksByProject = new Map<string, number>();
+  for (const risk of allMapped) {
+    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
+    const pid = projectIdByRiskId.get(risk.id);
+    if (!pid) continue;
+    activeRisksByProject.set(pid, (activeRisksByProject.get(pid) ?? 0) + 1);
+  }
 
   const activeRiskCount = allMapped.filter(isRiskActiveForPortfolioAnalytics).length;
 
@@ -956,6 +998,60 @@ export async function loadPortfolioTopRiskConcentrationRows(
     return a.riskTitle.localeCompare(b.riskTitle);
   });
 
+  const now = new Date();
+  let projectsWithActiveRisksCount = 0;
+  let staleSimulationProjectCount = 0;
+  if (sErr) {
+    for (const pid of projectIds) {
+      const n = activeRisksByProject.get(pid) ?? 0;
+      if (n <= 0) continue;
+      projectsWithActiveRisksCount += 1;
+      staleSimulationProjectCount += 1;
+    }
+  } else {
+    for (const pid of projectIds) {
+      const n = activeRisksByProject.get(pid) ?? 0;
+      if (n <= 0) continue;
+      projectsWithActiveRisksCount += 1;
+      const latest = latestSimulationAtByProject.get(pid) ?? null;
+      if (!simulationTimestampInCurrentUtcMonth(latest, now)) staleSimulationProjectCount += 1;
+    }
+  }
+
+  const topDriverIds = new Set<string>();
+  for (const r of costRows.slice(0, 5)) topDriverIds.add(r.riskId);
+  for (const r of scheduleRows.slice(0, 5)) topDriverIds.add(r.riskId);
+  const riskById = new Map(allMapped.map((x) => [x.id, x] as const));
+  let topDriversWithoutMitigationCount = 0;
+  for (const id of topDriverIds) {
+    const rk = riskById.get(id);
+    if (rk != null && !rk.mitigation?.trim()) topDriversWithoutMitigationCount += 1;
+  }
+  const topDriverPoolSize = topDriverIds.size;
+
+  const materialOppProjects = new Set<string>();
+  for (const r of costOpportunityRows) materialOppProjects.add(r.projectId);
+  for (const r of scheduleOpportunityRows) materialOppProjects.add(r.projectId);
+  const materialOpportunityProjectCount = materialOppProjects.size;
+
+  const registerGapCount = risksRequiringAttentionRows.length;
+  const { healthScore, primaryRagDot } = computeNeedsAttentionHealthRun({
+    staleSimulationProjectCount,
+    registerGapCount,
+    topDriversWithoutMitigationCount,
+  });
+
+  const needsAttentionHealthRun: PortfolioNeedsAttentionHealthRun = {
+    healthScore,
+    primaryRagDot,
+    projectsWithActiveRisksCount,
+    staleSimulationProjectCount,
+    topDriverPoolSize,
+    topDriversWithoutMitigationCount,
+    materialOpportunityProjectCount,
+    registerGapCount,
+  };
+
   const activeRiskSummaryRows = buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, riskRows);
   const activeRiskStatusSummaryRows = buildPortfolioProjectRiskStatusRowsFromRiskRows(projects, riskRows);
 
@@ -973,6 +1069,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
     riskStatusCounts,
     riskOwnerCounts,
     risksRequiringAttentionRows,
+    needsAttentionHealthRun,
   };
 }
 

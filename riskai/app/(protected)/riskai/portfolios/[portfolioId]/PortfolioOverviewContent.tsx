@@ -27,6 +27,7 @@ import {
   PortfolioRiskOwnerCountsTable,
 } from "@/components/dashboard/PortfolioRiskOwnerCountsTable";
 import type {
+  PortfolioNeedsAttentionHealthRun,
   PortfolioProjectCostExposureSlice,
   PortfolioProjectCoverageRow,
   PortfolioProjectRiskSeverityRow,
@@ -37,7 +38,6 @@ import type {
   PortfolioRiskCategoryCount,
   PortfolioRiskOwnerCount,
   PortfolioRiskStatusCount,
-  PortfolioRisksRequiringAttentionRow,
   PortfolioTopRiskRow,
   ProjectTilePayload,
   RagStatus,
@@ -242,8 +242,8 @@ type PortfolioOverviewContentProps = {
   riskStatusCounts: PortfolioRiskStatusCount[];
   /** Active risks by owner text — risks-by-owner bars. */
   riskOwnerCounts: PortfolioRiskOwnerCount[];
-  /** Needs Attention KPI modal — risks missing owner and/or mitigation. */
-  risksRequiringAttentionRows: PortfolioRisksRequiringAttentionRow[];
+  /** Composite health run (tile figure + modal score card). */
+  needsAttentionHealthRun: PortfolioNeedsAttentionHealthRun;
 };
 
 export function PortfolioOverviewContent({
@@ -282,7 +282,7 @@ export function PortfolioOverviewContent({
   riskCategoryCounts,
   riskStatusCounts,
   riskOwnerCounts,
-  risksRequiringAttentionRows,
+  needsAttentionHealthRun,
 }: PortfolioOverviewContentProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -687,7 +687,7 @@ export function PortfolioOverviewContent({
         activeRiskStatusSummaryRows={activeRiskStatusSummaryRows}
         coverageRatioRows={coverageRatioRows}
         scheduleCoverageRows={scheduleCoverageRows}
-        risksRequiringAttentionRows={risksRequiringAttentionRows}
+        needsAttentionHealthRun={needsAttentionHealthRun}
         renderSlideBodyByIndex={renderPortfolioOverviewSlideBody}
       />
     </main>

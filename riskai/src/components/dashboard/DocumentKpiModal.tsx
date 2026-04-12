@@ -6,13 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
+import { buildNeedsAttentionScoreCard } from "@/lib/dashboard/needsAttentionHealthRun";
 import {
   sortProjectTilesByRag,
+  type PortfolioNeedsAttentionHealthRun,
   type PortfolioProjectCoverageRow,
   type PortfolioProjectRiskStatusRow,
   type PortfolioProjectScheduleCoverageRow,
   type PortfolioReportingFooterRow,
-  type PortfolioRisksRequiringAttentionRow,
   type ProjectTilePayload,
   type RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
@@ -24,7 +25,6 @@ import {
 } from "@/lib/portfolio/reportingPreferences";
 import { riskaiPath } from "@/lib/routes";
 import {
-  Badge,
   Button,
   Card,
   CardBody,
@@ -69,8 +69,8 @@ type DocumentKpiModalProps = {
   coverageRatioRows?: PortfolioProjectCoverageRow[];
   /** Per-project schedule exposure, contingency (weeks), and coverage — Schedule Exposure & Coverage KPI modal. */
   scheduleCoverageRows?: PortfolioProjectScheduleCoverageRow[];
-  /** Needs Attention KPI modal — high/extreme risks missing owner and/or mitigation text. */
-  risksRequiringAttentionRows?: PortfolioRisksRequiringAttentionRow[];
+  /** Health run score card (Needs Attention KPI modal). */
+  needsAttentionHealthRun?: PortfolioNeedsAttentionHealthRun;
   /** Portfolio Σ held vs Σ at-target-P row for Portfolio Risk Rating modal. */
   portfolioReportingFooter?: PortfolioReportingFooterRow | null;
   /**
@@ -408,35 +408,6 @@ function formatScheduleContingencyWeeksLabel(weeks: number | null): string {
   return `${w} weeks`;
 }
 
-const RATING_BADGE_CIRCLE =
-  "!inline-flex !h-7 !w-7 !min-h-[1.75rem] !min-w-[1.75rem] !rounded-full !p-0 items-center justify-center text-[length:var(--ds-text-xs)]";
-
-type DsBadgeTone = {
-  status: "neutral" | "success" | "warning" | "danger" | "info";
-  variant: "subtle" | "strong";
-};
-
-function ratingLetterToBadgeTone(letter: "L" | "M" | "H" | "E"): DsBadgeTone {
-  switch (letter) {
-    case "L":
-      return { status: "success", variant: "subtle" };
-    case "M":
-      return { status: "warning", variant: "subtle" };
-    case "H":
-      return { status: "danger", variant: "subtle" };
-    case "E":
-      return { status: "danger", variant: "strong" };
-  }
-}
-
-function badgeToneForRatingLetter(letter: string): DsBadgeTone {
-  if (letter === "N/A") return { status: "neutral", variant: "subtle" };
-  if (letter === "L" || letter === "M" || letter === "H" || letter === "E") {
-    return ratingLetterToBadgeTone(letter);
-  }
-  return { status: "neutral", variant: "subtle" };
-}
-
 /** Portfolio overview combined financial KPI — must match `kpiTiles` title in `PortfolioOverviewContent`. */
 export const COST_COVERAGE_COMBINED_TILE_TITLE = "Cost Exposure & Coverage";
 
@@ -538,108 +509,81 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
   );
 }
 
-function PortfolioNeedsAttentionKpiModalBody({ rows }: { rows: PortfolioRisksRequiringAttentionRow[] }) {
-  const router = useRouter();
-
-  if (rows.length === 0) {
-    return (
-      <p className="ds-kpi-modal-empty">
-        No active risks currently rated High or Extreme are missing an owner or a mitigation description.
-      </p>
-    );
-  }
-
-  const goToRiskDetail = (projectId: string, riskId: string) => {
-    const q = new URLSearchParams({ openRiskId: riskId });
-    router.push(riskaiPath(`/projects/${projectId}/risks?${q.toString()}`));
-  };
-
-  const goToRegister = (projectId: string) => {
-    router.push(riskaiPath(`/projects/${projectId}/risks`));
-  };
+function PortfolioNeedsAttentionKpiModalBody({ health }: { health: PortfolioNeedsAttentionHealthRun }) {
+  const { lines, opportunityDetail, totalPenalty } = buildNeedsAttentionScoreCard(health);
+  const rag = health.primaryRagDot as RagStatus;
 
   return (
-    <>
-      <p className="ds-kpi-modal-lead">
-        Current register rating High or Extreme, where the risk has no owner and/or no mitigation description.
-        Open and Monitoring risks use pre-mitigation values; Mitigating risks use post-mitigation values.
-      </p>
-      <Card className="overflow-x-auto overflow-y-hidden border-[var(--ds-border-subtle)] p-0">
-        <Table className={`${KPI_MODAL_REGISTER_TABLE_CLASS} min-w-[40rem]`}>
-          <caption className="sr-only">Risks requiring attention</caption>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell className="align-middle">Project</TableHeaderCell>
-              <TableHeaderCell className="align-middle">Risk</TableHeaderCell>
-              <TableHeaderCell className="align-middle w-[5.25rem]">Rating</TableHeaderCell>
-              <TableHeaderCell className="align-middle">Owner</TableHeaderCell>
-              <TableHeaderCell className="align-middle min-w-[12rem]">Issue</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => {
-              const ratingTone = badgeToneForRatingLetter(r.rating);
-              return (
-                <TableRow
-                  key={r.riskId}
-                  className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
-                  tabIndex={0}
-                  role="button"
-                  aria-label={`Open risk ${r.riskTitle}`}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).closest("[data-portfolio-attention-project-link]")) return;
-                    goToRiskDetail(r.projectId, r.riskId);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      if ((e.target as HTMLElement).closest("[data-portfolio-attention-project-link]")) return;
-                      goToRiskDetail(r.projectId, r.riskId);
-                    }
-                  }}
-                >
-                  <TableCell className="min-w-0 max-w-[14rem] align-middle">
-                    <button
-                      type="button"
-                      data-portfolio-attention-project-link
-                      className="block min-w-0 max-w-full cursor-pointer truncate bg-transparent p-0 text-left font-medium text-[var(--ds-text-primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)]"
-                      title={r.projectName}
-                      aria-label={`Open risk register for ${r.projectName}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        goToRegister(r.projectId);
-                      }}
-                    >
-                      {r.projectName}
-                    </button>
-                  </TableCell>
-                  <TableCell className="min-w-0 align-middle">
-                    <span className="block min-w-0 truncate text-[var(--ds-text-secondary)]" title={r.riskTitle}>
-                      {r.riskTitle}
-                    </span>
-                  </TableCell>
-                  <TableCell className="w-[5.25rem] max-w-[5.25rem] shrink-0 overflow-hidden align-middle px-2">
-                    <span title={r.rating === "N/A" ? "Rating: N/A" : `Rating: ${r.rating}`}>
-                      <Badge status={ratingTone.status} variant={ratingTone.variant} className={RATING_BADGE_CIRCLE}>
-                        {r.rating}
-                      </Badge>
-                    </span>
-                  </TableCell>
-                  <TableCell className="min-w-0 max-w-[10rem] align-middle text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]">
-                    <span className="block truncate" title={r.ownerDisplay}>
-                      {r.ownerDisplay}
-                    </span>
-                  </TableCell>
-                  <TableCell className="min-w-0 align-middle text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-                    {r.issueLabel}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </Card>
-    </>
+    <Card className="overflow-hidden border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] p-0 shadow-[var(--ds-elevation-tile)]">
+      <div className="border-b border-[var(--ds-border-subtle)] px-5 py-5 sm:px-6 sm:py-6">
+        <p className="m-0 text-xs font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">Portfolio health run</p>
+        <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-2">
+          <span className="inline-flex items-center gap-2" title={`RAG ${ragWord(rag)}`}>
+            <span className="inline-flex shrink-0 items-center" aria-hidden>
+              <span className={`size-[0.75rem] shrink-0 rounded-full ${ragDotClass(rag)}`} />
+            </span>
+            <span className="text-5xl font-semibold tabular-nums leading-none tracking-tight text-[var(--ds-text-primary)]">
+              {health.healthScore}
+            </span>
+            <span className="pb-0.5 text-base font-medium text-[var(--ds-text-muted)]">/ 100</span>
+          </span>
+          <span className="pb-0.5 text-sm text-[var(--ds-text-secondary)]">
+            −{totalPenalty} pts total · Open / Monitoring use pre-mitigation ratings; Mitigating uses post-mitigation
+          </span>
+        </div>
+      </div>
+
+      <div className="px-5 py-5 sm:px-6 sm:py-6" role="list">
+        {lines.map((line) => {
+          const pct = line.maxPenalty > 0 ? Math.min(100, (line.appliedPenalty / line.maxPenalty) * 100) : 0;
+          const barTone =
+            line.appliedPenalty === 0
+              ? "bg-[color-mix(in_oklab,var(--ds-surface-muted)_90%,transparent)]"
+              : line.appliedPenalty >= line.maxPenalty
+                ? "bg-[var(--ds-status-danger)]"
+                : "bg-[var(--ds-status-warning)]";
+          return (
+            <div
+              key={line.id}
+              role="listitem"
+              className="border-b border-[var(--ds-border-subtle)] py-5 last:border-b-0 last:pb-0 first:pt-0"
+            >
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                <div className="min-w-0 flex-1">
+                  <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+                    {line.title}
+                  </h3>
+                  <p className="mt-1.5 m-0 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                    {line.detail}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right sm:pt-0.5">
+                  <span className="tabular-nums text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+                    −{line.appliedPenalty}
+                  </span>
+                  <span className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]"> / {line.maxPenalty} pts</span>
+                </div>
+              </div>
+              <div
+                className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,transparent)]"
+                aria-hidden
+              >
+                <div className={`h-full rounded-full transition-[width] ${barTone}`} style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="mt-6 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_55%,transparent)] px-4 py-3">
+          <p className="m-0 text-xs font-semibold uppercase tracking-wide text-[var(--ds-text-muted)]">
+            Mitigation upside (informational)
+          </p>
+          <p className="mt-1.5 m-0 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+            {opportunityDetail}
+          </p>
+        </div>
+      </div>
+    </Card>
   );
 }
 
@@ -772,7 +716,7 @@ export function DocumentKpiModal({
   activeRiskStatusSummaryRows,
   coverageRatioRows,
   scheduleCoverageRows,
-  risksRequiringAttentionRows,
+  needsAttentionHealthRun,
   renderSlideBodyByIndex,
 }: DocumentKpiModalProps) {
   const last = Math.max(0, tiles.length - 1);
@@ -845,7 +789,7 @@ export function DocumentKpiModal({
   const showCostCoverageCombinedDetail =
     current?.title === COST_COVERAGE_COMBINED_TILE_TITLE && coverageRatioRows != null;
 
-  const showNeedsAttentionDetail = current?.title === "Needs Attention" && risksRequiringAttentionRows != null;
+  const showNeedsAttentionDetail = current?.title === "Needs Attention" && needsAttentionHealthRun != null;
 
   const slideBodyOverride = renderSlideBodyByIndex?.(safeIndex) ?? null;
 
@@ -913,9 +857,9 @@ export function DocumentKpiModal({
               <div className="w-full min-w-0">
                 <PortfolioActiveRisksKpiModalBody rows={activeRiskStatusSummaryRows} />
               </div>
-            ) : showNeedsAttentionDetail && risksRequiringAttentionRows != null ? (
+            ) : showNeedsAttentionDetail && needsAttentionHealthRun != null ? (
               <div className="w-full min-w-0">
-                <PortfolioNeedsAttentionKpiModalBody rows={risksRequiringAttentionRows} />
+                <PortfolioNeedsAttentionKpiModalBody health={needsAttentionHealthRun} />
               </div>
             ) : showCostCoverageCombinedDetail && coverageRatioRows != null ? (
               <div className="w-full min-w-0">

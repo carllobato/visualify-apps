@@ -117,6 +117,7 @@ function makeSupabase(risks: RiskRow[]): SupabaseClient {
     visualify_projects: [{ id: "project-1", name: "Project 1", portfolio_id: "portfolio-1" }],
     visualify_project_settings: [{ project_id: "project-1", currency: "AUD" }],
     riskai_risks: risks,
+    riskai_simulation_snapshots: [],
   }) as unknown as SupabaseClient;
 }
 
@@ -250,6 +251,9 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
         issueLabel: "No owner; no mitigation plan",
       },
     ]);
+    assert.strictEqual(result.needsAttentionHealthRun.registerGapCount, 1);
+    assert.strictEqual(result.needsAttentionHealthRun.staleSimulationProjectCount, 1);
+    assert.strictEqual(result.needsAttentionHealthRun.projectsWithActiveRisksCount, 1);
   });
 });
 
