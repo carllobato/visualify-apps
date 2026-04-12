@@ -1,13 +1,14 @@
 import type { Risk } from "@/domain/risk/risk.schema";
-import { probability01FromScale } from "@/domain/risk/risk.logic";
+import {
+  SCHEDULE_IMPACT_DAYS_CAP,
+  scheduleImpactDaysMLCappedForMonteCarlo,
+} from "@/domain/risk/riskFieldSemantics";
+import { riskTriggerProbability01 } from "@/domain/risk/risk.logic";
 import type { SimulationRiskSnapshot, SimulationSnapshot } from "@/domain/simulation/simulation.types";
 import { makeId } from "@/lib/id";
 
 const DEFAULT_ITERATIONS = 10000;
 const DEFAULT_COST_SPREAD_PCT = 0.2;
-
-/** Schedule impact (days) is clamped to 0–30 for simulation. */
-const SCHEDULE_IMPACT_DAYS_CAP = 30;
 
 /** Sample from triangular distribution (min, mode, max). Returns mode if min === max. */
 function triangular(min: number, mode: number, max: number): number {
@@ -16,14 +17,6 @@ function triangular(min: number, mode: number, max: number): number {
   const c = (mode - min) / (max - min);
   if (u <= c) return min + Math.sqrt(u * (max - min) * (mode - min));
   return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
-}
-
-/** Probability for simulation: prefer risk.probability (0–1, scenario-adjusted) when present; else 1–5 scale from ratings. */
-function getSimProbability(risk: Risk): number {
-  if (typeof risk.probability === "number" && Number.isFinite(risk.probability) && risk.probability >= 0 && risk.probability <= 1)
-    return risk.probability;
-  const scale = risk.residualRating?.probability ?? risk.inherentRating?.probability ?? 3;
-  return probability01FromScale(scale);
 }
 
 /** Cost for simulation: post ML if mitigated and set, else pre ML, else consequence mapping. */
@@ -39,14 +32,7 @@ function getSimCostML(risk: Risk): number {
 }
 
 function scheduleDaysMLFromRisk(risk: Risk): number {
-  const hasMitigation = Boolean(risk.mitigation?.trim());
-  const rawDays =
-    hasMitigation && typeof risk.postMitigationTimeML === "number" && Number.isFinite(risk.postMitigationTimeML)
-      ? risk.postMitigationTimeML
-      : typeof risk.preMitigationTimeML === "number" && Number.isFinite(risk.preMitigationTimeML)
-        ? risk.preMitigationTimeML
-        : 0;
-  return Math.min(SCHEDULE_IMPACT_DAYS_CAP, Math.max(0, rawDays));
+  return scheduleImpactDaysMLCappedForMonteCarlo(risk);
 }
 
 function costFromConsequence(consequence: unknown): number {
@@ -116,7 +102,7 @@ export function simulatePortfolio(
     let totalCost = 0;
     let totalDays = 0;
     for (const risk of risks) {
-      const probability = getSimProbability(risk);
+      const probability = riskTriggerProbability01(risk);
       const costML = getSimCostML(risk);
       const scheduleDaysML = scheduleDaysMLFromRisk(risk);
 
@@ -162,7 +148,7 @@ export function simulatePortfolio(
   const p90 = costSamples[Math.floor(iterations * 0.9)] ?? 0;
 
   const riskSnapshots: SimulationRiskSnapshot[] = risks.map((risk) => {
-    const probability = getSimProbability(risk);
+    const probability = riskTriggerProbability01(risk);
     const costML = getSimCostML(risk);
     const scheduleDaysML = scheduleDaysMLFromRisk(risk);
     const expectedCost = probability * costML;

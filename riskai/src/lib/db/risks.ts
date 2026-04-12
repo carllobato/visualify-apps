@@ -22,7 +22,7 @@ function isUuid(s: string): boolean {
 }
 
 /**
- * Map a DB row to domain Risk (for listRisks).
+ * Map a DB row to domain Risk (for listRisks and server loaders).
  */
 function rowToRisk(row: RiskRow): Risk {
   const preConsequence = Math.max(
@@ -65,6 +65,11 @@ function rowToRisk(row: RiskRow): Risk {
     updatedAt: row.updated_at,
     scoreHistory: [],
   };
+}
+
+/** Public alias for server-side portfolio loaders and tests. */
+export function mapRiskRowToDomain(row: RiskRow): Risk {
+  return rowToRisk(row);
 }
 
 export type RiskInsertRow = {

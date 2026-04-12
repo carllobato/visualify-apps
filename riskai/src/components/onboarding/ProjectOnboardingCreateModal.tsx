@@ -180,7 +180,12 @@ export function ProjectOnboardingCreateModal({
       aria-modal="true"
       aria-labelledby="project-onboarding-create-title"
     >
-      <div className="ds-onboarding-modal-panel max-h-[85vh] overflow-y-auto">
+      {/*
+        Scroll the inner region only: putting overflow-y on the panel clips border-radius + box-shadow
+        against the frosted backdrop (noticeable on step 5+ and invite). Outer keeps the full “card” ring.
+      */}
+      <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         <div className="ds-onboarding-modal-panel-header">
           <div className="min-w-0 flex-1 space-y-1">
             <OnboardingStepLabel step={step} of={PROJECT_ONBOARDING_STEP_TOTAL} />
@@ -412,6 +417,7 @@ export function ProjectOnboardingCreateModal({
             }
           />
         </form>
+        </div>
       </div>
     </div>
   );

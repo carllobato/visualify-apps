@@ -45,7 +45,7 @@ export default async function DashboardPage() {
     const projectsResult = await getAccessibleProjects(supabase, user.id, portfolioIds);
     projects = projectsResult.ok ? projectsResult.projects : [];
     projectTiles = projectsResult.ok
-      ? sortProjectTilesAlphabetically(await getProjectTilePayloads(supabase, projects))
+      ? sortProjectTilesAlphabetically((await getProjectTilePayloads(supabase, projects)).projectTilePayloads)
       : [];
   }
 

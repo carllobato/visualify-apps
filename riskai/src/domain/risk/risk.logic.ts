@@ -45,6 +45,23 @@ export function probability01FromScale(scale: number): number {
   return probabilityScaleToDisplayPct(scale) / 100;
 }
 
+/**
+ * Trigger probability for Monte Carlo and portfolio expected schedule/cost exposure.
+ * Prefer explicit `risk.probability` (0–1); else 1–5 scale from residual, then inherent (same as `simulatePortfolio`).
+ */
+export function riskTriggerProbability01(risk: Risk): number {
+  if (
+    typeof risk.probability === "number" &&
+    Number.isFinite(risk.probability) &&
+    risk.probability >= 0 &&
+    risk.probability <= 1
+  ) {
+    return risk.probability;
+  }
+  const scale = risk.residualRating?.probability ?? risk.inherentRating?.probability ?? 3;
+  return probability01FromScale(scale);
+}
+
 /** Cost basis for forward exposure when no explicit scenario field: post ML if mitigated, else pre ML, else default. */
 export function effectiveForwardCostImpact(risk: Risk, fallback = 100_000): number {
   const hasMitigation = Boolean(risk.mitigation?.trim());

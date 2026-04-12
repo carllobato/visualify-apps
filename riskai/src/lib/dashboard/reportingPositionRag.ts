@@ -1,0 +1,350 @@
+/**
+ * Server-side approximation of Simulation page “Overall position” → portfolio tile RAG.
+ *
+ * TODO: Revisit and harden — share one implementation with `SimulationPageContent` (same CDF
+ * construction, snapshot selection, and edge cases), consider persisting reporting position at
+ * lock time to avoid drift and reduce portfolio load.
+ */
+import type { MonteCarloNeutralSnapshot } from "@/domain/simulation/simulation.types";
+import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
+import type { ProjectContext, ProjectCurrency } from "@/lib/projectContext";
+import { parseProjectContext, riskAppetiteToPercent } from "@/lib/projectContext";
+import { neutralSnapshotFromDbRow } from "@/lib/simulationNeutralFromDbRow";
+import {
+  binSamplesIntoHistogram,
+  binSamplesIntoTimeHistogram,
+  costAtPercentile,
+  deriveCostHistogramFromPercentiles,
+  deriveTimeHistogramFromPercentiles,
+  distributionToCostCdf,
+  distributionToTimeCdf,
+  percentileAtCost,
+  percentileAtTime,
+  timeAtPercentile,
+} from "@/lib/simulationDisplayUtils";
+
+/** Aligned with `SimulationPageContent` (`DISTRIBUTION_BIN_COUNT`). */
+const DISTRIBUTION_BIN_COUNT = 100;
+
+type PortfolioRag = "green" | "amber" | "red";
+
+export type ReportingLineSeverity = "on" | "risk" | "off";
+
+export type ReportingPositionBreakdown = {
+  rag: PortfolioRag;
+  costLine: ReportingLineSeverity | null;
+  timeLine: ReportingLineSeverity | null;
+  overallStatus: "On Track" | "At Risk" | "Off Track";
+};
+
+/** Portfolio total row in the KPI modal — aggregate held vs at-target-P (single currency only). */
+export type PortfolioReportingFooterRow = {
+  costStatus: string;
+  timeStatus: string;
+  overallStatus: "On Track" | "At Risk" | "Off Track";
+  rag: PortfolioRag;
+};
+
+type LineSeverity = ReportingLineSeverity;
+
+function cdfsFromNeutralForReporting(neutral: MonteCarloNeutralSnapshot): {
+  costCdf: ReturnType<typeof distributionToCostCdf>;
+  timeCdf: ReturnType<typeof distributionToTimeCdf>;
+} {
+  const s = neutral.summary;
+  const costCdf =
+    neutral.costSamples.length > 0
+      ? distributionToCostCdf(binSamplesIntoHistogram(neutral.costSamples, DISTRIBUTION_BIN_COUNT))
+      : distributionToCostCdf(
+          deriveCostHistogramFromPercentiles(
+            {
+              p20Cost: s.p20Cost,
+              p50Cost: s.p50Cost,
+              p80Cost: s.p80Cost,
+              p90Cost: s.p90Cost,
+            },
+            DISTRIBUTION_BIN_COUNT
+          )
+        );
+  const timeCdf =
+    neutral.timeSamples.length > 0
+      ? distributionToTimeCdf(binSamplesIntoTimeHistogram(neutral.timeSamples, DISTRIBUTION_BIN_COUNT))
+      : distributionToTimeCdf(
+          deriveTimeHistogramFromPercentiles(
+            {
+              p20Time: s.p20Time,
+              p50Time: s.p50Time,
+              p80Time: s.p80Time,
+              p90Time: s.p90Time,
+            },
+            DISTRIBUTION_BIN_COUNT
+          )
+        );
+  return { costCdf, timeCdf };
+}
+
+function lineStatus(current: number | null, target: number): LineSeverity | null {
+  if (current == null) return null;
+  if (current >= target) return "on";
+  if (current >= target - 10) return "risk";
+  return "off";
+}
+
+/** Display label for a cost/time line (simulation position bands). */
+export function formatReportingLineStatus(line: ReportingLineSeverity | null): string {
+  if (line == null) return "—";
+  if (line === "on") return "On track";
+  if (line === "risk") return "At risk";
+  return "Off track";
+}
+
+/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
+function targetCompletionDateFromDb(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return "";
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
+  const raw = {
+    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    location:
+      row.location !== undefined && row.location !== null && typeof row.location === "string"
+        ? row.location.trim()
+        : undefined,
+    plannedDuration_months: row.planned_duration_months,
+    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+    scheduleContingency_weeks: row.schedule_contingency_weeks,
+    riskAppetite: row.risk_appetite,
+    currency: row.currency,
+    financialUnit: row.financial_unit,
+    projectValue_input: row.project_value_input,
+    contingencyValue_input: row.contingency_value_input,
+  };
+  return parseProjectContext(raw);
+}
+
+export type ReportingFundingScalars = {
+  currency: ProjectCurrency;
+  /** Contingency held in dollars (from project settings). */
+  contingencyDollars: number;
+  /** Simulated total cost at risk-appetite target P (reporting run). */
+  costAtTargetPDollars: number | null;
+  scheduleContingencyDays: number | null;
+  /** Simulated schedule (delay days) at target P. */
+  timeAtTargetPDays: number | null;
+  targetPNumeric: number;
+};
+
+/** Values for “held vs at-target-P” comparisons (same CDFs as position breakdown). */
+export function reportingFundingScalars(
+  lockedRow: SimulationSnapshotRow,
+  ctx: ProjectContext
+): ReportingFundingScalars | null {
+  const neutral = neutralSnapshotFromDbRow(lockedRow);
+  if (!neutral) return null;
+  const { costCdf, timeCdf } = cdfsFromNeutralForReporting(neutral);
+  const targetPNumeric = riskAppetiteToPercent(ctx.riskAppetite);
+
+  const contingencyDollars =
+    ctx != null && Number.isFinite(ctx.contingencyValue_m) ? ctx.contingencyValue_m * 1e6 : 0;
+
+  let costAtTargetPDollars: number | null = null;
+  if (costCdf.length > 0) {
+    const v = costAtPercentile(costCdf, targetPNumeric);
+    costAtTargetPDollars = v != null && Number.isFinite(v) ? v : null;
+  }
+
+  let timeAtTargetPDays: number | null = null;
+  if (timeCdf.length > 0) {
+    const v = timeAtPercentile(timeCdf, targetPNumeric);
+    timeAtTargetPDays = v != null && Number.isFinite(v) ? v : null;
+  }
+
+  const w = ctx.scheduleContingency_weeks;
+  const scheduleContingencyDays =
+    Number.isFinite(w) && w != null && w >= 0 ? w * 7 : null;
+
+  return {
+    currency: ctx.currency,
+    contingencyDollars,
+    costAtTargetPDollars,
+    scheduleContingencyDays,
+    timeAtTargetPDays,
+    targetPNumeric,
+  };
+}
+
+/**
+ * Portfolio aggregate row: Σ contingency held vs Σ simulated cost at target P (cost);
+ * Σ schedule contingency days vs Σ delay at target P (time). Same P-band rules as project rows.
+ * Returns null for mixed currencies or when no reporting projects contribute usable sums.
+ */
+export function computePortfolioReportingFooter(rows: ReportingFundingScalars[]): PortfolioReportingFooterRow | null {
+  if (rows.length === 0) return null;
+  const currency0 = rows[0].currency;
+  for (const r of rows) {
+    if (r.currency !== currency0) return null;
+  }
+
+  let heldCost = 0;
+  let reqCost = 0;
+  let heldTime = 0;
+  let reqTime = 0;
+  let targetSum = 0;
+
+  for (const r of rows) {
+    targetSum += r.targetPNumeric;
+    heldCost += r.contingencyDollars;
+    if (r.costAtTargetPDollars != null && Number.isFinite(r.costAtTargetPDollars) && r.costAtTargetPDollars > 0) {
+      reqCost += r.costAtTargetPDollars;
+    }
+    const tHeld =
+      r.scheduleContingencyDays != null && Number.isFinite(r.scheduleContingencyDays)
+        ? r.scheduleContingencyDays
+        : 0;
+    heldTime += Math.max(0, tHeld);
+    if (r.timeAtTargetPDays != null && Number.isFinite(r.timeAtTargetPDays) && r.timeAtTargetPDays > 0) {
+      reqTime += r.timeAtTargetPDays;
+    }
+  }
+
+  const targetP = Math.round(targetSum / rows.length);
+
+  let costLine: LineSeverity | null = null;
+  if (reqCost > 0) {
+    const rawP = Math.round((heldCost / reqCost) * 100);
+    const currentP = Math.min(100, rawP);
+    costLine = lineStatus(currentP, targetP);
+  }
+
+  let timeLine: LineSeverity | null = null;
+  if (reqTime > 0) {
+    const rawP = Math.round((heldTime / reqTime) * 100);
+    const currentP = Math.min(100, rawP);
+    timeLine = lineStatus(currentP, targetP);
+  }
+
+  const severities: LineSeverity[] = [];
+  if (costLine != null) severities.push(costLine);
+  if (timeLine != null) severities.push(timeLine);
+  if (severities.length === 0) return null;
+
+  let worstRank = 2;
+  for (const s of severities) {
+    const rank = s === "off" ? 0 : s === "risk" ? 1 : 2;
+    if (rank < worstRank) worstRank = rank;
+  }
+  const overallStatus: PortfolioReportingFooterRow["overallStatus"] =
+    worstRank === 0 ? "Off Track" : worstRank === 1 ? "At Risk" : "On Track";
+  const rag: PortfolioRag = worstRank === 0 ? "red" : worstRank === 1 ? "amber" : "green";
+
+  return {
+    costStatus: formatReportingLineStatus(costLine),
+    timeStatus: formatReportingLineStatus(timeLine),
+    overallStatus,
+    rag,
+  };
+}
+
+/**
+ * Full cost/time/overcome breakdown from latest **reporting-locked** snapshot + settings
+ * (same bands as `projectPositionMetrics` on the simulation page).
+ */
+export function reportingPositionBreakdownFromLockedSnapshot(
+  lockedRow: SimulationSnapshotRow,
+  ctx: ProjectContext
+): ReportingPositionBreakdown | null {
+  const neutral = neutralSnapshotFromDbRow(lockedRow);
+  if (!neutral) return null;
+  const { costCdf, timeCdf } = cdfsFromNeutralForReporting(neutral);
+  const targetPNumeric = riskAppetiteToPercent(ctx.riskAppetite);
+
+  const approvedBudgetBase = ctx.approvedBudget_m * 1e6;
+  const contingencyValueDollars =
+    ctx != null && Number.isFinite(ctx.contingencyValue_m) ? ctx.contingencyValue_m * 1e6 : null;
+  const costRef =
+    contingencyValueDollars != null && Number.isFinite(contingencyValueDollars)
+      ? contingencyValueDollars
+      : approvedBudgetBase;
+
+  const plannedDurationDays = (ctx.plannedDuration_months * 365) / 12;
+  const w = ctx.scheduleContingency_weeks;
+  const scheduleContingencyDays =
+    Number.isFinite(w) && w != null && w >= 0 ? w * 7 : null;
+  const timeRef =
+    scheduleContingencyDays != null && Number.isFinite(scheduleContingencyDays)
+      ? scheduleContingencyDays
+      : plannedDurationDays;
+
+  let costCurrentP: number | null = null;
+  if (costCdf.length > 0 && costRef != null && costRef > 0) {
+    const p = percentileAtCost(costCdf, costRef);
+    costCurrentP = p != null ? Math.round(p) : null;
+  }
+
+  let timeCurrentP: number | null = null;
+  if (timeCdf.length > 0 && timeRef != null && timeRef > 0) {
+    const p = percentileAtTime(timeCdf, timeRef);
+    timeCurrentP = p != null ? Math.round(p) : null;
+  }
+
+  const c = lineStatus(costCurrentP, targetPNumeric);
+  const t = lineStatus(timeCurrentP, targetPNumeric);
+  const severities: LineSeverity[] = [];
+  if (c != null) severities.push(c);
+  if (t != null) severities.push(t);
+  if (severities.length === 0) return null;
+
+  let worstRank = 2;
+  for (const s of severities) {
+    const r = s === "off" ? 0 : s === "risk" ? 1 : 2;
+    if (r < worstRank) worstRank = r;
+  }
+  const overallStatus: ReportingPositionBreakdown["overallStatus"] =
+    worstRank === 0 ? "Off Track" : worstRank === 1 ? "At Risk" : "On Track";
+  const rag: PortfolioRag = worstRank === 0 ? "red" : worstRank === 1 ? "amber" : "green";
+
+  return { rag, costLine: c, timeLine: t, overallStatus };
+}
+
+export function reportingPositionRagFromLockedSnapshot(
+  lockedRow: SimulationSnapshotRow,
+  ctx: ProjectContext
+): PortfolioRag | null {
+  return reportingPositionBreakdownFromLockedSnapshot(lockedRow, ctx)?.rag ?? null;
+}
+
+export function tryReportingBreakdownFromLockedRowAndSettings(
+  lockedRow: SimulationSnapshotRow | null | undefined,
+  settingsRow: Record<string, unknown> | null | undefined
+): ReportingPositionBreakdown | null {
+  if (!lockedRow || !settingsRow) return null;
+  const ctx = projectContextFromSettingsRow(settingsRow);
+  if (!ctx) return null;
+  return reportingPositionBreakdownFromLockedSnapshot(lockedRow, ctx);
+}
+
+export function tryReportingRagFromLockedRowAndSettings(
+  lockedRow: SimulationSnapshotRow | null | undefined,
+  settingsRow: Record<string, unknown> | null | undefined
+): PortfolioRag | null {
+  return tryReportingBreakdownFromLockedRowAndSettings(lockedRow, settingsRow)?.rag ?? null;
+}
+
+export function tryReportingFundingScalars(
+  lockedRow: SimulationSnapshotRow | null | undefined,
+  settingsRow: Record<string, unknown> | null | undefined
+): ReportingFundingScalars | null {
+  if (!lockedRow || !settingsRow) return null;
+  const ctx = projectContextFromSettingsRow(settingsRow);
+  if (!ctx) return null;
+  return reportingFundingScalars(lockedRow, ctx);
+}

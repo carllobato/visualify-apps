@@ -24,6 +24,11 @@ describe("formatDurationDays", () => {
     assert.strictEqual(formatDurationDays(7), "7 days"); // under 14
   });
 
+  it("14+ days can use two decimals for ranked lists", () => {
+    assert.strictEqual(formatDurationDays(14, { weekDecimals: 2 }), "2.00 weeks");
+    assert.strictEqual(formatDurationDays(24, { weekDecimals: 2 }), "3.43 weeks");
+  });
+
   it("undefined/NaN returns dash", () => {
     assert.strictEqual(formatDurationDays(undefined), "—");
     assert.strictEqual(formatDurationDays(NaN), "—");

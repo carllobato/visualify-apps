@@ -1216,6 +1216,50 @@ ul[role="listbox"] button:focus-visible {
 }
 
 /*
+ * KPI summary tile: show primary chrome while its detail modal is open in the foreground.
+ * Must override `.ds-document-tile-panel--interactive { outline: none }` (same specificity + order).
+ */
+.ds-document-tile-panel.ds-document-tile-panel--interactive.ds-document-tile-panel--modal-selected {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+
+/** Severity column tint — use on DS `TableHeaderCell` / `TableCell` (e.g. portfolio KPI modal). */
+.ds-risk-severity-col--low {
+  color: var(--ds-risk-low-fg);
+}
+
+.ds-risk-severity-col--medium {
+  color: var(--ds-risk-medium-fg);
+}
+
+.ds-risk-severity-col--high {
+  color: var(--ds-risk-high-fg);
+}
+
+.ds-risk-severity-col--extreme {
+  color: var(--ds-risk-critical-fg);
+}
+
+/** Lead copy above KPI modal tables (full width of modal body). */
+.ds-kpi-modal-lead {
+  margin: 0 0 var(--ds-space-5) 0;
+  width: 100%;
+  max-width: none;
+  font-size: var(--ds-text-sm);
+  line-height: 1.5;
+  color: var(--ds-text-secondary);
+}
+
+.ds-kpi-modal-empty {
+  margin: 0;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-secondary);
+}
+
+/*
  * Segmented control — inset track grouping small `Button`s (Applies to, Mitigation mode, …).
  * Track uses `--ds-radius-lg` so outer corners read clearly round; segments are concentric
  * (`lg` minus track padding). `!important` wins over `Button`’s Tailwind `rounded-sm` utility.

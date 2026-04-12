@@ -2,16 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
-import {
-  getProjectTilePayloads,
-  sortProjectTilesAlphabetically,
-} from "@/lib/dashboard/projectTileServerData";
-import type { AccessibleProject } from "@/lib/portfolios-server";
+import { loadPortfolioProjectTilePayloads } from "@/lib/dashboard/projectTileServerData";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
 import { Card, CardBody } from "@visualify/design-system";
-
-type ProjectRow = { id: string; name: string; created_at: string | null };
 
 /** Same shell rhythm as portfolio overview + project overview document column. */
 const portfolioProjectsMainClass =
@@ -36,20 +30,9 @@ export default async function PortfolioProjectsPage({
     redirect(riskaiPath("/not-found"));
   }
 
-  const { data: projects, error: projectsError } = await supabase
-    .from("visualify_projects")
-    .select("id, name, created_at")
-    .eq("portfolio_id", portfolioId)
-    .order("created_at", { ascending: true });
-
-  const list: ProjectRow[] = projectsError ? [] : (projects ?? []);
-  const asAccessible: AccessibleProject[] = list.map((p) => ({
-    id: p.id,
-    name: p.name,
-    created_at: p.created_at,
-  }));
-  const projectTiles = sortProjectTilesAlphabetically(
-    await getProjectTilePayloads(supabase, asAccessible)
+  const { projectTilePayloads: projectTiles } = await loadPortfolioProjectTilePayloads(
+    supabase,
+    portfolioId
   );
 
   return (
@@ -59,7 +42,7 @@ export default async function PortfolioProjectsPage({
         this portfolio.
       </p>
 
-      {list.length === 0 ? (
+      {projectTiles.length === 0 ? (
         <Card variant="inset" className="mx-auto max-w-lg text-center">
           <CardBody className="py-[var(--ds-space-6)]">
             <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
