@@ -1,7 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { loadPortfolioTopRiskConcentrationRows } from "@/lib/dashboard/projectTileServerData";
+import {
+  applyStaleReportingLockRag,
+  computeRag,
+  loadPortfolioTopRiskConcentrationRows,
+  REPORTING_LOCK_STALE_MS,
+} from "@/lib/dashboard/projectTileServerData";
+import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
 import type { RiskRow } from "@/types/risk";
 
 type QueryResult<T> = { data: T; error: null };
@@ -244,5 +250,46 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
         issueLabel: "No owner; no mitigation plan",
       },
     ]);
+  });
+});
+
+describe("computeRag + reporting lock staleness", () => {
+  it("treats active risks without a locked reporting run as amber", () => {
+    assert.strictEqual(
+      computeRag({
+        riskCount: 2,
+        highSeverityCount: 0,
+        lastLockedReportingAt: null,
+      }),
+      "amber"
+    );
+  });
+
+  it("is green when there is a recent locked run and no high severity", () => {
+    const recent = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    assert.strictEqual(
+      computeRag({
+        riskCount: 1,
+        highSeverityCount: 0,
+        lastLockedReportingAt: recent,
+      }),
+      "green"
+    );
+  });
+
+  it("bumps green to amber when the locked reporting snapshot is older than 30 days", () => {
+    const staleIso = new Date(Date.now() - (REPORTING_LOCK_STALE_MS + 60_000)).toISOString();
+    assert.strictEqual(
+      applyStaleReportingLockRag("green", { locked_at: staleIso } as SimulationSnapshotRow, Date.now()),
+      "amber"
+    );
+  });
+
+  it("preserves red when the lock is stale", () => {
+    const staleIso = new Date(Date.now() - (REPORTING_LOCK_STALE_MS + 60_000)).toISOString();
+    assert.strictEqual(
+      applyStaleReportingLockRag("red", { locked_at: staleIso } as SimulationSnapshotRow, Date.now()),
+      "red"
+    );
   });
 });

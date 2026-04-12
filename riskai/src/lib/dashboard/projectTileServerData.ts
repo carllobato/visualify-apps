@@ -87,7 +87,7 @@ function isReportingLockStale(lastMs: number | null, nowMs: number): boolean {
 }
 
 /** Bump green → amber when the latest locked reporting snapshot is stale. */
-function applyStaleReportingLockRag(
+export function applyStaleReportingLockRag(
   base: RagStatus,
   lockedRow: SimulationSnapshotRow | undefined,
   nowMs: number
@@ -106,14 +106,21 @@ function residualLevel(row: RiskAggRow): "low" | "medium" | "high" | "extreme" {
   return buildRating(Number(row.post_probability) || 1, postConsequence).level;
 }
 
-/** RiskAI portfolio tile RAG: high/extreme residual → red; risks but no simulation timestamp → amber; else green. */
+/**
+ * Base project tile RAG before the monthly reporting staleness rule: high/extreme residual → red;
+ * active risks but no locked reporting run → amber; else green.
+ * The caller applies {@link applyStaleReportingLockRag} so a locked run older than {@link REPORTING_LOCK_STALE_MS} becomes amber.
+ * Uses **locked-for-reporting** snapshots only — ad-hoc simulations do not count as a monthly run.
+ */
 export function computeRag(params: {
   riskCount: number;
   highSeverityCount: number;
-  lastSimulationAt: string | null;
+  /** Latest locked-for-reporting completion (`locked_at` or `created_at`); null if none. */
+  lastLockedReportingAt: string | null;
 }): RagStatus {
   if (params.highSeverityCount > 0) return "red";
-  if (params.riskCount > 0 && !params.lastSimulationAt) return "amber";
+  const hasLockedRun = params.lastLockedReportingAt != null;
+  if (params.riskCount > 0 && !hasLockedRun) return "amber";
   return "green";
 }
 
@@ -123,25 +130,41 @@ export type GetProjectTilePayloadsResult = {
   portfolioReportingFooter: PortfolioReportingFooterRow | null;
 };
 
+export type LoadPortfolioProjectTilePayloadsResult = GetProjectTilePayloadsResult & {
+  /** All projects in the portfolio (including those without a locked reporting snapshot). */
+  totalProjectsInPortfolio: number;
+};
+
+export type GetProjectTilePayloadsOptions = {
+  /**
+   * When true, only include projects that have at least one locked-for-reporting snapshot.
+   * Used for portfolio dashboards (projects without a saved monthly run are omitted).
+   */
+  onlyProjectsWithLockedReporting?: boolean;
+  /** Override clock for stale-lock checks (tests). */
+  nowMs?: number;
+};
+
 /**
  * Loads per-project RAG for dashboard tiles (server-only; same access scope as project list).
  */
 export async function getProjectTilePayloads(
   supabase: SupabaseClient,
-  projects: AccessibleProject[]
+  projects: AccessibleProject[],
+  options?: GetProjectTilePayloadsOptions
 ): Promise<GetProjectTilePayloadsResult> {
   if (projects.length === 0) {
     return { projectTilePayloads: [], portfolioReportingFooter: null };
   }
 
   const ids = projects.map((p) => p.id);
+  const nowMs = options?.nowMs ?? Date.now();
 
-  const [risksRes, snapshotsRes, lockedRes, settingsRes] = await Promise.all([
+  const [risksRes, lockedRes, settingsRes] = await Promise.all([
     supabase
       .from("riskai_risks")
       .select("project_id, status, post_probability, post_cost_ml, post_time_ml, mitigation_description")
       .in("project_id", ids),
-    supabase.from("riskai_simulation_snapshots").select("project_id, created_at").in("project_id", ids),
     supabase
       .from("riskai_simulation_snapshots")
       .select("*")
@@ -150,7 +173,7 @@ export async function getProjectTilePayloads(
     supabase.from("visualify_project_settings").select("*").in("project_id", ids),
   ]);
 
-  if (risksRes.error || snapshotsRes.error) {
+  if (risksRes.error) {
     return {
       projectTilePayloads: projects.map((p) => ({
         id: p.id,
@@ -163,7 +186,6 @@ export async function getProjectTilePayloads(
   }
 
   const risks = (risksRes.data ?? []) as RiskAggRow[];
-  const snapshots = (snapshotsRes.data ?? []) as SnapRow[];
 
   const riskStats = new Map<string, { count: number; highSeverity: number }>();
   for (const id of ids) {
@@ -176,19 +198,6 @@ export async function getProjectTilePayloads(
     stat.count += 1;
     const level = residualLevel(r);
     if (level === "high" || level === "extreme") stat.highSeverity += 1;
-  }
-
-  const sortedSnaps = [...snapshots].sort((a, b) => {
-    const ta = new Date(a.created_at ?? 0).getTime();
-    const tb = new Date(b.created_at ?? 0).getTime();
-    return tb - ta;
-  });
-
-  const latestSimAtByProject = new Map<string, string | null>();
-  for (const id of ids) latestSimAtByProject.set(id, null);
-  for (const row of sortedSnaps) {
-    if (latestSimAtByProject.get(row.project_id) != null) continue;
-    latestSimAtByProject.set(row.project_id, row.created_at ?? null);
   }
 
   const latestLockedByProject = new Map<string, NonNullable<SimulationSnapshotRow>>();
@@ -216,39 +225,46 @@ export async function getProjectTilePayloads(
     }
   }
 
-  const projectTilePayloads = projects.map((p) => {
-    const stat = riskStats.get(p.id) ?? { count: 0, highSeverity: 0 };
-    const lastSimulationAt = latestSimAtByProject.get(p.id) ?? null;
+  const projectTilePayloads = projects
+    .map((p) => {
+      const stat = riskStats.get(p.id) ?? { count: 0, highSeverity: 0 };
+      const lockedRow = latestLockedByProject.get(p.id);
+      const lastLockedAt =
+        lockedRow != null ? (lockedRow.locked_at ?? lockedRow.created_at ?? null) : null;
 
-    /** Prefer simulation “overall position” bands from the latest reporting-locked snapshot; else legacy tile RAG. */
-    const reporting = tryReportingBreakdownFromLockedRowAndSettings(
-      latestLockedByProject.get(p.id),
-      settingsByProject.get(p.id)
-    );
-    const ragStatus: RagStatus =
-      reporting?.rag ??
-      computeRag({
-        riskCount: stat.count,
-        highSeverityCount: stat.highSeverity,
-        lastSimulationAt,
-      });
+      /** Prefer simulation “overall position” bands from the latest reporting-locked snapshot; else legacy tile RAG. */
+      const reporting = tryReportingBreakdownFromLockedRowAndSettings(
+        lockedRow,
+        settingsByProject.get(p.id)
+      );
+      const baseRag: RagStatus =
+        reporting?.rag ??
+        computeRag({
+          riskCount: stat.count,
+          highSeverityCount: stat.highSeverity,
+          lastLockedReportingAt: lastLockedAt,
+        });
+      const ragStatus = applyStaleReportingLockRag(baseRag, lockedRow, nowMs);
 
-    const base = {
-      id: p.id,
-      name: p.name,
-      created_at: p.created_at,
-      ragStatus,
-    };
-    if (reporting) {
-      return {
-        ...base,
-        reportingCostStatus: formatReportingLineStatus(reporting.costLine),
-        reportingTimeStatus: formatReportingLineStatus(reporting.timeLine),
-        reportingOverallStatus: reporting.overallStatus,
+      const base = {
+        id: p.id,
+        name: p.name,
+        created_at: p.created_at,
+        ragStatus,
       };
-    }
-    return base;
-  });
+      if (reporting) {
+        return {
+          ...base,
+          reportingCostStatus: formatReportingLineStatus(reporting.costLine),
+          reportingTimeStatus: formatReportingLineStatus(reporting.timeLine),
+          reportingOverallStatus: reporting.overallStatus,
+        };
+      }
+      return base;
+    })
+    .filter((payload) =>
+      options?.onlyProjectsWithLockedReporting ? latestLockedByProject.has(payload.id) : true
+    );
 
   const fundingRows = ids
     .map((id) => tryReportingFundingScalars(latestLockedByProject.get(id), settingsByProject.get(id)))
@@ -267,7 +283,7 @@ export const RAG_SORT_ORDER: Record<RagStatus, number> = {
 
 /**
  * Portfolio-level RAG: worst project wins (red over amber over green).
- * Uses the same per-project {@link computeRag} outputs as dashboard project tiles.
+ * Uses the same per-project tile RAG as the dashboard (locked reporting + 30-day staleness rule).
  * Returns `null` when there are no projects.
  */
 export function aggregatePortfolioRag(tiles: ProjectTilePayload[]): RagStatus | null {
@@ -791,7 +807,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
         const risk = costRisks.find((r) => r.id === c.riskId);
         if (!risk) return null;
         const delta = monitoringCostOpportunityExpected(risk);
-        if (!Number.isFinite(delta) || delta <= 0) return null;
+        if (delta == null || !Number.isFinite(delta) || delta <= 0) return null;
         const projectId = projectIdByRiskId.get(risk.id) ?? "";
         const currency = currencyByProject.get(projectId) ?? "AUD";
         return { risk, delta, projectId, currency };
@@ -854,7 +870,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
     const scheduleOpportunityCandidates = scheduleCandidates
       .map((risk) => {
         const delta = monitoringScheduleOpportunityExpected(risk);
-        if (!Number.isFinite(delta) || delta <= 0) return null;
+        if (delta == null || !Number.isFinite(delta) || delta <= 0) return null;
         return { risk, delta };
       })
       .filter((x): x is { risk: Risk; delta: number } => x != null)
@@ -963,7 +979,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
 export async function loadPortfolioProjectTilePayloads(
   supabase: SupabaseClient,
   portfolioId: string
-): Promise<GetProjectTilePayloadsResult> {
+): Promise<LoadPortfolioProjectTilePayloadsResult> {
   const { data: projects, error } = await supabase
     .from("visualify_projects")
     .select("id, name, created_at")
@@ -971,7 +987,7 @@ export async function loadPortfolioProjectTilePayloads(
     .order("created_at", { ascending: true });
 
   if (error || !projects?.length) {
-    return { projectTilePayloads: [], portfolioReportingFooter: null };
+    return { projectTilePayloads: [], portfolioReportingFooter: null, totalProjectsInPortfolio: 0 };
   }
 
   const asAccessible: AccessibleProject[] = projects.map((p) => ({
@@ -982,10 +998,12 @@ export async function loadPortfolioProjectTilePayloads(
 
   const { projectTilePayloads, portfolioReportingFooter } = await getProjectTilePayloads(
     supabase,
-    asAccessible
+    asAccessible,
+    { onlyProjectsWithLockedReporting: true }
   );
   return {
     projectTilePayloads: sortProjectTilesAlphabetically(projectTilePayloads),
     portfolioReportingFooter,
+    totalProjectsInPortfolio: projects.length,
   };
 }

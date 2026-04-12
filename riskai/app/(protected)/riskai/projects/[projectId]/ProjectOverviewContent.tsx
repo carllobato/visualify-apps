@@ -30,7 +30,7 @@ import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import { usePageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { SummaryTile } from "@/components/dashboard/SummaryTile";
 import type { Risk } from "@/domain/risk/risk.schema";
-import { computeRag, type RagStatus } from "@/lib/dashboard/projectTileServerData";
+import { applyStaleReportingLockRag, computeRag, type RagStatus } from "@/lib/dashboard/projectTileServerData";
 import {
   buildCostDriverLines,
   buildScheduleDriverLines,
@@ -638,11 +638,12 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   const ragStatus = useMemo(() => {
     const lastAt = reportingSnapshot?.locked_at ?? reportingSnapshot?.created_at ?? null;
-    return computeRag({
+    const base = computeRag({
       riskCount: reportingRunActiveRiskCount(reportingSnapshot),
       highSeverityCount: reportingRunHighExtremeCount(reportingSnapshot, risks),
-      lastSimulationAt: lastAt,
+      lastLockedReportingAt: lastAt,
     });
+    return applyStaleReportingLockRag(base, reportingSnapshot ?? undefined, Date.now());
   }, [reportingSnapshot, risks]);
 
   /** RAG subline can use snapshot `inputs_used` without waiting for the risk register. */

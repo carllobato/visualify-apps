@@ -40,7 +40,7 @@ export default async function PortfolioOverviewPage({
     .maybeSingle();
   const reportingUnit = asReportingUnit(portfolioRow?.reporting_unit);
 
-  const { count: projectCount } = await supabase
+  const { count: portfolioProjectCount } = await supabase
     .from("visualify_projects")
     .select("id", { count: "exact", head: true })
     .eq("portfolio_id", portfolioId);
@@ -65,6 +65,8 @@ export default async function PortfolioOverviewPage({
     supabase,
     portfolioId
   );
+  /** Shown on the Projects KPI — matches tiles (excludes projects with no locked reporting snapshot). */
+  const dashboardProjectCount = projectTilePayloads.length;
   const portfolioRag = aggregatePortfolioRag(projectTilePayloads);
   const contingencyTableRows = await loadPortfolioProjectContingencyTable(supabase, portfolioId);
 
@@ -74,7 +76,7 @@ export default async function PortfolioOverviewPage({
   );
   const contingencyTile = contingencyHeldTileCopy(
     contingencyByCurrency,
-    projectCount ?? 0,
+    portfolioProjectCount ?? 0,
     totalScheduleContingencyWeeks,
     reportingUnit
   );
@@ -109,7 +111,7 @@ export default async function PortfolioOverviewPage({
       ? totalScheduleContingencyWeeks / scheduleExposureWeeks
       : null;
   const coverageTile = coverageRatioTileCopy(coverageRatioByCurrency, scheduleCoverageRatio);
-  const costExposureTile = costExposureTileCopy(exposureByCurrency, projectCount ?? 0, reportingUnit);
+  const costExposureTile = costExposureTileCopy(exposureByCurrency, portfolioProjectCount ?? 0, reportingUnit);
   const scheduleExposureTile = scheduleExposureTileCopy(
     scheduleTotalDays,
     totalScheduleContingencyWeeks,
@@ -157,7 +159,7 @@ export default async function PortfolioOverviewPage({
       <PortfolioOverviewContent
         portfolioId={portfolioId}
         reportingUnit={reportingUnit}
-        projectCount={projectCount ?? 0}
+        projectCount={dashboardProjectCount}
         activeRiskCount={activeRiskCount}
         contingencyPrimaryValue={contingencyTile.primaryValue}
         costExposurePrimaryValue={costExposureTile.primaryValue}

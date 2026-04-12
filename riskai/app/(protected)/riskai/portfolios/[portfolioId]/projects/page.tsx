@@ -30,10 +30,8 @@ export default async function PortfolioProjectsPage({
     redirect(riskaiPath("/not-found"));
   }
 
-  const { projectTilePayloads: projectTiles } = await loadPortfolioProjectTilePayloads(
-    supabase,
-    portfolioId
-  );
+  const { projectTilePayloads: projectTiles, totalProjectsInPortfolio } =
+    await loadPortfolioProjectTilePayloads(supabase, portfolioId);
 
   return (
     <main className={portfolioProjectsMainClass}>
@@ -45,10 +43,22 @@ export default async function PortfolioProjectsPage({
       {projectTiles.length === 0 ? (
         <Card variant="inset" className="mx-auto max-w-lg text-center">
           <CardBody className="py-[var(--ds-space-6)]">
-            <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
-            <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
-              Create project
-            </OpenProjectOnboardingLink>
+            {totalProjectsInPortfolio === 0 ? (
+              <>
+                <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
+                <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
+                  Create project
+                </OpenProjectOnboardingLink>
+              </>
+            ) : (
+              <>
+                <p className="ds-dashboard-empty-title">No locked reporting snapshots yet</p>
+                <p className="m-0 mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+                  Open a project, run simulation, and save a monthly reporting version. Only projects with a saved
+                  reporting run appear in this portfolio list.
+                </p>
+              </>
+            )}
             <div className="mt-5">
               <Link
                 href={riskaiPath("/projects")}

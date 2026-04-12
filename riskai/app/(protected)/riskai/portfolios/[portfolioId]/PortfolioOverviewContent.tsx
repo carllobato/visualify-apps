@@ -297,7 +297,8 @@ export function PortfolioOverviewContent({
   }, []);
 
   const kpiTiles = useMemo((): DocumentKpiTileItem[] => {
-    const projectsSubtext = "Number of projects in this portfolio";
+    const projectsSubtext =
+      "Only projects with a locked monthly reporting snapshot (saved run); others are omitted from this portfolio view.";
     const risksSubtext = "Open, Monitoring, or Mitigating risks only (excludes Draft, Closed, Archived)";
     const rag =
       portfolioReportingFooter != null
