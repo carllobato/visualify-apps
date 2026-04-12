@@ -42,6 +42,8 @@ export type ProductFrameProps = {
   imageContainerClassName?: string;
   /** Appended to each next/image (e.g. object-cover). */
   imageClassName?: string;
+  /** When false, hides the decorative window-chrome bar for a flatter product crop. */
+  showWindowChrome?: boolean;
 };
 
 export function ProductFrame({
@@ -57,6 +59,7 @@ export function ProductFrame({
   interactive,
   imageContainerClassName,
   imageClassName,
+  showWindowChrome = true,
 }: ProductFrameProps) {
   const sizes = sizesProp ?? "(max-width: 1024px) 100vw, min(1280px, 92vw)";
 
@@ -102,16 +105,18 @@ export function ProductFrame({
     <div
       className={`overflow-hidden rounded-[var(--ds-radius-md)] border ${frameSurface}${interactiveClass} ${className}`}
     >
-      <div
-        className="flex h-9 shrink-0 items-center gap-2.5 border-b border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_52%,var(--ds-surface))] px-2.5 sm:h-10 sm:gap-3 sm:px-3"
-        aria-hidden
-      >
-        <div className="flex shrink-0 items-center gap-[5px] sm:gap-1.5">
-          <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_oklab,var(--ds-danger)_58%,var(--ds-surface-muted))]" />
-          <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_oklab,var(--ds-warning)_52%,var(--ds-surface-muted))]" />
-          <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_oklab,var(--ds-success)_50%,var(--ds-surface-muted))]" />
+      {showWindowChrome ? (
+        <div
+          className="flex h-9 shrink-0 items-center gap-2.5 border-b border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_52%,var(--ds-surface))] px-2.5 sm:h-10 sm:gap-3 sm:px-3"
+          aria-hidden
+        >
+          <div className="flex shrink-0 items-center gap-[5px] sm:gap-1.5">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_oklab,var(--ds-danger)_58%,var(--ds-surface-muted))]" />
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_oklab,var(--ds-warning)_52%,var(--ds-surface-muted))]" />
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[color-mix(in_oklab,var(--ds-success)_50%,var(--ds-surface-muted))]" />
+          </div>
         </div>
-      </div>
+      ) : null}
       <div
         className={
           prominent

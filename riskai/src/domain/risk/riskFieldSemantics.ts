@@ -142,6 +142,46 @@ export function riskLifecycleBucketForRegisterSnapshot(risk: Risk): RiskLifecycl
   return null;
 }
 
+/**
+ * Portfolio analytics “active” risk: Open, Monitoring, or Mitigating only.
+ * Excludes Draft, Closed, Archived, and unknown lifecycle buckets.
+ */
+export function isRiskActiveForPortfolioAnalytics(risk: Risk): boolean {
+  const b = riskLifecycleBucketForRegisterSnapshot(risk);
+  return b === "open" || b === "monitoring" || b === "mitigating";
+}
+
+/**
+ * Schedule impact (days) for Monte Carlo and portfolio schedule exposure, by lifecycle bucket:
+ * Open / Monitoring → pre-mitigation days only
+ * Mitigating → post-mitigation days when modelled; otherwise pre-mitigation fallback
+ *
+ * Uses {@link riskLifecycleBucketForRegisterSnapshot} (same as register / portfolio analytics).
+ */
+export function scheduleImpactDaysMLForSimulation(risk: Risk): number {
+  const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+  if (bucket === "open" || bucket === "monitoring") {
+    const pre = risk.preMitigationTimeML;
+    return typeof pre === "number" && Number.isFinite(pre) ? Math.max(0, pre) : 0;
+  }
+  if (bucket === "mitigating") {
+    const post = risk.postMitigationTimeML;
+    if (typeof post === "number" && Number.isFinite(post)) {
+      return Math.max(0, post);
+    }
+    const pre = risk.preMitigationTimeML;
+    return typeof pre === "number" && Number.isFinite(pre) ? Math.max(0, pre) : 0;
+  }
+  return 0;
+}
+
+/** Upper bound on schedule impact days before MC triangular spread (`simulatePortfolio`). */
+export const SCHEDULE_IMPACT_DAYS_CAP = 30;
+
+export function scheduleImpactDaysMLCappedForMonteCarlo(risk: Risk): number {
+  return Math.min(SCHEDULE_IMPACT_DAYS_CAP, scheduleImpactDaysMLForSimulation(risk));
+}
+
 export function isRiskStatusClosed(status: string | undefined | null): boolean {
   return normalizeRiskStatusKey(status) === "closed";
 }

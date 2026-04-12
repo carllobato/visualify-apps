@@ -105,7 +105,8 @@ export function ProjectOnboardingInviteModal({
       aria-modal="true"
       aria-labelledby="project-onboarding-invite-title"
     >
-      <div className="ds-onboarding-modal-panel">
+      <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
         <div className="ds-onboarding-modal-panel-header">
           <div className="min-w-0 flex-1 space-y-1">
             <OnboardingStepLabel step={6} of={PROJECT_ONBOARDING_STEP_TOTAL} />
@@ -212,6 +213,7 @@ export function ProjectOnboardingInviteModal({
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );

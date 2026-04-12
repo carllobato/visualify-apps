@@ -280,7 +280,9 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const router = useRouter();
   const searchParams = useSearchParams();
   const focusRiskId = searchParams.get("focusRiskId");
+  const openRiskIdParam = searchParams.get("openRiskId");
   const highlightTimeoutRef = useRef<number | null>(null);
+  const processedOpenRiskIdFromUrlRef = useRef<string | null>(null);
   const hasHydratedFromDbRef = useRef(false);
   const projectIdForHydrateRef = useRef<string | null>(null);
 
@@ -669,6 +671,28 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       el.classList.remove(FOCUS_HIGHLIGHT_CLASS);
     };
   }, [focusRiskId, router, urlProjectId]);
+
+  /** Deep-link from portfolio dashboard etc.: `/projects/:id/risks?openRiskId=…` opens the risk detail modal, then strips the query. */
+  useEffect(() => {
+    if (!openRiskIdParam) {
+      processedOpenRiskIdFromUrlRef.current = null;
+      return;
+    }
+    if (risksLoading) return;
+    if (processedOpenRiskIdFromUrlRef.current === openRiskIdParam) return;
+
+    const basePath = urlProjectId ? riskaiPath(`/projects/${urlProjectId}/risks`) : DASHBOARD_PATH;
+    const match = risks.find((r) => r.id === openRiskIdParam);
+    processedOpenRiskIdFromUrlRef.current = openRiskIdParam;
+
+    if (!match) {
+      router.replace(basePath, { scroll: false });
+      return;
+    }
+    setDetailInitialRiskId(openRiskIdParam);
+    setShowDetailModal(true);
+    router.replace(basePath, { scroll: false });
+  }, [openRiskIdParam, risksLoading, risks, router, urlProjectId]);
 
   const handleAiReviewClick = useCallback(async () => {
     if (contentReadOnly) return;

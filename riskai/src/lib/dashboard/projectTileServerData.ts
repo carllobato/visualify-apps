@@ -1,7 +1,42 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildRating, costToConsequenceScale, timeDaysToConsequenceScale } from "@/domain/risk/risk.logic";
+import {
+  buildRating,
+  costToConsequenceScale,
+  riskTriggerProbability01,
+  timeDaysToConsequenceScale,
+} from "@/domain/risk/risk.logic";
+import type { Risk } from "@/domain/risk/risk.schema";
+import {
+  appliesToExcludesCost,
+  appliesToExcludesTime,
+  getCurrentRiskRatingLetter,
+  isRiskActiveForPortfolioAnalytics,
+  isRiskStatusArchived,
+  riskLifecycleBucketForRegisterSnapshot,
+  scheduleImpactDaysMLCappedForMonteCarlo,
+} from "@/domain/risk/riskFieldSemantics";
 import type { AccessibleProject } from "@/lib/portfolios-server";
-import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
+import { RISK_DB_SELECT_COLUMNS, mapRiskRowToDomain } from "@/lib/db/risks";
+import { computePortfolioExposure } from "@/engine/forwardExposure";
+import { formatDurationDays } from "@/lib/formatDuration";
+import { formatCurrencyCompact } from "@/lib/formatCurrency";
+import type { RiskRow } from "@/types/risk";
+import {
+  asProjectCurrency,
+  contingencyMillionsFromSettingsRow,
+  type ProjectSettingsContingencyRow,
+} from "@/lib/portfolioContingencyAggregate";
+import type { ProjectCurrency } from "@/lib/projectContext";
+import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
+import {
+  computePortfolioReportingFooter,
+  formatReportingLineStatus,
+  tryReportingBreakdownFromLockedRowAndSettings,
+  tryReportingFundingScalars,
+} from "@/lib/dashboard/reportingPositionRag";
+import type { PortfolioReportingFooterRow } from "@/lib/dashboard/reportingPositionRag";
+
+export type { PortfolioReportingFooterRow };
 
 export type RagStatus = "green" | "amber" | "red";
 
@@ -10,6 +45,10 @@ export type ProjectTilePayload = {
   name: string;
   created_at: string | null;
   ragStatus: RagStatus;
+  /** From last reporting-locked simulation + settings (same as simulation “position” cards). */
+  reportingCostStatus?: string;
+  reportingTimeStatus?: string;
+  reportingOverallStatus?: string;
 };
 
 type RiskAggRow = {
@@ -45,32 +84,49 @@ export function computeRag(params: {
   return "green";
 }
 
+export type GetProjectTilePayloadsResult = {
+  projectTilePayloads: ProjectTilePayload[];
+  /** Portfolio aggregate row for KPI modal; null if mixed currency or no usable reporting sums. */
+  portfolioReportingFooter: PortfolioReportingFooterRow | null;
+};
+
 /**
  * Loads per-project RAG for dashboard tiles (server-only; same access scope as project list).
  */
 export async function getProjectTilePayloads(
   supabase: SupabaseClient,
   projects: AccessibleProject[]
-): Promise<ProjectTilePayload[]> {
-  if (projects.length === 0) return [];
+): Promise<GetProjectTilePayloadsResult> {
+  if (projects.length === 0) {
+    return { projectTilePayloads: [], portfolioReportingFooter: null };
+  }
 
   const ids = projects.map((p) => p.id);
 
-  const [risksRes, snapshotsRes] = await Promise.all([
+  const [risksRes, snapshotsRes, lockedRes, settingsRes] = await Promise.all([
     supabase
       .from("riskai_risks")
       .select("project_id, status, post_probability, post_cost_ml, post_time_ml, mitigation_description")
       .in("project_id", ids),
     supabase.from("riskai_simulation_snapshots").select("project_id, created_at").in("project_id", ids),
+    supabase
+      .from("riskai_simulation_snapshots")
+      .select("*")
+      .in("project_id", ids)
+      .eq("locked_for_reporting", true),
+    supabase.from("visualify_project_settings").select("*").in("project_id", ids),
   ]);
 
   if (risksRes.error || snapshotsRes.error) {
-    return projects.map((p) => ({
-      id: p.id,
-      name: p.name,
-      created_at: p.created_at,
-      ragStatus: "amber" as const,
-    }));
+    return {
+      projectTilePayloads: projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        created_at: p.created_at,
+        ragStatus: "amber" as const,
+      })),
+      portfolioReportingFooter: null,
+    };
   }
 
   const risks = (risksRes.data ?? []) as RiskAggRow[];
@@ -102,22 +158,71 @@ export async function getProjectTilePayloads(
     latestSimAtByProject.set(row.project_id, row.created_at ?? null);
   }
 
-  return projects.map((p) => {
+  const latestLockedByProject = new Map<string, NonNullable<SimulationSnapshotRow>>();
+  if (!lockedRes.error) {
+    const lockedRows = ((lockedRes.data ?? []) as SimulationSnapshotRow[]).filter(
+      (r): r is NonNullable<SimulationSnapshotRow> => r != null
+    );
+    const sortedLocked = [...lockedRows].sort((a, b) => {
+      const ta = new Date(a.locked_at ?? a.created_at ?? 0).getTime();
+      const tb = new Date(b.locked_at ?? b.created_at ?? 0).getTime();
+      return tb - ta;
+    });
+    for (const row of sortedLocked) {
+      const pid = typeof row.project_id === "string" ? row.project_id : "";
+      if (!pid || latestLockedByProject.has(pid)) continue;
+      latestLockedByProject.set(pid, row);
+    }
+  }
+
+  const settingsByProject = new Map<string, Record<string, unknown>>();
+  if (!settingsRes.error) {
+    for (const row of settingsRes.data ?? []) {
+      const pid = typeof (row as { project_id?: string }).project_id === "string" ? (row as { project_id: string }).project_id : "";
+      if (pid) settingsByProject.set(pid, row as Record<string, unknown>);
+    }
+  }
+
+  const projectTilePayloads = projects.map((p) => {
     const stat = riskStats.get(p.id) ?? { count: 0, highSeverity: 0 };
     const lastSimulationAt = latestSimAtByProject.get(p.id) ?? null;
-    const ragStatus = computeRag({
-      riskCount: stat.count,
-      highSeverityCount: stat.highSeverity,
-      lastSimulationAt,
-    });
 
-    return {
+    /** Prefer simulation “overall position” bands from the latest reporting-locked snapshot; else legacy tile RAG. */
+    const reporting = tryReportingBreakdownFromLockedRowAndSettings(
+      latestLockedByProject.get(p.id),
+      settingsByProject.get(p.id)
+    );
+    const ragStatus: RagStatus =
+      reporting?.rag ??
+      computeRag({
+        riskCount: stat.count,
+        highSeverityCount: stat.highSeverity,
+        lastSimulationAt,
+      });
+
+    const base = {
       id: p.id,
       name: p.name,
       created_at: p.created_at,
       ragStatus,
     };
+    if (reporting) {
+      return {
+        ...base,
+        reportingCostStatus: formatReportingLineStatus(reporting.costLine),
+        reportingTimeStatus: formatReportingLineStatus(reporting.timeLine),
+        reportingOverallStatus: reporting.overallStatus,
+      };
+    }
+    return base;
   });
+
+  const fundingRows = ids
+    .map((id) => tryReportingFundingScalars(latestLockedByProject.get(id), settingsByProject.get(id)))
+    .filter((x): x is NonNullable<typeof x> => x != null);
+  const portfolioReportingFooter = computePortfolioReportingFooter(fundingRows);
+
+  return { projectTilePayloads, portfolioReportingFooter };
 }
 
 /** Red → Amber → Green for dashboard ordering. */
@@ -126,6 +231,19 @@ export const RAG_SORT_ORDER: Record<RagStatus, number> = {
   amber: 1,
   green: 2,
 };
+
+/**
+ * Portfolio-level RAG: worst project wins (red over amber over green).
+ * Uses the same per-project {@link computeRag} outputs as dashboard project tiles.
+ * Returns `null` when there are no projects.
+ */
+export function aggregatePortfolioRag(tiles: ProjectTilePayload[]): RagStatus | null {
+  if (tiles.length === 0) return null;
+  return tiles.reduce<RagStatus>(
+    (worst, t) => (RAG_SORT_ORDER[t.ragStatus] < RAG_SORT_ORDER[worst] ? t.ragStatus : worst),
+    "green"
+  );
+}
 
 export function sortProjectTilesByRag(tiles: ProjectTilePayload[]): ProjectTilePayload[] {
   return [...tiles].sort((a, b) => {
@@ -143,4 +261,601 @@ export function sortProjectTilesAlphabetically(tiles: ProjectTilePayload[]): Pro
     const bn = (b.name || b.id).toLocaleLowerCase();
     return an.localeCompare(bn);
   });
+}
+
+/**
+ * Projects in a portfolio with RAG payloads — same data and ordering as the portfolio projects page (`/portfolios/:id/projects`).
+ */
+/** Per-project residual severity counts (active risks only — Open / Monitoring / Mitigating). */
+export type PortfolioProjectRiskSeverityRow = {
+  projectId: string;
+  projectName: string;
+  low: number;
+  medium: number;
+  high: number;
+  extreme: number;
+};
+
+/** Per-project lifecycle counts for the Active Risks KPI modal (all non–archived risks counted by bucket). */
+export type PortfolioProjectRiskStatusRow = {
+  projectId: string;
+  projectName: string;
+  open: number;
+  monitoring: number;
+  mitigating: number;
+  /** Closed and archived register statuses combined. */
+  closedArchived: number;
+  /** Draft and unmapped lifecycle buckets. */
+  other: number;
+};
+
+function buildPortfolioProjectRiskSeverityRowsFromRiskRows(
+  projects: { id: unknown; name: unknown }[],
+  riskRows: RiskRow[]
+): PortfolioProjectRiskSeverityRow[] {
+  const ids = projects.map((p) => p.id as string);
+  const buckets = new Map<string, { low: number; medium: number; high: number; extreme: number }>();
+  for (const id of ids) {
+    buckets.set(id, { low: 0, medium: 0, high: 0, extreme: 0 });
+  }
+  for (const row of riskRows) {
+    const risk = mapRiskRowToDomain(row);
+    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
+    const b = buckets.get(row.project_id);
+    if (!b) continue;
+    const lv = residualLevel(row as RiskAggRow);
+    if (lv === "low") b.low += 1;
+    else if (lv === "medium") b.medium += 1;
+    else if (lv === "high") b.high += 1;
+    else b.extreme += 1;
+  }
+  return projects.map((p) => {
+    const id = p.id as string;
+    const b = buckets.get(id) ?? { low: 0, medium: 0, high: 0, extreme: 0 };
+    const name = typeof p.name === "string" ? p.name.trim() : "";
+    return {
+      projectId: id,
+      projectName: name || id,
+      ...b,
+    };
+  });
+}
+
+function buildPortfolioProjectRiskStatusRowsFromRiskRows(
+  projects: { id: unknown; name: unknown }[],
+  riskRows: RiskRow[]
+): PortfolioProjectRiskStatusRow[] {
+  const ids = projects.map((p) => p.id as string);
+  const buckets = new Map<
+    string,
+    { open: number; monitoring: number; mitigating: number; closedArchived: number; other: number }
+  >();
+  for (const id of ids) {
+    buckets.set(id, { open: 0, monitoring: 0, mitigating: 0, closedArchived: 0, other: 0 });
+  }
+  for (const row of riskRows) {
+    const risk = mapRiskRowToDomain(row);
+    const b = buckets.get(row.project_id);
+    if (!b) continue;
+    const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+    if (bucket === "open") b.open += 1;
+    else if (bucket === "monitoring") b.monitoring += 1;
+    else if (bucket === "mitigating") b.mitigating += 1;
+    else if (bucket === "closed" || bucket === "archived") b.closedArchived += 1;
+    else b.other += 1;
+  }
+  return projects.map((p) => {
+    const id = p.id as string;
+    const b = buckets.get(id) ?? { open: 0, monitoring: 0, mitigating: 0, closedArchived: 0, other: 0 };
+    const name = typeof p.name === "string" ? p.name.trim() : "";
+    return {
+      projectId: id,
+      projectName: name || id,
+      ...b,
+    };
+  });
+}
+
+/**
+ * Active risks (Open / Monitoring / Mitigating only) in the portfolio, grouped by project and residual severity.
+ * Prefer {@link loadPortfolioTopRiskConcentrationRows} when loading portfolio overview data to avoid duplicate queries.
+ */
+export async function loadPortfolioProjectRiskSeveritySummary(
+  supabase: SupabaseClient,
+  portfolioId: string
+): Promise<PortfolioProjectRiskSeverityRow[]> {
+  const { data: projects, error: pErr } = await supabase
+    .from("visualify_projects")
+    .select("id, name")
+    .eq("portfolio_id", portfolioId)
+    .order("name", { ascending: true });
+
+  if (pErr || !projects?.length) return [];
+
+  const ids = projects.map((p) => p.id as string);
+
+  const { data: risksRaw, error: rErr } = await supabase
+    .from("riskai_risks")
+    .select(RISK_DB_SELECT_COLUMNS)
+    .in("project_id", ids);
+
+  if (rErr) return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, []);
+  return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, (risksRaw ?? []) as RiskRow[]);
+}
+
+function scheduleContingencyWeeksFromRow(raw: unknown): number | null {
+  if (raw == null) return null;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
+/** Per-project financial + schedule contingency from `visualify_project_settings` (same semantics as portfolio KPI). */
+export type PortfolioProjectContingencyRow = {
+  projectId: string;
+  projectName: string;
+  /** Absolute amount in `currency` (not millions). */
+  contingencyAmountAbs: number;
+  currency: ProjectCurrency;
+  scheduleContingencyWeeks: number | null;
+};
+
+export async function loadPortfolioProjectContingencyTable(
+  supabase: SupabaseClient,
+  portfolioId: string
+): Promise<PortfolioProjectContingencyRow[]> {
+  const { data: projects, error: pErr } = await supabase
+    .from("visualify_projects")
+    .select("id, name")
+    .eq("portfolio_id", portfolioId)
+    .order("name", { ascending: true });
+
+  if (pErr || !projects?.length) return [];
+
+  const ids = projects.map((p) => p.id as string);
+
+  const { data: settingsRows } = await supabase
+    .from("visualify_project_settings")
+    .select("project_id, contingency_value_input, financial_unit, currency, schedule_contingency_weeks")
+    .in("project_id", ids);
+
+  const byProject = new Map<string, ProjectSettingsContingencyRow & { schedule_contingency_weeks?: unknown }>();
+  for (const row of settingsRows ?? []) {
+    const pid = typeof row.project_id === "string" ? row.project_id : "";
+    if (pid) byProject.set(pid, row as ProjectSettingsContingencyRow & { schedule_contingency_weeks?: unknown });
+  }
+
+  return projects.map((p) => {
+    const id = p.id as string;
+    const s = byProject.get(id);
+    const m = s ? contingencyMillionsFromSettingsRow(s) : 0;
+    const contingencyAmountAbs = m * 1_000_000;
+    const currency: ProjectCurrency = s ? asProjectCurrency(s.currency) : "AUD";
+    const scheduleContingencyWeeks = s ? scheduleContingencyWeeksFromRow(s.schedule_contingency_weeks) : null;
+    const name = typeof p.name === "string" ? p.name.trim() : "";
+    return {
+      projectId: id,
+      projectName: name || id,
+      contingencyAmountAbs,
+      currency,
+      scheduleContingencyWeeks,
+    };
+  });
+}
+
+/** Per-project coverage ratio row: contingency held vs forward cost exposure. */
+export type PortfolioProjectCoverageRow = {
+  projectId: string;
+  projectName: string;
+  /** Contingency held in absolute units of `currency` (matches `contingencyAmountAbs` in ContingencyRow). */
+  contingencyAmountAbs: number;
+  /** Forward cost exposure in absolute units of `currency` (from exposure engine). 0 if no cost risks. */
+  exposureAmountAbs: number;
+  currency: ProjectCurrency;
+  /** contingencyAmountAbs / exposureAmountAbs; null when exposureAmountAbs === 0. */
+  ratio: number | null;
+};
+
+/** Row shape for portfolio Top 5 Cost / Top 5 Schedule concentration tables. */
+export type PortfolioTopRiskRow = {
+  projectId: string;
+  projectName: string;
+  riskId: string;
+  riskTitle: string;
+  rating: string;
+  exposureDisplay: string;
+};
+
+/** Active High / Extreme risks missing an owner and/or a mitigation description — Needs Attention KPI. */
+export type PortfolioRisksRequiringAttentionRow = {
+  projectId: string;
+  projectName: string;
+  riskId: string;
+  riskTitle: string;
+  rating: string;
+  ownerDisplay: string;
+  issueLabel: string;
+};
+
+function attentionIssueLabel(risk: Risk): string {
+  const noMit = !risk.mitigation?.trim();
+  const noOwner = !risk.owner?.trim();
+  if (noMit && noOwner) return "No owner; no mitigation plan";
+  if (noMit) return "No mitigation plan";
+  return "No owner";
+}
+
+const PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS = 12;
+
+/**
+ * Expected schedule impact (days): probability × lifecycle-appropriate capped impact days
+ * (Open/Monitoring → pre; Mitigating → post or pre fallback), aligned with {@link simulatePortfolio}.
+ */
+function expectedScheduleExposureDays(risk: Risk): number {
+  const prob01 = riskTriggerProbability01(risk);
+  const impactDays = scheduleImpactDaysMLCappedForMonteCarlo(risk);
+  const v = impactDays * prob01;
+  if (!Number.isFinite(v) || v < 0) return 0;
+  return v;
+}
+
+/** Per-project aggregate forward cost exposure (same engine as Top 5 cost; summed per project). */
+export type PortfolioProjectCostExposureSlice = {
+  projectId: string;
+  projectName: string;
+  /** Raw portfolio exposure total for that project's cost risks. */
+  value: number;
+  currency: ProjectCurrency;
+};
+
+/** Per-project sum of expected schedule exposure (probability × lifecycle schedule days per risk), in days. */
+export type PortfolioProjectScheduleExposureSlice = {
+  projectId: string;
+  projectName: string;
+  valueDays: number;
+};
+
+/**
+ * Per-project expected schedule delay (weeks), schedule contingency held (weeks), and coverage — joined from
+ * {@link loadPortfolioProjectContingencyTable} + schedule exposure slices (same basis as the schedule donut).
+ */
+export type PortfolioProjectScheduleCoverageRow = {
+  projectId: string;
+  projectName: string;
+  /** Expected delay in weeks (`valueDays` / 7 from the schedule exposure engine). */
+  expectedDelayWeeks: number;
+  /** Schedule contingency from project settings; null when unset. */
+  scheduleContingencyWeeks: number | null;
+  /** `scheduleContingencyWeeks` ÷ `expectedDelayWeeks` when exposure is positive. */
+  coverageRatio: number | null;
+};
+
+/** Risk counts by category across the portfolio (active risks only). */
+export type PortfolioRiskCategoryCount = {
+  category: string;
+  count: number;
+};
+
+/** Active lifecycle bucket counts (Open / Monitoring / Mitigating only). */
+export type PortfolioRiskStatusCount = {
+  statusKey: "open" | "monitoring" | "mitigating";
+  label: string;
+  count: number;
+};
+
+function buildPortfolioRiskStatusCounts(allMapped: Risk[]): PortfolioRiskStatusCount[] {
+  const totals = new Map<PortfolioRiskStatusCount["statusKey"], number>([
+    ["open", 0],
+    ["monitoring", 0],
+    ["mitigating", 0],
+  ]);
+
+  for (const risk of allMapped) {
+    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
+    const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+    if (bucket === "open" || bucket === "monitoring" || bucket === "mitigating") {
+      totals.set(bucket, (totals.get(bucket) ?? 0) + 1);
+    }
+  }
+
+  const order: { key: PortfolioRiskStatusCount["statusKey"]; label: string }[] = [
+    { key: "open", label: "Open" },
+    { key: "monitoring", label: "Monitoring" },
+    { key: "mitigating", label: "Mitigating" },
+  ];
+
+  return order
+    .map(({ key, label }) => ({ statusKey: key, label, count: totals.get(key) ?? 0 }))
+    .filter((r) => r.count > 0);
+}
+
+/** Active risks by owner (free-text); empty owner → `Unassigned`. */
+export type PortfolioRiskOwnerCount = {
+  owner: string;
+  count: number;
+};
+
+function buildPortfolioRiskOwnerCounts(allMapped: Risk[]): PortfolioRiskOwnerCount[] {
+  const totals = new Map<string, number>();
+  for (const risk of allMapped) {
+    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
+    const raw = typeof risk.owner === "string" ? risk.owner.trim() : "";
+    const owner = raw.length > 0 ? raw : "Unassigned";
+    totals.set(owner, (totals.get(owner) ?? 0) + 1);
+  }
+  return [...totals.entries()]
+    .map(([owner, count]) => ({ owner, count }))
+    .sort((a, b) => b.count - a.count || a.owner.localeCompare(b.owner));
+}
+
+export type PortfolioTopRiskConcentration = {
+  /** Open + Monitoring + Mitigating; matches portfolio dashboard tiles. */
+  activeRiskCount: number;
+  /** Per-project residual severity (active risks) — Risks by severity card. */
+  activeRiskSummaryRows: PortfolioProjectRiskSeverityRow[];
+  /** Per-project lifecycle counts — Active Risks KPI modal. */
+  activeRiskStatusSummaryRows: PortfolioProjectRiskStatusRow[];
+  costRows: PortfolioTopRiskRow[];
+  scheduleRows: PortfolioTopRiskRow[];
+  projectCostExposureSlices: PortfolioProjectCostExposureSlice[];
+  projectScheduleExposureSlices: PortfolioProjectScheduleExposureSlice[];
+  riskCategoryCounts: PortfolioRiskCategoryCount[];
+  riskStatusCounts: PortfolioRiskStatusCount[];
+  riskOwnerCounts: PortfolioRiskOwnerCount[];
+  risksRequiringAttentionRows: PortfolioRisksRequiringAttentionRow[];
+};
+
+/**
+ * Loads Top 5 cost (forward-exposure engine) and Top 5 schedule (expected delay in days) across the portfolio.
+ * Single fetch of projects + risks.
+ */
+export async function loadPortfolioTopRiskConcentrationRows(
+  supabase: SupabaseClient,
+  portfolioId: string
+): Promise<PortfolioTopRiskConcentration> {
+  const empty: PortfolioTopRiskConcentration = {
+    activeRiskCount: 0,
+    activeRiskSummaryRows: [],
+    activeRiskStatusSummaryRows: [],
+    costRows: [],
+    scheduleRows: [],
+    projectCostExposureSlices: [],
+    projectScheduleExposureSlices: [],
+    riskCategoryCounts: [],
+    riskStatusCounts: [],
+    riskOwnerCounts: [],
+    risksRequiringAttentionRows: [],
+  };
+
+  const { data: projects, error: pErr } = await supabase
+    .from("visualify_projects")
+    .select("id, name")
+    .eq("portfolio_id", portfolioId)
+    .order("name", { ascending: true });
+
+  if (pErr || !projects?.length) return empty;
+
+  const projectNameById = new Map<string, string>();
+  const projectIds = projects.map((p) => {
+    const id = p.id as string;
+    const name = typeof p.name === "string" ? p.name.trim() : "";
+    projectNameById.set(id, name || id);
+    return id;
+  });
+
+  const { data: settingsRows } = await supabase
+    .from("visualify_project_settings")
+    .select("project_id, currency")
+    .in("project_id", projectIds);
+
+  const currencyByProject = new Map<string, ProjectCurrency>();
+  for (const row of settingsRows ?? []) {
+    const pid = typeof row.project_id === "string" ? row.project_id : "";
+    if (!pid) continue;
+    currencyByProject.set(pid, asProjectCurrency(row.currency));
+  }
+
+  const { data: riskRowsRaw, error: rErr } = await supabase
+    .from("riskai_risks")
+    .select(RISK_DB_SELECT_COLUMNS)
+    .in("project_id", projectIds);
+
+  if (rErr) return empty;
+
+  const riskRows = (riskRowsRaw ?? []) as RiskRow[];
+  const projectIdByRiskId = new Map<string, string>();
+  for (const row of riskRows) {
+    projectIdByRiskId.set(row.id, row.project_id);
+  }
+
+  const allMapped = riskRows.map(mapRiskRowToDomain);
+
+  const activeRiskCount = allMapped.filter(isRiskActiveForPortfolioAnalytics).length;
+
+  const categoryTotals = new Map<string, number>();
+  for (const risk of allMapped) {
+    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
+    const raw = typeof risk.category === "string" ? risk.category.trim() : "";
+    const cat = raw.length > 0 ? raw : "Uncategorized";
+    categoryTotals.set(cat, (categoryTotals.get(cat) ?? 0) + 1);
+  }
+  const riskCategoryCounts: PortfolioRiskCategoryCount[] = [...categoryTotals.entries()]
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+
+  const riskStatusCounts = buildPortfolioRiskStatusCounts(allMapped);
+  const riskOwnerCounts = buildPortfolioRiskOwnerCounts(allMapped);
+
+  const costRisks = allMapped.filter(
+    (risk) =>
+      isRiskActiveForPortfolioAnalytics(risk) &&
+      !appliesToExcludesCost(risk.appliesTo) &&
+      typeof risk.preMitigationCostML === "number" &&
+      risk.preMitigationCostML > 0
+  );
+
+  const costRows: PortfolioTopRiskRow[] = [];
+  if (costRisks.length > 0) {
+    const exposure = computePortfolioExposure(costRisks, "neutral", PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS, {
+      topN: 5,
+      includeDebug: false,
+    });
+    for (const d of exposure.topDrivers) {
+      const risk = costRisks.find((r) => r.id === d.riskId);
+      if (!risk) continue;
+      const projectId = projectIdByRiskId.get(d.riskId) ?? "";
+      const projectName = projectNameById.get(projectId) ?? projectId;
+      const currency = currencyByProject.get(projectId) ?? "AUD";
+      costRows.push({
+        projectId,
+        projectName,
+        riskId: d.riskId,
+        riskTitle: risk.title,
+        rating: getCurrentRiskRatingLetter(risk),
+        exposureDisplay: formatCurrencyCompact(d.total, currency),
+      });
+    }
+  }
+
+  const scheduleCandidates = allMapped.filter(
+    (risk) =>
+      isRiskActiveForPortfolioAnalytics(risk) &&
+      !appliesToExcludesTime(risk.appliesTo) &&
+      scheduleImpactDaysMLCappedForMonteCarlo(risk) > 0
+  );
+
+  const scheduleRows: PortfolioTopRiskRow[] = [];
+  if (scheduleCandidates.length > 0) {
+    const scored = scheduleCandidates
+      .map((risk) => ({
+        risk,
+        score: expectedScheduleExposureDays(risk),
+      }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+
+    for (const { risk, score } of scored) {
+      const projectId = projectIdByRiskId.get(risk.id) ?? "";
+      const projectName = projectNameById.get(projectId) ?? projectId;
+      scheduleRows.push({
+        projectId,
+        projectName,
+        riskId: risk.id,
+        riskTitle: risk.title,
+        rating: getCurrentRiskRatingLetter(risk),
+        exposureDisplay: formatDurationDays(score, { weekDecimals: 2 }),
+      });
+    }
+  }
+
+  const projectCostExposureSlices: PortfolioProjectCostExposureSlice[] = [];
+  for (const pid of projectIds) {
+    const projectCosts = costRisks.filter((r) => projectIdByRiskId.get(r.id) === pid);
+    if (projectCosts.length === 0) continue;
+    const pe = computePortfolioExposure(projectCosts, "neutral", PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS, {
+      topN: 50,
+      includeDebug: false,
+    });
+    if (!Number.isFinite(pe.total) || pe.total <= 0) continue;
+    projectCostExposureSlices.push({
+      projectId: pid,
+      projectName: projectNameById.get(pid) ?? pid,
+      value: pe.total,
+      currency: currencyByProject.get(pid) ?? "AUD",
+    });
+  }
+  projectCostExposureSlices.sort((a, b) => b.value - a.value);
+
+  const scheduleTotalsByProject = new Map<string, number>();
+  for (const risk of scheduleCandidates) {
+    const pid = projectIdByRiskId.get(risk.id);
+    if (!pid) continue;
+    const d = expectedScheduleExposureDays(risk);
+    if (!Number.isFinite(d) || d <= 0) continue;
+    scheduleTotalsByProject.set(pid, (scheduleTotalsByProject.get(pid) ?? 0) + d);
+  }
+
+  const projectScheduleExposureSlices: PortfolioProjectScheduleExposureSlice[] = [];
+  for (const [pid, valueDays] of scheduleTotalsByProject) {
+    if (!Number.isFinite(valueDays) || valueDays <= 0) continue;
+    projectScheduleExposureSlices.push({
+      projectId: pid,
+      projectName: projectNameById.get(pid) ?? pid,
+      valueDays,
+    });
+  }
+  projectScheduleExposureSlices.sort((a, b) => b.valueDays - a.valueDays);
+
+  const risksRequiringAttentionRows: PortfolioRisksRequiringAttentionRow[] = [];
+  for (const risk of allMapped) {
+    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
+    const level = risk.residualRating.level;
+    if (level !== "high" && level !== "extreme") continue;
+    const hasNoMitigation = !risk.mitigation?.trim();
+    const hasNoOwner = !risk.owner?.trim();
+    if (!(hasNoMitigation || hasNoOwner)) continue;
+    const pid = projectIdByRiskId.get(risk.id) ?? "";
+    risksRequiringAttentionRows.push({
+      projectId: pid,
+      projectName: projectNameById.get(pid) ?? pid,
+      riskId: risk.id,
+      riskTitle: risk.title,
+      rating: getCurrentRiskRatingLetter(risk),
+      ownerDisplay: risk.owner?.trim() ? risk.owner.trim() : "Unassigned",
+      issueLabel: attentionIssueLabel(risk),
+    });
+  }
+  risksRequiringAttentionRows.sort((a, b) => {
+    const pn = a.projectName.localeCompare(b.projectName);
+    if (pn !== 0) return pn;
+    return a.riskTitle.localeCompare(b.riskTitle);
+  });
+
+  const activeRiskSummaryRows = buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, riskRows);
+  const activeRiskStatusSummaryRows = buildPortfolioProjectRiskStatusRowsFromRiskRows(projects, riskRows);
+
+  return {
+    activeRiskCount,
+    activeRiskSummaryRows,
+    activeRiskStatusSummaryRows,
+    costRows,
+    scheduleRows,
+    projectCostExposureSlices,
+    projectScheduleExposureSlices,
+    riskCategoryCounts,
+    riskStatusCounts,
+    riskOwnerCounts,
+    risksRequiringAttentionRows,
+  };
+}
+
+export async function loadPortfolioProjectTilePayloads(
+  supabase: SupabaseClient,
+  portfolioId: string
+): Promise<GetProjectTilePayloadsResult> {
+  const { data: projects, error } = await supabase
+    .from("visualify_projects")
+    .select("id, name, created_at")
+    .eq("portfolio_id", portfolioId)
+    .order("created_at", { ascending: true });
+
+  if (error || !projects?.length) {
+    return { projectTilePayloads: [], portfolioReportingFooter: null };
+  }
+
+  const asAccessible: AccessibleProject[] = projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    created_at: p.created_at,
+  }));
+
+  const { projectTilePayloads, portfolioReportingFooter } = await getProjectTilePayloads(
+    supabase,
+    asAccessible
+  );
+  return {
+    projectTilePayloads: sortProjectTilesAlphabetically(projectTilePayloads),
+    portfolioReportingFooter,
+  };
 }

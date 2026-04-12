@@ -70,6 +70,10 @@ import {
   type TimeResults,
 } from "@/components/simulation/SimulationSection";
 import {
+  ganttSegmentLeftAnchoredStyle,
+  ganttSegmentRightAnchoredStyle,
+} from "@/components/dashboard/chartHorizontalBarFill";
+import {
   StatusPositionCard,
   type StatusPositionTone,
 } from "@/components/dashboard/StatusPositionCard";
@@ -393,6 +397,9 @@ function ProjectValueContingencyMetricCard({
       ? (simTotalDollars / ganttMaxDollars) * 100
       : 0;
 
+  const row3RedEndPct = row3RedLeftPct + row3RedWidthPct;
+  const row3GreenEndPct = row3GreenLeftPct + row3GreenWidthPct;
+
   const adjustmentMagnitudeBarLabel =
     contingencyGapDollars != null &&
     Number.isFinite(contingencyGapDollars) &&
@@ -585,7 +592,7 @@ function ProjectValueContingencyMetricCard({
                           type="button"
                           className="absolute inset-y-0 left-0 z-[1] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                           style={{
-                            width: `${plannedPct}%`,
+                            ...ganttSegmentLeftAnchoredStyle(0, plannedPct),
                             backgroundColor: "var(--ds-chart-series-1)",
                             opacity: opacityFor("programme"),
                             ...ganttSegmentRadius,
@@ -595,7 +602,7 @@ function ProjectValueContingencyMetricCard({
                         />
                         <span
                           className={ganttBarLabelClassName}
-                          style={{ left: 0, width: `${plannedPct}%` }}
+                          style={{ ...ganttSegmentLeftAnchoredStyle(0, plannedPct) }}
                           aria-hidden
                         >
                           <span className="block min-w-0 w-full truncate text-center">{plannedBarLabel}</span>
@@ -607,8 +614,7 @@ function ProjectValueContingencyMetricCard({
                         type="button"
                         className="absolute inset-y-0 z-[2] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                         style={{
-                          left: `${plannedPct}%`,
-                          width: `${topOutcomeExtensionPct}%`,
+                          ...ganttSegmentRightAnchoredStyle(plannedPct + topOutcomeExtensionPct, topOutcomeExtensionPct),
                           backgroundColor: "var(--ds-status-danger)",
                           opacity: opacityFor("simulationOutcome"),
                           ...ganttSegmentRadius,
@@ -622,8 +628,10 @@ function ProjectValueContingencyMetricCard({
                         type="button"
                         className="absolute inset-y-0 z-[2] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                         style={{
-                          left: `${topOutcomePullbackLeftPct}%`,
-                          width: `${topOutcomePullbackPct}%`,
+                          ...ganttSegmentRightAnchoredStyle(
+                            topOutcomePullbackLeftPct + topOutcomePullbackPct,
+                            topOutcomePullbackPct,
+                          ),
                           backgroundColor: "color-mix(in oklab, var(--ds-status-success) 52%, var(--ds-surface-inset))",
                           opacity: opacityFor("simulationOutcome"),
                           ...ganttSegmentRadius,
@@ -637,7 +645,7 @@ function ProjectValueContingencyMetricCard({
                         aria-hidden
                         className="pointer-events-none absolute inset-y-0 left-0 z-[2] min-w-0"
                         style={{
-                          width: `${plannedPct}%`,
+                          ...ganttSegmentLeftAnchoredStyle(0, plannedPct),
                           opacity: opacityFor("programme"),
                           boxShadow: "inset 0 0 0 2px var(--ds-primary-hover)",
                           ...ganttSegmentRadius,
@@ -648,8 +656,7 @@ function ProjectValueContingencyMetricCard({
                       <span
                         className={ganttBarLabelClassName}
                         style={{
-                          left: `${plannedPct}%`,
-                          width: `${topOutcomeExtensionPct}%`,
+                          ...ganttSegmentRightAnchoredStyle(plannedPct + topOutcomeExtensionPct, topOutcomeExtensionPct),
                           zIndex: 3,
                         }}
                         aria-hidden
@@ -663,8 +670,10 @@ function ProjectValueContingencyMetricCard({
                       <span
                         className={ganttBarLabelClassName}
                         style={{
-                          left: `${topOutcomePullbackLeftPct}%`,
-                          width: `${topOutcomePullbackPct}%`,
+                          ...ganttSegmentRightAnchoredStyle(
+                            topOutcomePullbackLeftPct + topOutcomePullbackPct,
+                            topOutcomePullbackPct,
+                          ),
                           zIndex: 3,
                         }}
                         aria-hidden
@@ -699,7 +708,7 @@ function ProjectValueContingencyMetricCard({
                                 type="button"
                                 className="absolute inset-y-0 left-0 z-0 min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                 style={{
-                                  width: `${worksPctScaled}%`,
+                                  ...ganttSegmentLeftAnchoredStyle(0, worksPctScaled),
                                   backgroundColor: "var(--ds-chart-series-1)",
                                   opacity: opacityFor("works"),
                                   ...ganttSegmentRadius,
@@ -709,7 +718,10 @@ function ProjectValueContingencyMetricCard({
                               />
                               <span
                                 className={ganttBarLabelClassName}
-                                style={{ left: 0, width: `${worksPctScaled}%`, opacity: opacityFor("works") }}
+                                style={{
+                                  ...ganttSegmentLeftAnchoredStyle(0, worksPctScaled),
+                                  opacity: opacityFor("works"),
+                                }}
                                 aria-hidden
                               >
                                 <span className="block min-w-0 w-full truncate text-center">{worksBarLabel}</span>
@@ -730,8 +742,7 @@ function ProjectValueContingencyMetricCard({
                                 type="button"
                                 className="absolute inset-y-0 z-0 min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                 style={{
-                                  left: `${worksPctScaled}%`,
-                                  width: `${contingencyPctScaled}%`,
+                                  ...ganttSegmentLeftAnchoredStyle(worksPctScaled, contingencyPctScaled),
                                   backgroundColor: "var(--ds-status-warning)",
                                   opacity: opacityFor("contingency"),
                                   ...ganttSegmentRadius,
@@ -742,8 +753,7 @@ function ProjectValueContingencyMetricCard({
                               <span
                                 className={ganttBarLabelClassName}
                                 style={{
-                                  left: `${worksPctScaled}%`,
-                                  width: `${contingencyPctScaled}%`,
+                                  ...ganttSegmentLeftAnchoredStyle(worksPctScaled, contingencyPctScaled),
                                   opacity: opacityFor("contingency"),
                                 }}
                                 aria-hidden
@@ -775,8 +785,7 @@ function ProjectValueContingencyMetricCard({
                                     type="button"
                                     className="absolute inset-y-0 z-[1] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                     style={{
-                                      left: `${row3RedLeftPct}%`,
-                                      width: `${row3RedWidthPct}%`,
+                                      ...ganttSegmentRightAnchoredStyle(row3RedEndPct, row3RedWidthPct),
                                       backgroundColor: "var(--ds-status-danger)",
                                       opacity: opacityFor("requiredContingency"),
                                       ...ganttSegmentRadius,
@@ -788,8 +797,7 @@ function ProjectValueContingencyMetricCard({
                                     <span
                                       className={ganttBarLabelClassName}
                                       style={{
-                                        left: `${row3RedLeftPct}%`,
-                                        width: `${row3RedWidthPct}%`,
+                                        ...ganttSegmentRightAnchoredStyle(row3RedEndPct, row3RedWidthPct),
                                         zIndex: 2,
                                         opacity: opacityFor("requiredContingency"),
                                       }}
@@ -808,8 +816,7 @@ function ProjectValueContingencyMetricCard({
                                     type="button"
                                     className="absolute inset-y-0 z-[1] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                     style={{
-                                      left: `${row3GreenLeftPct}%`,
-                                      width: `${row3GreenWidthPct}%`,
+                                      ...ganttSegmentRightAnchoredStyle(row3GreenEndPct, row3GreenWidthPct),
                                       backgroundColor: "color-mix(in oklab, var(--ds-status-success) 55%, var(--ds-surface-inset))",
                                       opacity: opacityFor("requiredContingency"),
                                       ...ganttSegmentRadius,
@@ -821,8 +828,7 @@ function ProjectValueContingencyMetricCard({
                                     <span
                                       className={ganttBarLabelClassName}
                                       style={{
-                                        left: `${row3GreenLeftPct}%`,
-                                        width: `${row3GreenWidthPct}%`,
+                                        ...ganttSegmentRightAnchoredStyle(row3GreenEndPct, row3GreenWidthPct),
                                         zIndex: 2,
                                         opacity: opacityFor("requiredContingency"),
                                       }}
@@ -1054,6 +1060,9 @@ function ScheduleDurationContingencyGanttCard({
       ? ((worksDays + totalContingencyRequiredDays) / ganttMaxDays) * 100
       : 0;
 
+  const row3RedEndPct = row3RedLeftPct + row3RedWidthPct;
+  const row3GreenEndPct = row3GreenLeftPct + row3GreenWidthPct;
+
   const adjustmentMagnitudeBarLabel =
     adjGap != null && Number.isFinite(adjGap) && adjGap !== 0
       ? formatDurationDaysBarLabel(Math.abs(adjGap))
@@ -1215,7 +1224,7 @@ function ScheduleDurationContingencyGanttCard({
                           type="button"
                           className="absolute inset-y-0 left-0 z-[1] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                           style={{
-                            width: `${plannedPct}%`,
+                            ...ganttSegmentLeftAnchoredStyle(0, plannedPct),
                             backgroundColor: "var(--ds-chart-series-1)",
                             opacity: opacityFor("programme"),
                             ...ganttSegmentRadius,
@@ -1225,7 +1234,7 @@ function ScheduleDurationContingencyGanttCard({
                         />
                         <span
                           className={ganttBarLabelClassName}
-                          style={{ left: 0, width: `${plannedPct}%` }}
+                          style={{ ...ganttSegmentLeftAnchoredStyle(0, plannedPct) }}
                           aria-hidden
                         >
                           <span className="block min-w-0 w-full truncate text-center">{plannedBarLabel}</span>
@@ -1238,8 +1247,7 @@ function ScheduleDurationContingencyGanttCard({
                           type="button"
                           className="absolute inset-y-0 z-[2] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                           style={{
-                            left: `${plannedPct}%`,
-                            width: `${topOutcomeExtensionPct}%`,
+                            ...ganttSegmentRightAnchoredStyle(plannedPct + topOutcomeExtensionPct, topOutcomeExtensionPct),
                             backgroundColor: "var(--ds-status-danger)",
                             opacity: opacityFor("simulationOutcome"),
                             ...ganttSegmentRadius,
@@ -1251,8 +1259,7 @@ function ScheduleDurationContingencyGanttCard({
                           <span
                             className={ganttBarLabelClassName}
                             style={{
-                              left: `${plannedPct}%`,
-                              width: `${topOutcomeExtensionPct}%`,
+                              ...ganttSegmentRightAnchoredStyle(plannedPct + topOutcomeExtensionPct, topOutcomeExtensionPct),
                               zIndex: 3,
                             }}
                             aria-hidden
@@ -1270,8 +1277,10 @@ function ScheduleDurationContingencyGanttCard({
                           type="button"
                           className="absolute inset-y-0 z-[2] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                           style={{
-                            left: `${topOutcomePullbackLeftPct}%`,
-                            width: `${topOutcomePullbackPct}%`,
+                            ...ganttSegmentRightAnchoredStyle(
+                              topOutcomePullbackLeftPct + topOutcomePullbackPct,
+                              topOutcomePullbackPct,
+                            ),
                             backgroundColor: "color-mix(in oklab, var(--ds-status-success) 52%, var(--ds-surface-inset))",
                             opacity: opacityFor("simulationOutcome"),
                             ...ganttSegmentRadius,
@@ -1283,8 +1292,10 @@ function ScheduleDurationContingencyGanttCard({
                           <span
                             className={ganttBarLabelClassName}
                             style={{
-                              left: `${topOutcomePullbackLeftPct}%`,
-                              width: `${topOutcomePullbackPct}%`,
+                              ...ganttSegmentRightAnchoredStyle(
+                                topOutcomePullbackLeftPct + topOutcomePullbackPct,
+                                topOutcomePullbackPct,
+                              ),
                               zIndex: 3,
                             }}
                             aria-hidden
@@ -1301,7 +1312,7 @@ function ScheduleDurationContingencyGanttCard({
                         aria-hidden
                         className="pointer-events-none absolute inset-y-0 left-0 z-[2] min-w-0"
                         style={{
-                          width: `${plannedPct}%`,
+                          ...ganttSegmentLeftAnchoredStyle(0, plannedPct),
                           opacity: opacityFor("programme"),
                           boxShadow: "inset 0 0 0 2px var(--ds-primary-hover)",
                           ...ganttSegmentRadius,
@@ -1333,7 +1344,7 @@ function ScheduleDurationContingencyGanttCard({
                                 type="button"
                                 className="absolute inset-y-0 left-0 z-0 min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                 style={{
-                                  width: `${worksPctScaled}%`,
+                                  ...ganttSegmentLeftAnchoredStyle(0, worksPctScaled),
                                   backgroundColor: "var(--ds-chart-series-1)",
                                   opacity: opacityFor("works"),
                                   ...ganttSegmentRadius,
@@ -1343,7 +1354,10 @@ function ScheduleDurationContingencyGanttCard({
                               />
                               <span
                                 className={ganttBarLabelClassName}
-                                style={{ left: 0, width: `${worksPctScaled}%`, opacity: opacityFor("works") }}
+                                style={{
+                                  ...ganttSegmentLeftAnchoredStyle(0, worksPctScaled),
+                                  opacity: opacityFor("works"),
+                                }}
                                 aria-hidden
                               >
                                 <span className="block min-w-0 w-full truncate text-center">{worksBarLabel}</span>
@@ -1364,8 +1378,7 @@ function ScheduleDurationContingencyGanttCard({
                                 type="button"
                                 className="absolute inset-y-0 z-0 min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                 style={{
-                                  left: `${worksPctScaled}%`,
-                                  width: `${contingencyPctScaled}%`,
+                                  ...ganttSegmentLeftAnchoredStyle(worksPctScaled, contingencyPctScaled),
                                   backgroundColor: "var(--ds-status-warning)",
                                   opacity: opacityFor("contingency"),
                                   ...ganttSegmentRadius,
@@ -1376,8 +1389,7 @@ function ScheduleDurationContingencyGanttCard({
                               <span
                                 className={ganttBarLabelClassName}
                                 style={{
-                                  left: `${worksPctScaled}%`,
-                                  width: `${contingencyPctScaled}%`,
+                                  ...ganttSegmentLeftAnchoredStyle(worksPctScaled, contingencyPctScaled),
                                   opacity: opacityFor("contingency"),
                                 }}
                                 aria-hidden
@@ -1409,8 +1421,7 @@ function ScheduleDurationContingencyGanttCard({
                                     type="button"
                                     className="absolute inset-y-0 z-[1] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                     style={{
-                                      left: `${row3RedLeftPct}%`,
-                                      width: `${row3RedWidthPct}%`,
+                                      ...ganttSegmentRightAnchoredStyle(row3RedEndPct, row3RedWidthPct),
                                       backgroundColor: "var(--ds-status-danger)",
                                       opacity: opacityFor("requiredContingency"),
                                       ...ganttSegmentRadius,
@@ -1422,8 +1433,7 @@ function ScheduleDurationContingencyGanttCard({
                                     <span
                                       className={ganttBarLabelClassName}
                                       style={{
-                                        left: `${row3RedLeftPct}%`,
-                                        width: `${row3RedWidthPct}%`,
+                                        ...ganttSegmentRightAnchoredStyle(row3RedEndPct, row3RedWidthPct),
                                         zIndex: 2,
                                         opacity: opacityFor("requiredContingency"),
                                       }}
@@ -1442,8 +1452,7 @@ function ScheduleDurationContingencyGanttCard({
                                     type="button"
                                     className="absolute inset-y-0 z-[1] min-w-0 cursor-pointer border-0 p-0 outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-surface-default)]"
                                     style={{
-                                      left: `${row3GreenLeftPct}%`,
-                                      width: `${row3GreenWidthPct}%`,
+                                      ...ganttSegmentRightAnchoredStyle(row3GreenEndPct, row3GreenWidthPct),
                                       backgroundColor: "color-mix(in oklab, var(--ds-status-success) 55%, var(--ds-surface-inset))",
                                       opacity: opacityFor("requiredContingency"),
                                       ...ganttSegmentRadius,
@@ -1455,8 +1464,7 @@ function ScheduleDurationContingencyGanttCard({
                                     <span
                                       className={ganttBarLabelClassName}
                                       style={{
-                                        left: `${row3GreenLeftPct}%`,
-                                        width: `${row3GreenWidthPct}%`,
+                                        ...ganttSegmentRightAnchoredStyle(row3GreenEndPct, row3GreenWidthPct),
                                         zIndex: 2,
                                         opacity: opacityFor("requiredContingency"),
                                       }}
