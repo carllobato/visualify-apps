@@ -70,10 +70,33 @@ type RiskAggRow = {
   mitigation_description: string | null;
 };
 
-type SnapRow = {
-  project_id: string;
-  created_at: string | null;
-};
+/** Reporting discipline: locked monthly snapshot older than this is flagged (amber) unless already red. */
+export const REPORTING_LOCK_STALE_MS = 30 * 24 * 60 * 60 * 1000;
+
+function reportingLockCompletedAtMs(row: SimulationSnapshotRow | undefined): number | null {
+  if (!row) return null;
+  const s = row.locked_at ?? row.created_at;
+  if (!s) return null;
+  const t = new Date(s).getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+function isReportingLockStale(lastMs: number | null, nowMs: number): boolean {
+  if (lastMs == null) return false;
+  return nowMs - lastMs > REPORTING_LOCK_STALE_MS;
+}
+
+/** Bump green → amber when the latest locked reporting snapshot is stale. */
+function applyStaleReportingLockRag(
+  base: RagStatus,
+  lockedRow: SimulationSnapshotRow | undefined,
+  nowMs: number
+): RagStatus {
+  if (base === "red") return base;
+  const lastMs = reportingLockCompletedAtMs(lockedRow);
+  if (!isReportingLockStale(lastMs, nowMs)) return base;
+  return "amber";
+}
 
 function residualLevel(row: RiskAggRow): "low" | "medium" | "high" | "extreme" {
   const postConsequence = Math.max(

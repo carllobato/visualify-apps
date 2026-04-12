@@ -143,7 +143,7 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
                 const row = payload[0].payload as ChartDatum;
                 const pct = total > 0 ? (row.value / total) * 100 : 0;
                 const amountLabel =
-                  row.kind === "cost"
+                  props.mode === "cost" && row.kind === "cost"
                     ? formatCurrencyInReportingUnit(row.value, row.currency, props.reportingUnit)
                     : formatDurationDaysRoundedWhole(row.value);
                 return (
