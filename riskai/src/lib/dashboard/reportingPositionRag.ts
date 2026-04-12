@@ -43,6 +43,21 @@ export type PortfolioReportingFooterRow = {
   timeStatus: string;
   overallStatus: "On Track" | "At Risk" | "Off Track";
   rag: PortfolioRag;
+  /** Σ(simulated cost at P) − Σ(contingency) when > 0 — KPI modal driver line. */
+  costShortfallAbs?: number;
+  /** Σ(contingency) − Σ(simulated cost at P) when > 0 — KPI modal driver line. */
+  costSurplusAbs?: number;
+  /** Σ(delay at P) − Σ(schedule contingency days) when > 0 — KPI modal driver line. */
+  timeShortfallDays?: number;
+  /** Σ(schedule contingency days) − Σ(delay at P) when > 0 — KPI modal driver line. */
+  timeSurplusDays?: number;
+  /** Mean risk-appetite P across projects in the aggregate (display). */
+  driverTargetP: number;
+  driverCurrency: ProjectCurrency;
+  /** Σ simulated cost at target P (same as cost line denominator). */
+  sumCostAtTargetPDollars?: number;
+  /** Σ simulated delay at target P (days). */
+  sumDelayAtTargetPDays?: number;
 };
 
 type LineSeverity = ReportingLineSeverity;
@@ -88,6 +103,19 @@ function lineStatus(current: number | null, target: number): LineSeverity | null
   if (current >= target) return "on";
   if (current >= target - 10) return "risk";
   return "off";
+}
+
+/**
+ * If contingency/buffer is still below the simulated P-target in absolute terms, do not show “on track”
+ * from percentile/ratio bands alone — floor at “risk” unless already “off”.
+ */
+function escalateSeverityIfAbsoluteGapToPTarget(
+  line: LineSeverity | null,
+  gap: number
+): LineSeverity | null {
+  if (line == null || !Number.isFinite(gap) || gap <= 0) return line;
+  if (line === "off") return "off";
+  return "risk";
 }
 
 /** Display label for a cost/time line (simulation position bands). */
@@ -144,6 +172,80 @@ export type ReportingFundingScalars = {
 };
 
 /** Values for “held vs at-target-P” comparisons (same CDFs as position breakdown). */
+/** Gap metrics for KPI copy — aligned with {@link reportingFundingScalars} and breakdown “held” basis. */
+export type ReportingPositionDriverScalars = {
+  /** max(0, simulated cost at target P − held funds: contingency, else approved budget). */
+  costShortfallDollars: number | null;
+  /** max(0, held funds − simulated cost at target P). */
+  costSurplusDollars: number | null;
+  /** max(0, simulated delay at target P − schedule contingency days); null when no schedule buffer. */
+  timeShortfallDays: number | null;
+  /** max(0, schedule contingency − simulated delay at target P). */
+  timeSurplusDays: number | null;
+  /** Simulated total cost at appetite P (for KPI sublines vs bare “P90”). */
+  costAtTargetPDollars: number | null;
+  /** Simulated delay at appetite P (days). */
+  timeAtTargetPDays: number | null;
+  currency: ProjectCurrency;
+  targetPNumeric: number;
+};
+
+/**
+ * Dollar / schedule buffer shortfalls vs simulated outcomes at the project’s risk-appetite percentile.
+ * Used to explain cost/time line status in portfolio reporting tables.
+ */
+export function tryReportingPositionDriverScalars(
+  lockedRow: SimulationSnapshotRow | null | undefined,
+  settingsRow: Record<string, unknown> | null | undefined
+): ReportingPositionDriverScalars | null {
+  if (!lockedRow || !settingsRow) return null;
+  const ctx = projectContextFromSettingsRow(settingsRow);
+  if (!ctx) return null;
+  const scalar = reportingFundingScalars(lockedRow, ctx);
+  if (!scalar) return null;
+
+  const approvedBudgetBase = ctx.approvedBudget_m * 1e6;
+  const contingencyValueDollars =
+    ctx != null && Number.isFinite(ctx.contingencyValue_m) ? ctx.contingencyValue_m * 1e6 : null;
+  const costHeld =
+    contingencyValueDollars != null && Number.isFinite(contingencyValueDollars)
+      ? contingencyValueDollars
+      : approvedBudgetBase;
+
+  let costShortfallDollars: number | null = null;
+  let costSurplusDollars: number | null = null;
+  if (scalar.costAtTargetPDollars != null && Number.isFinite(scalar.costAtTargetPDollars)) {
+    const gap = scalar.costAtTargetPDollars - costHeld;
+    if (gap > 0) costShortfallDollars = gap;
+    else if (gap < 0) costSurplusDollars = -gap;
+  }
+
+  const schedDays = scalar.scheduleContingencyDays;
+  let timeShortfallDays: number | null = null;
+  let timeSurplusDays: number | null = null;
+  if (
+    schedDays != null &&
+    Number.isFinite(schedDays) &&
+    scalar.timeAtTargetPDays != null &&
+    Number.isFinite(scalar.timeAtTargetPDays)
+  ) {
+    const gap = scalar.timeAtTargetPDays - schedDays;
+    if (gap > 0) timeShortfallDays = gap;
+    else if (gap < 0) timeSurplusDays = -gap;
+  }
+
+  return {
+    costShortfallDollars,
+    costSurplusDollars,
+    timeShortfallDays,
+    timeSurplusDays,
+    costAtTargetPDollars: scalar.costAtTargetPDollars,
+    timeAtTargetPDays: scalar.timeAtTargetPDays,
+    currency: scalar.currency,
+    targetPNumeric: scalar.targetPNumeric,
+  };
+}
+
 export function reportingFundingScalars(
   lockedRow: SimulationSnapshotRow,
   ctx: ProjectContext
@@ -232,6 +334,14 @@ export function computePortfolioReportingFooter(rows: ReportingFundingScalars[])
     timeLine = lineStatus(currentP, targetP);
   }
 
+  const costShortfallAbs = reqCost > 0 ? Math.max(0, reqCost - heldCost) : 0;
+  const timeShortfallDays = reqTime > 0 ? Math.max(0, reqTime - heldTime) : 0;
+  const costSurplusAbs = reqCost > 0 ? Math.max(0, heldCost - reqCost) : 0;
+  const timeSurplusDays = reqTime > 0 ? Math.max(0, heldTime - reqTime) : 0;
+
+  costLine = escalateSeverityIfAbsoluteGapToPTarget(costLine, costShortfallAbs);
+  timeLine = escalateSeverityIfAbsoluteGapToPTarget(timeLine, timeShortfallDays);
+
   const severities: LineSeverity[] = [];
   if (costLine != null) severities.push(costLine);
   if (timeLine != null) severities.push(timeLine);
@@ -251,6 +361,14 @@ export function computePortfolioReportingFooter(rows: ReportingFundingScalars[])
     timeStatus: formatReportingLineStatus(timeLine),
     overallStatus,
     rag,
+    driverTargetP: targetP,
+    driverCurrency: currency0,
+    ...(reqCost > 0 ? { sumCostAtTargetPDollars: reqCost } : {}),
+    ...(reqTime > 0 ? { sumDelayAtTargetPDays: reqTime } : {}),
+    ...(costShortfallAbs > 0 ? { costShortfallAbs } : {}),
+    ...(costSurplusAbs > 0 ? { costSurplusAbs } : {}),
+    ...(timeShortfallDays > 0 ? { timeShortfallDays } : {}),
+    ...(timeSurplusDays > 0 ? { timeSurplusDays } : {}),
   };
 }
 
@@ -296,8 +414,36 @@ export function reportingPositionBreakdownFromLockedSnapshot(
     timeCurrentP = p != null ? Math.round(p) : null;
   }
 
-  const c = lineStatus(costCurrentP, targetPNumeric);
-  const t = lineStatus(timeCurrentP, targetPNumeric);
+  let c = lineStatus(costCurrentP, targetPNumeric);
+  let t = lineStatus(timeCurrentP, targetPNumeric);
+
+  const scalar = reportingFundingScalars(lockedRow, ctx);
+  if (scalar != null) {
+    const costHeldForGap =
+      contingencyValueDollars != null && Number.isFinite(contingencyValueDollars)
+        ? contingencyValueDollars
+        : approvedBudgetBase;
+    if (
+      scalar.costAtTargetPDollars != null &&
+      Number.isFinite(scalar.costAtTargetPDollars) &&
+      scalar.costAtTargetPDollars > costHeldForGap
+    ) {
+      c = escalateSeverityIfAbsoluteGapToPTarget(c, scalar.costAtTargetPDollars - costHeldForGap);
+    }
+    if (
+      scalar.scheduleContingencyDays != null &&
+      Number.isFinite(scalar.scheduleContingencyDays) &&
+      scalar.timeAtTargetPDays != null &&
+      Number.isFinite(scalar.timeAtTargetPDays) &&
+      scalar.timeAtTargetPDays > scalar.scheduleContingencyDays
+    ) {
+      t = escalateSeverityIfAbsoluteGapToPTarget(
+        t,
+        scalar.timeAtTargetPDays - scalar.scheduleContingencyDays
+      );
+    }
+  }
+
   const severities: LineSeverity[] = [];
   if (c != null) severities.push(c);
   if (t != null) severities.push(t);

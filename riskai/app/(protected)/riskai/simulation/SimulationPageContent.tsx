@@ -78,6 +78,7 @@ import {
   type StatusPositionTone,
 } from "@/components/dashboard/StatusPositionCard";
 import { NeutralRiskaiLoading } from "@/components/NeutralRiskaiLoading";
+import { LockedReportingRunMonthSelect } from "@/components/LockedReportingRunMonthSelect";
 import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.types";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { probability01FromScale } from "@/domain/risk/risk.logic";
@@ -1678,7 +1679,6 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const [sessionLatestSavedSnapshotRow, setSessionLatestSavedSnapshotRow] =
     useState<SimulationSnapshotRow>(null);
   const reportingDbRow = lockedSnapshotRow as SimulationSnapshotRowDb | null;
-  const [loadingLatestReportedRun, setLoadingLatestReportedRun] = useState(false);
   const [setReportingModalOpen, setSetReportingModalOpen] = useState(false);
   const [reportingNote, setReportingNote] = useState("");
   const [reportingMonthYear, setReportingMonthYear] = useState(() => toMonthYearKey(new Date()));
@@ -1837,6 +1837,13 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     } catch (err) {
       console.error("[simulation] post-run getSnapshotById", err);
     }
+  }, []);
+
+  const handleSelectLockedReportingRunByMonth = useCallback((row: SimulationSnapshotRow) => {
+    if (!row) return;
+    setLockedSnapshotRow(row);
+    hydrateRef.current(row, "simulation-load-last-reported");
+    if (row.created_at) setLastRun(row.created_at);
   }, []);
 
   const isCurrentRunPersisted = simulation.current?.id && !simulation.current.id.startsWith("sim_");
@@ -2599,35 +2606,13 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
             >
               Run Simulation
             </Button>
-            {lockedSnapshotRow && (
-              <Button
-                type="button"
-                onClick={async () => {
-                  if (loadingLatestReportedRun) return;
-                  const snapshotProjectId = effectiveProjectId?.trim();
-                  if (!snapshotProjectId) {
-                    console.error("[simulation] getLatestLockedSnapshot skipped: projectId is required for snapshot access");
-                    return;
-                  }
-                  setLoadingLatestReportedRun(true);
-                  try {
-                    const row = await getLatestLockedSnapshot(snapshotProjectId);
-                    setLockedSnapshotRow(row ?? null);
-                    if (!row) return;
-                    hydrateRef.current(row, "simulation-load-last-reported");
-                    if (row.created_at) setLastRun(row.created_at);
-                  } catch (err) {
-                    console.error("[simulation] load latest locked snapshot", err);
-                  } finally {
-                    setLoadingLatestReportedRun(false);
-                  }
-                }}
-                disabled={loadingLatestReportedRun}
-                variant="secondary"
-              >
-                {loadingLatestReportedRun ? "Loading…" : "Load Last Reporting Run"}
-              </Button>
-            )}
+            {effectiveProjectId?.trim() ? (
+              <LockedReportingRunMonthSelect
+                projectId={effectiveProjectId}
+                disabled={simulationReadOnly}
+                onSelectRow={handleSelectLockedReportingRunByMonth}
+              />
+            ) : null}
           </div>
         </div>
       )}

@@ -6,7 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
-import { buildNeedsAttentionScoreCard } from "@/lib/dashboard/needsAttentionHealthRun";
+import {
+  buildNeedsAttentionScoreCard,
+  type NeedsAttentionStaleCopyMode,
+} from "@/lib/dashboard/needsAttentionHealthRun";
 import {
   sortProjectTilesByRag,
   type PortfolioNeedsAttentionHealthRun,
@@ -18,6 +21,7 @@ import {
   type RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
 import { formatDurationDays } from "@/lib/formatDuration";
+import type { ProjectCurrency } from "@/lib/projectContext";
 import {
   DEFAULT_REPORTING_UNIT,
   formatCurrencyInReportingUnit,
@@ -38,6 +42,12 @@ import {
 
 /** `h2` id in this modal — use for `aria-labelledby` when embedding tables (e.g. category/owner breakdown). */
 export const DOCUMENT_KPI_MODAL_TITLE_ID = "document-kpi-dialog-title";
+
+/** Portfolio overview KPI tile + modal slide title for the project count (must match page `kpiTiles`). */
+export const PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE = "Active Projects";
+
+/** Portfolio overview KPI tile + modal slide title for the health run score (must match page `kpiTiles`). */
+export const PORTFOLIO_HEALTH_KPI_TITLE = "Portfolio Health";
 
 export type DocumentKpiTileItem = {
   title: string;
@@ -69,8 +79,10 @@ type DocumentKpiModalProps = {
   coverageRatioRows?: PortfolioProjectCoverageRow[];
   /** Per-project schedule exposure, contingency (weeks), and coverage — Schedule Exposure & Coverage KPI modal. */
   scheduleCoverageRows?: PortfolioProjectScheduleCoverageRow[];
-  /** Health run score card (Needs Attention KPI modal). */
+  /** Health run score card (Portfolio Health KPI modal). */
   needsAttentionHealthRun?: PortfolioNeedsAttentionHealthRun;
+  /** Aligns stale-line copy with portfolio reporting month selection; defaults to UTC-month snapshot wording. */
+  needsAttentionStaleCopyMode?: NeedsAttentionStaleCopyMode;
   /** Portfolio Σ held vs Σ at-target-P row for Portfolio Risk Rating modal. */
   portfolioReportingFooter?: PortfolioReportingFooterRow | null;
   /**
@@ -124,6 +136,11 @@ function ragWord(status: RagStatus): string {
   }
 }
 
+/** True for {@link formatReportingLineStatus} “On track” (cost/time cell label). */
+function reportingLineLabelIsOnTrack(label: string | undefined): boolean {
+  return (label?.trim().toLowerCase() ?? "").startsWith("on track");
+}
+
 /** Reporting line label (Cost / Time) — matches {@link formatReportingLineStatus} semantics. */
 function reportingLineCellClass(label: string | undefined): string {
   const v = label?.trim() ?? "";
@@ -133,6 +150,62 @@ function reportingLineCellClass(label: string | undefined): string {
   return "font-medium text-[var(--ds-status-success-fg)] tabular-nums";
 }
 
+/** Dot fill for cost/time line — aligned with {@link ragDotClass} / Overall column. */
+function reportingLineStatusDotClass(label: string | undefined): string {
+  const v = label?.trim() ?? "";
+  if (v === "" || v === "—") return "bg-[var(--ds-status-neutral)]";
+  if (v.startsWith("Off")) return "bg-[var(--ds-status-danger)]";
+  if (v.startsWith("At risk")) return "bg-[var(--ds-status-warning)]";
+  return "bg-[var(--ds-status-success)]";
+}
+
+/** Cost or time status label with the same leading dot pattern as {@link OverallRagCell}. */
+function ReportingLineStatusWithDot({ label }: { label: string | undefined }) {
+  const display = label?.trim() ? label : "—";
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+      <span className="inline-flex shrink-0 items-center" aria-hidden>
+        <span className={`size-[0.6875rem] shrink-0 rounded-full ${reportingLineStatusDotClass(label)}`} />
+      </span>
+      <span className={`min-w-0 ${reportingLineCellClass(label)}`}>{display}</span>
+    </div>
+  );
+}
+
+function localeForProjectCurrency(currency: ProjectCurrency | undefined): string {
+  return currency === "AUD" ? "en-AU" : "en-US";
+}
+
+/** Project column: lock date + P-band + currency — ties the row to the metric sublines. */
+function reportingProjectSupportingLine(p: ProjectTilePayload): string | null {
+  const parts: string[] = [];
+  const raw = p.reportingLockedAt;
+  if (typeof raw === "string" && raw.trim() !== "") {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) {
+      const loc = localeForProjectCurrency(p.reportingDriverCurrency);
+      parts.push(
+        `Locked ${d.toLocaleDateString(loc, { month: "short", day: "numeric", year: "numeric" })}`
+      );
+    }
+  }
+  if (p.reportingDriverTargetP != null && p.reportingDriverCurrency != null) {
+    parts.push(`P${Math.round(p.reportingDriverTargetP)} · ${p.reportingDriverCurrency}`);
+  } else if (p.reportingDriverCurrency != null) {
+    parts.push(p.reportingDriverCurrency);
+  } else if (p.reportingDriverTargetP != null) {
+    parts.push(`P${Math.round(p.reportingDriverTargetP)}`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function reportingPortfolioSupportingLine(
+  footer: PortfolioReportingFooterRow,
+  rowCount: number
+): string {
+  return `${rowCount} project${rowCount === 1 ? "" : "s"} · ${footer.driverCurrency} · mean P${Math.round(footer.driverTargetP)}`;
+}
+
 function reportingOverallCellClass(label: string | undefined): string {
   const v = label?.trim() ?? "";
   if (v === "" || v === "—") return "text-[var(--ds-text-muted)]";
@@ -140,6 +213,170 @@ function reportingOverallCellClass(label: string | undefined): string {
   if (v === "At Risk") return "font-semibold text-[var(--ds-status-warning-fg)]";
   if (v === "On Track") return "font-semibold text-[var(--ds-status-success-fg)]";
   return "font-medium text-[var(--ds-text-primary)]";
+}
+
+/** Simulated total cost at appetite P: `$Xm (P90)` when available, else `P90` only. */
+function reportingCostAtPTargetPhrase(
+  p: ProjectTilePayload,
+  reportingUnit: ReportingUnitOption
+): string | null {
+  const amt = p.reportingCostAtTargetPDollars;
+  const cur = p.reportingDriverCurrency;
+  const tp = p.reportingDriverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  if (amt != null && cur != null && Number.isFinite(amt) && amt > 0) {
+    return `${formatCurrencyInReportingUnit(amt, cur, reportingUnit)} (P${pr})`;
+  }
+  return `P${pr}`;
+}
+
+/** Simulated delay at appetite P: `3 wk (P90)` when available, else `P90` only. */
+function reportingDelayAtPTargetPhrase(p: ProjectTilePayload): string | null {
+  const days = p.reportingTimeAtTargetPDays;
+  const tp = p.reportingDriverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  if (days != null && Number.isFinite(days) && days >= 0) {
+    return `${formatDurationDays(days, { weekDecimals: 1 })} (P${pr})`;
+  }
+  return `P${pr}`;
+}
+
+function portfolioCostAtPTargetPhrase(
+  footer: PortfolioReportingFooterRow,
+  reportingUnit: ReportingUnitOption
+): string | null {
+  const amt = footer.sumCostAtTargetPDollars;
+  const cur = footer.driverCurrency;
+  const tp = footer.driverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  if (amt != null && cur != null && Number.isFinite(amt) && amt > 0) {
+    return `${formatCurrencyInReportingUnit(amt, cur, reportingUnit)} (P${pr})`;
+  }
+  return `P${pr}`;
+}
+
+function portfolioDelayAtPTargetPhrase(footer: PortfolioReportingFooterRow): string | null {
+  const days = footer.sumDelayAtTargetPDays;
+  const tp = footer.driverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  if (days != null && Number.isFinite(days) && days >= 0) {
+    return `${formatDurationDays(days, { weekDecimals: 1 })} (P${pr})`;
+  }
+  return `P${pr}`;
+}
+
+/**
+ * Muted subline for cost. “On track” uses band logic (coverage vs mean P); dollar gap is absolute
+ * Σ(req−held) — use “short” wording only when the band is not on track.
+ */
+function reportingCostMetricSubline(
+  p: ProjectTilePayload,
+  reportingUnit: ReportingUnitOption
+): string | null {
+  const cur = p.reportingDriverCurrency;
+  const tp = p.reportingDriverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  const atP = reportingCostAtPTargetPhrase(p, reportingUnit) ?? `P${pr}`;
+  const short = p.reportingCostShortfallAbs;
+  const sur = p.reportingCostSurplusAbs;
+  if (cur == null) return null;
+  if (short != null && Number.isFinite(short) && short > 0) {
+    const fmt = formatCurrencyInReportingUnit(short, cur, reportingUnit);
+    if (reportingLineLabelIsOnTrack(p.reportingCostStatus)) {
+      return `P${pr} band on track · ${fmt} below ${atP}`;
+    }
+    return `Contingency short: ${fmt} v ${atP}`;
+  }
+  if (sur != null && Number.isFinite(sur) && sur > 0) {
+    return `Contingency headroom: ${formatCurrencyInReportingUnit(sur, cur, reportingUnit)} v ${atP}`;
+  }
+  const st = p.reportingCostStatus?.trim() ?? "";
+  if (st !== "" && st !== "—") {
+    const hasSimCost = p.reportingCostAtTargetPDollars != null && p.reportingCostAtTargetPDollars > 0;
+    return hasSimCost ? `Contingency v ${atP}` : `Contingency v ${atP} (${cur})`;
+  }
+  return null;
+}
+
+/** Muted subline for schedule — same band vs absolute gap distinction as cost. */
+function reportingTimeMetricSubline(p: ProjectTilePayload): string | null {
+  const tp = p.reportingDriverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  const atP = reportingDelayAtPTargetPhrase(p) ?? `P${pr}`;
+  const short = p.reportingTimeShortfallDays;
+  const sur = p.reportingTimeSurplusDays;
+  if (short != null && Number.isFinite(short) && short > 0) {
+    const dur = formatDurationDays(short, { weekDecimals: 1 });
+    if (reportingLineLabelIsOnTrack(p.reportingTimeStatus)) {
+      return `P${pr} band on track · ${dur} below ${atP}`;
+    }
+    return `Schedule short: ${dur} v ${atP}`;
+  }
+  if (sur != null && Number.isFinite(sur) && sur > 0) {
+    return `Schedule buffer: ${formatDurationDays(sur, { weekDecimals: 1 })} v ${atP}`;
+  }
+  const st = p.reportingTimeStatus?.trim() ?? "";
+  if (st !== "" && st !== "—") {
+    return `Schedule v ${atP}`;
+  }
+  return null;
+}
+
+function portfolioReportingCostMetricSubline(
+  footer: PortfolioReportingFooterRow,
+  reportingUnit: ReportingUnitOption
+): string | null {
+  const cur = footer.driverCurrency;
+  const tp = footer.driverTargetP;
+  if (cur == null || tp == null) return null;
+  const pr = Math.round(tp);
+  const atP = portfolioCostAtPTargetPhrase(footer, reportingUnit) ?? `P${pr}`;
+  const short = footer.costShortfallAbs;
+  const sur = footer.costSurplusAbs;
+  if (short != null && Number.isFinite(short) && short > 0) {
+    const fmt = formatCurrencyInReportingUnit(short, cur, reportingUnit);
+    if (reportingLineLabelIsOnTrack(footer.costStatus)) {
+      return `P${pr} band on track · ${fmt} below ${atP}`;
+    }
+    return `Contingency short: ${fmt} v ${atP}`;
+  }
+  if (sur != null && Number.isFinite(sur) && sur > 0) {
+    return `Contingency headroom: ${formatCurrencyInReportingUnit(sur, cur, reportingUnit)} v ${atP}`;
+  }
+  if (footer.costStatus?.trim() && footer.costStatus !== "—") {
+    const hasSimCost = footer.sumCostAtTargetPDollars != null && footer.sumCostAtTargetPDollars > 0;
+    return hasSimCost ? `Contingency v ${atP}` : `Contingency v ${atP} (${cur})`;
+  }
+  return null;
+}
+
+function portfolioReportingTimeMetricSubline(footer: PortfolioReportingFooterRow): string | null {
+  const tp = footer.driverTargetP;
+  if (tp == null) return null;
+  const pr = Math.round(tp);
+  const atP = portfolioDelayAtPTargetPhrase(footer) ?? `P${pr}`;
+  const short = footer.timeShortfallDays;
+  const sur = footer.timeSurplusDays;
+  if (short != null && Number.isFinite(short) && short > 0) {
+    const dur = formatDurationDays(short, { weekDecimals: 1 });
+    if (reportingLineLabelIsOnTrack(footer.timeStatus)) {
+      return `P${pr} band on track · ${dur} below ${atP}`;
+    }
+    return `Schedule short: ${dur} v ${atP}`;
+  }
+  if (sur != null && Number.isFinite(sur) && sur > 0) {
+    return `Schedule buffer: ${formatDurationDays(sur, { weekDecimals: 1 })} v ${atP}`;
+  }
+  if (footer.timeStatus?.trim() && footer.timeStatus !== "—") {
+    return `Schedule v ${atP}`;
+  }
+  return null;
 }
 
 function OverallRagCell({
@@ -172,9 +409,11 @@ function OverallRagCell({
 function PortfolioRagKpiModalBody({
   projectTilePayloads,
   portfolioReportingFooter,
+  reportingUnit = DEFAULT_REPORTING_UNIT,
 }: {
   projectTilePayloads: ProjectTilePayload[];
   portfolioReportingFooter: PortfolioReportingFooterRow | null;
+  reportingUnit?: ReportingUnitOption;
 }) {
   const router = useRouter();
   const rows = sortProjectTilesByRag([...projectTilePayloads]);
@@ -186,6 +425,10 @@ function PortfolioRagKpiModalBody({
   if (rows.length === 0) {
     return <p className="ds-kpi-modal-empty">No projects in this portfolio yet.</p>;
   }
+
+  const footer = portfolioReportingFooter;
+  const footerCostMetric = footer != null ? portfolioReportingCostMetricSubline(footer, reportingUnit) : null;
+  const footerTimeMetric = footer != null ? portfolioReportingTimeMetricSubline(footer) : null;
 
   return (
     <>
@@ -203,7 +446,11 @@ function PortfolioRagKpiModalBody({
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((p) => (
+            {rows.map((p) => {
+              const costMetric = reportingCostMetricSubline(p, reportingUnit);
+              const timeMetric = reportingTimeMetricSubline(p);
+              const projectSupporting = reportingProjectSupportingLine(p);
+              return (
               <TableRow
                 key={p.id}
                 className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
@@ -219,43 +466,83 @@ function PortfolioRagKpiModalBody({
                 }}
               >
                 <TableCell className={`min-w-0 ${KPI_MODAL_REPORTING_PROJECT_COL}`}>
-                  <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={p.name ?? p.id}>
-                    {p.name?.trim() || p.id}
-                  </span>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span
+                      className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]"
+                      title={p.name ?? p.id}
+                    >
+                      {p.name?.trim() || p.id}
+                    </span>
+                    {projectSupporting != null && projectSupporting !== "" ? (
+                      <span className="text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-muted)] tabular-nums">
+                        {projectSupporting}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className={KPI_MODAL_REPORTING_LINE_CELL}>
-                  <span className={reportingLineCellClass(p.reportingCostStatus)}>{p.reportingCostStatus ?? "—"}</span>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <ReportingLineStatusWithDot label={p.reportingCostStatus} />
+                    {costMetric != null && costMetric !== "" ? (
+                      <span className="text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-muted)] tabular-nums">
+                        {costMetric}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className={KPI_MODAL_REPORTING_LINE_CELL}>
-                  <span className={reportingLineCellClass(p.reportingTimeStatus)}>{p.reportingTimeStatus ?? "—"}</span>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <ReportingLineStatusWithDot label={p.reportingTimeStatus} />
+                    {timeMetric != null && timeMetric !== "" ? (
+                      <span className="text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-muted)] tabular-nums">
+                        {timeMetric}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className={KPI_MODAL_REPORTING_OVERALL_CELL}>
                   <OverallRagCell overallLabel={p.reportingOverallStatus} rag={p.ragStatus} />
                 </TableCell>
               </TableRow>
-            ))}
+            );
+            })}
           </TableBody>
-          {portfolioReportingFooter != null ? (
+          {footer != null ? (
             <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
               <TableRow>
                 <TableHeaderCell
                   scope="row"
-                  className={`${KPI_MODAL_REPORTING_PROJECT_COL} !text-left !normal-case tracking-normal text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]`}
+                  className={`${KPI_MODAL_REPORTING_PROJECT_COL} !text-left !normal-case tracking-normal align-top text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]`}
                 >
-                  Portfolio
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <span>Portfolio</span>
+                    <span className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-muted)] tabular-nums">
+                      {reportingPortfolioSupportingLine(footer, rows.length)}
+                    </span>
+                  </div>
                 </TableHeaderCell>
                 <TableCell className={KPI_MODAL_REPORTING_LINE_CELL}>
-                  <span className={reportingLineCellClass(portfolioReportingFooter.costStatus)}>
-                    {portfolioReportingFooter.costStatus}
-                  </span>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <ReportingLineStatusWithDot label={footer.costStatus} />
+                    {footerCostMetric != null && footerCostMetric !== "" ? (
+                      <span className="text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-muted)] tabular-nums">
+                        {footerCostMetric}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className={KPI_MODAL_REPORTING_LINE_CELL}>
-                  <span className={reportingLineCellClass(portfolioReportingFooter.timeStatus)}>
-                    {portfolioReportingFooter.timeStatus}
-                  </span>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <ReportingLineStatusWithDot label={footer.timeStatus} />
+                    {footerTimeMetric != null && footerTimeMetric !== "" ? (
+                      <span className="text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-muted)] tabular-nums">
+                        {footerTimeMetric}
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 <TableCell className={KPI_MODAL_REPORTING_OVERALL_CELL}>
-                  <OverallRagCell overallLabel={portfolioReportingFooter.overallStatus} rag={portfolioReportingFooter.rag} />
+                  <OverallRagCell overallLabel={footer.overallStatus} rag={footer.rag} />
                 </TableCell>
               </TableRow>
             </tfoot>
@@ -509,8 +796,16 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
   );
 }
 
-function PortfolioNeedsAttentionKpiModalBody({ health }: { health: PortfolioNeedsAttentionHealthRun }) {
-  const { lines, opportunityDetail, totalPenalty } = buildNeedsAttentionScoreCard(health);
+function PortfolioNeedsAttentionKpiModalBody({
+  health,
+  staleCopyMode = "utcMonthSnapshot",
+}: {
+  health: PortfolioNeedsAttentionHealthRun;
+  staleCopyMode?: NeedsAttentionStaleCopyMode;
+}) {
+  const { lines, opportunityDetail, totalPenalty } = buildNeedsAttentionScoreCard(health, {
+    staleCopyMode,
+  });
   const rag = health.primaryRagDot as RagStatus;
 
   return (
@@ -717,6 +1012,7 @@ export function DocumentKpiModal({
   coverageRatioRows,
   scheduleCoverageRows,
   needsAttentionHealthRun,
+  needsAttentionStaleCopyMode = "utcMonthSnapshot",
   renderSlideBodyByIndex,
 }: DocumentKpiModalProps) {
   const last = Math.max(0, tiles.length - 1);
@@ -774,7 +1070,7 @@ export function DocumentKpiModal({
   if (typeof document === "undefined") return null;
 
   const showProjectsList =
-    current?.title === "Projects" &&
+    current?.title === PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE &&
     portfolioId != null &&
     portfolioId !== "" &&
     projectTilePayloads != null;
@@ -789,7 +1085,8 @@ export function DocumentKpiModal({
   const showCostCoverageCombinedDetail =
     current?.title === COST_COVERAGE_COMBINED_TILE_TITLE && coverageRatioRows != null;
 
-  const showNeedsAttentionDetail = current?.title === "Needs Attention" && needsAttentionHealthRun != null;
+  const showNeedsAttentionDetail =
+    current?.title === PORTFOLIO_HEALTH_KPI_TITLE && needsAttentionHealthRun != null;
 
   const slideBodyOverride = renderSlideBodyByIndex?.(safeIndex) ?? null;
 
@@ -859,7 +1156,10 @@ export function DocumentKpiModal({
               </div>
             ) : showNeedsAttentionDetail && needsAttentionHealthRun != null ? (
               <div className="w-full min-w-0">
-                <PortfolioNeedsAttentionKpiModalBody health={needsAttentionHealthRun} />
+                <PortfolioNeedsAttentionKpiModalBody
+                  health={needsAttentionHealthRun}
+                  staleCopyMode={needsAttentionStaleCopyMode}
+                />
               </div>
             ) : showCostCoverageCombinedDetail && coverageRatioRows != null ? (
               <div className="w-full min-w-0">
@@ -877,6 +1177,7 @@ export function DocumentKpiModal({
                 <PortfolioRagKpiModalBody
                   projectTilePayloads={projectTilePayloads}
                   portfolioReportingFooter={portfolioReportingFooter ?? null}
+                  reportingUnit={reportingUnit}
                 />
               </div>
             ) : (

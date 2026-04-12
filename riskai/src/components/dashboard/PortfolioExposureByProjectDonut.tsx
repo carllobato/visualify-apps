@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type {
@@ -46,6 +46,14 @@ export type PortfolioExposureByProjectDonutProps =
 
 function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDonutProps) {
   const router = useRouter();
+  /** After viewport resize, turn off Recharts pie animation so ResponsiveContainer updates do not replay the entrance. */
+  const [freezePieAnimation, setFreezePieAnimation] = useState(false);
+
+  useEffect(() => {
+    const onResize = () => setFreezePieAnimation(true);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const { data, total, multiCurrency, singleCurrency } = useMemo(() => {
     if (props.mode === "cost") {
@@ -88,8 +96,14 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="h-[200px] w-full min-w-0 lg:h-[168px]">
+    <div className="flex w-full flex-col gap-3">
+      {/*
+        Explicit height so Recharts always gets a non-zero box. Do not use flex-1 + min-h-0 on lg —
+        that can collapse the container to 0px and hide the chart.
+        Entrance animation stays on until the window is resized; then animation is frozen so Recharts does not
+        replay the long entrance on every ResponsiveContainer relayout.
+      */}
+      <div className="h-[240px] w-full min-w-0 lg:h-[220px]">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -102,6 +116,7 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
               outerRadius="80%"
               paddingAngle={2}
               cornerRadius={4}
+              isAnimationActive={freezePieAnimation ? false : "auto"}
               onClick={(_sector, index) => {
                 const row = data[index];
                 if (row) router.push(riskaiPath(`/projects/${row.projectId}`));
@@ -110,8 +125,9 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
               label={centerLabel ? ({ cx, cy, index }) => {
                 if (index !== 0) return null;
                 // Use foreignObject so long labels (e.g. "18.3 weeks", compact currency) are not clipped by SVG <text> in the donut hole.
-                const w = 168;
-                const h = 40;
+                // Match {@link PortfolioCostCoverageMetricsPanel} compact primary value: text-lg tabular figures.
+                const w = 200;
+                const h = 48;
                 return (
                   <foreignObject
                     x={cx - w / 2}
@@ -120,7 +136,7 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
                     height={h}
                     style={{ overflow: "visible", pointerEvents: "none" }}
                   >
-                    <div className="flex h-full w-full items-center justify-center px-1 text-center text-[length:var(--ds-text-xs)] font-semibold leading-tight text-[var(--ds-text-primary)]">
+                    <div className="flex h-full w-full items-center justify-center px-1 text-center text-lg font-semibold tracking-tight tabular-nums leading-tight text-[var(--ds-text-primary)]">
                       {centerLabel}
                     </div>
                   </foreignObject>
@@ -177,5 +193,11 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
  */
 export const PortfolioExposureByProjectDonut = memo(
   PortfolioExposureByProjectDonutImpl,
-  (prev, next) => prev.mode === next.mode && prev.slices === next.slices
+  (prev, next) => {
+    if (prev.mode !== next.mode || prev.slices !== next.slices) return false;
+    if (prev.mode === "cost" && next.mode === "cost") {
+      return prev.reportingUnit === next.reportingUnit;
+    }
+    return true;
+  }
 );

@@ -38,6 +38,7 @@ import {
   formatReportingLineStatus,
   tryReportingBreakdownFromLockedRowAndSettings,
   tryReportingFundingScalars,
+  tryReportingPositionDriverScalars,
 } from "@/lib/dashboard/reportingPositionRag";
 import {
   monitoringCostOpportunityExpected,
@@ -65,6 +66,22 @@ export type ProjectTilePayload = {
   reportingCostStatus?: string;
   reportingTimeStatus?: string;
   reportingOverallStatus?: string;
+  /** Simulated cost at target P minus held funds (contingency, else approved budget); KPI modal driver line. */
+  reportingCostShortfallAbs?: number;
+  /** Simulated delay at target P minus schedule contingency (days); KPI modal driver line. */
+  reportingTimeShortfallDays?: number;
+  /** Held funds minus simulated cost at target P when > 0 — headroom line in KPI modal. */
+  reportingCostSurplusAbs?: number;
+  /** Schedule contingency minus simulated delay at target P when > 0 — headroom line in KPI modal. */
+  reportingTimeSurplusDays?: number;
+  reportingDriverTargetP?: number;
+  reportingDriverCurrency?: ProjectCurrency;
+  /** Simulated total cost at appetite P (reporting run); KPI sublines show this instead of bare “P90”. */
+  reportingCostAtTargetPDollars?: number;
+  /** Simulated delay at appetite P (days). */
+  reportingTimeAtTargetPDays?: number;
+  /** ISO timestamp of latest reporting-locked snapshot (`locked_at` or `created_at`) for KPI context. */
+  reportingLockedAt?: string | null;
 };
 
 type RiskAggRow = {
@@ -149,6 +166,11 @@ export type GetProjectTilePayloadsOptions = {
   onlyProjectsWithLockedReporting?: boolean;
   /** Override clock for stale-lock checks (tests). */
   nowMs?: number;
+  /**
+   * When set (validated `YYYY-MM`), only locked reporting snapshots for that calendar month
+   * (`report_month` = `YYYY-MM-01`) participate in per-project “latest lock” selection.
+   */
+  reportingMonthYear?: string;
 };
 
 /**
@@ -166,16 +188,22 @@ export async function getProjectTilePayloads(
   const ids = projects.map((p) => p.id);
   const nowMs = options?.nowMs ?? Date.now();
 
+  let lockedSnapshotsQuery = supabase
+    .from("riskai_simulation_snapshots")
+    .select("*")
+    .in("project_id", ids)
+    .eq("locked_for_reporting", true);
+  const reportingMonthYear = options?.reportingMonthYear?.trim();
+  if (reportingMonthYear) {
+    lockedSnapshotsQuery = lockedSnapshotsQuery.eq("report_month", `${reportingMonthYear}-01`);
+  }
+
   const [risksRes, lockedRes, settingsRes] = await Promise.all([
     supabase
       .from("riskai_risks")
       .select("project_id, status, post_probability, post_cost_ml, post_time_ml, mitigation_description")
       .in("project_id", ids),
-    supabase
-      .from("riskai_simulation_snapshots")
-      .select("*")
-      .in("project_id", ids)
-      .eq("locked_for_reporting", true),
+    lockedSnapshotsQuery,
     supabase.from("visualify_project_settings").select("*").in("project_id", ids),
   ]);
 
@@ -243,6 +271,7 @@ export async function getProjectTilePayloads(
         lockedRow,
         settingsByProject.get(p.id)
       );
+      const reportingDrivers = tryReportingPositionDriverScalars(lockedRow, settingsByProject.get(p.id));
       const baseRag: RagStatus =
         reporting?.rag ??
         computeRag({
@@ -257,6 +286,9 @@ export async function getProjectTilePayloads(
         name: p.name,
         created_at: p.created_at,
         ragStatus,
+        ...(lastLockedAt != null && lastLockedAt !== ""
+          ? { reportingLockedAt: lastLockedAt }
+          : {}),
       };
       if (reporting) {
         return {
@@ -264,6 +296,32 @@ export async function getProjectTilePayloads(
           reportingCostStatus: formatReportingLineStatus(reporting.costLine),
           reportingTimeStatus: formatReportingLineStatus(reporting.timeLine),
           reportingOverallStatus: reporting.overallStatus,
+          ...(reportingDrivers != null
+            ? {
+                reportingDriverTargetP: reportingDrivers.targetPNumeric,
+                reportingDriverCurrency: reportingDrivers.currency,
+                ...(reportingDrivers.costAtTargetPDollars != null &&
+                Number.isFinite(reportingDrivers.costAtTargetPDollars)
+                  ? { reportingCostAtTargetPDollars: reportingDrivers.costAtTargetPDollars }
+                  : {}),
+                ...(reportingDrivers.timeAtTargetPDays != null &&
+                Number.isFinite(reportingDrivers.timeAtTargetPDays)
+                  ? { reportingTimeAtTargetPDays: reportingDrivers.timeAtTargetPDays }
+                  : {}),
+                ...(reportingDrivers.costShortfallDollars != null
+                  ? { reportingCostShortfallAbs: reportingDrivers.costShortfallDollars }
+                  : {}),
+                ...(reportingDrivers.costSurplusDollars != null && reportingDrivers.costSurplusDollars > 0
+                  ? { reportingCostSurplusAbs: reportingDrivers.costSurplusDollars }
+                  : {}),
+                ...(reportingDrivers.timeShortfallDays != null
+                  ? { reportingTimeShortfallDays: reportingDrivers.timeShortfallDays }
+                  : {}),
+                ...(reportingDrivers.timeSurplusDays != null && reportingDrivers.timeSurplusDays > 0
+                  ? { reportingTimeSurplusDays: reportingDrivers.timeSurplusDays }
+                  : {}),
+              }
+            : {}),
         };
       }
       return base;
@@ -689,6 +747,20 @@ export type PortfolioTopRiskConcentration = {
   needsAttentionHealthRun: PortfolioNeedsAttentionHealthRun;
 };
 
+/** Optional scoping for portfolio overview when a reporting month is selected in the URL. */
+export type LoadPortfolioTopRiskConcentrationOptions = {
+  reportingMonthYear?: string | null;
+  /** Same project IDs as reporting tiles for that month (from {@link loadPortfolioProjectTilePayloads}). */
+  restrictProjectIds?: string[] | null;
+};
+
+function reportingLockStaleForPortfolio(lockAt: string | null, nowMs: number): boolean {
+  if (lockAt == null || lockAt === "") return true;
+  const t = new Date(lockAt).getTime();
+  if (!Number.isFinite(t)) return true;
+  return nowMs - t > REPORTING_LOCK_STALE_MS;
+}
+
 /**
  * Loads Top 5 cost (forward-exposure engine) and Top 5 schedule (expected delay in days) across the portfolio.
  * Single fetch of projects + risks.
@@ -696,7 +768,8 @@ export type PortfolioTopRiskConcentration = {
 export async function loadPortfolioTopRiskConcentrationRows(
   supabase: SupabaseClient,
   portfolioId: string,
-  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
+  options?: LoadPortfolioTopRiskConcentrationOptions
 ): Promise<PortfolioTopRiskConcentration> {
   const empty: PortfolioTopRiskConcentration = {
     activeRiskCount: 0,
@@ -740,10 +813,37 @@ export async function loadPortfolioTopRiskConcentrationRows(
     return id;
   });
 
+  const reportingMonthYearOpt = options?.reportingMonthYear?.trim();
+  const restrictIdsOpt =
+    reportingMonthYearOpt != null ? options?.restrictProjectIds : undefined;
+
+  if (reportingMonthYearOpt != null && restrictIdsOpt != null && restrictIdsOpt.length === 0) {
+    return empty;
+  }
+
+  const effectiveProjectIds =
+    reportingMonthYearOpt != null && restrictIdsOpt != null && restrictIdsOpt.length > 0
+      ? restrictIdsOpt.filter((id) => projectIds.includes(id))
+      : projectIds;
+
+  if (effectiveProjectIds.length === 0) {
+    return empty;
+  }
+
+  const monthScopedConcentration =
+    reportingMonthYearOpt != null &&
+    restrictIdsOpt != null &&
+    restrictIdsOpt.length > 0 &&
+    effectiveProjectIds.length > 0;
+
+  const projectsForSummaryRows = projects.filter((p) =>
+    effectiveProjectIds.includes(p.id as string)
+  );
+
   const { data: settingsRows } = await supabase
     .from("visualify_project_settings")
     .select("project_id, currency")
-    .in("project_id", projectIds);
+    .in("project_id", effectiveProjectIds);
 
   const currencyByProject = new Map<string, ProjectCurrency>();
   for (const row of settingsRows ?? []) {
@@ -752,12 +852,24 @@ export async function loadPortfolioTopRiskConcentrationRows(
     currencyByProject.set(pid, asProjectCurrency(row.currency));
   }
 
+  const snapshotQuery = monthScopedConcentration
+    ? supabase
+        .from("riskai_simulation_snapshots")
+        .select("project_id, created_at, locked_at")
+        .in("project_id", effectiveProjectIds)
+        .eq("locked_for_reporting", true)
+        .eq("report_month", `${reportingMonthYearOpt}-01`)
+    : supabase
+        .from("riskai_simulation_snapshots")
+        .select("project_id, created_at")
+        .in("project_id", effectiveProjectIds);
+
   const [
     { data: riskRowsRaw, error: rErr },
     { data: snapshotRowsRaw, error: sErr },
   ] = await Promise.all([
-    supabase.from("riskai_risks").select(RISK_DB_SELECT_COLUMNS).in("project_id", projectIds),
-    supabase.from("riskai_simulation_snapshots").select("project_id, created_at").in("project_id", projectIds),
+    supabase.from("riskai_risks").select(RISK_DB_SELECT_COLUMNS).in("project_id", effectiveProjectIds),
+    snapshotQuery,
   ]);
 
   if (rErr) return empty;
@@ -769,15 +881,38 @@ export async function loadPortfolioTopRiskConcentrationRows(
   }
 
   const latestSimulationAtByProject = new Map<string, string | null>();
-  for (const pid of projectIds) latestSimulationAtByProject.set(pid, null);
-  for (const row of snapshotRowsRaw ?? []) {
-    const raw = row as { project_id?: string; created_at?: string | null };
-    const pid = typeof raw.project_id === "string" ? raw.project_id : "";
-    if (!pid) continue;
-    const ca = typeof raw.created_at === "string" ? raw.created_at : null;
-    const cur = latestSimulationAtByProject.get(pid) ?? null;
-    if (cur == null || (ca != null && new Date(ca).getTime() > new Date(cur).getTime())) {
-      latestSimulationAtByProject.set(pid, ca);
+  const reportingLockCompletedAtByProject = new Map<string, string | null>();
+  for (const pid of effectiveProjectIds) {
+    latestSimulationAtByProject.set(pid, null);
+    reportingLockCompletedAtByProject.set(pid, null);
+  }
+
+  if (monthScopedConcentration) {
+    const rows = (snapshotRowsRaw ?? []) as {
+      project_id?: string;
+      created_at?: string | null;
+      locked_at?: string | null;
+    }[];
+    const sorted = [...rows].sort((a, b) => {
+      const ta = new Date(a.locked_at ?? a.created_at ?? 0).getTime();
+      const tb = new Date(b.locked_at ?? b.created_at ?? 0).getTime();
+      return tb - ta;
+    });
+    for (const row of sorted) {
+      const pid = typeof row.project_id === "string" ? row.project_id : "";
+      if (!pid || reportingLockCompletedAtByProject.get(pid) != null) continue;
+      reportingLockCompletedAtByProject.set(pid, row.locked_at ?? row.created_at ?? null);
+    }
+  } else {
+    for (const row of snapshotRowsRaw ?? []) {
+      const raw = row as { project_id?: string; created_at?: string | null };
+      const pid = typeof raw.project_id === "string" ? raw.project_id : "";
+      if (!pid) continue;
+      const ca = typeof raw.created_at === "string" ? raw.created_at : null;
+      const cur = latestSimulationAtByProject.get(pid) ?? null;
+      if (cur == null || (ca != null && new Date(ca).getTime() > new Date(cur).getTime())) {
+        latestSimulationAtByProject.set(pid, ca);
+      }
     }
   }
 
@@ -935,7 +1070,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
   }
 
   const projectCostExposureSlices: PortfolioProjectCostExposureSlice[] = [];
-  for (const pid of projectIds) {
+  for (const pid of effectiveProjectIds) {
     const projectCosts = costRisks.filter((r) => projectIdByRiskId.get(r.id) === pid);
     if (projectCosts.length === 0) continue;
     const pe = computePortfolioExposure(projectCosts, "neutral", PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS, {
@@ -999,17 +1134,26 @@ export async function loadPortfolioTopRiskConcentrationRows(
   });
 
   const now = new Date();
+  const nowMs = now.getTime();
   let projectsWithActiveRisksCount = 0;
   let staleSimulationProjectCount = 0;
   if (sErr) {
-    for (const pid of projectIds) {
+    for (const pid of effectiveProjectIds) {
       const n = activeRisksByProject.get(pid) ?? 0;
       if (n <= 0) continue;
       projectsWithActiveRisksCount += 1;
       staleSimulationProjectCount += 1;
     }
+  } else if (monthScopedConcentration) {
+    for (const pid of effectiveProjectIds) {
+      const n = activeRisksByProject.get(pid) ?? 0;
+      if (n <= 0) continue;
+      projectsWithActiveRisksCount += 1;
+      const lockAt = reportingLockCompletedAtByProject.get(pid) ?? null;
+      if (reportingLockStaleForPortfolio(lockAt, nowMs)) staleSimulationProjectCount += 1;
+    }
   } else {
-    for (const pid of projectIds) {
+    for (const pid of effectiveProjectIds) {
       const n = activeRisksByProject.get(pid) ?? 0;
       if (n <= 0) continue;
       projectsWithActiveRisksCount += 1;
@@ -1052,8 +1196,14 @@ export async function loadPortfolioTopRiskConcentrationRows(
     registerGapCount,
   };
 
-  const activeRiskSummaryRows = buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, riskRows);
-  const activeRiskStatusSummaryRows = buildPortfolioProjectRiskStatusRowsFromRiskRows(projects, riskRows);
+  const activeRiskSummaryRows = buildPortfolioProjectRiskSeverityRowsFromRiskRows(
+    projectsForSummaryRows,
+    riskRows
+  );
+  const activeRiskStatusSummaryRows = buildPortfolioProjectRiskStatusRowsFromRiskRows(
+    projectsForSummaryRows,
+    riskRows
+  );
 
   return {
     activeRiskCount,
@@ -1075,7 +1225,8 @@ export async function loadPortfolioTopRiskConcentrationRows(
 
 export async function loadPortfolioProjectTilePayloads(
   supabase: SupabaseClient,
-  portfolioId: string
+  portfolioId: string,
+  loadOptions?: { reportingMonthYear?: string | null }
 ): Promise<LoadPortfolioProjectTilePayloadsResult> {
   const { data: projects, error } = await supabase
     .from("visualify_projects")
@@ -1093,10 +1244,14 @@ export async function loadPortfolioProjectTilePayloads(
     created_at: p.created_at,
   }));
 
+  const reportingMonthYear = loadOptions?.reportingMonthYear?.trim();
   const { projectTilePayloads, portfolioReportingFooter } = await getProjectTilePayloads(
     supabase,
     asAccessible,
-    { onlyProjectsWithLockedReporting: true }
+    {
+      onlyProjectsWithLockedReporting: true,
+      ...(reportingMonthYear ? { reportingMonthYear } : {}),
+    }
   );
   return {
     projectTilePayloads: sortProjectTilesAlphabetically(projectTilePayloads),

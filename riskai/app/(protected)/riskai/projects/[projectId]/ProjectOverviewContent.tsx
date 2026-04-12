@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useEffect, useState } from "react";
+import { Suspense, useMemo, useEffect, useState } from "react";
 import { Button } from "@visualify/design-system";
 import {
   Line,
@@ -23,7 +23,8 @@ import {
   type ProjectContext,
   type RiskAppetite,
 } from "@/lib/projectContext";
-import { formatReportMonthLabel, type SimulationSnapshotRow } from "@/lib/db/snapshots";
+import { PortfolioReportingMonthSelect } from "@/components/PortfolioReportingMonthSelect";
+import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
@@ -651,34 +652,21 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     !reportingSnapshot?.payload?.inputs_used?.length;
   const showProjectStatusSkeleton = loadingRisks && projectStatusStatsNeedRegister;
 
-  const reportingMonthHeader =
-    reportingSnapshot?.report_month && formatReportMonthLabel(reportingSnapshot.report_month) !== "—"
-      ? formatReportMonthLabel(reportingSnapshot.report_month)
-      : null;
-
-  const reportingNoteTrimmed = reportingSnapshot?.lock_note?.trim() ?? "";
-
   const overviewHeaderEnd = useMemo(() => {
     if (!reportingSnapshot) return null;
     return (
-      <>
-        <p className="m-0">
-          <span className="text-[var(--ds-text-secondary)]">Reporting run </span>
-          <span className="font-medium text-[var(--ds-text-primary)]">{reportingMonthHeader ?? "—"}</span>
-        </p>
-        <div className="m-0 max-w-md sm:max-w-sm">
-          <span className="text-[var(--ds-text-secondary)]">Note </span>
-          {reportingNoteTrimmed ? (
-            <span className="font-medium text-[var(--ds-text-primary)]">
-              {reportingNoteTrimmed}
-            </span>
-          ) : (
-            <span className="text-[var(--ds-text-secondary)]">—</span>
-          )}
-        </div>
-      </>
+      <Suspense
+        fallback={
+          <div
+            className="h-9 min-w-[10.5rem] max-w-[16rem] animate-pulse rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
+            aria-hidden
+          />
+        }
+      >
+        <PortfolioReportingMonthSelect projectId={projectId} />
+      </Suspense>
     );
-  }, [reportingSnapshot, reportingMonthHeader, reportingNoteTrimmed]);
+  }, [reportingSnapshot]);
 
   useEffect(() => {
     setExtras({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import {
   Badge,
   Button,
@@ -23,11 +23,11 @@ import { portfolioMomentumSummary } from "@/domain/risk/risk.logic";
 import {
   clearProjectSnapshots,
   getLatestSnapshot as getLatestDbSnapshot,
-  getLatestLockedSnapshot as getLatestLockedDbSnapshot,
   formatReportMonthLabel,
   type SimulationSnapshotRow,
   type SimulationSnapshotRowDb,
 } from "@/lib/db/snapshots";
+import { LockedReportingRunMonthSelect } from "@/components/LockedReportingRunMonthSelect";
 import { MitigationOptimisationPanel } from "@/components/outputs/MitigationOptimisationPanel";
 import { computePortfolioExposure } from "@/engine/forwardExposure";
 import type { PortfolioExposure } from "@/engine/forwardExposure";
@@ -171,7 +171,6 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
   const [snapshotPersistWarning, setSnapshotPersistWarning] = useState<string | null>(null);
   const [lockedRunLoadWarning, setLockedRunLoadWarning] = useState<string | null>(null);
-  const [loadingLockedRun, setLoadingLockedRun] = useState(false);
   const [lockedRunPinned, setLockedRunPinned] = useState(false);
   const [triggeredBy, setTriggeredBy] = useState<string | null>(null);
   const [reportingSnapshotRow, setReportingSnapshotRow] = useState<SimulationSnapshotRow>(null);
@@ -1199,6 +1198,17 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   const CARD_DESC = "m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
   const DRIVER_BLOCK_HEADING =
     "mb-0 shrink-0 text-[length:var(--ds-text-xs)] font-semibold uppercase tracking-[0.06em] text-[var(--ds-text-muted)]";
+
+  const handleSelectLockedReportingRun = useCallback(
+    (row: SimulationSnapshotRow) => {
+      setLockedRunLoadWarning(null);
+      hydrateSimulationFromDbSnapshot(row, "run-data-load-last-locked");
+      setReportingSnapshotRow(row);
+      setLockedRunPinned(true);
+    },
+    [hydrateSimulationFromDbSnapshot]
+  );
+
   const simulationActions = useMemo(
     () => (
       <>
@@ -1252,48 +1262,14 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         >
           Clear History
         </Button>
-        <Button
-          type="button"
-          onClick={async () => {
-            const snapshotProjectId = projectId?.trim();
-            if (!snapshotProjectId) {
-              console.error("[run-data] getLatestLockedSnapshot skipped: projectId is required for snapshot access");
-              return;
-            }
-            setLockedRunLoadWarning(null);
-            setLoadingLockedRun(true);
-            try {
-              const row = await getLatestLockedDbSnapshot(snapshotProjectId);
-              if (!row) {
-                setLockedRunLoadWarning("No locked reporting run found for this project.");
-                return;
-              }
-              hydrateSimulationFromDbSnapshot(row, "run-data-load-last-locked");
-              setReportingSnapshotRow(row);
-              setLockedRunPinned(true);
-            } catch (e: unknown) {
-              const message =
-                e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
-                  ? (e as { message: string }).message
-                  : "Could not load the latest locked run.";
-              setLockedRunLoadWarning(message);
-            } finally {
-              setLoadingLockedRun(false);
-            }
-          }}
-          disabled={loadingLockedRun}
-          variant="secondary"
-        >
-          {loadingLockedRun ? "Loading locked run..." : "Load Last Locked Run"}
-        </Button>
+        <LockedReportingRunMonthSelect projectId={projectId} onSelectRow={handleSelectLockedReportingRun} />
       </>
     ),
     [
       clearSimulationHistory,
+      handleSelectLockedReportingRun,
       hasDraftRisks,
-      hydrateSimulationFromDbSnapshot,
       invalidRunnableCount,
-      loadingLockedRun,
       projectId,
       runSimulation,
     ]

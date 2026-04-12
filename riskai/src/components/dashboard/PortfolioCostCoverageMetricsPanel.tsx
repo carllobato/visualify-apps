@@ -1,3 +1,4 @@
+import type { PortfolioReportingTrendLine } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import type { RagStatus } from "@/lib/dashboard/projectTileServerData";
 
 const labelClass =
@@ -35,6 +36,10 @@ export type PortfolioCostCoverageMetricsPanelProps = {
   coveragePrimaryValue: string;
   coveragePrimaryRagDot?: RagStatus;
   coveragePrimaryValueClassName?: string;
+  /** Month-over-month movement vs prior locked reporting month (single-currency comparable rows only). */
+  costExposureTrend?: PortfolioReportingTrendLine | null;
+  contingencyTrend?: PortfolioReportingTrendLine | null;
+  coverageRatioTrend?: PortfolioReportingTrendLine | null;
   /** `grid`: three columns (KPI tile). `stack`: vertical list (e.g. beside chart). */
   layout?: "grid" | "stack";
   /** Slightly smaller figures for narrow sidebars. */
@@ -47,11 +52,13 @@ function MetricBlock({
   value,
   valueRagDot,
   valueClassName,
+  momTrend,
 }: {
   label: string;
   value: string;
   valueRagDot?: RagStatus;
   valueClassName: string;
+  momTrend?: PortfolioReportingTrendLine | null;
 }) {
   return (
     <div className="min-w-0 text-left">
@@ -77,6 +84,9 @@ function MetricBlock({
           {value}
         </p>
       )}
+      {momTrend != null && momTrend.text !== "" ? (
+        <p className={`${momTrend.className} m-0 mt-1.5`}>{momTrend.text}</p>
+      ) : null}
     </div>
   );
 }
@@ -90,6 +100,9 @@ export function PortfolioCostCoverageMetricsPanel({
   coveragePrimaryValue,
   coveragePrimaryRagDot,
   coveragePrimaryValueClassName,
+  costExposureTrend,
+  contingencyTrend,
+  coverageRatioTrend,
   layout = "grid",
   compact = false,
   className = "",
@@ -109,13 +122,20 @@ export function PortfolioCostCoverageMetricsPanel({
         label="Cost Exposure"
         value={costExposurePrimaryValue}
         valueClassName={valueClass}
+        momTrend={costExposureTrend}
       />
-      <MetricBlock label="Contingency Held" value={contingencyPrimaryValue} valueClassName={valueClass} />
+      <MetricBlock
+        label="Contingency Held"
+        value={contingencyPrimaryValue}
+        valueClassName={valueClass}
+        momTrend={contingencyTrend}
+      />
       <MetricBlock
         label="Coverage Ratio"
         value={coveragePrimaryValue}
         valueRagDot={coveragePrimaryRagDot}
         valueClassName={coverageCombined}
+        momTrend={coverageRatioTrend}
       />
     </>
   );

@@ -34,6 +34,8 @@ type SummaryTileProps = {
   primaryValueClassName?: string;
   /** Optional RAG dot before the primary value (same pattern as KPI modal `OverallRagCell`). */
   primaryRagDot?: RagStatus;
+  /** Secondary trend line (global CSS classes only — see `.ds-trend-line` in app `globals.css`). */
+  trend?: { text: string; className: string };
   subtext?: string;
   /** When set, the whole tile navigates (e.g. portfolio KPI → related route). Ignored if `onActivate` is set. */
   href?: string;
@@ -63,6 +65,7 @@ export function SummaryTile({
   primaryValue,
   primaryValueClassName,
   primaryRagDot,
+  trend,
   subtext,
   href,
   onActivate,
@@ -102,6 +105,9 @@ export function SummaryTile({
       >
         <span className={titleClass}>{title}</span>
         {primaryRow}
+        {trend != null && trend.text !== "" ? (
+          <span className={trend.className}>{trend.text}</span>
+        ) : null}
         {subtext != null && subtext !== "" && <span className={subtextClass}>{subtext}</span>}
       </button>
     );
@@ -116,6 +122,9 @@ export function SummaryTile({
       >
         <span className={titleClass}>{title}</span>
         {primaryRow}
+        {trend != null && trend.text !== "" ? (
+          <span className={trend.className}>{trend.text}</span>
+        ) : null}
         {subtext != null && subtext !== "" && <span className={subtextClass}>{subtext}</span>}
       </Link>
     );
@@ -125,6 +134,9 @@ export function SummaryTile({
     <div className={tileClass}>
       <p className={titleClass}>{title}</p>
       {primaryRow}
+      {trend != null && trend.text !== "" ? (
+        <span className={trend.className}>{trend.text}</span>
+      ) : null}
       {subtext != null && subtext !== "" && <p className={subtextClass}>{subtext}</p>}
     </div>
   );

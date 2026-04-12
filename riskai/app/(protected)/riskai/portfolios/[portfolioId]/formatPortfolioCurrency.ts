@@ -1,5 +1,8 @@
 import type { ProjectCurrency } from "@/lib/projectContext";
-import type { PortfolioNeedsAttentionHealthRun } from "@/lib/dashboard/needsAttentionHealthRun";
+import type {
+  NeedsAttentionStaleCopyMode,
+  PortfolioNeedsAttentionHealthRun,
+} from "@/lib/dashboard/needsAttentionHealthRun";
 import type { RagStatus } from "@/lib/dashboard/projectTileServerData";
 import { formatCurrencyCompact } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
@@ -121,7 +124,8 @@ const COST_EXPOSURE_TILE_SUBTEXT = "Forward cost exposure (12-month expected val
 export function costExposureTileCopy(
   byCurrency: Map<ProjectCurrency, number>,
   projectCount: number,
-  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
+  options?: { noProjectsSubtext?: string }
 ): { primaryValue: string; subtext: string } {
   const totalM = [...byCurrency.values()].reduce((a, b) => a + b, 0);
   const nonzero = [...byCurrency.entries()].filter(([, m]) => m > 0).sort((a, b) => b[1] - a[1]);
@@ -135,7 +139,10 @@ export function costExposureTileCopy(
     }
     return {
       primaryValue: "—",
-      subtext: projectCount === 0 ? "No projects in portfolio" : "No cost exposure data",
+      subtext:
+        projectCount === 0
+          ? options?.noProjectsSubtext ?? "No projects in portfolio"
+          : "No cost exposure data",
     };
   }
   const toAbs = (millions: number) => millions * 1_000_000;
@@ -160,7 +167,8 @@ export function costExposureTileCopy(
 export function scheduleExposureTileCopy(
   totalDays: number,
   totalScheduleContingencyWeeks?: number,
-  scheduleCoverageRatio?: number | null
+  scheduleCoverageRatio?: number | null,
+  options?: { exposureBasisSubtext?: string }
 ): { primaryValue: string; subtext: string } {
   if (!Number.isFinite(totalDays) || totalDays <= 0) {
     const held = formatScheduleWeeksHeldLabel(totalScheduleContingencyWeeks ?? 0);
@@ -179,7 +187,8 @@ export function scheduleExposureTileCopy(
     scheduleCoverageRatio >= 0
       ? ` · Reserve covers ${scheduleCoverageRatio.toFixed(2)}× expected delay`
       : "";
-  const base = "Expected schedule exposure across all projects";
+  const base =
+    options?.exposureBasisSubtext ?? "Expected schedule exposure across all projects";
   const subtext =
     held !== "" ? `${base} · ${held}${ratioPart}` : `${base}${ratioPart}`;
   return {
@@ -216,24 +225,12 @@ export function scheduleCoverageRatioRagStatus(ratio: number | null): RagStatus 
   return "green";
 }
 
-function needsAttentionTileSubtext(health: PortfolioNeedsAttentionHealthRun): string {
-  const sim =
-    health.projectsWithActiveRisksCount === 0
-      ? "no active-risk projects"
-      : `${health.staleSimulationProjectCount}/${health.projectsWithActiveRisksCount} active projects not simulated this month (UTC)`;
-  const top =
-    health.topDriverPoolSize === 0
-      ? "no top cost/schedule driver pool"
-      : `${health.topDriversWithoutMitigationCount}/${health.topDriverPoolSize} top drivers lack mitigation`;
-  const reg = `${health.registerGapCount} register gap${health.registerGapCount === 1 ? "" : "s"}`;
-  const opp =
-    health.materialOpportunityProjectCount === 0
-      ? "no top-list mitigation upside"
-      : `${health.materialOpportunityProjectCount} project${health.materialOpportunityProjectCount === 1 ? "" : "s"} with material upside (monitoring)`;
-  return `Health run · ${sim} · ${top} · ${reg} · ${opp}`;
-}
+const NEEDS_ATTENTION_TILE_SUBTEXT = "Overall health across risk gaps and drivers";
 
-export function needsAttentionTileCopy(health: PortfolioNeedsAttentionHealthRun): {
+export function needsAttentionTileCopy(
+  health: PortfolioNeedsAttentionHealthRun,
+  _options?: { staleCopyMode?: NeedsAttentionStaleCopyMode }
+): {
   primaryValue: string;
   subtext: string;
   primaryValueClassName?: string;
@@ -248,7 +245,7 @@ export function needsAttentionTileCopy(health: PortfolioNeedsAttentionHealthRun)
         : "text-[var(--ds-status-success)]";
   return {
     primaryValue: String(health.healthScore),
-    subtext: needsAttentionTileSubtext(health),
+    subtext: NEEDS_ATTENTION_TILE_SUBTEXT,
     primaryValueClassName,
     primaryRagDot: rag,
   };
@@ -267,8 +264,14 @@ export function contingencyHeldTileCopy(
   byCurrency: Map<ProjectCurrency, number>,
   projectCount: number,
   totalScheduleContingencyWeeks = 0,
-  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
+  options?: {
+    heldBaseSubtext?: string;
+    emptyNoProjectsSubtext?: string;
+    emptyNoContingencySubtext?: string;
+  }
 ): { primaryValue: string; subtext: string } {
+  const heldBase = options?.heldBaseSubtext ?? CONTINGENCY_HELD_TILE_SUBTEXT;
   const totalM = [...byCurrency.values()].reduce((a, b) => a + b, 0);
   const nonzero = [...byCurrency.entries()].filter(([, m]) => m > 0).sort((a, b) => b[1] - a[1]);
   if (nonzero.length === 0) {
@@ -276,13 +279,15 @@ export function contingencyHeldTileCopy(
       const c = [...byCurrency.keys()][0];
       return {
         primaryValue: formatCurrencyInReportingUnit(0, c, reportingUnit),
-        subtext: appendScheduleHeldToSubtext(CONTINGENCY_HELD_TILE_SUBTEXT, totalScheduleContingencyWeeks),
+        subtext: appendScheduleHeldToSubtext(heldBase, totalScheduleContingencyWeeks),
       };
     }
     return {
       primaryValue: "—",
       subtext: appendScheduleHeldToSubtext(
-        projectCount === 0 ? "No projects in portfolio" : "No contingency in project settings",
+        projectCount === 0
+          ? options?.emptyNoProjectsSubtext ?? "No projects in portfolio"
+          : options?.emptyNoContingencySubtext ?? "No contingency in project settings",
         totalScheduleContingencyWeeks
       ),
     };
@@ -292,7 +297,7 @@ export function contingencyHeldTileCopy(
     const [c, m] = nonzero[0];
     return {
       primaryValue: formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit),
-      subtext: appendScheduleHeldToSubtext(CONTINGENCY_HELD_TILE_SUBTEXT, totalScheduleContingencyWeeks),
+      subtext: appendScheduleHeldToSubtext(heldBase, totalScheduleContingencyWeeks),
     };
   }
   const parts = nonzero.map(([c, m]) => formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit));

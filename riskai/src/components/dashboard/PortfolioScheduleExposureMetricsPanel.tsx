@@ -1,3 +1,4 @@
+import type { PortfolioReportingTrendLine } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import type { RagStatus } from "@/lib/dashboard/projectTileServerData";
 
 const labelClass =
@@ -35,6 +36,9 @@ export type PortfolioScheduleExposureMetricsPanelProps = {
   scheduleCoverageRatioPrimaryValue: string;
   scheduleCoverageRatioPrimaryRagDot?: RagStatus;
   scheduleCoverageRatioPrimaryValueClassName?: string;
+  scheduleExposureTrend?: PortfolioReportingTrendLine | null;
+  scheduleContingencyWeeksTrend?: PortfolioReportingTrendLine | null;
+  scheduleCoverageRatioTrend?: PortfolioReportingTrendLine | null;
   layout?: "grid" | "stack";
   compact?: boolean;
   className?: string;
@@ -45,11 +49,13 @@ function MetricBlock({
   value,
   valueRagDot,
   valueClassName,
+  momTrend,
 }: {
   label: string;
   value: string;
   valueRagDot?: RagStatus;
   valueClassName: string;
+  momTrend?: PortfolioReportingTrendLine | null;
 }) {
   return (
     <div className="min-w-0 text-left">
@@ -75,6 +81,9 @@ function MetricBlock({
           {value}
         </p>
       )}
+      {momTrend != null && momTrend.text !== "" ? (
+        <p className={`${momTrend.className} m-0 mt-1.5`}>{momTrend.text}</p>
+      ) : null}
     </div>
   );
 }
@@ -88,6 +97,9 @@ export function PortfolioScheduleExposureMetricsPanel({
   scheduleCoverageRatioPrimaryValue,
   scheduleCoverageRatioPrimaryRagDot,
   scheduleCoverageRatioPrimaryValueClassName,
+  scheduleExposureTrend,
+  scheduleContingencyWeeksTrend,
+  scheduleCoverageRatioTrend,
   layout = "grid",
   compact = false,
   className = "",
@@ -107,17 +119,20 @@ export function PortfolioScheduleExposureMetricsPanel({
         label="Schedule Exposure"
         value={scheduleExposurePrimaryValue}
         valueClassName={valueClass}
+        momTrend={scheduleExposureTrend}
       />
       <MetricBlock
         label="Contingency Held"
         value={scheduleContingencyHeldPrimaryValue}
         valueClassName={valueClass}
+        momTrend={scheduleContingencyWeeksTrend}
       />
       <MetricBlock
         label="Coverage Ratio"
         value={scheduleCoverageRatioPrimaryValue}
         valueRagDot={scheduleCoverageRatioPrimaryRagDot}
         valueClassName={coverageCombined}
+        momTrend={scheduleCoverageRatioTrend}
       />
     </>
   );

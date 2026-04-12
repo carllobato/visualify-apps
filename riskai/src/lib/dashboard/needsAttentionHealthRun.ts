@@ -9,7 +9,11 @@ export type PortfolioNeedsAttentionHealthRun = {
   primaryRagDot: NeedsAttentionHealthRag;
   /** Projects with ≥1 active analytics risk — denominator for simulation freshness. */
   projectsWithActiveRisksCount: number;
-  /** Among those, count with no simulation in the current UTC month (latest snapshot `created_at`). */
+  /**
+   * Penalty dimension for “simulation / reporting freshness”: in default portfolio view, counts projects
+   * with no snapshot `created_at` in the current UTC month; when the portfolio overview is scoped to a
+   * reporting month, counts projects whose reporting lock for that month is older than 30 days.
+   */
   staleSimulationProjectCount: number;
   /** Unique risks in the union of top-5 cost + top-5 schedule drivers (0–10). */
   topDriverPoolSize: number;
@@ -77,11 +81,18 @@ export type NeedsAttentionScoreCardLine = {
   maxPenalty: number;
 };
 
-export function buildNeedsAttentionScoreCard(health: PortfolioNeedsAttentionHealthRun): {
+/** How to describe the “stale” dimension in portfolio Needs Attention copy (aligned with server logic). */
+export type NeedsAttentionStaleCopyMode = "utcMonthSnapshot" | "reportingMonthLock";
+
+export function buildNeedsAttentionScoreCard(
+  health: PortfolioNeedsAttentionHealthRun,
+  options?: { staleCopyMode?: NeedsAttentionStaleCopyMode }
+): {
   lines: NeedsAttentionScoreCardLine[];
   opportunityDetail: string;
   totalPenalty: number;
 } {
+  const staleCopyMode = options?.staleCopyMode ?? "utcMonthSnapshot";
   const staleApplied = Math.min(
     MAX_PENALTY_STALE,
     Math.max(0, health.staleSimulationProjectCount) * PENALTY_PER_STALE
@@ -99,9 +110,13 @@ export function buildNeedsAttentionScoreCard(health: PortfolioNeedsAttentionHeal
   const simulationDetail =
     health.projectsWithActiveRisksCount === 0
       ? "No projects with active risks."
-      : `${health.staleSimulationProjectCount} of ${health.projectsWithActiveRisksCount} project${
-          health.projectsWithActiveRisksCount === 1 ? "" : "s"
-        } with active risks have no simulation in the current UTC month (latest snapshot).`;
+      : staleCopyMode === "reportingMonthLock"
+        ? `${health.staleSimulationProjectCount} of ${health.projectsWithActiveRisksCount} project${
+            health.projectsWithActiveRisksCount === 1 ? "" : "s"
+          } with active risks have a stale reporting lock for the selected month (more than 30 days since lock).`
+        : `${health.staleSimulationProjectCount} of ${health.projectsWithActiveRisksCount} project${
+            health.projectsWithActiveRisksCount === 1 ? "" : "s"
+          } with active risks have no simulation in the current UTC month (latest snapshot).`;
 
   const registerDetail =
     health.registerGapCount === 0
@@ -120,11 +135,14 @@ export function buildNeedsAttentionScoreCard(health: PortfolioNeedsAttentionHeal
           health.materialOpportunityProjectCount === 1 ? "" : "s"
         } in those lists — modeled pre- vs post-mitigation upside (not scored).`;
 
+  const simulationLineTitle =
+    staleCopyMode === "reportingMonthLock" ? "Reporting lock staleness" : "Simulation freshness";
+
   return {
     lines: [
       {
         id: "simulation",
-        title: "Simulation freshness",
+        title: simulationLineTitle,
         detail: simulationDetail,
         appliedPenalty: staleApplied,
         maxPenalty: MAX_PENALTY_STALE,

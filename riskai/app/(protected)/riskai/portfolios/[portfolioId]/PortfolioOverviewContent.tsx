@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   COST_COVERAGE_COMBINED_TILE_TITLE,
   DocumentKpiModal,
+  PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE,
+  PORTFOLIO_HEALTH_KPI_TITLE,
   SCHEDULE_COVERAGE_COMBINED_TILE_TITLE,
   type DocumentKpiTileItem,
 } from "@/components/dashboard/DocumentKpiModal";
@@ -43,6 +45,8 @@ import type {
   RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
 import type { ReportingUnitOption } from "@/lib/portfolio/reportingPreferences";
+import type { NeedsAttentionStaleCopyMode } from "@/lib/dashboard/needsAttentionHealthRun";
+import type { PortfolioOverviewReportingTrendSet } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import { riskaiPath } from "@/lib/routes";
 
 type PortfolioBreakdownModalId =
@@ -79,12 +83,16 @@ const PORTFOLIO_BREAKDOWN_MODAL_CYCLE: PortfolioBreakdownModalId[] = [
 ];
 
 function portfolioRagTileCopy(
-  rag: RagStatus | null
+  rag: RagStatus | null,
+  reportingMonthLabel: string | null
 ): { primary: string; subtext: string; primaryValueClassName?: string; primaryRagDot?: RagStatus } {
   if (rag == null) {
     return { primary: "—", subtext: "No projects yet" };
   }
-  const subtext = "Aggregated risk across all projects";
+  const subtext =
+    reportingMonthLabel != null
+      ? `Aggregated risk across projects with a locked run for ${reportingMonthLabel}`
+      : "Aggregated risk across all projects";
   const primary = rag === "red" ? "Red" : rag === "amber" ? "Amber" : "Green";
   const primaryValueClassName =
     rag === "red"
@@ -96,7 +104,10 @@ function portfolioRagTileCopy(
 }
 
 /** Same overall label + colours as the Portfolio row in the KPI modal (`OverallRagCell`). */
-function portfolioReportingFooterTileCopy(footer: PortfolioReportingFooterRow): {
+function portfolioReportingFooterTileCopy(
+  footer: PortfolioReportingFooterRow,
+  reportingMonthLabel: string | null
+): {
   primary: string;
   subtext: string;
   primaryValueClassName?: string;
@@ -113,7 +124,10 @@ function portfolioReportingFooterTileCopy(footer: PortfolioReportingFooterRow): 
           : "font-medium text-[var(--ds-text-primary)]";
   return {
     primary: v !== "" && v !== "—" ? v : "—",
-    subtext: "Aggregated risk across all projects",
+    subtext:
+      reportingMonthLabel != null
+        ? "Aggregated portfolio position"
+        : "Aggregated risk across all projects",
     primaryValueClassName,
     primaryRagDot: footer.rag,
   };
@@ -191,6 +205,8 @@ function PortfolioRiskByOwnerCard({
 type PortfolioOverviewContentProps = {
   portfolioId: string;
   reportingUnit: ReportingUnitOption;
+  /** Human label for the selected reporting month (e.g. “March 2026”); `null` when viewing latest / unscoped. */
+  reportingMonthLabel: string | null;
   projectCount: number;
   activeRiskCount: number;
   contingencyPrimaryValue: string;
@@ -212,7 +228,7 @@ type PortfolioOverviewContentProps = {
   coverageRatioSemanticClassName?: string;
   /** Worst project RAG across the portfolio (`null` when there are no projects). */
   portfolioRag: RagStatus | null;
-  /** Same payloads as `/portfolios/:id/projects` — used in the Projects KPI modal. */
+  /** Same payloads as `/portfolios/:id/projects` — used in the Active Projects KPI modal. */
   projectTilePayloads: ProjectTilePayload[];
   /** Portfolio aggregate row for Portfolio Risk Rating modal (Σ held vs Σ at-target-P when single currency). */
   portfolioReportingFooter: PortfolioReportingFooterRow | null;
@@ -244,11 +260,14 @@ type PortfolioOverviewContentProps = {
   riskOwnerCounts: PortfolioRiskOwnerCount[];
   /** Composite health run (tile figure + modal score card). */
   needsAttentionHealthRun: PortfolioNeedsAttentionHealthRun;
+  /** Month-over-month vs calendar prior reporting month; `null` when no comparable prior snapshot. */
+  reportingVsPriorMonthTrends: PortfolioOverviewReportingTrendSet | null;
 };
 
 export function PortfolioOverviewContent({
   portfolioId,
   reportingUnit,
+  reportingMonthLabel,
   projectCount,
   activeRiskCount,
   contingencyPrimaryValue,
@@ -283,6 +302,7 @@ export function PortfolioOverviewContent({
   riskStatusCounts,
   riskOwnerCounts,
   needsAttentionHealthRun,
+  reportingVsPriorMonthTrends,
 }: PortfolioOverviewContentProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -296,14 +316,19 @@ export function PortfolioOverviewContent({
     setCategoryOwnerBreakdownOpen((o) => !o);
   }, []);
 
+  const needsAttentionStaleCopyMode: NeedsAttentionStaleCopyMode =
+    reportingMonthLabel != null ? "reportingMonthLock" : "utcMonthSnapshot";
+
   const kpiTiles = useMemo((): DocumentKpiTileItem[] => {
     const projectsSubtext =
-      "Only projects with a locked monthly reporting snapshot (saved run); others are omitted from this portfolio view.";
-    const risksSubtext = "Open, Monitoring, or Mitigating risks only (excludes Draft, Closed, Archived)";
+      reportingMonthLabel != null
+        ? "Projects within current report"
+        : "Under this portfolio: only projects with a locked monthly reporting snapshot (saved run). Others are omitted from this view.";
+    const risksSubtext = "Open, monitoring, or mitigating risks";
     const rag =
       portfolioReportingFooter != null
-        ? portfolioReportingFooterTileCopy(portfolioReportingFooter)
-        : portfolioRagTileCopy(portfolioRag);
+        ? portfolioReportingFooterTileCopy(portfolioReportingFooter, reportingMonthLabel)
+        : portfolioRagTileCopy(portfolioRag, reportingMonthLabel);
     return [
       {
         title: "Portfolio Risk Rating",
@@ -313,7 +338,7 @@ export function PortfolioOverviewContent({
         subtext: rag.subtext,
       },
       {
-        title: "Projects",
+        title: PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE,
         primaryValue: String(projectCount),
         subtext: projectsSubtext,
         actionHref: riskaiPath(`/portfolios/${portfolioId}/projects`),
@@ -325,7 +350,7 @@ export function PortfolioOverviewContent({
         subtext: risksSubtext,
       },
       {
-        title: "Needs Attention",
+        title: PORTFOLIO_HEALTH_KPI_TITLE,
         primaryValue: needsAttentionPrimaryValue,
         primaryValueClassName: needsAttentionPrimaryValueClassName,
         primaryRagDot: needsAttentionPrimaryRagDot,
@@ -349,6 +374,7 @@ export function PortfolioOverviewContent({
     activeRiskCount,
     portfolioRag,
     portfolioReportingFooter,
+    reportingMonthLabel,
     projectTilePayloads.length,
     contingencyPrimaryValue,
     costExposurePrimaryValue,
@@ -404,7 +430,11 @@ export function PortfolioOverviewContent({
           return (
             <PortfolioTopRisksTable
               rows={topCostRiskRows}
-              caption="Top five portfolio cost risks by forward exposure"
+              caption={
+                reportingMonthLabel != null
+                  ? "Top five portfolio cost risks by forward exposure (current register)"
+                  : "Top five portfolio cost risks by forward exposure"
+              }
               emptyMessage="No cost risk data available. Add cost-applicable risks with positive cost impacts in your projects to populate this view."
               showOwnerColumn
             />
@@ -413,7 +443,11 @@ export function PortfolioOverviewContent({
           return (
             <PortfolioTopRisksTable
               rows={topScheduleRiskRows}
-              caption="Top five portfolio schedule risks by expected delay"
+              caption={
+                reportingMonthLabel != null
+                  ? "Top five portfolio schedule risks by expected delay (current register)"
+                  : "Top five portfolio schedule risks by expected delay"
+              }
               emptyMessage="No schedule risk data available. Add time-applicable risks with positive schedule impacts in your projects to populate this view."
               showOwnerColumn
             />
@@ -452,6 +486,7 @@ export function PortfolioOverviewContent({
       topScheduleRiskRows,
       topCostOpportunityRows,
       topScheduleOpportunityRows,
+      reportingMonthLabel,
     ]
   );
 
@@ -479,6 +514,13 @@ export function PortfolioOverviewContent({
     dispatchOpenProjectOnboarding(portfolioId);
   }, [clearFirstProjectQueryParam, portfolioId]);
 
+  const kpiSummaryTrendSlots = [
+    reportingVsPriorMonthTrends?.portfolioRiskRating ?? null,
+    reportingVsPriorMonthTrends?.activeProjects ?? null,
+    reportingVsPriorMonthTrends?.activeRisks ?? null,
+    reportingVsPriorMonthTrends?.needsAttention ?? null,
+  ];
+
   return (
     <main className="ds-document-page">
       {/* Section A — Portfolio KPI Summary */}
@@ -487,18 +529,22 @@ export function PortfolioOverviewContent({
           Portfolio KPI summary
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpiTiles.slice(0, 4).map((tile, i) => (
-            <SummaryTile
-              key={tile.title}
-              title={tile.title}
-              primaryValue={tile.primaryValue}
-              primaryValueClassName={tile.primaryValueClassName}
-              primaryRagDot={tile.primaryRagDot}
-              subtext={tile.subtext}
-              onActivate={() => openOverviewAt(i)}
-              selected={overviewModalOpen && overviewModalIndex === i}
-            />
-          ))}
+          {kpiTiles.slice(0, 4).map((tile, i) => {
+            const trendSlot = kpiSummaryTrendSlots[i];
+            return (
+              <SummaryTile
+                key={tile.title}
+                title={tile.title}
+                primaryValue={tile.primaryValue}
+                primaryValueClassName={tile.primaryValueClassName}
+                primaryRagDot={tile.primaryRagDot}
+                trend={trendSlot != null ? { text: trendSlot.text, className: trendSlot.className } : undefined}
+                subtext={tile.subtext}
+                onActivate={() => openOverviewAt(i)}
+                selected={overviewModalOpen && overviewModalIndex === i}
+              />
+            );
+          })}
         </div>
       </section>
 
@@ -514,15 +560,15 @@ export function PortfolioOverviewContent({
             modalSelected={overviewModalOpen && overviewModalIndex === 4}
             activateAriaLabel="Open cost exposure, contingency, and coverage details"
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+              <div className="min-w-0 flex-1 flex flex-col">
                 <PortfolioExposureByProjectDonut
                   mode="cost"
                   slices={projectCostExposureSlices}
                   reportingUnit={reportingUnit}
                 />
               </div>
-              <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:w-auto lg:min-w-[11rem] lg:max-w-[15rem] lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
+              <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:flex lg:w-auto lg:min-h-0 lg:min-w-[11rem] lg:max-w-[15rem] lg:flex-col lg:justify-center lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
                 <div className="w-full rounded-[var(--ds-radius-sm)] border border-transparent p-2 -m-2 text-left">
                   <PortfolioCostCoverageMetricsPanel
                     layout="stack"
@@ -532,6 +578,9 @@ export function PortfolioOverviewContent({
                     coveragePrimaryValue={coveragePrimaryValue}
                     coveragePrimaryRagDot={coveragePrimaryRagDot}
                     coveragePrimaryValueClassName={coverageRatioSemanticClassName}
+                    costExposureTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.costExposure}
+                    contingencyTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.contingency}
+                    coverageRatioTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.coverageRatio}
                   />
                 </div>
               </aside>
@@ -543,11 +592,11 @@ export function PortfolioOverviewContent({
             modalSelected={overviewModalOpen && overviewModalIndex === 5}
             activateAriaLabel="Open schedule exposure and coverage details"
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+              <div className="min-w-0 flex-1 flex flex-col">
                 <PortfolioExposureByProjectDonut mode="schedule" slices={projectScheduleExposureSlices} />
               </div>
-              <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:w-auto lg:min-w-[11rem] lg:max-w-[15rem] lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
+              <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:flex lg:w-auto lg:min-h-0 lg:min-w-[11rem] lg:max-w-[15rem] lg:flex-col lg:justify-center lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
                 <div className="w-full rounded-[var(--ds-radius-sm)] border border-transparent p-2 -m-2 text-left">
                   <PortfolioScheduleExposureMetricsPanel
                     layout="stack"
@@ -557,6 +606,13 @@ export function PortfolioOverviewContent({
                     scheduleCoverageRatioPrimaryValue={scheduleCoverageRatioPrimaryValue}
                     scheduleCoverageRatioPrimaryRagDot={scheduleCoverageRatioPrimaryRagDot}
                     scheduleCoverageRatioPrimaryValueClassName={scheduleCoverageRatioSemanticClassName}
+                    scheduleExposureTrend={reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleExposure}
+                    scheduleContingencyWeeksTrend={
+                      reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleContingencyWeeks
+                    }
+                    scheduleCoverageRatioTrend={
+                      reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleCoverageRatio
+                    }
                   />
                 </div>
               </aside>
@@ -615,7 +671,11 @@ export function PortfolioOverviewContent({
         >
           <PortfolioTopRisksTable
             rows={topCostRiskRows}
-            caption="Top five portfolio cost risks by forward exposure"
+            caption={
+              reportingMonthLabel != null
+                ? "Top five portfolio cost risks by forward exposure (current register)"
+                : "Top five portfolio cost risks by forward exposure"
+            }
             emptyMessage="No cost risk data available. Add cost-applicable risks with positive cost impacts in your projects to populate this view."
             enableNavigation={false}
           />
@@ -628,7 +688,11 @@ export function PortfolioOverviewContent({
         >
           <PortfolioTopRisksTable
             rows={topScheduleRiskRows}
-            caption="Top five portfolio schedule risks by expected delay"
+            caption={
+              reportingMonthLabel != null
+                ? "Top five portfolio schedule risks by expected delay (current register)"
+                : "Top five portfolio schedule risks by expected delay"
+            }
             emptyMessage="No schedule risk data available. Add time-applicable risks with positive schedule impacts in your projects to populate this view."
             enableNavigation={false}
           />
@@ -688,6 +752,7 @@ export function PortfolioOverviewContent({
         coverageRatioRows={coverageRatioRows}
         scheduleCoverageRows={scheduleCoverageRows}
         needsAttentionHealthRun={needsAttentionHealthRun}
+        needsAttentionStaleCopyMode={needsAttentionStaleCopyMode}
         renderSlideBodyByIndex={renderPortfolioOverviewSlideBody}
       />
     </main>

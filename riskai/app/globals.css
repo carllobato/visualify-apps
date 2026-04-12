@@ -20,3 +20,47 @@
   outline-offset: 2px;
   transition: background 0.2s ease, outline 0.2s ease;
 }
+
+/* Portfolio overview — month-over-month trend lines (below primary metric; quieter than subtext) */
+.ds-trend-line {
+  --ds-trend-font-size: 11px;
+  display: block;
+  margin: 0;
+  margin-top: var(--ds-trend-after-primary, 0.25rem);
+  padding: 0;
+  font-size: var(--ds-trend-font-size);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.ds-trend-line--attention {
+  margin-top: var(--ds-trend-after-primary, 0.25rem);
+  font-weight: 500;
+  font-size: var(--ds-trend-font-size);
+}
+
+.ds-trend-line--card {
+  margin: 0;
+  margin-top: var(--ds-trend-after-primary, 0.25rem);
+  padding-top: 0;
+  font-size: var(--ds-trend-font-size);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+
+.ds-trend-sentiment--favorable {
+  color: var(--ds-status-success-fg);
+  opacity: 0.8;
+}
+
+.ds-trend-sentiment--unfavorable {
+  color: var(--ds-status-danger-fg);
+  opacity: 0.8;
+}
+
+.ds-trend-sentiment--neutral {
+  color: var(--ds-text-muted);
+  opacity: 0.62;
+}
