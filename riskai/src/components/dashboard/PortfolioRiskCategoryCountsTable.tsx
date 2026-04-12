@@ -6,7 +6,6 @@ import {
   CHART_HORIZONTAL_BAR_ROW_LABEL_CLASS,
   chartHorizontalBarFillWidthCss,
 } from "@/components/dashboard/chartHorizontalBarFill";
-import { PORTFOLIO_DASHBOARD_CARD_MODAL_TITLE_ID } from "@/components/dashboard/PortfolioDashboardCardModal";
 import type { PortfolioRiskCategoryCount } from "@/lib/dashboard/projectTileServerData";
 
 /** Matches `BarChartPrimitive` categorical fills (`ChartShowcase`). */
@@ -20,6 +19,7 @@ const CHART_SERIES = [
 ] as const;
 
 const BAR_OPACITY = "var(--ds-chart-opacity-default)";
+const COLLAPSED_ROW_LIMIT = 4;
 
 export const PORTFOLIO_CATEGORY_BREAKDOWN_TRIGGER_ID = "portfolio-risk-category-breakdown-trigger";
 const BREAKDOWN_REGION_ID = "portfolio-risk-category-breakdown";
@@ -41,7 +41,7 @@ export function PortfolioCategoryBreakdownTrigger({
       aria-controls={BREAKDOWN_REGION_ID}
       onClick={onToggle}
     >
-      <span>{open ? "Show Top 5" : "Show All"}</span>
+      <span>{open ? "Collapse" : "Show All"}</span>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="14"
@@ -77,7 +77,7 @@ function CategoryBarRow({
   count,
   widthPct,
   colorIndex,
-  /** When true, bar fill follows `expanded` (used for rows beyond top five). */
+  /** When true, bar fill follows `expanded` (used for rows beyond the collapsed preview). */
   expandDriven = false,
   expanded = true,
 }: {
@@ -111,7 +111,13 @@ function CategoryBarRow({
         className="flex h-6 min-w-0 flex-1 overflow-hidden rounded-[var(--ds-chart-bar-radius)] bg-[var(--ds-chart-surface)]"
         aria-hidden={count === 0}
       >
-        {count === 0 ? null : (
+        {count === 0 ? (
+          <div className="flex h-full w-full items-center justify-start px-1.5">
+            <span className="shrink-0 text-[length:var(--ds-text-xs)] font-medium tabular-nums leading-none text-[var(--ds-text-muted)]">
+              0
+            </span>
+          </div>
+        ) : (
           <div
             className="relative flex h-full shrink-0 items-center justify-end overflow-hidden rounded-[var(--ds-chart-bar-radius)] pr-1.5"
             style={{ width: chartHorizontalBarFillWidthCss(widthPct) }}
@@ -167,12 +173,13 @@ function CategoryBarRow({
 
 type PortfolioRiskCategoryCountsTableProps = {
   rows: PortfolioRiskCategoryCount[];
-  /** Controlled by header “Show All” / “Show Top 5” in {@link DashboardCard}. */
+  /** Controlled by header “Show All” / “Collapse” in {@link DashboardCard}. */
   breakdownOpen: boolean;
-  /** When true, breakdown region ids differ from the dashboard card (see {@link PortfolioDashboardCardModal}). */
-  embeddedInModal?: boolean;
-  /** When `embeddedInModal`, id of the dialog `h2` (dashboard vs KPI portfolio modal). */
-  embeddedModalTitleId?: string;
+  /**
+   * When true, every category row is shown (portfolio KPI modal). When false, dashboard card shows top four plus an
+   * expandable remainder controlled by `breakdownOpen`.
+   */
+  showAllRows?: boolean;
 };
 
 /**
@@ -181,36 +188,50 @@ type PortfolioRiskCategoryCountsTableProps = {
 export function PortfolioRiskCategoryCountsTable({
   rows,
   breakdownOpen,
-  embeddedInModal = false,
-  embeddedModalTitleId,
+  showAllRows = false,
 }: PortfolioRiskCategoryCountsTableProps) {
-  const { maxCount, topFive, rest, summaryText } = useMemo(() => {
+  const { maxCount, topRows, rest, summaryText, sortedRows } = useMemo(() => {
     const s = [...rows].sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
     const max = Math.max(...s.map((r) => r.count), 1);
-    const top = s.slice(0, 5);
-    const remainder = s.slice(5);
+    const top = s.slice(0, COLLAPSED_ROW_LIMIT);
+    const remainder = s.slice(COLLAPSED_ROW_LIMIT);
     const t = s.reduce((a, r) => a + r.count, 0);
     const summary =
       s.length === 0
         ? "No active risks in this portfolio."
         : `${s.map((r) => `${r.category}: ${r.count}`).join(", ")}. Total ${t} active risks.`;
-    return { maxCount: max, topFive: top, rest: remainder, summaryText: summary };
+    return { maxCount: max, topRows: top, rest: remainder, summaryText: summary, sortedRows: s };
   }, [rows]);
 
   const widthPct = (count: number) => (count / maxCount) * 100;
 
-  const breakdownRegionId = embeddedInModal
-    ? "portfolio-risk-category-breakdown-modal"
-    : BREAKDOWN_REGION_ID;
-  const breakdownRegionLabelledBy = embeddedInModal
-    ? embeddedModalTitleId ?? PORTFOLIO_DASHBOARD_CARD_MODAL_TITLE_ID
-    : PORTFOLIO_CATEGORY_BREAKDOWN_TRIGGER_ID;
+  const breakdownRegionId = BREAKDOWN_REGION_ID;
+  const breakdownRegionLabelledBy = PORTFOLIO_CATEGORY_BREAKDOWN_TRIGGER_ID;
 
   if (rows.length === 0) {
     return (
       <p className="m-0 text-sm text-[var(--ds-text-muted)]">
         No active risks in this portfolio yet. Only Open, Monitoring, and Mitigating risks are counted.
       </p>
+    );
+  }
+
+  if (showAllRows) {
+    return (
+      <div className="flex w-full min-w-0 flex-col gap-2.5">
+        <p className="sr-only">{summaryText}</p>
+        <div className="flex flex-col justify-start gap-2.5">
+          {sortedRows.map((r, i) => (
+            <CategoryBarRow
+              key={r.category}
+              category={r.category}
+              count={r.count}
+              widthPct={widthPct(r.count)}
+              colorIndex={i}
+            />
+          ))}
+        </div>
+      </div>
     );
   }
 
@@ -221,7 +242,7 @@ export function PortfolioRiskCategoryCountsTable({
       <p className="sr-only">{summaryText}</p>
 
       <div className="flex flex-col justify-center gap-2.5">
-        {topFive.map((r, i) => (
+        {topRows.map((r, i) => (
           <CategoryBarRow
             key={r.category}
             category={r.category}
@@ -250,7 +271,7 @@ export function PortfolioRiskCategoryCountsTable({
                   category={r.category}
                   count={r.count}
                   widthPct={widthPct(r.count)}
-                  colorIndex={5 + j}
+                  colorIndex={COLLAPSED_ROW_LIMIT + j}
                   expandDriven
                   expanded={breakdownOpen}
                 />

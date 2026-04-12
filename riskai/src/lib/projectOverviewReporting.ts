@@ -13,6 +13,10 @@ import { computePortfolioExposure } from "@/engine/forwardExposure";
 import type { PortfolioExposure } from "@/engine/forwardExposure";
 import { appliesToExcludesCost, isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
 import {
+  monitoringCostOpportunityExpected,
+  monitoringScheduleOpportunityExpected,
+} from "@/lib/opportunityMetrics";
+import {
   buildRating,
   costToConsequenceScale,
   probabilityPctToScale,
@@ -254,7 +258,7 @@ export type ScheduleDriverLine = {
   delta: number;
 };
 
-/** Cost drivers aligned with Run Data (neutral exposure, run snapshot risk set, cost-applicable risks). */
+/** Cost drivers aligned with Run Data, with monitoring-only planned opportunity deltas. */
 export function buildCostDriverLines(
   current: SimulationSnapshot | undefined,
   risks: Risk[],
@@ -273,27 +277,15 @@ export function buildCostDriverLines(
   });
   return list.map((d) => {
     const risk = risks.find((r) => r.id === d.riskId);
-    let preMitigation: number;
-    if (risk) {
-      const prob01 =
-        typeof risk.probability === "number" && risk.probability >= 0 && risk.probability <= 1
-          ? risk.probability
-          : risk.inherentRating.probability / 5;
-      const impact = risk.preMitigationCostML ?? 0;
-      preMitigation = impact * prob01;
-      if (!Number.isFinite(preMitigation) || preMitigation < 0) preMitigation = d.total;
-    } else {
-      preMitigation = d.total;
-    }
     return {
       riskId: d.riskId,
       riskName: risk?.title ?? d.riskId,
-      delta: preMitigation - d.total,
+      delta: risk ? Math.max(0, monitoringCostOpportunityExpected(risk) ?? 0) : 0,
     };
   });
 }
 
-/** Schedule drivers aligned with Run Data (snapshot risks, sim mean / expected days). */
+/** Schedule drivers aligned with Run Data, with monitoring-only planned opportunity deltas. */
 export function buildScheduleDriverLines(
   current: SimulationSnapshot | undefined,
   risks: Risk[]
@@ -308,23 +300,11 @@ export function buildScheduleDriverLines(
   return sorted.map((r) => {
     const days = r.simMeanDays ?? r.expectedDays ?? 0;
     const risk = risks.find((x) => x.id === r.id);
-    let preMitigation: number;
-    if (risk) {
-      const prob01 =
-        typeof risk.probability === "number" && risk.probability >= 0 && risk.probability <= 1
-          ? risk.probability
-          : risk.inherentRating.probability / 5;
-      const impactDays = risk.preMitigationTimeML ?? risk.postMitigationTimeML ?? 0;
-      preMitigation = impactDays * prob01;
-      if (!Number.isFinite(preMitigation) || preMitigation < 0) preMitigation = days;
-    } else {
-      preMitigation = days;
-    }
     return {
       riskId: r.id,
       riskName: risk?.title ?? r.title ?? r.id,
       totalDays: days,
-      delta: preMitigation - days,
+      delta: risk ? Math.max(0, monitoringScheduleOpportunityExpected(risk) ?? 0) : 0,
     };
   });
 }

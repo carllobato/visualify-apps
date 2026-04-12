@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   COST_COVERAGE_COMBINED_TILE_TITLE,
-  DOCUMENT_KPI_MODAL_TITLE_ID,
   DocumentKpiModal,
+  SCHEDULE_COVERAGE_COMBINED_TILE_TITLE,
   type DocumentKpiTileItem,
 } from "@/components/dashboard/DocumentKpiModal";
 import { PortfolioCostCoverageMetricsPanel } from "@/components/dashboard/PortfolioCostCoverageMetricsPanel";
@@ -42,6 +42,7 @@ import type {
   ProjectTilePayload,
   RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
+import type { ReportingUnitOption } from "@/lib/portfolio/reportingPreferences";
 import { riskaiPath } from "@/lib/routes";
 
 type PortfolioBreakdownModalId =
@@ -50,7 +51,9 @@ type PortfolioBreakdownModalId =
   | "category"
   | "owner"
   | "topCost"
-  | "topSchedule";
+  | "topSchedule"
+  | "topCostOpportunity"
+  | "topScheduleOpportunity";
 
 const PORTFOLIO_BREAKDOWN_MODAL_TITLES: Record<PortfolioBreakdownModalId, string> = {
   status: "Status",
@@ -59,9 +62,11 @@ const PORTFOLIO_BREAKDOWN_MODAL_TITLES: Record<PortfolioBreakdownModalId, string
   owner: "Owner",
   topCost: "Top 5 Cost Risks",
   topSchedule: "Top 5 Schedule Risks",
+  topCostOpportunity: "Top 5 Cost Opportunities",
+  topScheduleOpportunity: "Top 5 Schedule Opportunities",
 };
 
-/** Fixed order for portfolio overview cards 6–11 — same order as {@link DocumentKpiModal} Previous / Next. */
+/** Fixed order for portfolio overview cards 6–13 — same order as {@link DocumentKpiModal} Previous / Next. */
 const PORTFOLIO_BREAKDOWN_MODAL_CYCLE: PortfolioBreakdownModalId[] = [
   "status",
   "severity",
@@ -69,17 +74,17 @@ const PORTFOLIO_BREAKDOWN_MODAL_CYCLE: PortfolioBreakdownModalId[] = [
   "owner",
   "topCost",
   "topSchedule",
+  "topCostOpportunity",
+  "topScheduleOpportunity",
 ];
 
 function portfolioRagTileCopy(
-  rag: RagStatus | null,
-  projectCount: number
+  rag: RagStatus | null
 ): { primary: string; subtext: string; primaryValueClassName?: string; primaryRagDot?: RagStatus } {
   if (rag == null) {
     return { primary: "—", subtext: "No projects yet" };
   }
-  const subtext =
-    projectCount === 1 ? "Worst of 1 project" : `Worst of ${projectCount} projects`;
+  const subtext = "Aggregated risk across all projects";
   const primary = rag === "red" ? "Red" : rag === "amber" ? "Amber" : "Green";
   const primaryValueClassName =
     rag === "red"
@@ -185,6 +190,7 @@ function PortfolioRiskByOwnerCard({
 
 type PortfolioOverviewContentProps = {
   portfolioId: string;
+  reportingUnit: ReportingUnitOption;
   projectCount: number;
   activeRiskCount: number;
   contingencyPrimaryValue: string;
@@ -193,12 +199,15 @@ type PortfolioOverviewContentProps = {
   scheduleExposureSubtext: string;
   scheduleContingencyHeldPrimaryValue: string;
   scheduleCoverageRatioPrimaryValue: string;
+  scheduleCoverageRatioPrimaryRagDot?: RagStatus;
   scheduleCoverageRatioSemanticClassName?: string;
   needsAttentionPrimaryValue: string;
   needsAttentionSubtext: string;
   needsAttentionPrimaryValueClassName?: string;
+  needsAttentionPrimaryRagDot: RagStatus;
   /** Formatted coverage ratio (contingency ÷ forward cost exposure). */
   coveragePrimaryValue: string;
+  coveragePrimaryRagDot?: RagStatus;
   /** Optional semantic colour for the coverage % in the combined cost KPI tile. */
   coverageRatioSemanticClassName?: string;
   /** Worst project RAG across the portfolio (`null` when there are no projects). */
@@ -207,25 +216,29 @@ type PortfolioOverviewContentProps = {
   projectTilePayloads: ProjectTilePayload[];
   /** Portfolio aggregate row for Portfolio Risk Rating modal (Σ held vs Σ at-target-P when single currency). */
   portfolioReportingFooter: PortfolioReportingFooterRow | null;
-  /** Per-project residual severity counts — Severity card. */
+  /** Per-project register-aligned severity counts — Severity card. */
   activeRiskSummaryRows: PortfolioProjectRiskSeverityRow[];
   /** Per-project lifecycle status counts — Active Risks KPI modal. */
   activeRiskStatusSummaryRows: PortfolioProjectRiskStatusRow[];
-  /** Per-project risk exposure, contingency, and coverage — Cost exposure & coverage KPI modal. */
+  /** Per-project risk exposure, contingency, and coverage — Cost Exposure & Coverage KPI modal. */
   coverageRatioRows: PortfolioProjectCoverageRow[];
   /** Top cost risks by forward exposure — risk concentration tables. */
   topCostRiskRows: PortfolioTopRiskRow[];
   /** Top schedule risks by expected delay — risk concentration tables. */
   topScheduleRiskRows: PortfolioTopRiskRow[];
+  /** Largest pre − forward cost deltas (derived opportunities). */
+  topCostOpportunityRows: PortfolioTopRiskRow[];
+  /** Largest pre − expected delay deltas (derived opportunities). */
+  topScheduleOpportunityRows: PortfolioTopRiskRow[];
   /** Per-project forward cost exposure shares — exposure-by-project donut. */
   projectCostExposureSlices: PortfolioProjectCostExposureSlice[];
   /** Per-project schedule exposure (expected days) shares — exposure-by-project donut. */
   projectScheduleExposureSlices: PortfolioProjectScheduleExposureSlice[];
-  /** Per-project schedule exposure, contingency (weeks), and coverage — Total Schedule Exposure KPI modal. */
+  /** Per-project schedule exposure, contingency (weeks), and coverage — Schedule Exposure & Coverage KPI modal. */
   scheduleCoverageRows: PortfolioProjectScheduleCoverageRow[];
   /** Active risks grouped by category — risks-by-category bars. */
   riskCategoryCounts: PortfolioRiskCategoryCount[];
-  /** Active risks by lifecycle bucket (Open / Monitoring / Mitigating) — risks-by-status bars. */
+  /** Risks by lifecycle bucket (Open / Monitoring / Mitigating / Closed) — risks-by-status bars. */
   riskStatusCounts: PortfolioRiskStatusCount[];
   /** Active risks by owner text — risks-by-owner bars. */
   riskOwnerCounts: PortfolioRiskOwnerCount[];
@@ -235,6 +248,7 @@ type PortfolioOverviewContentProps = {
 
 export function PortfolioOverviewContent({
   portfolioId,
+  reportingUnit,
   projectCount,
   activeRiskCount,
   contingencyPrimaryValue,
@@ -243,11 +257,14 @@ export function PortfolioOverviewContent({
   scheduleExposureSubtext,
   scheduleContingencyHeldPrimaryValue,
   scheduleCoverageRatioPrimaryValue,
+  scheduleCoverageRatioPrimaryRagDot,
   scheduleCoverageRatioSemanticClassName,
   needsAttentionPrimaryValue,
   needsAttentionSubtext,
   needsAttentionPrimaryValueClassName,
+  needsAttentionPrimaryRagDot,
   coveragePrimaryValue,
+  coveragePrimaryRagDot,
   coverageRatioSemanticClassName,
   portfolioRag,
   projectTilePayloads,
@@ -257,6 +274,8 @@ export function PortfolioOverviewContent({
   coverageRatioRows,
   topCostRiskRows,
   topScheduleRiskRows,
+  topCostOpportunityRows,
+  topScheduleOpportunityRows,
   projectCostExposureSlices,
   projectScheduleExposureSlices,
   scheduleCoverageRows,
@@ -283,7 +302,7 @@ export function PortfolioOverviewContent({
     const rag =
       portfolioReportingFooter != null
         ? portfolioReportingFooterTileCopy(portfolioReportingFooter)
-        : portfolioRagTileCopy(portfolioRag, projectTilePayloads.length);
+        : portfolioRagTileCopy(portfolioRag);
     return [
       {
         title: "Portfolio Risk Rating",
@@ -308,6 +327,7 @@ export function PortfolioOverviewContent({
         title: "Needs Attention",
         primaryValue: needsAttentionPrimaryValue,
         primaryValueClassName: needsAttentionPrimaryValueClassName,
+        primaryRagDot: needsAttentionPrimaryRagDot,
         subtext: needsAttentionSubtext,
       },
       {
@@ -317,7 +337,7 @@ export function PortfolioOverviewContent({
         subtext: `${costExposurePrimaryValue} exposure · ${contingencyPrimaryValue} held`,
       },
       {
-        title: "Total Schedule Exposure",
+        title: SCHEDULE_COVERAGE_COMBINED_TILE_TITLE,
         primaryValue: scheduleExposurePrimaryValue,
         subtext: scheduleExposureSubtext,
       },
@@ -336,11 +356,12 @@ export function PortfolioOverviewContent({
     needsAttentionPrimaryValue,
     needsAttentionSubtext,
     needsAttentionPrimaryValueClassName,
+    needsAttentionPrimaryRagDot,
     coveragePrimaryValue,
     coverageRatioSemanticClassName,
   ]);
 
-  /** Twelve slides: KPI summary (0–3), cost + schedule exposure cards (4–5), then Status → Top schedule (6–11). */
+  /** Fourteen slides: KPI summary (0–3), cost + schedule exposure cards (4–5), then Status through opportunity tables (6–13). */
   const overviewTiles = useMemo((): DocumentKpiTileItem[] => {
     const breakdownTiles: DocumentKpiTileItem[] = PORTFOLIO_BREAKDOWN_MODAL_CYCLE.map((id) => ({
       title: PORTFOLIO_BREAKDOWN_MODAL_TITLES[id],
@@ -367,8 +388,7 @@ export function PortfolioOverviewContent({
             <PortfolioRiskCategoryCountsTable
               rows={riskCategoryCounts}
               breakdownOpen={categoryOwnerBreakdownOpen}
-              embeddedInModal
-              embeddedModalTitleId={DOCUMENT_KPI_MODAL_TITLE_ID}
+              showAllRows
             />
           );
         case 9:
@@ -376,8 +396,7 @@ export function PortfolioOverviewContent({
             <PortfolioRiskOwnerCountsTable
               rows={riskOwnerCounts}
               breakdownOpen={categoryOwnerBreakdownOpen}
-              embeddedInModal
-              embeddedModalTitleId={DOCUMENT_KPI_MODAL_TITLE_ID}
+              showAllRows
             />
           );
         case 10:
@@ -386,6 +405,7 @@ export function PortfolioOverviewContent({
               rows={topCostRiskRows}
               caption="Top five portfolio cost risks by forward exposure"
               emptyMessage="No cost risk data available. Add cost-applicable risks with positive cost impacts in your projects to populate this view."
+              showOwnerColumn
             />
           );
         case 11:
@@ -394,6 +414,27 @@ export function PortfolioOverviewContent({
               rows={topScheduleRiskRows}
               caption="Top five portfolio schedule risks by expected delay"
               emptyMessage="No schedule risk data available. Add time-applicable risks with positive schedule impacts in your projects to populate this view."
+              showOwnerColumn
+            />
+          );
+        case 12:
+          return (
+            <PortfolioTopRisksTable
+              rows={topCostOpportunityRows}
+              caption="Top five portfolio cost opportunities from planned mitigation on monitoring risks"
+              emptyMessage="No cost opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected cost is lower than the pre-mitigation expected cost."
+              primaryMetricLabel="Opportunity"
+              showOwnerColumn
+            />
+          );
+        case 13:
+          return (
+            <PortfolioTopRisksTable
+              rows={topScheduleOpportunityRows}
+              caption="Top five portfolio schedule opportunities from planned mitigation on monitoring risks"
+              emptyMessage="No schedule opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected delay is lower than the pre-mitigation expected delay."
+              primaryMetricLabel="Opportunity"
+              showOwnerColumn
             />
           );
         default:
@@ -408,6 +449,8 @@ export function PortfolioOverviewContent({
       categoryOwnerBreakdownOpen,
       topCostRiskRows,
       topScheduleRiskRows,
+      topCostOpportunityRows,
+      topScheduleOpportunityRows,
     ]
   );
 
@@ -458,7 +501,7 @@ export function PortfolioOverviewContent({
         </div>
       </section>
 
-      {/* Section B — Exposure by project + risk breakdown (donuts, then status → severity → category → owner) */}
+      {/* Section B — Exposure by project + risk breakdown (donuts, then lifecycle status → severity → category → owner) */}
       <section className="mb-8 flex flex-col gap-4 lg:gap-6" aria-labelledby="portfolio-exposure-by-project-heading">
         <h2 id="portfolio-exposure-by-project-heading" className="sr-only">
           Portfolio cost and schedule exposure
@@ -472,7 +515,11 @@ export function PortfolioOverviewContent({
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
               <div className="min-w-0 flex-1">
-                <PortfolioExposureByProjectDonut mode="cost" slices={projectCostExposureSlices} />
+                <PortfolioExposureByProjectDonut
+                  mode="cost"
+                  slices={projectCostExposureSlices}
+                  reportingUnit={reportingUnit}
+                />
               </div>
               <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:w-auto lg:min-w-[11rem] lg:max-w-[15rem] lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
                 <div className="w-full rounded-[var(--ds-radius-sm)] border border-transparent p-2 -m-2 text-left">
@@ -482,6 +529,7 @@ export function PortfolioOverviewContent({
                     costExposurePrimaryValue={costExposurePrimaryValue}
                     contingencyPrimaryValue={contingencyPrimaryValue}
                     coveragePrimaryValue={coveragePrimaryValue}
+                    coveragePrimaryRagDot={coveragePrimaryRagDot}
                     coveragePrimaryValueClassName={coverageRatioSemanticClassName}
                   />
                 </div>
@@ -506,6 +554,7 @@ export function PortfolioOverviewContent({
                     scheduleExposurePrimaryValue={scheduleExposurePrimaryValue}
                     scheduleContingencyHeldPrimaryValue={scheduleContingencyHeldPrimaryValue}
                     scheduleCoverageRatioPrimaryValue={scheduleCoverageRatioPrimaryValue}
+                    scheduleCoverageRatioPrimaryRagDot={scheduleCoverageRatioPrimaryRagDot}
                     scheduleCoverageRatioPrimaryValueClassName={scheduleCoverageRatioSemanticClassName}
                   />
                 </div>
@@ -550,7 +599,10 @@ export function PortfolioOverviewContent({
       </section>
 
       {/* Section C — Portfolio Risk Concentration */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-labelledby="risk-concentration-heading">
+      <section
+        className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6"
+        aria-labelledby="risk-concentration-heading"
+      >
         <h2 id="risk-concentration-heading" className="sr-only">
           Portfolio risk concentration
         </h2>
@@ -564,6 +616,7 @@ export function PortfolioOverviewContent({
             rows={topCostRiskRows}
             caption="Top five portfolio cost risks by forward exposure"
             emptyMessage="No cost risk data available. Add cost-applicable risks with positive cost impacts in your projects to populate this view."
+            enableNavigation={false}
           />
         </DashboardCard>
         <DashboardCard
@@ -576,6 +629,42 @@ export function PortfolioOverviewContent({
             rows={topScheduleRiskRows}
             caption="Top five portfolio schedule risks by expected delay"
             emptyMessage="No schedule risk data available. Add time-applicable risks with positive schedule impacts in your projects to populate this view."
+            enableNavigation={false}
+          />
+        </DashboardCard>
+      </section>
+
+      {/* Section D — Derived opportunities (pre − modeled exposure) */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-labelledby="portfolio-opportunities-heading">
+        <h2 id="portfolio-opportunities-heading" className="sr-only">
+          Portfolio opportunities
+        </h2>
+        <DashboardCard
+          title="Top 5 Cost Opportunities"
+          onActivate={() => openOverviewAt(12)}
+          modalSelected={overviewModalOpen && overviewModalIndex === 12}
+          activateAriaLabel="Open top cost opportunities details"
+        >
+          <PortfolioTopRisksTable
+            rows={topCostOpportunityRows}
+            caption="Top five portfolio cost opportunities from planned mitigation on monitoring risks"
+            emptyMessage="No cost opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected cost is lower than the pre-mitigation expected cost."
+            primaryMetricLabel="Opportunity"
+            enableNavigation={false}
+          />
+        </DashboardCard>
+        <DashboardCard
+          title="Top 5 Schedule Opportunities"
+          onActivate={() => openOverviewAt(13)}
+          modalSelected={overviewModalOpen && overviewModalIndex === 13}
+          activateAriaLabel="Open top schedule opportunities details"
+        >
+          <PortfolioTopRisksTable
+            rows={topScheduleOpportunityRows}
+            caption="Top five portfolio schedule opportunities from planned mitigation on monitoring risks"
+            emptyMessage="No schedule opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected delay is lower than the pre-mitigation expected delay."
+            primaryMetricLabel="Opportunity"
+            enableNavigation={false}
           />
         </DashboardCard>
       </section>
@@ -591,6 +680,7 @@ export function PortfolioOverviewContent({
         onIndexChange={setOverviewModalIndex}
         onClose={() => setOverviewModalOpen(false)}
         portfolioId={portfolioId}
+        reportingUnit={reportingUnit}
         projectTilePayloads={projectTilePayloads}
         portfolioReportingFooter={portfolioReportingFooter}
         activeRiskStatusSummaryRows={activeRiskStatusSummaryRows}

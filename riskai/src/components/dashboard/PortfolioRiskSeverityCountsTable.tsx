@@ -49,7 +49,7 @@ function SeverityBarRow({
     <div className="flex items-center gap-3">
       <span
         className={CHART_HORIZONTAL_BAR_ROW_LABEL_CLASS}
-        title={`${name} — residual rating`}
+        title={`${name} — current register rating`}
       >
         {name}
       </span>
@@ -57,7 +57,13 @@ function SeverityBarRow({
         className="flex h-6 min-w-0 flex-1 overflow-hidden rounded-[var(--ds-chart-bar-radius)] bg-[var(--ds-chart-surface)]"
         aria-hidden={count === 0}
       >
-        {count === 0 ? null : (
+        {count === 0 ? (
+          <div className="flex h-full w-full items-center justify-start px-1.5">
+            <span className="shrink-0 text-[length:var(--ds-text-xs)] font-medium tabular-nums leading-none text-[var(--ds-text-muted)]">
+              0
+            </span>
+          </div>
+        ) : (
           <div
             className="relative flex h-full shrink-0 items-center justify-end overflow-hidden rounded-[var(--ds-chart-bar-radius)] pr-1.5"
             style={{ width: chartHorizontalBarFillWidthCss(widthPct) }}
@@ -104,12 +110,12 @@ function SeverityBarRow({
 }
 
 export type PortfolioRiskSeverityCountsTableProps = {
-  /** Per-project residual buckets; aggregated to portfolio totals (active risks only). */
+  /** Per-project current-rating buckets; aggregated to portfolio totals (active risks only). */
   activeRiskSummaryRows: PortfolioProjectRiskSeverityRow[];
 };
 
 /**
- * Horizontal bars for residual severity (post-mitigation model), same semantics as the Active Risks KPI modal.
+ * Horizontal bars for the same current rating shown in the risk register.
  */
 export function PortfolioRiskSeverityCountsTable({ activeRiskSummaryRows }: PortfolioRiskSeverityCountsTableProps) {
   const { totals, maxCount, summaryText } = useMemo(() => {
@@ -124,8 +130,8 @@ export function PortfolioRiskSeverityCountsTable({ activeRiskSummaryRows }: Port
     const max = Math.max(totals.low, totals.medium, totals.high, totals.extreme, 1);
     const summary =
       t === 0
-        ? "No active risks with residual ratings in this portfolio."
-        : `Low: ${totals.low}, Medium: ${totals.medium}, High: ${totals.high}, Extreme: ${totals.extreme}. Total ${t} active risks (residual).`;
+        ? "No active risks with current ratings in this portfolio."
+        : `Low: ${totals.low}, Medium: ${totals.medium}, High: ${totals.high}, Extreme: ${totals.extreme}. Total ${t} active risks by current register rating.`;
     return { totals, maxCount: max, summaryText: summary };
   }, [activeRiskSummaryRows]);
 
@@ -137,7 +143,7 @@ export function PortfolioRiskSeverityCountsTable({ activeRiskSummaryRows }: Port
   if (totalActive === 0) {
     return (
       <p className="m-0 text-sm text-[var(--ds-text-muted)]">
-        No active risks in this portfolio yet. Residual severity counts (Low, Medium, High, Extreme) appear here once
+        No active risks in this portfolio yet. Current rating counts (Low, Medium, High, Extreme) appear here once
         risks are recorded.
       </p>
     );

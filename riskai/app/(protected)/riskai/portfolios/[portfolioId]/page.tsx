@@ -9,14 +9,17 @@ import {
 import { supabaseServerClient } from "@/lib/supabase/server";
 import type { ProjectCurrency } from "@/lib/projectContext";
 import { computeCoverageRatioByCurrency, sumContingencyByCurrency } from "@/lib/portfolioContingencyAggregate";
+import { asReportingUnit } from "@/lib/portfolio/reportingPreferences";
 import {
   contingencyHeldTileCopy,
+  coverageRatioRagStatus,
   costExposureTileCopy,
   coverageRatioSemanticClassName,
   coverageRatioTileCopy,
   needsAttentionTileCopy,
   scheduleContingencyHeldDisplayValue,
   scheduleCoverageRatioDisplayValue,
+  scheduleCoverageRatioRagStatus,
   scheduleCoverageRatioSemanticClassName,
   scheduleExposureTileCopy,
 } from "./formatPortfolioCurrency";
@@ -29,6 +32,13 @@ export default async function PortfolioOverviewPage({
 }) {
   const { portfolioId } = await params;
   const supabase = await supabaseServerClient();
+
+  const { data: portfolioRow } = await supabase
+    .from("visualify_portfolios")
+    .select("reporting_unit")
+    .eq("id", portfolioId)
+    .maybeSingle();
+  const reportingUnit = asReportingUnit(portfolioRow?.reporting_unit);
 
   const { count: projectCount } = await supabase
     .from("visualify_projects")
@@ -65,7 +75,8 @@ export default async function PortfolioOverviewPage({
   const contingencyTile = contingencyHeldTileCopy(
     contingencyByCurrency,
     projectCount ?? 0,
-    totalScheduleContingencyWeeks
+    totalScheduleContingencyWeeks,
+    reportingUnit
   );
   const {
     activeRiskCount,
@@ -73,13 +84,15 @@ export default async function PortfolioOverviewPage({
     activeRiskStatusSummaryRows,
     costRows: topCostRiskRows,
     scheduleRows: topScheduleRiskRows,
+    costOpportunityRows: topCostOpportunityRows,
+    scheduleOpportunityRows: topScheduleOpportunityRows,
     projectCostExposureSlices,
     projectScheduleExposureSlices,
     riskCategoryCounts,
     riskStatusCounts,
     riskOwnerCounts,
     risksRequiringAttentionRows,
-  } = await loadPortfolioTopRiskConcentrationRows(supabase, portfolioId);
+  } = await loadPortfolioTopRiskConcentrationRows(supabase, portfolioId, reportingUnit);
 
   // Aggregate per-project cost exposure slices into a per-currency total in millions.
   // slice.value is in absolute dollars (from the forward exposure engine); contingencyByCurrency
@@ -96,7 +109,7 @@ export default async function PortfolioOverviewPage({
       ? totalScheduleContingencyWeeks / scheduleExposureWeeks
       : null;
   const coverageTile = coverageRatioTileCopy(coverageRatioByCurrency, scheduleCoverageRatio);
-  const costExposureTile = costExposureTileCopy(exposureByCurrency, projectCount ?? 0);
+  const costExposureTile = costExposureTileCopy(exposureByCurrency, projectCount ?? 0, reportingUnit);
   const scheduleExposureTile = scheduleExposureTileCopy(
     scheduleTotalDays,
     totalScheduleContingencyWeeks,
@@ -143,6 +156,7 @@ export default async function PortfolioOverviewPage({
     <>
       <PortfolioOverviewContent
         portfolioId={portfolioId}
+        reportingUnit={reportingUnit}
         projectCount={projectCount ?? 0}
         activeRiskCount={activeRiskCount}
         contingencyPrimaryValue={contingencyTile.primaryValue}
@@ -151,12 +165,15 @@ export default async function PortfolioOverviewPage({
         scheduleExposureSubtext={scheduleExposureTile.subtext}
         scheduleContingencyHeldPrimaryValue={scheduleContingencyHeldDisplayValue(totalScheduleContingencyWeeks)}
         scheduleCoverageRatioPrimaryValue={scheduleCoverageRatioDisplayValue(scheduleCoverageRatio)}
+        scheduleCoverageRatioPrimaryRagDot={scheduleCoverageRatioRagStatus(scheduleCoverageRatio)}
         scheduleCoverageRatioSemanticClassName={scheduleCoverageRatioSemanticClassName(scheduleCoverageRatio)}
         needsAttentionPrimaryValue={needsAttentionTile.primaryValue}
         needsAttentionSubtext={needsAttentionTile.subtext}
         needsAttentionPrimaryValueClassName={needsAttentionTile.primaryValueClassName}
+        needsAttentionPrimaryRagDot={needsAttentionTile.primaryRagDot}
         portfolioRag={portfolioRag}
         coveragePrimaryValue={coverageTile.primaryValue}
+        coveragePrimaryRagDot={coverageRatioRagStatus(coverageRatioByCurrency)}
         coverageRatioSemanticClassName={coverageRatioSemanticClassName(coverageRatioByCurrency)}
         projectTilePayloads={projectTilePayloads}
         portfolioReportingFooter={portfolioReportingFooter}
@@ -165,6 +182,8 @@ export default async function PortfolioOverviewPage({
         coverageRatioRows={coverageRatioRows}
         topCostRiskRows={topCostRiskRows}
         topScheduleRiskRows={topScheduleRiskRows}
+        topCostOpportunityRows={topCostOpportunityRows}
+        topScheduleOpportunityRows={topScheduleOpportunityRows}
         projectCostExposureSlices={projectCostExposureSlices}
         projectScheduleExposureSlices={projectScheduleExposureSlices}
         scheduleCoverageRows={scheduleCoverageRows}

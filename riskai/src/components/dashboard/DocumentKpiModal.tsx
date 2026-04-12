@@ -16,8 +16,12 @@ import {
   type ProjectTilePayload,
   type RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
-import { formatCurrencyCompact } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
+import {
+  DEFAULT_REPORTING_UNIT,
+  formatCurrencyInReportingUnit,
+  type ReportingUnitOption,
+} from "@/lib/portfolio/reportingPreferences";
 import { riskaiPath } from "@/lib/routes";
 import {
   Badge,
@@ -57,12 +61,13 @@ type DocumentKpiModalProps = {
   onClose: () => void;
   /** When set with `projectTilePayloads`, the Projects KPI shows the same list as `/portfolios/:id/projects`. */
   portfolioId?: string;
+  reportingUnit?: ReportingUnitOption;
   projectTilePayloads?: ProjectTilePayload[];
   /** Per-project lifecycle status counts for the Active Risks KPI modal. */
   activeRiskStatusSummaryRows?: PortfolioProjectRiskStatusRow[];
-  /** Per-project contingency vs exposure for the Cost exposure & coverage KPI modal. */
+  /** Per-project contingency vs exposure for the Cost Exposure & Coverage KPI modal. */
   coverageRatioRows?: PortfolioProjectCoverageRow[];
-  /** Per-project schedule exposure, contingency (weeks), and coverage — Total Schedule Exposure KPI modal. */
+  /** Per-project schedule exposure, contingency (weeks), and coverage — Schedule Exposure & Coverage KPI modal. */
   scheduleCoverageRows?: PortfolioProjectScheduleCoverageRow[];
   /** Needs Attention KPI modal — high/extreme risks missing owner and/or mitigation text. */
   risksRequiringAttentionRows?: PortfolioRisksRequiringAttentionRow[];
@@ -70,7 +75,7 @@ type DocumentKpiModalProps = {
   portfolioReportingFooter?: PortfolioReportingFooterRow | null;
   /**
    * When set, non-null return value replaces the default KPI body for that slide index (e.g. portfolio overview
-   * slides 6–11 — Status through Top 5 Schedule). Return `null` to use the standard title-based KPI content.
+   * slides 6–13 — Status through Top 5 Schedule Opportunities). Return `null` to use the standard title-based KPI content.
    */
   renderSlideBodyByIndex?: (slideIndex: number) => ReactNode | null;
 };
@@ -182,36 +187,8 @@ function PortfolioRagKpiModalBody({
     return <p className="ds-kpi-modal-empty">No projects in this portfolio yet.</p>;
   }
 
-  const anyReporting = rows.some((r) => r.reportingOverallStatus != null && r.reportingOverallStatus !== "");
-
   return (
     <>
-      <p className="ds-kpi-modal-lead">
-        {anyReporting ? (
-          <>
-            Cost, time, and overall status come from each project&apos;s <strong>last reporting run</strong> (locked
-            snapshot) and current funding / schedule settings — the same percentile-vs-target bands as the simulation
-            Overall position card. The portfolio RAG is the worst project rating (red over amber over green). Projects
-            without a reporting run show “—” for those columns and use the legacy tile rule for RAG (residual severity and
-            simulation activity).
-            {portfolioReportingFooter != null ? (
-              <>
-                {" "}
-                The <strong>Portfolio</strong> row sums contingency held versus simulated cost at target P (cost), and
-                schedule contingency versus delay at target P (time), when all projects share one currency and reporting
-                data supports it.
-              </>
-            ) : null}
-          </>
-        ) : (
-          <>
-            The portfolio rating is the most severe RAG among projects (red over amber over green). Each project without a
-            reporting-locked run uses the legacy tile rules: high or extreme residual severity → Red; open risks with no
-            simulation run → Amber; otherwise Green. Set a reporting run on the simulation page to see cost, time, and
-            overall position here.
-          </>
-        )}
-      </p>
       <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
         <Table className={`${KPI_MODAL_REGISTER_TABLE_CLASS} min-w-[44rem] table-fixed w-full`}>
           <caption className="sr-only">
@@ -296,43 +273,34 @@ function PortfolioProjectsKpiModalBody({
   portfolioId: string;
   projectTilePayloads: ProjectTilePayload[];
 }) {
-  return (
-    <>
-      <p className="m-0 mb-6 w-full max-w-none text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-        Open a project for its overview, risk register, and simulation. Create a new project to add it to this
-        portfolio.
-      </p>
-
-      {projectTilePayloads.length === 0 ? (
-        <Card variant="inset" className="w-full max-w-none text-center">
-          <CardBody className="py-[var(--ds-space-6)]">
-            <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
-            <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
-              Create project
-            </OpenProjectOnboardingLink>
-            <div className="mt-5">
-              <Link href={riskaiPath("/projects")} className="ds-text-link-muted text-[length:var(--ds-text-sm)]">
-                View all your projects
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
-      ) : (
-        <div className="flex flex-col gap-[var(--ds-space-4)]">
-          <div className="ds-dashboard-project-grid">
-            {projectTilePayloads.map((payload) => (
-              <ProjectTile key={payload.id} payload={payload} />
-            ))}
-          </div>
-          <OpenProjectOnboardingLink className="ds-dashboard-inline-create" portfolioId={portfolioId}>
-            <span className="ds-dashboard-inline-create-label">Create project</span>
-            <span className="ds-dashboard-inline-create-plus" aria-hidden>
-              +
-            </span>
-          </OpenProjectOnboardingLink>
+  return projectTilePayloads.length === 0 ? (
+    <Card variant="inset" className="w-full max-w-none text-center">
+      <CardBody className="py-[var(--ds-space-6)]">
+        <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
+        <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
+          Create project
+        </OpenProjectOnboardingLink>
+        <div className="mt-5">
+          <Link href={riskaiPath("/projects")} className="ds-text-link-muted text-[length:var(--ds-text-sm)]">
+            View all your projects
+          </Link>
         </div>
-      )}
-    </>
+      </CardBody>
+    </Card>
+  ) : (
+    <div className="flex flex-col gap-[var(--ds-space-4)]">
+      <div className="ds-dashboard-project-grid">
+        {projectTilePayloads.map((payload) => (
+          <ProjectTile key={payload.id} payload={payload} />
+        ))}
+      </div>
+      <OpenProjectOnboardingLink className="ds-dashboard-inline-create" portfolioId={portfolioId}>
+        <span className="ds-dashboard-inline-create-label">Create project</span>
+        <span className="ds-dashboard-inline-create-plus" aria-hidden>
+          +
+        </span>
+      </OpenProjectOnboardingLink>
+    </div>
   );
 }
 
@@ -361,68 +329,62 @@ function PortfolioActiveRisksKpiModalBody({ rows }: { rows: PortfolioProjectRisk
 
   /** Same shell + density as {@link RiskRegisterTable} (`Card` + DS `Table`). */
   return (
-    <>
-      <p className="ds-kpi-modal-lead">
-        Risk counts by lifecycle status per project. The “Closed / archived” column combines closed and archived register
-        statuses.
-      </p>
-      <Card className="overflow-x-auto overflow-y-hidden border-[var(--ds-border-subtle)] p-0">
-        <Table className={KPI_MODAL_ACTIVE_RISKS_TABLE_CLASS}>
-          <caption className="sr-only">Active risk counts by project and lifecycle status</caption>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_PROJECT_COL}>Project</TableHeaderCell>
-              <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Open</TableHeaderCell>
-              <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Monitoring</TableHeaderCell>
-              <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Mitigating</TableHeaderCell>
-              <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Closed / archived</TableHeaderCell>
+    <Card className="overflow-x-auto overflow-y-hidden border-[var(--ds-border-subtle)] p-0">
+      <Table className={KPI_MODAL_ACTIVE_RISKS_TABLE_CLASS}>
+        <caption className="sr-only">Active risk counts by project and lifecycle status</caption>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_PROJECT_COL}>Project</TableHeaderCell>
+            <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Open</TableHeaderCell>
+            <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Monitoring</TableHeaderCell>
+            <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Mitigating</TableHeaderCell>
+            <TableHeaderCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_COL}>Closed / archived</TableHeaderCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow
+              key={r.projectId}
+              className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
+              tabIndex={0}
+              role="button"
+              aria-label={`Open risk register for ${r.projectName}`}
+              onClick={() => goToRiskRegister(r.projectId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  goToRiskRegister(r.projectId);
+                }
+              }}
+            >
+              <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_PROJECT_COL} max-w-[20rem] align-middle`}>
+                <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={r.projectName}>
+                  {r.projectName}
+                </span>
+              </TableCell>
+              <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.open}</TableCell>
+              <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.monitoring}</TableCell>
+              <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.mitigating}</TableCell>
+              <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.closedArchived}</TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow
-                key={r.projectId}
-                className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
-                tabIndex={0}
-                role="button"
-                aria-label={`Open risk register for ${r.projectName}`}
-                onClick={() => goToRiskRegister(r.projectId)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goToRiskRegister(r.projectId);
-                  }
-                }}
-              >
-                <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_PROJECT_COL} max-w-[20rem] align-middle`}>
-                  <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={r.projectName}>
-                    {r.projectName}
-                  </span>
-                </TableCell>
-                <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.open}</TableCell>
-                <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.monitoring}</TableCell>
-                <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.mitigating}</TableCell>
-                <TableCell className={KPI_MODAL_ACTIVE_RISKS_STATUS_CELL}>{r.closedArchived}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
-            <TableRow>
-              <TableHeaderCell
-                scope="row"
-                className={`${KPI_MODAL_ACTIVE_RISKS_PROJECT_COL} !text-left !normal-case tracking-normal text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]`}
-              >
-                Total
-              </TableHeaderCell>
-              <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.open}</TableCell>
-              <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.monitoring}</TableCell>
-              <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.mitigating}</TableCell>
-              <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.closedArchived}</TableCell>
-            </TableRow>
-          </tfoot>
-        </Table>
-      </Card>
-    </>
+          ))}
+        </TableBody>
+        <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
+          <TableRow>
+            <TableHeaderCell
+              scope="row"
+              className={`${KPI_MODAL_ACTIVE_RISKS_PROJECT_COL} !text-left !normal-case tracking-normal text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]`}
+            >
+              Total
+            </TableHeaderCell>
+            <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.open}</TableCell>
+            <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.monitoring}</TableCell>
+            <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.mitigating}</TableCell>
+            <TableCell className={`${KPI_MODAL_ACTIVE_RISKS_STATUS_CELL} font-semibold`}>{totals.closedArchived}</TableCell>
+          </TableRow>
+        </tfoot>
+      </Table>
+    </Card>
   );
 }
 
@@ -476,7 +438,10 @@ function badgeToneForRatingLetter(letter: string): DsBadgeTone {
 }
 
 /** Portfolio overview combined financial KPI — must match `kpiTiles` title in `PortfolioOverviewContent`. */
-export const COST_COVERAGE_COMBINED_TILE_TITLE = "Cost exposure & coverage";
+export const COST_COVERAGE_COMBINED_TILE_TITLE = "Cost Exposure & Coverage";
+
+/** Portfolio overview schedule KPI — must match `kpiTiles` title in `PortfolioOverviewContent`. */
+export const SCHEDULE_COVERAGE_COMBINED_TILE_TITLE = "Schedule Exposure & Coverage";
 
 function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: PortfolioProjectScheduleCoverageRow[] }) {
   const router = useRouter();
@@ -497,88 +462,79 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
       : null;
 
   return (
-    <>
-      <p className="ds-kpi-modal-lead">
-        Per project: <strong>Schedule exposure</strong> is the sum of expected schedule impact (probability ×
-        lifecycle-appropriate schedule days) for active time-applicable risks — same basis as the schedule donut and Top 5
-        schedule risks. <strong>Contingency</strong> is schedule reserve weeks from project settings.{" "}
-        <strong>Coverage</strong> is contingency ÷ schedule exposure; above 100% means held contingency exceeds modelled
-        delay. The <strong>Portfolio</strong> row sums schedule exposure and contingency across all projects.
-      </p>
-      <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
-        <Table className={KPI_MODAL_REGISTER_TABLE_CLASS}>
-          <caption className="sr-only">
-            Schedule exposure, contingency, and coverage by project with portfolio totals
-          </caption>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell className="align-middle">Project</TableHeaderCell>
-              <TableHeaderCell className="!text-right align-middle">Schedule exposure</TableHeaderCell>
-              <TableHeaderCell className="!text-right align-middle">Contingency</TableHeaderCell>
-              <TableHeaderCell className="!text-right align-middle">Coverage</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow
-                key={r.projectId}
-                className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
-                tabIndex={0}
-                role="button"
-                aria-label={`Open project settings for ${r.projectName}`}
-                onClick={() => goToProjectSettings(r.projectId)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goToProjectSettings(r.projectId);
-                  }
-                }}
-              >
-                <TableCell className="min-w-0 max-w-[24rem] align-middle">
-                  <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={r.projectName}>
-                    {r.projectName}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-secondary)]">
-                  {r.expectedDelayWeeks > 0
-                    ? formatDurationDays(r.expectedDelayWeeks * 7, { weekDecimals: 1 })
-                    : "—"}
-                </TableCell>
-                <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-primary)]">
-                  {formatScheduleContingencyWeeksLabel(r.scheduleContingencyWeeks)}
-                </TableCell>
-                <TableCell className="text-right align-middle">
-                  <span className={coverageRatioClass(r.coverageRatio)}>{formatCoverageRatioPct(r.coverageRatio)}</span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
-            <TableRow>
-              <TableHeaderCell
-                scope="row"
-                className="!text-left !normal-case tracking-normal align-middle text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
-              >
-                Portfolio
-              </TableHeaderCell>
-              <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]">
-                {totalExpectedDelayWeeks > 0
-                  ? formatDurationDays(totalExpectedDelayWeeks * 7, { weekDecimals: 1 })
-                  : "—"}
-              </TableCell>
-              <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-primary)]">
-                {formatScheduleContingencyWeeksLabel(totalScheduleContingencyWeeks)}
-              </TableCell>
-              <TableCell className="text-right align-middle">
-                <span className={`font-semibold ${coverageRatioClass(portfolioRatio)}`}>
-                  {formatCoverageRatioPct(portfolioRatio)}
+    <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
+      <Table className={KPI_MODAL_REGISTER_TABLE_CLASS}>
+        <caption className="sr-only">
+          Schedule exposure, contingency, and coverage by project with portfolio totals
+        </caption>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell className="align-middle">Project</TableHeaderCell>
+            <TableHeaderCell className="!text-right align-middle">Schedule exposure</TableHeaderCell>
+            <TableHeaderCell className="!text-right align-middle">Contingency</TableHeaderCell>
+            <TableHeaderCell className="!text-right align-middle">Coverage</TableHeaderCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow
+              key={r.projectId}
+              className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
+              tabIndex={0}
+              role="button"
+              aria-label={`Open project settings for ${r.projectName}`}
+              onClick={() => goToProjectSettings(r.projectId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  goToProjectSettings(r.projectId);
+                }
+              }}
+            >
+              <TableCell className="min-w-0 max-w-[24rem] align-middle">
+                <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={r.projectName}>
+                  {r.projectName}
                 </span>
               </TableCell>
+              <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-secondary)]">
+                {r.expectedDelayWeeks > 0
+                  ? formatDurationDays(r.expectedDelayWeeks * 7, { weekDecimals: 1 })
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-primary)]">
+                {formatScheduleContingencyWeeksLabel(r.scheduleContingencyWeeks)}
+              </TableCell>
+              <TableCell className="text-right align-middle">
+                <span className={coverageRatioClass(r.coverageRatio)}>{formatCoverageRatioPct(r.coverageRatio)}</span>
+              </TableCell>
             </TableRow>
-          </tfoot>
-        </Table>
-      </Card>
-    </>
+          ))}
+        </TableBody>
+        <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
+          <TableRow>
+            <TableHeaderCell
+              scope="row"
+              className="!text-left !normal-case tracking-normal align-middle text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
+            >
+              Portfolio
+            </TableHeaderCell>
+            <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]">
+              {totalExpectedDelayWeeks > 0
+                ? formatDurationDays(totalExpectedDelayWeeks * 7, { weekDecimals: 1 })
+                : "—"}
+            </TableCell>
+            <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-primary)]">
+              {formatScheduleContingencyWeeksLabel(totalScheduleContingencyWeeks)}
+            </TableCell>
+            <TableCell className="text-right align-middle">
+              <span className={`font-semibold ${coverageRatioClass(portfolioRatio)}`}>
+                {formatCoverageRatioPct(portfolioRatio)}
+              </span>
+            </TableCell>
+          </TableRow>
+        </tfoot>
+      </Table>
+    </Card>
   );
 }
 
@@ -588,7 +544,7 @@ function PortfolioNeedsAttentionKpiModalBody({ rows }: { rows: PortfolioRisksReq
   if (rows.length === 0) {
     return (
       <p className="ds-kpi-modal-empty">
-        No active risks rated High or Extreme are missing an owner or a mitigation description.
+        No active risks currently rated High or Extreme are missing an owner or a mitigation description.
       </p>
     );
   }
@@ -605,8 +561,8 @@ function PortfolioNeedsAttentionKpiModalBody({ rows }: { rows: PortfolioRisksReq
   return (
     <>
       <p className="ds-kpi-modal-lead">
-        Residual severity High or Extreme (from post-mitigation probability and consequence), where the risk has no owner
-        and/or no mitigation description. Assign an owner and document mitigation in the risk register.
+        Current register rating High or Extreme, where the risk has no owner and/or no mitigation description.
+        Open and Monitoring risks use pre-mitigation values; Mitigating risks use post-mitigation values.
       </p>
       <Card className="overflow-x-auto overflow-y-hidden border-[var(--ds-border-subtle)] p-0">
         <Table className={`${KPI_MODAL_REGISTER_TABLE_CLASS} min-w-[40rem]`}>
@@ -687,7 +643,13 @@ function PortfolioNeedsAttentionKpiModalBody({ rows }: { rows: PortfolioRisksReq
   );
 }
 
-function PortfolioCostCoverageCombinedKpiModalBody({ rows }: { rows: PortfolioProjectCoverageRow[] }) {
+function PortfolioCostCoverageCombinedKpiModalBody({
+  rows,
+  reportingUnit,
+}: {
+  rows: PortfolioProjectCoverageRow[];
+  reportingUnit: ReportingUnitOption;
+}) {
   const router = useRouter();
 
   if (rows.length === 0) {
@@ -709,94 +671,87 @@ function PortfolioCostCoverageCombinedKpiModalBody({ rows }: { rows: PortfolioPr
   };
 
   return (
-    <>
-      <p className="ds-kpi-modal-lead">
-        Per project: <strong>Risk exposure</strong> is the sum of 12-month forward cost exposure from active cost risks
-        (same engine as the donut). <strong>Contingency</strong> is from project settings. <strong>Coverage</strong> is
-        contingency ÷ risk exposure; above 100% means held contingency exceeds modelled exposure. The cost donut mixes
-        currencies numerically when projects differ — this table keeps each amount in its own currency. Portfolio totals
-        sum only when every project shares one currency.
-      </p>
-      <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
-        <Table className={KPI_MODAL_REGISTER_TABLE_CLASS}>
-          <caption className="sr-only">
-            Risk exposure, contingency, and coverage by project with portfolio totals
-          </caption>
-          <TableHead>
-            <TableRow>
-              <TableHeaderCell className="align-middle">Project</TableHeaderCell>
-              <TableHeaderCell className="!text-right align-middle">Risk exposure</TableHeaderCell>
-              <TableHeaderCell className="!text-right align-middle">Contingency</TableHeaderCell>
-              <TableHeaderCell className="!text-right align-middle">Coverage</TableHeaderCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow
-                key={r.projectId}
-                className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
-                tabIndex={0}
-                role="button"
-                aria-label={`Open project settings for ${r.projectName}`}
-                onClick={() => goToProjectSettings(r.projectId)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goToProjectSettings(r.projectId);
-                  }
-                }}
-              >
-                <TableCell className="min-w-0 max-w-[24rem] align-middle">
-                  <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={r.projectName}>
-                    {r.projectName}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-secondary)]">
-                  {r.exposureAmountAbs > 0 ? formatCurrencyCompact(r.exposureAmountAbs, r.currency) : "—"}
-                </TableCell>
-                <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-primary)]">
-                  {formatCurrencyCompact(r.contingencyAmountAbs, r.currency)}
-                </TableCell>
-                <TableCell className="text-right align-middle">
-                  <span className={coverageRatioClass(r.ratio)}>{formatCoverageRatioPct(r.ratio)}</span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-          <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
-            <TableRow>
-              <TableHeaderCell
-                scope="row"
-                className="!text-left !normal-case tracking-normal align-middle text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
-              >
-                Portfolio
-              </TableHeaderCell>
-              <TableCell
-                className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]"
-                title={singleCurrency == null ? "Multiple currencies — not summed" : undefined}
-              >
-                {singleCurrency != null && totalExposureAbs != null
-                  ? formatCurrencyCompact(totalExposureAbs, singleCurrency)
-                  : "—"}
-              </TableCell>
-              <TableCell
-                className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-primary)]"
-                title={singleCurrency == null ? "Multiple currencies — not summed" : undefined}
-              >
-                {singleCurrency != null && totalContingencyAbs != null
-                  ? formatCurrencyCompact(totalContingencyAbs, singleCurrency)
-                  : "—"}
-              </TableCell>
-              <TableCell className="text-right align-middle">
-                <span className={`font-semibold ${coverageRatioClass(portfolioRatio)}`}>
-                  {formatCoverageRatioPct(portfolioRatio)}
+    <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
+      <Table className={KPI_MODAL_REGISTER_TABLE_CLASS}>
+        <caption className="sr-only">
+          Risk exposure, contingency, and coverage by project with portfolio totals
+        </caption>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell className="align-middle">Project</TableHeaderCell>
+            <TableHeaderCell className="!text-right align-middle">Risk exposure</TableHeaderCell>
+            <TableHeaderCell className="!text-right align-middle">Contingency</TableHeaderCell>
+            <TableHeaderCell className="!text-right align-middle">Coverage</TableHeaderCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow
+              key={r.projectId}
+              className="cursor-pointer outline-none transition-colors hover:bg-[var(--ds-surface-hover)] active:bg-[color-mix(in_oklab,var(--ds-surface-muted)_80%,var(--ds-surface-hover))] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ds-primary)]"
+              tabIndex={0}
+              role="button"
+              aria-label={`Open project settings for ${r.projectName}`}
+              onClick={() => goToProjectSettings(r.projectId)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  goToProjectSettings(r.projectId);
+                }
+              }}
+            >
+              <TableCell className="min-w-0 max-w-[24rem] align-middle">
+                <span className="block min-w-0 truncate font-medium text-[var(--ds-text-primary)]" title={r.projectName}>
+                  {r.projectName}
                 </span>
               </TableCell>
+              <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-secondary)]">
+                {r.exposureAmountAbs > 0
+                  ? formatCurrencyInReportingUnit(r.exposureAmountAbs, r.currency, reportingUnit)
+                  : "—"}
+              </TableCell>
+              <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-primary)]">
+                {formatCurrencyInReportingUnit(r.contingencyAmountAbs, r.currency, reportingUnit)}
+              </TableCell>
+              <TableCell className="text-right align-middle">
+                <span className={coverageRatioClass(r.ratio)}>{formatCoverageRatioPct(r.ratio)}</span>
+              </TableCell>
             </TableRow>
-          </tfoot>
-        </Table>
-      </Card>
-    </>
+          ))}
+        </TableBody>
+        <tfoot className="border-t border-[var(--ds-border-subtle)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_65%,transparent)]">
+          <TableRow>
+            <TableHeaderCell
+              scope="row"
+              className="!text-left !normal-case tracking-normal align-middle text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
+            >
+              Portfolio
+            </TableHeaderCell>
+            <TableCell
+              className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]"
+              title={singleCurrency == null ? "Multiple currencies — not summed" : undefined}
+            >
+              {singleCurrency != null && totalExposureAbs != null
+                ? formatCurrencyInReportingUnit(totalExposureAbs, singleCurrency, reportingUnit)
+                : "—"}
+            </TableCell>
+            <TableCell
+              className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-primary)]"
+              title={singleCurrency == null ? "Multiple currencies — not summed" : undefined}
+            >
+              {singleCurrency != null && totalContingencyAbs != null
+                ? formatCurrencyInReportingUnit(totalContingencyAbs, singleCurrency, reportingUnit)
+                : "—"}
+            </TableCell>
+            <TableCell className="text-right align-middle">
+              <span className={`font-semibold ${coverageRatioClass(portfolioRatio)}`}>
+                {formatCoverageRatioPct(portfolioRatio)}
+              </span>
+            </TableCell>
+          </TableRow>
+        </tfoot>
+      </Table>
+    </Card>
   );
 }
 
@@ -811,6 +766,7 @@ export function DocumentKpiModal({
   onIndexChange,
   onClose,
   portfolioId,
+  reportingUnit = DEFAULT_REPORTING_UNIT,
   projectTilePayloads,
   portfolioReportingFooter,
   activeRiskStatusSummaryRows,
@@ -883,7 +839,8 @@ export function DocumentKpiModal({
 
   const showPortfolioRagDetail = current?.title === "Portfolio Risk Rating" && projectTilePayloads != null;
 
-  const showScheduleExposureDetail = current?.title === "Total Schedule Exposure" && scheduleCoverageRows != null;
+  const showScheduleExposureDetail =
+    current?.title === SCHEDULE_COVERAGE_COMBINED_TILE_TITLE && scheduleCoverageRows != null;
 
   const showCostCoverageCombinedDetail =
     current?.title === COST_COVERAGE_COMBINED_TILE_TITLE && coverageRatioRows != null;
@@ -962,7 +919,10 @@ export function DocumentKpiModal({
               </div>
             ) : showCostCoverageCombinedDetail && coverageRatioRows != null ? (
               <div className="w-full min-w-0">
-                <PortfolioCostCoverageCombinedKpiModalBody rows={coverageRatioRows} />
+                <PortfolioCostCoverageCombinedKpiModalBody
+                  rows={coverageRatioRows}
+                  reportingUnit={reportingUnit}
+                />
               </div>
             ) : showScheduleExposureDetail && scheduleCoverageRows != null ? (
               <div className="w-full min-w-0">

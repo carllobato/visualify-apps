@@ -1,6 +1,12 @@
 import type { ProjectCurrency } from "@/lib/projectContext";
+import type { RagStatus } from "@/lib/dashboard/projectTileServerData";
 import { formatCurrencyCompact } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
+import {
+  DEFAULT_REPORTING_UNIT,
+  formatCurrencyInReportingUnit,
+  type ReportingUnitOption,
+} from "@/lib/portfolio/reportingPreferences";
 
 export type CoverageRatioTileCopy = { primaryValue: string; subtext: string };
 
@@ -92,6 +98,18 @@ export function coverageRatioSemanticClassName(
   return "text-[var(--ds-status-success-fg)]";
 }
 
+/** RAG status for the single-currency coverage ratio shown beside the donut. */
+export function coverageRatioRagStatus(
+  ratioByCurrency: Map<ProjectCurrency, number>
+): RagStatus | undefined {
+  const entries = [...ratioByCurrency.entries()].filter(([, r]) => Number.isFinite(r) && r >= 0);
+  if (entries.length !== 1) return undefined;
+  const [, ratio] = entries[0];
+  if (ratio < 0.8) return "red";
+  if (ratio < 1.0) return "amber";
+  return "green";
+}
+
 const CONTINGENCY_HELD_TILE_SUBTEXT = "Contingency held in this portfolio";
 
 const COST_EXPOSURE_TILE_SUBTEXT = "Forward cost exposure (12-month expected value)";
@@ -101,7 +119,8 @@ const COST_EXPOSURE_TILE_SUBTEXT = "Forward cost exposure (12-month expected val
  */
 export function costExposureTileCopy(
   byCurrency: Map<ProjectCurrency, number>,
-  projectCount: number
+  projectCount: number,
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT
 ): { primaryValue: string; subtext: string } {
   const totalM = [...byCurrency.values()].reduce((a, b) => a + b, 0);
   const nonzero = [...byCurrency.entries()].filter(([, m]) => m > 0).sort((a, b) => b[1] - a[1]);
@@ -109,7 +128,7 @@ export function costExposureTileCopy(
     if (byCurrency.size > 0 && totalM === 0) {
       const c = [...byCurrency.keys()][0];
       return {
-        primaryValue: formatCurrencyCompact(0, c),
+        primaryValue: formatCurrencyInReportingUnit(0, c, reportingUnit),
         subtext: COST_EXPOSURE_TILE_SUBTEXT,
       };
     }
@@ -122,11 +141,11 @@ export function costExposureTileCopy(
   if (nonzero.length === 1) {
     const [c, m] = nonzero[0];
     return {
-      primaryValue: formatCurrencyCompact(toAbs(m), c),
+      primaryValue: formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit),
       subtext: COST_EXPOSURE_TILE_SUBTEXT,
     };
   }
-  const parts = nonzero.map(([c, m]) => formatCurrencyCompact(toAbs(m), c));
+  const parts = nonzero.map(([c, m]) => formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit));
   return {
     primaryValue: "—",
     subtext: `${parts.join(" · ")} · not converted (multiple currencies)`,
@@ -188,18 +207,36 @@ export function scheduleCoverageRatioSemanticClassName(ratio: number | null): st
   return "text-[var(--ds-status-success-fg)]";
 }
 
+/** RAG status for the schedule coverage ratio shown beside the donut. */
+export function scheduleCoverageRatioRagStatus(ratio: number | null): RagStatus | undefined {
+  if (ratio == null || !Number.isFinite(ratio)) return undefined;
+  if (ratio < 0.8) return "red";
+  if (ratio < 1.0) return "amber";
+  return "green";
+}
+
 export function needsAttentionTileCopy(count: number): {
   primaryValue: string;
   subtext: string;
   primaryValueClassName?: string;
+  primaryRagDot: RagStatus;
 } {
+  const n = Math.max(0, count);
+  const rag: RagStatus = n === 0 ? "green" : n <= 3 ? "amber" : "red";
+  const primaryValueClassName =
+    rag === "red"
+      ? "text-[var(--ds-status-danger)]"
+      : rag === "amber"
+        ? "text-[var(--ds-status-warning)]"
+        : "text-[var(--ds-status-success)]";
   return {
     primaryValue: String(count),
     subtext:
-      count === 0
-        ? "No high or extreme risks need attention"
-        : "High / Extreme with no owner or no mitigation plan",
-    primaryValueClassName: count > 0 ? "text-[var(--ds-status-danger)]" : undefined,
+      n === 0
+        ? "No currently high or extreme risks need attention"
+        : "Currently High / Extreme with no owner or no mitigation plan",
+    primaryValueClassName,
+    primaryRagDot: rag,
   };
 }
 
@@ -215,7 +252,8 @@ function appendScheduleHeldToSubtext(subtext: string, totalScheduleContingencyWe
 export function contingencyHeldTileCopy(
   byCurrency: Map<ProjectCurrency, number>,
   projectCount: number,
-  totalScheduleContingencyWeeks = 0
+  totalScheduleContingencyWeeks = 0,
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT
 ): { primaryValue: string; subtext: string } {
   const totalM = [...byCurrency.values()].reduce((a, b) => a + b, 0);
   const nonzero = [...byCurrency.entries()].filter(([, m]) => m > 0).sort((a, b) => b[1] - a[1]);
@@ -223,7 +261,7 @@ export function contingencyHeldTileCopy(
     if (byCurrency.size > 0 && totalM === 0) {
       const c = [...byCurrency.keys()][0];
       return {
-        primaryValue: formatCurrencyCompact(0, c),
+        primaryValue: formatCurrencyInReportingUnit(0, c, reportingUnit),
         subtext: appendScheduleHeldToSubtext(CONTINGENCY_HELD_TILE_SUBTEXT, totalScheduleContingencyWeeks),
       };
     }
@@ -239,11 +277,11 @@ export function contingencyHeldTileCopy(
   if (nonzero.length === 1) {
     const [c, m] = nonzero[0];
     return {
-      primaryValue: formatCurrencyCompact(toAbs(m), c),
+      primaryValue: formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit),
       subtext: appendScheduleHeldToSubtext(CONTINGENCY_HELD_TILE_SUBTEXT, totalScheduleContingencyWeeks),
     };
   }
-  const parts = nonzero.map(([c, m]) => formatCurrencyCompact(toAbs(m), c));
+  const parts = nonzero.map(([c, m]) => formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit));
   return {
     primaryValue: "—",
     subtext: appendScheduleHeldToSubtext(

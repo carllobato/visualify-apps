@@ -1174,15 +1174,14 @@ ul[role="listbox"] button:focus-visible {
 
 /*
  * Document-column pages — shared shell for portfolio overview, project overview, and project settings.
- * Aligns horizontal padding with `.ds-dashboard-page` (space-4 / sm:space-6); vertical rhythm matches overview `py-8`.
+ * Aligns horizontal padding with `.ds-dashboard-page` (space-4 / sm:space-6); uses a tighter vertical inset.
  */
 .ds-document-page {
-  min-height: 100%;
   width: 100%;
   background-color: transparent;
   color: var(--ds-text-primary);
   padding-inline: var(--ds-space-4);
-  padding-block: var(--ds-space-8);
+  padding-block: var(--ds-space-4);
 }
 @media (min-width: 640px) {
   .ds-document-page {

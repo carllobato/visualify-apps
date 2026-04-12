@@ -24,10 +24,6 @@ function inherentLetter(risk: Risk): string {
   return RATING_LETTER[risk.inherentRating.level] ?? "M";
 }
 
-function residualLetter(risk: Risk): string {
-  return RATING_LETTER[risk.residualRating.level] ?? "M";
-}
-
 /**
  * Register table "Rating" column: which letter (or N/A) to show from lifecycle status.
  * — draft / closed / archived → N/A
@@ -41,12 +37,18 @@ export function isCurrentRiskRatingNA(risk: Risk): boolean {
   return false;
 }
 
-export function getCurrentRiskRatingLetter(risk: Risk): string {
-  if (isCurrentRiskRatingNA(risk)) return "N/A";
+/** Register-table rating level (or null when the register shows N/A). */
+export function getCurrentRiskRatingLevel(risk: Risk): RiskLevel | null {
+  if (isCurrentRiskRatingNA(risk)) return null;
   const s = normalizeRiskStatusKey(risk.status);
-  if (s === "mitigating" || s === "mitigated") return residualLetter(risk);
-  if (s === "open" || s === "monitoring") return inherentLetter(risk);
-  return inherentLetter(risk);
+  if (s === "mitigating" || s === "mitigated") return risk.residualRating.level;
+  return risk.inherentRating.level;
+}
+
+export function getCurrentRiskRatingLetter(risk: Risk): string {
+  const level = getCurrentRiskRatingLevel(risk);
+  if (level == null) return "N/A";
+  return RATING_LETTER[level] ?? "M";
 }
 
 /** Numeric score for the rating shown in {@link getCurrentRiskRatingLetter} (undefined when N/A). */

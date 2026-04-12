@@ -7,8 +7,11 @@ import type {
   PortfolioProjectCostExposureSlice,
   PortfolioProjectScheduleExposureSlice,
 } from "@/lib/dashboard/projectTileServerData";
-import { formatCurrencyMagnitudeAbbreviated } from "@/lib/formatCurrency";
 import { formatDurationDaysRoundedWhole } from "@/lib/formatDuration";
+import {
+  formatCurrencyInReportingUnit,
+  type ReportingUnitOption,
+} from "@/lib/portfolio/reportingPreferences";
 import { riskaiPath } from "@/lib/routes";
 
 const SERIES_COLORS = [
@@ -38,7 +41,7 @@ type ScheduleDatum = {
 type ChartDatum = CostDatum | ScheduleDatum;
 
 export type PortfolioExposureByProjectDonutProps =
-  | { mode: "cost"; slices: PortfolioProjectCostExposureSlice[] }
+  | { mode: "cost"; slices: PortfolioProjectCostExposureSlice[]; reportingUnit: ReportingUnitOption }
   | { mode: "schedule"; slices: PortfolioProjectScheduleExposureSlice[] };
 
 function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDonutProps) {
@@ -70,9 +73,9 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
 
   const centerLabel = useMemo(() => {
     if (props.mode === "schedule") return formatDurationDaysRoundedWhole(total);
-    if (singleCurrency) return formatCurrencyMagnitudeAbbreviated(total, singleCurrency);
+    if (singleCurrency) return formatCurrencyInReportingUnit(total, singleCurrency, props.reportingUnit);
     return null;
-  }, [props.mode, total, singleCurrency]);
+  }, [props, total, singleCurrency]);
 
   if (data.length === 0 || total <= 0) {
     return (
@@ -98,6 +101,7 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
               innerRadius="52%"
               outerRadius="80%"
               paddingAngle={2}
+              cornerRadius={4}
               onClick={(_sector, index) => {
                 const row = data[index];
                 if (row) router.push(riskaiPath(`/projects/${row.projectId}`));
@@ -140,7 +144,7 @@ function PortfolioExposureByProjectDonutImpl(props: PortfolioExposureByProjectDo
                 const pct = total > 0 ? (row.value / total) * 100 : 0;
                 const amountLabel =
                   row.kind === "cost"
-                    ? formatCurrencyMagnitudeAbbreviated(row.value, row.currency)
+                    ? formatCurrencyInReportingUnit(row.value, row.currency, props.reportingUnit)
                     : formatDurationDaysRoundedWhole(row.value);
                 return (
                   <div className="max-w-[16rem] rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-2.5 py-2 text-[length:var(--ds-text-xs)] shadow-[var(--ds-shadow-md)]">

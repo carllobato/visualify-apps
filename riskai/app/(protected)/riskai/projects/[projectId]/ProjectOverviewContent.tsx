@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useEffect, useState } from "react";
-import { Badge, Button } from "@visualify/design-system";
+import { Button } from "@visualify/design-system";
 import {
   Line,
   LineChart,
@@ -28,6 +28,7 @@ import { formatCurrency } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import { usePageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
+import { SummaryTile } from "@/components/dashboard/SummaryTile";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { computeRag, type RagStatus } from "@/lib/dashboard/projectTileServerData";
 import {
@@ -177,27 +178,27 @@ type ProjectOverviewContentProps = {
   initialData: ProjectOverviewInitialData;
 };
 
-function ragPresentation(status: RagStatus): { label: string; badgeStatus: "success" | "warning" | "danger" | "neutral" } {
+function projectRiskRatingTileCopy(
+  status: RagStatus
+): { primary: string; primaryValueClassName: string; primaryRagDot: RagStatus } {
   switch (status) {
     case "green":
       return {
-        label: "Healthy",
-        badgeStatus: "success",
+        primary: "On Track",
+        primaryValueClassName: "text-[var(--ds-status-success-fg)]",
+        primaryRagDot: status,
       };
     case "amber":
       return {
-        label: "Watch",
-        badgeStatus: "warning",
+        primary: "Watch",
+        primaryValueClassName: "text-[var(--ds-status-warning-fg)]",
+        primaryRagDot: status,
       };
     case "red":
       return {
-        label: "At risk",
-        badgeStatus: "danger",
-      };
-    default:
-      return {
-        label: "—",
-        badgeStatus: "neutral",
+        primary: "At risk",
+        primaryValueClassName: "text-[var(--ds-status-danger-fg)]",
+        primaryRagDot: status,
       };
   }
 }
@@ -718,9 +719,12 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     );
   }
 
-  const rag = showProjectStatusSkeleton ? null : ragPresentation(ragStatus);
+  const riskRatingTile = showProjectStatusSkeleton ? null : projectRiskRatingTileCopy(ragStatus);
   const activeN = reportingRunActiveRiskCount(reportingSnapshot);
   const highN = reportingRunHighExtremeCount(reportingSnapshot, risks);
+  const projectRiskRatingSubtext = `${activeN} risk${activeN === 1 ? "" : "s"} in reporting run${
+    highN > 0 ? ` · ${highN} high / extreme` : ""
+  }`;
 
   const targetLabelShort = targetAppetite;
 
@@ -738,26 +742,20 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     <main className="ds-document-page" aria-busy={loadingRisks || undefined}>
       {/* Row 1 — headline metrics */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <DashCard>
-          <p className={`${overviewTileTitleClass} mb-2`}>Project status</p>
-          {showProjectStatusSkeleton ? (
+        {showProjectStatusSkeleton ? (
+          <DashCard>
+            <p className={`${overviewTileTitleClass} mb-2`}>Project Risk Rating</p>
             <OverviewProjectStatusSkeleton />
-          ) : (
-            <>
-              <Badge
-                status={rag!.badgeStatus}
-                variant="strong"
-                className="px-3.5 py-1.5 text-[length:var(--ds-text-sm)] font-semibold"
-              >
-                {rag!.label}
-              </Badge>
-              <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] m-0 mt-3 tabular-nums">
-                {activeN} risk{activeN === 1 ? "" : "s"} in reporting run
-                {highN > 0 ? ` · ${highN} high / extreme` : ""}
-              </p>
-            </>
-          )}
-        </DashCard>
+          </DashCard>
+        ) : (
+          <SummaryTile
+            title="Project Risk Rating"
+            primaryValue={riskRatingTile!.primary}
+            primaryValueClassName={riskRatingTile!.primaryValueClassName}
+            primaryRagDot={riskRatingTile!.primaryRagDot}
+            subtext={projectRiskRatingSubtext}
+          />
+        )}
 
         <DashCard>
           <p className={`${overviewTileTitleClass} mb-2`}>Target vs current confidence</p>
@@ -895,7 +893,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
               </p>
               {keyOpportunityInfo != null && keyOpportunityInfo.delta > 0 ? (
                 <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 tabular-nums">
-                  {formatCurrency(keyOpportunityInfo.delta)} pre vs modelled
+                  {formatCurrency(keyOpportunityInfo.delta)} planned mitigation reduction
                 </p>
               ) : null}
             </>

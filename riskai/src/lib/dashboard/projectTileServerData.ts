@@ -10,6 +10,7 @@ import {
   appliesToExcludesCost,
   appliesToExcludesTime,
   getCurrentRiskRatingLetter,
+  getCurrentRiskRatingLevel,
   isRiskActiveForPortfolioAnalytics,
   isRiskStatusArchived,
   riskLifecycleBucketForRegisterSnapshot,
@@ -18,9 +19,13 @@ import {
 import type { AccessibleProject } from "@/lib/portfolios-server";
 import { RISK_DB_SELECT_COLUMNS, mapRiskRowToDomain } from "@/lib/db/risks";
 import { computePortfolioExposure } from "@/engine/forwardExposure";
-import { formatDurationDays } from "@/lib/formatDuration";
-import { formatCurrencyCompact } from "@/lib/formatCurrency";
+import { formatDurationDays, formatDurationWholeDays } from "@/lib/formatDuration";
 import type { RiskRow } from "@/types/risk";
+import {
+  DEFAULT_REPORTING_UNIT,
+  formatCurrencyInReportingUnit,
+  type ReportingUnitOption,
+} from "@/lib/portfolio/reportingPreferences";
 import {
   asProjectCurrency,
   contingencyMillionsFromSettingsRow,
@@ -34,6 +39,11 @@ import {
   tryReportingBreakdownFromLockedRowAndSettings,
   tryReportingFundingScalars,
 } from "@/lib/dashboard/reportingPositionRag";
+import {
+  monitoringCostOpportunityExpected,
+  monitoringScheduleOpportunityExpected,
+  preMitigationCostExpectedForOpportunity,
+} from "@/lib/opportunityMetrics";
 import type { PortfolioReportingFooterRow } from "@/lib/dashboard/reportingPositionRag";
 
 export type { PortfolioReportingFooterRow };
@@ -266,7 +276,7 @@ export function sortProjectTilesAlphabetically(tiles: ProjectTilePayload[]): Pro
 /**
  * Projects in a portfolio with RAG payloads — same data and ordering as the portfolio projects page (`/portfolios/:id/projects`).
  */
-/** Per-project residual severity counts (active risks only — Open / Monitoring / Mitigating). */
+/** Per-project register-aligned severity counts (active risks only — Open / Monitoring / Mitigating). */
 export type PortfolioProjectRiskSeverityRow = {
   projectId: string;
   projectName: string;
@@ -303,7 +313,8 @@ function buildPortfolioProjectRiskSeverityRowsFromRiskRows(
     if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
     const b = buckets.get(row.project_id);
     if (!b) continue;
-    const lv = residualLevel(row as RiskAggRow);
+    const lv = getCurrentRiskRatingLevel(risk);
+    if (lv == null) continue;
     if (lv === "low") b.low += 1;
     else if (lv === "medium") b.medium += 1;
     else if (lv === "high") b.high += 1;
@@ -357,7 +368,8 @@ function buildPortfolioProjectRiskStatusRowsFromRiskRows(
 }
 
 /**
- * Active risks (Open / Monitoring / Mitigating only) in the portfolio, grouped by project and residual severity.
+ * Active risks (Open / Monitoring / Mitigating only) in the portfolio, grouped by the same rating logic as the
+ * risk register: Open/Monitoring use pre-mitigation; Mitigating uses post-mitigation.
  * Prefer {@link loadPortfolioTopRiskConcentrationRows} when loading portfolio overview data to avoid duplicate queries.
  */
 export async function loadPortfolioProjectRiskSeveritySummary(
@@ -462,11 +474,13 @@ export type PortfolioTopRiskRow = {
   projectName: string;
   riskId: string;
   riskTitle: string;
+  ownerDisplay: string;
+  statusDisplay: string;
   rating: string;
   exposureDisplay: string;
 };
 
-/** Active High / Extreme risks missing an owner and/or a mitigation description — Needs Attention KPI. */
+/** Active High / Extreme risks by register rating, missing an owner and/or a mitigation description. */
 export type PortfolioRisksRequiringAttentionRow = {
   projectId: string;
   projectName: string;
@@ -483,6 +497,24 @@ function attentionIssueLabel(risk: Risk): string {
   if (noMit && noOwner) return "No owner; no mitigation plan";
   if (noMit) return "No mitigation plan";
   return "No owner";
+}
+
+function portfolioTopRiskStatusDisplay(risk: Risk): string {
+  const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+  if (bucket === "open") return "Open";
+  if (bucket === "monitoring") return "Monitoring";
+  if (bucket === "mitigating") return "Mitigating";
+  if (bucket === "closed") return "Closed";
+  if (bucket === "archived") return "Archived";
+  return "Draft";
+}
+
+/**
+ * Pre-mitigation expected cost (inherent impact × probability), aligned with
+ * {@link buildCostDriverLines} — basis for “opportunity” = pre − forward exposure.
+ */
+function preMitigationCostExpected(risk: Risk): number {
+  return preMitigationCostExpectedForOpportunity(risk);
 }
 
 const PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS = 12;
@@ -536,9 +568,9 @@ export type PortfolioRiskCategoryCount = {
   count: number;
 };
 
-/** Active lifecycle bucket counts (Open / Monitoring / Mitigating only). */
+/** Portfolio lifecycle bucket counts (Open / Monitoring / Mitigating, plus Closed). */
 export type PortfolioRiskStatusCount = {
-  statusKey: "open" | "monitoring" | "mitigating";
+  statusKey: "open" | "monitoring" | "mitigating" | "closed";
   label: string;
   count: number;
 };
@@ -548,12 +580,12 @@ function buildPortfolioRiskStatusCounts(allMapped: Risk[]): PortfolioRiskStatusC
     ["open", 0],
     ["monitoring", 0],
     ["mitigating", 0],
+    ["closed", 0],
   ]);
 
   for (const risk of allMapped) {
-    if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
     const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
-    if (bucket === "open" || bucket === "monitoring" || bucket === "mitigating") {
+    if (bucket === "open" || bucket === "monitoring" || bucket === "mitigating" || bucket === "closed") {
       totals.set(bucket, (totals.get(bucket) ?? 0) + 1);
     }
   }
@@ -562,6 +594,7 @@ function buildPortfolioRiskStatusCounts(allMapped: Risk[]): PortfolioRiskStatusC
     { key: "open", label: "Open" },
     { key: "monitoring", label: "Monitoring" },
     { key: "mitigating", label: "Mitigating" },
+    { key: "closed", label: "Closed" },
   ];
 
   return order
@@ -591,12 +624,16 @@ function buildPortfolioRiskOwnerCounts(allMapped: Risk[]): PortfolioRiskOwnerCou
 export type PortfolioTopRiskConcentration = {
   /** Open + Monitoring + Mitigating; matches portfolio dashboard tiles. */
   activeRiskCount: number;
-  /** Per-project residual severity (active risks) — Risks by severity card. */
+  /** Per-project register-aligned severity (active risks) — Risks by severity card. */
   activeRiskSummaryRows: PortfolioProjectRiskSeverityRow[];
   /** Per-project lifecycle counts — Active Risks KPI modal. */
   activeRiskStatusSummaryRows: PortfolioProjectRiskStatusRow[];
   costRows: PortfolioTopRiskRow[];
   scheduleRows: PortfolioTopRiskRow[];
+  /** Largest monitoring-only cost reductions still available from planned mitigation. */
+  costOpportunityRows: PortfolioTopRiskRow[];
+  /** Largest monitoring-only schedule reductions still available from planned mitigation. */
+  scheduleOpportunityRows: PortfolioTopRiskRow[];
   projectCostExposureSlices: PortfolioProjectCostExposureSlice[];
   projectScheduleExposureSlices: PortfolioProjectScheduleExposureSlice[];
   riskCategoryCounts: PortfolioRiskCategoryCount[];
@@ -611,7 +648,8 @@ export type PortfolioTopRiskConcentration = {
  */
 export async function loadPortfolioTopRiskConcentrationRows(
   supabase: SupabaseClient,
-  portfolioId: string
+  portfolioId: string,
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT
 ): Promise<PortfolioTopRiskConcentration> {
   const empty: PortfolioTopRiskConcentration = {
     activeRiskCount: 0,
@@ -619,6 +657,8 @@ export async function loadPortfolioTopRiskConcentrationRows(
     activeRiskStatusSummaryRows: [],
     costRows: [],
     scheduleRows: [],
+    costOpportunityRows: [],
+    scheduleOpportunityRows: [],
     projectCostExposureSlices: [],
     projectScheduleExposureSlices: [],
     riskCategoryCounts: [],
@@ -695,10 +735,11 @@ export async function loadPortfolioTopRiskConcentrationRows(
   );
 
   const costRows: PortfolioTopRiskRow[] = [];
+  const costOpportunityRows: PortfolioTopRiskRow[] = [];
   if (costRisks.length > 0) {
     const exposure = computePortfolioExposure(costRisks, "neutral", PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS, {
       topN: 5,
-      includeDebug: false,
+      includeDebug: true,
     });
     for (const d of exposure.topDrivers) {
       const risk = costRisks.find((r) => r.id === d.riskId);
@@ -711,8 +752,44 @@ export async function loadPortfolioTopRiskConcentrationRows(
         projectName,
         riskId: d.riskId,
         riskTitle: risk.title,
+        ownerDisplay: risk.owner?.trim() ? risk.owner.trim() : "Unassigned",
+        statusDisplay: portfolioTopRiskStatusDisplay(risk),
         rating: getCurrentRiskRatingLetter(risk),
-        exposureDisplay: formatCurrencyCompact(d.total, currency),
+        exposureDisplay: formatCurrencyInReportingUnit(d.total, currency, reportingUnit, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      });
+    }
+
+    const curves = exposure.debug?.riskCurves ?? [];
+    const costOpportunityCandidates = curves
+      .map((c) => {
+        const risk = costRisks.find((r) => r.id === c.riskId);
+        if (!risk) return null;
+        const delta = monitoringCostOpportunityExpected(risk);
+        if (!Number.isFinite(delta) || delta <= 0) return null;
+        const projectId = projectIdByRiskId.get(risk.id) ?? "";
+        const currency = currencyByProject.get(projectId) ?? "AUD";
+        return { risk, delta, projectId, currency };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 5);
+
+    for (const { risk, delta, projectId, currency } of costOpportunityCandidates) {
+      costOpportunityRows.push({
+        projectId,
+        projectName: projectNameById.get(projectId) ?? projectId,
+        riskId: risk.id,
+        riskTitle: risk.title,
+        ownerDisplay: risk.owner?.trim() ? risk.owner.trim() : "Unassigned",
+        statusDisplay: portfolioTopRiskStatusDisplay(risk),
+        rating: getCurrentRiskRatingLetter(risk),
+        exposureDisplay: formatCurrencyInReportingUnit(delta, currency, reportingUnit, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
       });
     }
   }
@@ -725,6 +802,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
   );
 
   const scheduleRows: PortfolioTopRiskRow[] = [];
+  const scheduleOpportunityRows: PortfolioTopRiskRow[] = [];
   if (scheduleCandidates.length > 0) {
     const scored = scheduleCandidates
       .map((risk) => ({
@@ -743,8 +821,34 @@ export async function loadPortfolioTopRiskConcentrationRows(
         projectName,
         riskId: risk.id,
         riskTitle: risk.title,
+        ownerDisplay: risk.owner?.trim() ? risk.owner.trim() : "Unassigned",
+        statusDisplay: portfolioTopRiskStatusDisplay(risk),
         rating: getCurrentRiskRatingLetter(risk),
-        exposureDisplay: formatDurationDays(score, { weekDecimals: 2 }),
+        exposureDisplay: formatDurationWholeDays(score),
+      });
+    }
+
+    const scheduleOpportunityCandidates = scheduleCandidates
+      .map((risk) => {
+        const delta = monitoringScheduleOpportunityExpected(risk);
+        if (!Number.isFinite(delta) || delta <= 0) return null;
+        return { risk, delta };
+      })
+      .filter((x): x is { risk: Risk; delta: number } => x != null)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 5);
+
+    for (const { risk, delta } of scheduleOpportunityCandidates) {
+      const projectId = projectIdByRiskId.get(risk.id) ?? "";
+      scheduleOpportunityRows.push({
+        projectId,
+        projectName: projectNameById.get(projectId) ?? projectId,
+        riskId: risk.id,
+        riskTitle: risk.title,
+        ownerDisplay: risk.owner?.trim() ? risk.owner.trim() : "Unassigned",
+        statusDisplay: portfolioTopRiskStatusDisplay(risk),
+        rating: getCurrentRiskRatingLetter(risk),
+        exposureDisplay: formatDurationWholeDays(delta),
       });
     }
   }
@@ -790,7 +894,8 @@ export async function loadPortfolioTopRiskConcentrationRows(
   const risksRequiringAttentionRows: PortfolioRisksRequiringAttentionRow[] = [];
   for (const risk of allMapped) {
     if (!isRiskActiveForPortfolioAnalytics(risk)) continue;
-    const level = risk.residualRating.level;
+    const level = getCurrentRiskRatingLevel(risk);
+    if (level == null) continue;
     if (level !== "high" && level !== "extreme") continue;
     const hasNoMitigation = !risk.mitigation?.trim();
     const hasNoOwner = !risk.owner?.trim();
@@ -821,6 +926,8 @@ export async function loadPortfolioTopRiskConcentrationRows(
     activeRiskStatusSummaryRows,
     costRows,
     scheduleRows,
+    costOpportunityRows,
+    scheduleOpportunityRows,
     projectCostExposureSlices,
     projectScheduleExposureSlices,
     riskCategoryCounts,
