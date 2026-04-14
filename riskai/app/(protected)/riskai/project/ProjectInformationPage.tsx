@@ -14,14 +14,12 @@ import {
   type ProjectContext,
   type RiskAppetite,
   type ProjectCurrency,
-  type FinancialUnit,
   loadProjectContext,
   saveProjectContext,
   clearProjectContext,
   parseProjectContext,
+  parseProjectContextFromVisualifyProjectSettingsRow,
   getContingencyPercent,
-  formatMoneyMillions,
-  computeValueM,
 } from "@/lib/projectContext";
 import { ProjectExcelUploadSection } from "@/components/project/ProjectExcelUploadSection";
 import { ProjectMembersSection } from "@/components/project/ProjectMembersSection";
@@ -62,7 +60,6 @@ import {
   projectSettingsSelectClass,
 } from "@/components/project/projectSettingsDsFormClasses";
 import { PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE } from "@/lib/settings/settingsPermissionMessages";
-import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
 
 const RISK_APPETITE_OPTIONS: { value: RiskAppetite; label: string }[] = [
   { value: "P10", label: "P10" },
@@ -82,10 +79,6 @@ const CURRENCY_OPTIONS: { value: ProjectCurrency; label: string }[] = [
   { value: "GBP", label: "GBP" },
 ];
 
-const FINANCIAL_UNIT_OPTIONS: { value: FinancialUnit; label: string }[] = REPORTING_UNIT_OPTIONS.map(
-  (u) => ({ value: u, label: REPORTING_UNIT_LABELS[u] }),
-);
-
 const MAX_MONTHS = 600;
 const MAX_WEEKS = 520;
 
@@ -95,7 +88,9 @@ const REQUIRED_NUMERIC_KEYS = [
   "scheduleContingency_weeks",
 ] as const;
 
-type RawNumericFields = Partial<Record<(typeof REQUIRED_NUMERIC_KEYS)[number], string>>;
+type RawNumericFields = Partial<
+  Record<(typeof REQUIRED_NUMERIC_KEYS)[number] | "delay_cost_per_day", string>
+>;
 
 function defaultContext(): ProjectContext {
   return {
@@ -107,11 +102,13 @@ function defaultContext(): ProjectContext {
     riskAppetite: "P80",
     currency: "AUD",
     financialUnit: "MILLIONS",
+    financialInputsVersion: 2,
     projectValue_input: 0,
     contingencyValue_input: 0,
     projectValue_m: 0,
     contingencyValue_m: 0,
     approvedBudget_m: 0,
+    delay_cost_per_day: null,
   };
 }
 
@@ -128,6 +125,13 @@ function getValidationErrors(
   else {
     const n = Number(rawCv);
     if (Number.isNaN(n) || n < 0) err.contingencyValue_input = "Enter a valid number";
+  }
+  const rawDelay =
+    rawNumeric.delay_cost_per_day ??
+    (form.delay_cost_per_day == null ? "" : String(form.delay_cost_per_day));
+  if (rawDelay !== "") {
+    const n = Number(rawDelay);
+    if (Number.isNaN(n) || n < 0) err.delay_cost_per_day = "Enter a valid number";
   }
   const rawDur = rawNumeric.plannedDuration_months ?? (form.plannedDuration_months === 0 ? "" : String(form.plannedDuration_months));
   if (rawDur === "") err.plannedDuration_months = "This field is required";
@@ -171,45 +175,19 @@ function formatGroupedNumber(value: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 }).format(value);
 }
 
+/** Whole-currency display for project value, contingency, and delay (major units; no k/m/b scaling). */
+function formatMajorCurrencyDisplay(amount: number, currency: ProjectCurrency): string {
+  const sym = currency === "GBP" ? "£" : "$";
+  return `${sym} ${formatGroupedNumber(amount)}`;
+}
+
 function rawNumericFieldsFromContext(stored: ProjectContext): RawNumericFields {
   return {
     contingencyValue_input: stored.contingencyValue_input === 0 ? "" : String(stored.contingencyValue_input),
     plannedDuration_months: stored.plannedDuration_months === 0 ? "" : String(stored.plannedDuration_months),
     scheduleContingency_weeks: stored.scheduleContingency_weeks === 0 ? "" : String(stored.scheduleContingency_weeks),
+    delay_cost_per_day: stored.delay_cost_per_day == null ? "" : String(stored.delay_cost_per_day),
   };
-}
-
-/** Map DB `target_completion_date` to `YYYY-MM-DD` for the date input. */
-function targetCompletionDateFromDb(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") {
-    const s = value.trim();
-    if (!s) return "";
-    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m) return m[1];
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
-  }
-  return "";
-}
-
-function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
-  const raw = {
-    projectName: typeof row.project_name === "string" ? row.project_name : "",
-    location:
-      row.location !== undefined && row.location !== null && typeof row.location === "string"
-        ? row.location.trim()
-        : undefined,
-    plannedDuration_months: row.planned_duration_months,
-    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
-    scheduleContingency_weeks: row.schedule_contingency_weeks,
-    riskAppetite: row.risk_appetite,
-    currency: row.currency,
-    financialUnit: row.financial_unit,
-    projectValue_input: row.project_value_input,
-    contingencyValue_input: row.contingency_value_input,
-  };
-  return parseProjectContext(raw);
 }
 
 export type ProjectInformationPageProps = { projectId?: string | null };
@@ -254,10 +232,12 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const plannedDurationRef = useRef<HTMLInputElement>(null);
   const targetCompletionDateRef = useRef<HTMLInputElement>(null);
   const scheduleContingencyRef = useRef<HTMLInputElement>(null);
+  const delayCostPerDayRef = useRef<HTMLInputElement>(null);
   const fieldRefsRef = useRef<Record<string, RefObject<HTMLInputElement | null>>>({
     projectName: projectNameRef,
     projectValue_input: projectValueRef,
     contingencyValue_input: contingencyValueRef,
+    delay_cost_per_day: delayCostPerDayRef,
     plannedDuration_months: plannedDurationRef,
     targetCompletionDate: targetCompletionDateRef,
     scheduleContingency_weeks: scheduleContingencyRef,
@@ -293,7 +273,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       let hydrated = false;
 
       if (!error && row && typeof row === "object") {
-        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
         if (parsed) {
           setForm(parsed);
           setRawNumericFields(rawNumericFieldsFromContext(parsed));
@@ -345,21 +325,20 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     <K extends keyof ProjectContext>(key: K, value: ProjectContext[K], raw?: string) => {
       setForm((prev) => {
         const next = { ...prev, [key]: value };
-        const unit = key === "financialUnit" ? (value as FinancialUnit) : prev.financialUnit;
         const pvInput = key === "projectValue_input" ? (value as number) : prev.projectValue_input;
         const cvInput = key === "contingencyValue_input" ? (value as number) : prev.contingencyValue_input;
-        if (
-          key === "projectValue_input" ||
-          key === "contingencyValue_input" ||
-          key === "financialUnit"
-        ) {
-          next.projectValue_m = computeValueM(pvInput, unit);
-          next.contingencyValue_m = computeValueM(cvInput, unit);
+        if (key === "projectValue_input" || key === "contingencyValue_input") {
+          next.projectValue_m = pvInput / 1e6;
+          next.contingencyValue_m = cvInput / 1e6;
           next.approvedBudget_m = next.projectValue_m + next.contingencyValue_m;
         }
         return next;
       });
-      if (raw !== undefined && REQUIRED_NUMERIC_KEYS.includes(key as (typeof REQUIRED_NUMERIC_KEYS)[number])) {
+      if (
+        raw !== undefined &&
+        (REQUIRED_NUMERIC_KEYS.includes(key as (typeof REQUIRED_NUMERIC_KEYS)[number]) ||
+          key === "delay_cost_per_day")
+      ) {
         setRawNumericFields((prev) => ({ ...prev, [key]: raw }));
       }
       setValidation((prev) => ({ ...prev, [key]: "" }));
@@ -399,13 +378,15 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           project_name: toSave.projectName,
           location: toSave.location?.trim() ? toSave.location.trim() : null,
           currency: toSave.currency,
-          financial_unit: toSave.financialUnit,
+          financial_unit: "MILLIONS",
+          financial_inputs_version: 2,
           project_value_input: toSave.projectValue_input,
           contingency_value_input: toSave.contingencyValue_input,
           planned_duration_months: toSave.plannedDuration_months,
           target_completion_date: toSave.targetCompletionDate,
           schedule_contingency_weeks: toSave.scheduleContingency_weeks,
           risk_appetite: toSave.riskAppetite,
+          delay_cost_per_day: toSave.delay_cost_per_day,
         },
         { onConflict: "project_id" }
       );
@@ -425,6 +406,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       contingencyValue_input: toSave.contingencyValue_input === 0 ? "" : String(toSave.contingencyValue_input),
       plannedDuration_months: toSave.plannedDuration_months === 0 ? "" : String(toSave.plannedDuration_months),
       scheduleContingency_weeks: toSave.scheduleContingency_weeks === 0 ? "" : String(toSave.scheduleContingency_weeks),
+      delay_cost_per_day: toSave.delay_cost_per_day == null ? "" : String(toSave.delay_cost_per_day),
     });
     setSaved(true);
     if (savedHideTimeoutRef.current) clearTimeout(savedHideTimeoutRef.current);
@@ -461,11 +443,6 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   }, [projectId, settingsReadOnly]);
 
   const contingencyPct = getContingencyPercent(form);
-  const approvedBudgetInUnit =
-    form.projectValue_input + form.contingencyValue_input;
-  const showEquivalentInM = form.financialUnit !== "MILLIONS";
-  const financialUnitShortLabel =
-    form.financialUnit === "THOUSANDS" ? "k" : form.financialUnit === "BILLIONS" ? "b" : "m";
   const headerActions = useMemo(
     () => (
       <div className="flex items-center gap-2">
@@ -579,25 +556,6 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                 ))}
               </select>
             </div>
-            <div className={projectSettingsFieldWidthClass("xsm")}>
-              <Label htmlFor="financialUnit" className="!mb-1">
-                Unit
-              </Label>
-              <select
-                id="financialUnit"
-                value={form.financialUnit}
-                disabled={settingsReadOnly}
-                onChange={(e) => update("financialUnit", e.target.value as FinancialUnit)}
-                className={projectSettingsSelectClass(false) + readOnlyChrome}
-                aria-label="Financial unit"
-              >
-                {FINANCIAL_UNIT_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
             </div>
           </CardBody>
         </Card>
@@ -610,7 +568,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               <h2 className="ds-project-settings-card-title">Financial Context</h2>
             </CardHeader>
             <CardBody className="ds-project-settings-card-body space-y-2.5">
-              <div className={projectSettingsFieldWidthClass("xsm")}>
+              <div className={projectSettingsFieldWidthClass("sm")}>
                 <Label htmlFor="projectValue_input" className="!mb-1">
                   Project Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
@@ -623,7 +581,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                   value={
                     form.projectValue_input === 0
                       ? ""
-                      : `$ ${formatGroupedNumber(form.projectValue_input)} ${financialUnitShortLabel}`
+                      : formatMajorCurrencyDisplay(form.projectValue_input, form.currency)
                   }
                   onChange={(e) => {
                     const raw = e.target.value.replace(/[^0-9.]/g, "");
@@ -632,11 +590,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                   }}
                   aria-invalid={!!validation.projectValue_input}
                   className={projectSettingsInputClass(!!validation.projectValue_input) + readOnlyChrome}
-                  placeholder={form.financialUnit === "BILLIONS" ? "e.g. 2.5" : form.financialUnit === "MILLIONS" ? "e.g. 217" : "e.g. 500000"}
+                  placeholder="e.g. 217,000,000"
                 />
                 {validation.projectValue_input ? <FieldError className="!mt-1">{validation.projectValue_input}</FieldError> : null}
               </div>
-              <div className={projectSettingsFieldWidthClass("xsm")}>
+              <div className={projectSettingsFieldWidthClass("sm")}>
                 <Label htmlFor="contingencyValue_input" className="!mb-1">
                   Contingency Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
@@ -650,7 +608,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                     (rawNumericFields.contingencyValue_input ??
                       (form.contingencyValue_input === 0 ? "" : String(form.contingencyValue_input))) === ""
                       ? ""
-                      : `$ ${formatGroupedNumber(form.contingencyValue_input)} ${financialUnitShortLabel}`
+                      : formatMajorCurrencyDisplay(form.contingencyValue_input, form.currency)
                   }
                   onChange={(e) => {
                     const raw = e.target.value.replace(/[^0-9.]/g, "");
@@ -660,9 +618,44 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                   }}
                   aria-invalid={!!validation.contingencyValue_input}
                   className={projectSettingsInputClass(!!validation.contingencyValue_input) + readOnlyChrome}
-                  placeholder={form.financialUnit === "BILLIONS" ? "e.g. 0.25" : form.financialUnit === "MILLIONS" ? "e.g. 22" : "e.g. 50000"}
+                  placeholder="e.g. 22,000,000"
                 />
                 {validation.contingencyValue_input ? <FieldError className="!mt-1">{validation.contingencyValue_input}</FieldError> : null}
+              </div>
+              <div className={projectSettingsFieldWidthClass("sm")}>
+                <Label htmlFor="delay_cost_per_day" className="!mb-1">
+                  Delay Cost Per Day
+                </Label>
+                <input
+                  ref={delayCostPerDayRef}
+                  id="delay_cost_per_day"
+                  type="text"
+                  inputMode="decimal"
+                  readOnly={settingsReadOnly}
+                  value={
+                    (rawNumericFields.delay_cost_per_day ??
+                      (form.delay_cost_per_day == null ? "" : String(form.delay_cost_per_day))) === ""
+                      ? ""
+                      : formatMajorCurrencyDisplay(form.delay_cost_per_day ?? 0, form.currency)
+                  }
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/[^0-9.]/g, "");
+                    const num = Number(raw);
+                    const safe =
+                      raw === "" ? null : Number.isFinite(num) ? Math.max(0, num) : null;
+                    update("delay_cost_per_day", safe, raw);
+                  }}
+                  aria-invalid={!!validation.delay_cost_per_day}
+                  className={projectSettingsInputClass(!!validation.delay_cost_per_day) + readOnlyChrome}
+                  placeholder="e.g. 50,000"
+                />
+                {validation.delay_cost_per_day ? (
+                  <FieldError className="!mt-1">{validation.delay_cost_per_day}</FieldError>
+                ) : (
+                  <HelperText className="!mt-1">
+                    Used to convert schedule delay into indirect cost impact.
+                  </HelperText>
+                )}
               </div>
             </CardBody>
           </Card>

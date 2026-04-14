@@ -8,7 +8,7 @@ import { selectDecisionByRiskId, selectDecisionScoreDelta } from "@/store/select
 import {
   loadProjectContext,
   isProjectContextComplete,
-  parseProjectContext,
+  parseProjectContextFromVisualifyProjectSettingsRow,
   type ProjectContext,
 } from "@/lib/projectContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -194,39 +194,6 @@ function riskMatchesRegisterSearch(risk: Risk, rawQuery: string): boolean {
   return registerSearchHaystackMatchesQuery(buildRiskSearchText(risk), rawQuery);
 }
 
-/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
-function targetCompletionDateFromDb(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") {
-    const s = value.trim();
-    if (!s) return "";
-    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m) return m[1];
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
-  }
-  return "";
-}
-
-function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
-  const raw = {
-    projectName: typeof row.project_name === "string" ? row.project_name : "",
-    location:
-      row.location !== undefined && row.location !== null && typeof row.location === "string"
-        ? row.location.trim()
-        : undefined,
-    plannedDuration_months: row.planned_duration_months,
-    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
-    scheduleContingency_weeks: row.schedule_contingency_weeks,
-    riskAppetite: row.risk_appetite,
-    currency: row.currency,
-    financialUnit: row.financial_unit,
-    projectValue_input: row.project_value_input,
-    contingencyValue_input: row.contingency_value_input,
-  };
-  return parseProjectContext(raw);
-}
-
 export type RiskRegisterContentProps = { projectId?: string | null };
 
 /** Tighter top padding under the shell page header; avoids stacking with a large margin below an empty in-page header row. */
@@ -322,7 +289,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       if (cancelled) return;
       let next: ProjectContext | null = null;
       if (!error && row && typeof row === "object") {
-        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
         if (parsed) next = parsed;
       }
       if (next == null) {

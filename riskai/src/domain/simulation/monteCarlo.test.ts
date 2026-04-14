@@ -119,6 +119,39 @@ describe("runMonteCarloSimulation", () => {
     assert(maxCost < 100_000, "closed risk should not contribute; max cost should be from open risk only");
   });
 
+  it("adds delayCostPerDay * simulated delay days to each cost sample; time samples unchanged", () => {
+    const risks: Risk[] = [
+      makeRisk({
+        id: "sched",
+        probability: 1,
+        preMitigationCostML: 0,
+        preMitigationTimeML: 5,
+        preMitigationTimeMin: 5,
+        preMitigationTimeMax: 5,
+      }),
+    ];
+    const noDelay = runMonteCarloSimulation({ risks, iterations: 20, seed: 7 });
+    const withDelay = runMonteCarloSimulation({
+      risks,
+      iterations: 20,
+      seed: 7,
+      delayCostPerDay: 1000,
+    });
+    assert.deepStrictEqual(noDelay.timeSamples, withDelay.timeSamples);
+    assert.deepStrictEqual(noDelay.directRiskCostSamples, withDelay.directRiskCostSamples);
+    for (let i = 0; i < 20; i++) {
+      assert.strictEqual(
+        withDelay.costSamples[i],
+        noDelay.costSamples[i] + noDelay.timeSamples[i] * 1000
+      );
+      assert.strictEqual(withDelay.delayDerivedCostSamples[i], noDelay.timeSamples[i] * 1000);
+    }
+    assert.strictEqual(
+      withDelay.summary.meanCost,
+      withDelay.summary.costBreakdown.totalSimulatedCost.mean
+    );
+  });
+
   it("programme P-values are from combined time distribution", () => {
     const risks: Risk[] = [
       makeRisk({ id: "1", probability: 0.5, preMitigationCostML: 10_000, preMitigationTimeML: 10 }),

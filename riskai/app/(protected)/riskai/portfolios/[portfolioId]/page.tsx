@@ -106,7 +106,7 @@ export default async function PortfolioOverviewPage({
   if (settingsProjectIds.length > 0) {
     const { data: settingsRows } = await supabase
       .from("visualify_project_settings")
-      .select("contingency_value_input, financial_unit, currency")
+      .select("contingency_value_input, financial_unit, currency, financial_inputs_version")
       .in("project_id", settingsProjectIds);
     contingencyByCurrency = sumContingencyByCurrency(settingsRows ?? []);
   }
@@ -238,7 +238,7 @@ export default async function PortfolioOverviewPage({
         if (priorScopedIds.length > 0) {
           const { data: priorSettingsRows } = await supabase
             .from("visualify_project_settings")
-            .select("contingency_value_input, financial_unit, currency")
+            .select("contingency_value_input, financial_unit, currency, financial_inputs_version")
             .in("project_id", priorScopedIds);
           priorContingencyByCurrency = sumContingencyByCurrency(priorSettingsRows ?? []);
         }

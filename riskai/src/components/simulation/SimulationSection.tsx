@@ -251,6 +251,11 @@ export type SimulationSectionBaseline = {
 export type CostResults = {
   samples: number[] | null;
   summary: CostSummary | null;
+  costBreakdown?: {
+    directRiskCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
+    delayDerivedCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
+    totalSimulatedCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
+  } | null;
   iterationCount: number;
   risks: SimulationRiskSnapshot[];
 };
@@ -551,6 +556,11 @@ function CostChart({
         <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
           Cost Distribution
         </h3>
+        {!empty && (
+          <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+            Includes delay-related commercial impact when modeled.
+          </p>
+        )}
         {!empty && isDebug && (
           <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
             {costSamples.length > 0
@@ -1381,7 +1391,14 @@ export function SimulationSection(props: SimulationSectionProps) {
             )}
             </div>
           </div>
-          <div className={`${SIM_KPI_TILE_CLASS} flex min-h-[8.5rem] flex-col`}>
+          <div
+            className={`${SIM_KPI_TILE_CLASS} flex min-h-[8.5rem] flex-col`}
+            title={
+              mode === "cost"
+                ? "Uses simulated cost at target P (direct risk plus delay-related commercial impact when modeled), net of contingency."
+                : undefined
+            }
+          >
             <div className="flex flex-1 flex-col p-4">
             <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
               Funding Position vs Target{mode === "cost" ? "" : " (Time)"}

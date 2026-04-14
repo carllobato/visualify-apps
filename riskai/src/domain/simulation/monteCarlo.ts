@@ -34,7 +34,7 @@ export type EffectiveRiskInputs = {
 };
 
 /** Simulation engine version; surface in Run Data / diagnostics. */
-export const SIMULATION_ENGINE_VERSION = "v1.03 (31 Mar 2026)";
+export const SIMULATION_ENGINE_VERSION = "v1.04 (14 Apr 2026)";
 
 function isPresentNum(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0;
@@ -207,6 +207,8 @@ function sampleTriangular(random: () => number, min: number, mode: number, max: 
 
 export type SimulationResult = {
   costSamples: number[];
+  directRiskCostSamples: number[];
+  delayDerivedCostSamples: number[];
   timeSamples: number[];
   summary: {
     meanCost: number;
@@ -223,6 +225,35 @@ export type SimulationResult = {
     p90Time: number;
     minTime: number;
     maxTime: number;
+    costBreakdown: {
+      directRiskCost: {
+        mean: number;
+        p20: number;
+        p50: number;
+        p80: number;
+        p90: number;
+        min: number;
+        max: number;
+      };
+      delayDerivedCost: {
+        mean: number;
+        p20: number;
+        p50: number;
+        p80: number;
+        p90: number;
+        min: number;
+        max: number;
+      };
+      totalSimulatedCost: {
+        mean: number;
+        p20: number;
+        p50: number;
+        p80: number;
+        p90: number;
+        min: number;
+        max: number;
+      };
+    };
   };
 };
 
@@ -236,6 +267,11 @@ export type SimulationReport = {
   p90Cost: number;
   minCost: number;
   maxCost: number;
+  costBreakdown?: {
+    directRiskCost: { average: number; p50: number; p80: number; p90: number; min: number; max: number };
+    delayDerivedCost: { average: number; p50: number; p80: number; p90: number; min: number; max: number };
+    totalSimulatedCost: { average: number; p50: number; p80: number; p90: number; min: number; max: number };
+  };
 };
 
 /** Seeded PRNG (mulberry32) for deterministic runs. Returns 0–1. */
@@ -274,10 +310,14 @@ function stdDev(arr: number[]): number {
 
 function computeSummary(
   costSamples: number[],
+  directRiskCostSamples: number[],
+  delayDerivedCostSamples: number[],
   timeSamples: number[],
   n: number
 ): SimulationResult["summary"] {
   const costSorted = costSamples.slice().sort((a, b) => a - b);
+  const directRiskCostSorted = directRiskCostSamples.slice().sort((a, b) => a - b);
+  const delayDerivedCostSorted = delayDerivedCostSamples.slice().sort((a, b) => a - b);
   const timeSorted = timeSamples.slice().sort((a, b) => a - b);
 
   return {
@@ -295,6 +335,35 @@ function computeSummary(
     p90Time: timeSorted[percentileIndex(timeSorted, 90)] ?? 0,
     minTime: timeSorted[0] ?? 0,
     maxTime: timeSorted[n - 1] ?? 0,
+    costBreakdown: {
+      directRiskCost: {
+        mean: mean(directRiskCostSamples),
+        p20: directRiskCostSorted[percentileIndex(directRiskCostSorted, 20)] ?? 0,
+        p50: directRiskCostSorted[percentileIndex(directRiskCostSorted, 50)] ?? 0,
+        p80: directRiskCostSorted[percentileIndex(directRiskCostSorted, 80)] ?? 0,
+        p90: directRiskCostSorted[percentileIndex(directRiskCostSorted, 90)] ?? 0,
+        min: directRiskCostSorted[0] ?? 0,
+        max: directRiskCostSorted[n - 1] ?? 0,
+      },
+      delayDerivedCost: {
+        mean: mean(delayDerivedCostSamples),
+        p20: delayDerivedCostSorted[percentileIndex(delayDerivedCostSorted, 20)] ?? 0,
+        p50: delayDerivedCostSorted[percentileIndex(delayDerivedCostSorted, 50)] ?? 0,
+        p80: delayDerivedCostSorted[percentileIndex(delayDerivedCostSorted, 80)] ?? 0,
+        p90: delayDerivedCostSorted[percentileIndex(delayDerivedCostSorted, 90)] ?? 0,
+        min: delayDerivedCostSorted[0] ?? 0,
+        max: delayDerivedCostSorted[n - 1] ?? 0,
+      },
+      totalSimulatedCost: {
+        mean: mean(costSamples),
+        p20: costSorted[percentileIndex(costSorted, 20)] ?? 0,
+        p50: costSorted[percentileIndex(costSorted, 50)] ?? 0,
+        p80: costSorted[percentileIndex(costSorted, 80)] ?? 0,
+        p90: costSorted[percentileIndex(costSorted, 90)] ?? 0,
+        min: costSorted[0] ?? 0,
+        max: costSorted[n - 1] ?? 0,
+      },
+    },
   };
 }
 
@@ -302,6 +371,13 @@ export type RunMonteCarloOptions = {
   risks: Risk[];
   iterations?: number;
   seed?: number;
+  /**
+   * Project setting: indirect cost (same currency as risk cost ML) per calendar day of schedule delay.
+   * Simulation time samples are total delay in days (see `totalTime` loop); when this is set and > 0,
+   * each iteration adds `totalTime * delayCostPerDay` to the cost sample (on top of direct risk cost).
+   * Omit, null, or ≤0 leaves cost samples unchanged from direct risk cost only.
+   */
+  delayCostPerDay?: number | null;
 };
 
 /**
@@ -313,32 +389,48 @@ export type RunMonteCarloOptions = {
 export function runMonteCarloSimulation(
   options: RunMonteCarloOptions
 ): SimulationResult {
-  const { risks, iterations = 10000, seed } = options;
+  const { risks, iterations = 10000, seed, delayCostPerDay: delayCostPerDayRaw } = options;
   const effective = risks.map((r) => getEffectiveRiskInputs(r)).filter((x): x is EffectiveRiskInputs => x != null);
   const n = Math.max(0, Math.floor(iterations));
   const random = seed != null ? seededRandom(seed) : () => Math.random();
 
+  const delayCostPerDay =
+    delayCostPerDayRaw != null && Number.isFinite(delayCostPerDayRaw) && delayCostPerDayRaw > 0
+      ? delayCostPerDayRaw
+      : null;
+
   const costSamples: number[] = [];
+  const directRiskCostSamples: number[] = [];
+  const delayDerivedCostSamples: number[] = [];
   const timeSamples: number[] = [];
 
   for (let i = 0; i < n; i++) {
-    let totalCost = 0;
+    let directCost = 0;
+    /** Sum of sampled schedule delay (days) when time-impacting risks trigger; same units as `timeML` / cap in this engine. */
     let totalTime = 0;
     for (const inp of effective) {
       const trigger = random() < inp.probability;
       if (trigger) {
-        totalCost += sampleTriangular(random, inp.costMin, inp.costML, inp.costMax);
+        directCost += sampleTriangular(random, inp.costMin, inp.costML, inp.costMax);
         totalTime += sampleTriangular(random, inp.timeMin, inp.timeML, inp.timeMax);
       }
     }
+    // totalTime is aggregate delay in days (not weeks/months); indirect cost from project settings.
+    const derivedDelayCost =
+      delayCostPerDay != null && totalTime > 0 ? totalTime * delayCostPerDay : 0;
+    const totalCost = directCost + derivedDelayCost;
+    directRiskCostSamples.push(directCost);
+    delayDerivedCostSamples.push(derivedDelayCost);
     costSamples.push(totalCost);
     timeSamples.push(totalTime);
   }
 
-  const summary = computeSummary(costSamples, timeSamples, n);
+  const summary = computeSummary(costSamples, directRiskCostSamples, delayDerivedCostSamples, timeSamples, n);
 
   return {
     costSamples,
+    directRiskCostSamples,
+    delayDerivedCostSamples,
     timeSamples,
     summary,
   };
@@ -362,6 +454,32 @@ export function buildSimulationReport(
     p90Cost: result.summary.p90Cost,
     minCost: result.summary.minCost,
     maxCost: result.summary.maxCost,
+    costBreakdown: {
+      directRiskCost: {
+        average: result.summary.costBreakdown.directRiskCost.mean,
+        p50: result.summary.costBreakdown.directRiskCost.p50,
+        p80: result.summary.costBreakdown.directRiskCost.p80,
+        p90: result.summary.costBreakdown.directRiskCost.p90,
+        min: result.summary.costBreakdown.directRiskCost.min,
+        max: result.summary.costBreakdown.directRiskCost.max,
+      },
+      delayDerivedCost: {
+        average: result.summary.costBreakdown.delayDerivedCost.mean,
+        p50: result.summary.costBreakdown.delayDerivedCost.p50,
+        p80: result.summary.costBreakdown.delayDerivedCost.p80,
+        p90: result.summary.costBreakdown.delayDerivedCost.p90,
+        min: result.summary.costBreakdown.delayDerivedCost.min,
+        max: result.summary.costBreakdown.delayDerivedCost.max,
+      },
+      totalSimulatedCost: {
+        average: result.summary.costBreakdown.totalSimulatedCost.mean,
+        p50: result.summary.costBreakdown.totalSimulatedCost.p50,
+        p80: result.summary.costBreakdown.totalSimulatedCost.p80,
+        p90: result.summary.costBreakdown.totalSimulatedCost.p90,
+        min: result.summary.costBreakdown.totalSimulatedCost.min,
+        max: result.summary.costBreakdown.totalSimulatedCost.max,
+      },
+    },
   };
 }
 

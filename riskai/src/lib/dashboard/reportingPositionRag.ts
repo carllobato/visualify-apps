@@ -8,7 +8,7 @@
 import type { MonteCarloNeutralSnapshot } from "@/domain/simulation/simulation.types";
 import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
 import type { ProjectContext, ProjectCurrency } from "@/lib/projectContext";
-import { parseProjectContext, riskAppetiteToPercent } from "@/lib/projectContext";
+import { parseProjectContextFromVisualifyProjectSettingsRow, riskAppetiteToPercent } from "@/lib/projectContext";
 import { neutralSnapshotFromDbRow } from "@/lib/simulationNeutralFromDbRow";
 import {
   binSamplesIntoHistogram,
@@ -126,39 +126,6 @@ export function formatReportingLineStatus(line: ReportingLineSeverity | null): s
   return "Off track";
 }
 
-/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
-function targetCompletionDateFromDb(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") {
-    const s = value.trim();
-    if (!s) return "";
-    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m) return m[1];
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
-  }
-  return "";
-}
-
-function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
-  const raw = {
-    projectName: typeof row.project_name === "string" ? row.project_name : "",
-    location:
-      row.location !== undefined && row.location !== null && typeof row.location === "string"
-        ? row.location.trim()
-        : undefined,
-    plannedDuration_months: row.planned_duration_months,
-    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
-    scheduleContingency_weeks: row.schedule_contingency_weeks,
-    riskAppetite: row.risk_appetite,
-    currency: row.currency,
-    financialUnit: row.financial_unit,
-    projectValue_input: row.project_value_input,
-    contingencyValue_input: row.contingency_value_input,
-  };
-  return parseProjectContext(raw);
-}
-
 export type ReportingFundingScalars = {
   currency: ProjectCurrency;
   /** Contingency held in dollars (from project settings). */
@@ -199,7 +166,7 @@ export function tryReportingPositionDriverScalars(
   settingsRow: Record<string, unknown> | null | undefined
 ): ReportingPositionDriverScalars | null {
   if (!lockedRow || !settingsRow) return null;
-  const ctx = projectContextFromSettingsRow(settingsRow);
+  const ctx = parseProjectContextFromVisualifyProjectSettingsRow(settingsRow);
   if (!ctx) return null;
   const scalar = reportingFundingScalars(lockedRow, ctx);
   if (!scalar) return null;
@@ -473,7 +440,7 @@ export function tryReportingBreakdownFromLockedRowAndSettings(
   settingsRow: Record<string, unknown> | null | undefined
 ): ReportingPositionBreakdown | null {
   if (!lockedRow || !settingsRow) return null;
-  const ctx = projectContextFromSettingsRow(settingsRow);
+  const ctx = parseProjectContextFromVisualifyProjectSettingsRow(settingsRow);
   if (!ctx) return null;
   return reportingPositionBreakdownFromLockedSnapshot(lockedRow, ctx);
 }
@@ -490,7 +457,7 @@ export function tryReportingFundingScalars(
   settingsRow: Record<string, unknown> | null | undefined
 ): ReportingFundingScalars | null {
   if (!lockedRow || !settingsRow) return null;
-  const ctx = projectContextFromSettingsRow(settingsRow);
+  const ctx = parseProjectContextFromVisualifyProjectSettingsRow(settingsRow);
   if (!ctx) return null;
   return reportingFundingScalars(lockedRow, ctx);
 }

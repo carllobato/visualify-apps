@@ -72,6 +72,8 @@ export type PortfolioSummaryByScenario = {
 /** Result of Monte Carlo run stored as neutral snapshot (cost/time samples + summary + report). */
 export type MonteCarloNeutralSnapshot = {
   costSamples: number[];
+  directRiskCostSamples?: number[];
+  delayDerivedCostSamples?: number[];
   timeSamples: number[];
   summary: {
     meanCost: number;
@@ -88,6 +90,11 @@ export type MonteCarloNeutralSnapshot = {
     p90Time: number;
     minTime: number;
     maxTime: number;
+    costBreakdown?: {
+      directRiskCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
+      delayDerivedCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
+      totalSimulatedCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
+    };
   };
   summaryReport: {
     iterationCount: number;
@@ -99,6 +106,11 @@ export type MonteCarloNeutralSnapshot = {
     p90Cost: number;
     minCost: number;
     maxCost: number;
+    costBreakdown?: {
+      directRiskCost: { average: number; p50: number; p80: number; p90: number; min: number; max: number };
+      delayDerivedCost: { average: number; p50: number; p80: number; p90: number; min: number; max: number };
+      totalSimulatedCost: { average: number; p50: number; p80: number; p90: number; min: number; max: number };
+    };
   };
   lastRunAt: number;
   iterationCount: number;

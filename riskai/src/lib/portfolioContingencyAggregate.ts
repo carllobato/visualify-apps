@@ -19,6 +19,8 @@ export type ProjectSettingsContingencyRow = {
   contingency_value_input: unknown;
   financial_unit: unknown;
   currency: unknown;
+  /** 2 = major currency in `contingency_value_input`; omitted/1 = legacy scaled per `financial_unit`. */
+  financial_inputs_version?: unknown;
 };
 
 /** Contingency in millions of the project’s currency (same semantics as `ProjectContext.contingencyValue_m`). */
@@ -27,6 +29,9 @@ export function contingencyMillionsFromSettingsRow(row: ProjectSettingsContingen
     typeof row.contingency_value_input === "number" && Number.isFinite(row.contingency_value_input)
       ? row.contingency_value_input
       : 0;
+  if (row.financial_inputs_version === 2) {
+    return input / 1e6;
+  }
   return computeValueM(input, asFinancialUnit(row.financial_unit));
 }
 

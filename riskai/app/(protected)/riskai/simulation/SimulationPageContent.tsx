@@ -41,7 +41,7 @@ import {
   loadProjectContext,
   formatMoneyMillions,
   isProjectContextComplete,
-  parseProjectContext,
+  parseProjectContextFromVisualifyProjectSettingsRow,
   type ProjectContext,
 } from "@/lib/projectContext";
 import {
@@ -131,6 +131,20 @@ function isPresentNum(n: unknown): n is number {
 
 /** Schedule cap matches `monteCarlo` / simulation. */
 const MITIGATION_SCHEDULE_CAP_DAYS = 30;
+
+/**
+ * Same scale as {@link formatMoneyMillions} ($m / $bn) but with an extra fractional digit in the $m band
+ * so adjacent cost drivers are less likely to tie on display while rank stays raw-value order.
+ */
+function formatCostDriverMoneyMillions(m: number): string {
+  if (!Number.isFinite(m)) return "—";
+  if (m >= 1000) {
+    const bn = m / 1000;
+    return bn >= 10 || bn % 1 === 0 ? `$${bn.toFixed(0)}bn` : `$${bn.toFixed(2)}bn`;
+  }
+  if (m % 1 === 0) return `$${m.toFixed(0)}m`;
+  return `$${m.toFixed(2)}m`;
+}
 
 function costMLPre(risk: Risk): number {
   const preCost = risk.preMitigationCostML;
@@ -580,9 +594,12 @@ function ProjectValueContingencyMetricCard({
                 aria-label={`${chartSummary}`}
               >
                 <div className="min-w-0">
-                  <div className={ganttRowHeaderClass}>
+                  <div
+                    className={ganttRowHeaderClass}
+                    title="Simulated total cost at target P includes direct risk and delay-related commercial impact when modeled."
+                  >
                     <p className={ganttRowLabelClass}>
-                      Total <span className="normal-case tracking-normal">({targetPLabel})</span>
+                      Simulated total <span className="normal-case tracking-normal">({targetPLabel})</span>
                     </p>
                     <p className={ganttRowValueClass}>{simulationTotalDisplay}</p>
                   </div>
@@ -1544,39 +1561,6 @@ function overallStatusToTone(status: string): StatusPositionTone {
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
 
-/** Map DB `target_completion_date` to `YYYY-MM-DD` for project context parsing. */
-function targetCompletionDateFromDb(value: unknown): string {
-  if (value == null) return "";
-  if (typeof value === "string") {
-    const s = value.trim();
-    if (!s) return "";
-    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (m) return m[1];
-    const d = new Date(s);
-    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
-  }
-  return "";
-}
-
-function projectContextFromSettingsRow(row: Record<string, unknown>): ProjectContext | null {
-  const raw = {
-    projectName: typeof row.project_name === "string" ? row.project_name : "",
-    location:
-      row.location !== undefined && row.location !== null && typeof row.location === "string"
-        ? row.location.trim()
-        : undefined,
-    plannedDuration_months: row.planned_duration_months,
-    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
-    scheduleContingency_weeks: row.schedule_contingency_weeks,
-    riskAppetite: row.risk_appetite,
-    currency: row.currency,
-    financialUnit: row.financial_unit,
-    projectValue_input: row.project_value_input,
-    contingencyValue_input: row.contingency_value_input,
-  };
-  return parseProjectContext(raw);
-}
-
 /** Build YYYY-MM for a given date. */
 function toMonthYearKey(d: Date): string {
   const y = d.getFullYear();
@@ -1750,7 +1734,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
       if (cancelled) return;
       let next: ProjectContext | null = null;
       if (!error && row && typeof row === "object") {
-        const parsed = projectContextFromSettingsRow(row as Record<string, unknown>);
+        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
         if (parsed) next = parsed;
       }
       if (next == null) {
@@ -1982,10 +1966,11 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
             p90Cost: neutralSummary.p90Cost,
           }
         : null,
+      costBreakdown: simulation.neutral?.summary?.costBreakdown ?? null,
       iterationCount,
       risks: snapshotRisks,
     }),
-    [costSamples, neutralSummary, iterationCount, snapshotRisks]
+    [costSamples, neutralSummary, simulation.neutral?.summary?.costBreakdown, iterationCount, snapshotRisks]
   );
 
   const timeResults: TimeResults = useMemo(
@@ -2286,27 +2271,73 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     return { issues: issues.slice(0, 4), actions: actions.slice(0, 4) };
   }, [risks, invalidRunnableCount, hasDraftRisks]);
 
+  /** Cost drivers: risk rows + optional reporting-only delay-commercial row; contribution % = value / totalSimulatedCost. */
   const driversCostRanked = useMemo(() => {
-    const items = snapshotRisks
+    const cb = simulation.neutral?.summary?.costBreakdown;
+    const totalSimulatedCost =
+      cb?.totalSimulatedCost?.mean ?? simulation.neutral?.summary?.meanCost ?? 0;
+    const delayDerivedMean = cb?.delayDerivedCost?.mean ?? 0;
+
+    const riskItems = snapshotRisks
       .map((r) => ({
+        kind: "risk" as const,
         id: r.id,
         title: r.title,
         value: r.simMeanCost ?? r.expectedCost ?? 0,
       }))
       .filter((x) => x.value > 0);
-    const sum = items.reduce((s, x) => s + x.value, 0);
-    const top = [...items].sort((a, b) => b.value - a.value).slice(0, 10);
-    const rows = top.map((r) => ({
-      ...r,
-      contributionPct: sum > 0 ? (r.value / sum) * 100 : 0,
-    }));
-    const top5ConcentrationPct = rows.slice(0, 5).reduce((s, r) => s + r.contributionPct, 0);
-    return { rows, top5ConcentrationPct, hasAny: items.length > 0 };
-  }, [snapshotRisks]);
+
+    const materialDelay =
+      totalSimulatedCost > 0 &&
+      Number.isFinite(delayDerivedMean) &&
+      delayDerivedMean > 0 &&
+      delayDerivedMean / totalSimulatedCost >= 0.001;
+
+    const reportingDelayRow = materialDelay
+      ? {
+          kind: "reporting" as const,
+          id: "__delay_commercial_impact__",
+          title: "Delay-related Commercial Impact",
+          categoryLabel: "Commercial",
+          value: delayDerivedMean,
+          contributionPct: (delayDerivedMean / totalSimulatedCost) * 100,
+        }
+      : null;
+
+    const mergedForRank = reportingDelayRow ? [...riskItems, reportingDelayRow] : riskItems;
+    const top = [...mergedForRank].sort((a, b) => b.value - a.value).slice(0, 10);
+
+    const rows = top.map((r) => {
+      if (r.kind === "reporting") {
+        return r;
+      }
+      return {
+        kind: "risk" as const,
+        id: r.id,
+        title: r.title,
+        value: r.value,
+        contributionPct:
+          totalSimulatedCost > 0 ? (r.value / totalSimulatedCost) * 100 : 0,
+      };
+    });
+
+    const top5ConcentrationPct =
+      totalSimulatedCost > 0
+        ? (rows.slice(0, 5).reduce((s, r) => s + r.value, 0) / totalSimulatedCost) * 100
+        : 0;
+
+    return {
+      rows,
+      top5ConcentrationPct,
+      hasAny: mergedForRank.length > 0,
+      hasReportingDelayRow: reportingDelayRow != null,
+    };
+  }, [snapshotRisks, simulation.neutral?.summary?.costBreakdown, simulation.neutral?.summary?.meanCost]);
 
   const driversScheduleRanked = useMemo(() => {
     const items = snapshotRisks
       .map((r) => ({
+        kind: "risk" as const,
         id: r.id,
         title: r.title,
         value: r.simMeanDays ?? r.expectedDays ?? 0,
@@ -2770,8 +2801,12 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
               <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
                 {driversView === "cost"
                   ? driversActive.hasAny
-                    ? `Top 5 risks account for ${driversActive.top5ConcentrationPct.toFixed(1)}% of total cost exposure`
-                    : "Top 5 risks account for — of total cost exposure"
+                    ? driversCostRanked.hasReportingDelayRow
+                      ? `Top 5 ranked cost drivers account for ${driversActive.top5ConcentrationPct.toFixed(1)}% of total simulated cost (includes derived commercial impact where material).`
+                      : `Top 5 risks account for ${driversActive.top5ConcentrationPct.toFixed(1)}% of total cost exposure`
+                    : driversCostRanked.hasReportingDelayRow
+                      ? "Top 5 ranked cost drivers account for — of total simulated cost."
+                      : "Top 5 risks account for — of total cost exposure"
                   : driversActive.hasAny
                     ? `Top 5 risks account for ${driversActive.top5ConcentrationPct.toFixed(1)}% of total schedule exposure`
                     : "Top 5 risks account for — of total schedule exposure"}
@@ -2809,25 +2844,43 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
                         : driversActive.rows.slice(0, 5)
                       ).map((row, i) => (
                         <TableRow
-                          key={row.id}
+                          key={`${row.kind}-${row.id}`}
                           className="hover:bg-[color-mix(in_oklab,var(--ds-muted)_35%,transparent)]"
                         >
                           <TableCell className="py-2.5 pl-3 pr-3 text-[var(--ds-text-muted)]">{i + 1}</TableCell>
                           <TableCell
-                            className="max-w-[200px] truncate py-2.5 pl-3 pr-3 text-[var(--ds-text-primary)]"
-                            title={row.title}
+                            className="max-w-[260px] py-2.5 pl-3 pr-3 text-[var(--ds-text-primary)]"
+                            title={
+                              row.kind === "reporting"
+                                ? `${row.title} · ${row.categoryLabel} · simulation-derived`
+                                : row.title
+                            }
                           >
-                            {row.title}
+                            {row.kind === "reporting" ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <span className="truncate">{row.title}</span>
+                                  <span className="shrink-0 rounded bg-[color-mix(in_oklab,var(--ds-muted)_65%,transparent)] px-1.5 py-0 text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
+                                    {row.categoryLabel}
+                                  </span>
+                                </span>
+                                <span className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+                                  Simulation-derived · not in risk register
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="block truncate">{row.title}</span>
+                            )}
                           </TableCell>
                           <TableCell className="py-2.5 pl-3 pr-3 text-right font-medium text-[var(--ds-text-primary)]">
                             {driversView === "cost"
                               ? displayContext
-                                ? formatMoneyMillions(row.value / 1e6)
+                                ? formatCostDriverMoneyMillions(row.value / 1e6)
                                 : new Intl.NumberFormat("en-US", {
                                     style: "currency",
                                     currency: "USD",
                                     minimumFractionDigits: 0,
-                                    maximumFractionDigits: 0,
+                                    maximumFractionDigits: 2,
                                   }).format(row.value)
                               : formatDurationDays(row.value)}
                           </TableCell>

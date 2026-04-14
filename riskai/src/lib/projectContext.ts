@@ -36,18 +36,27 @@ export type ProjectContext = {
   scheduleContingency_weeks: number;
   riskAppetite: RiskAppetite;
   currency: ProjectCurrency;
-  /** Unit for project value and contingency inputs. */
+  /** Kept for storage/API compatibility; inputs are always interpreted as whole-currency amounts in v2. */
   financialUnit: FinancialUnit;
-  /** Raw project value as entered by user in the selected unit. */
+  /**
+   * Project value in major currency units (e.g. whole dollars: 217000000 not 217m).
+   * Legacy v1 localStorage used scaled values with {@link financialUnit}.
+   */
   projectValue_input: number;
-  /** Raw contingency value as entered by user in the selected unit. */
+  /**
+   * Contingency in major currency units (same as {@link projectValue_input}).
+   */
   contingencyValue_input: number;
+  /** 1 = legacy scaled inputs; 2 = whole-currency amounts. Omitted treated as 1. */
+  financialInputsVersion?: 1 | 2;
   /** Derived project value in $m for downstream use. */
   projectValue_m: number;
   /** Derived contingency value in $m. */
   contingencyValue_m: number;
   /** Derived approved budget in $m = projectValue_m + contingencyValue_m. */
   approvedBudget_m: number;
+  /** Indirect cost rate in major currency units per calendar day (e.g. dollars/day). */
+  delay_cost_per_day: number | null;
 };
 
 const PROJECT_CONTEXT_STORAGE_KEY = "riskai_project_context_v1";
@@ -103,6 +112,102 @@ export function computeValueM(input: number, unit: FinancialUnit): number {
 /** @deprecated Use computeValueM. Kept for backward compatibility. */
 export const computeProjectValueM = computeValueM;
 
+/** Major-currency dollars (e.g. 217000000) from legacy scaled settings input + unit. */
+export function majorCurrencyFromLegacyScaledInput(input: number, unit: FinancialUnit): number {
+  return computeValueM(input, unit) * 1e6;
+}
+
+/** Map DB `target_completion_date` to `YYYY-MM-DD` for date inputs. */
+function targetCompletionDateFromDb(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") {
+    const s = value.trim();
+    if (!s) return "";
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (m) return m[1];
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+  }
+  return "";
+}
+
+function financialInputsVersionFromSettingsRow(row: Record<string, unknown>): 1 | 2 {
+  return row.financial_inputs_version === 2 ? 2 : 1;
+}
+
+/**
+ * Hydrate project context from a `visualify_project_settings` row.
+ * Legacy rows (`financial_inputs_version` ≠ 2): value columns are scaled by `financial_unit`.
+ * v2 rows: `project_value_input`, `contingency_value_input`, and `delay_cost_per_day` are major currency.
+ */
+export function parseProjectContextFromVisualifyProjectSettingsRow(
+  row: Record<string, unknown>
+): ProjectContext | null {
+  const financialUnit =
+    typeof row.financial_unit === "string" && FINANCIAL_UNIT_VALUES.includes(row.financial_unit as FinancialUnit)
+      ? (row.financial_unit as FinancialUnit)
+      : "MILLIONS";
+
+  const inputsVersion = financialInputsVersionFromSettingsRow(row);
+
+  const pvScaled =
+    typeof row.project_value_input === "number" && Number.isFinite(row.project_value_input)
+      ? row.project_value_input
+      : 0;
+  const cvScaled =
+    typeof row.contingency_value_input === "number" && Number.isFinite(row.contingency_value_input)
+      ? row.contingency_value_input
+      : 0;
+
+  let delayScaled: number | null = null;
+  if (row.delay_cost_per_day !== undefined && row.delay_cost_per_day !== null) {
+    const d = row.delay_cost_per_day;
+    if (typeof d === "number" && Number.isFinite(d) && d >= 0) {
+      delayScaled = d;
+    } else if (typeof d === "string") {
+      const t = d.trim();
+      if (t !== "") {
+        const n = Number(t);
+        if (Number.isFinite(n) && n >= 0) delayScaled = n;
+      }
+    }
+  }
+
+  const projectValueMajor =
+    inputsVersion === 2
+      ? pvScaled
+      : majorCurrencyFromLegacyScaledInput(pvScaled, financialUnit);
+  const contingencyValueMajor =
+    inputsVersion === 2
+      ? cvScaled
+      : majorCurrencyFromLegacyScaledInput(cvScaled, financialUnit);
+  const delayMajor =
+    delayScaled == null
+      ? null
+      : inputsVersion === 2
+        ? delayScaled
+        : majorCurrencyFromLegacyScaledInput(delayScaled, financialUnit);
+
+  const raw = {
+    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    location:
+      row.location !== undefined && row.location !== null && typeof row.location === "string"
+        ? row.location.trim()
+        : undefined,
+    plannedDuration_months: row.planned_duration_months,
+    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+    scheduleContingency_weeks: row.schedule_contingency_weeks,
+    riskAppetite: row.risk_appetite,
+    currency: row.currency,
+    financialUnit: "MILLIONS" as FinancialUnit,
+    financialInputsVersion: 2 as const,
+    projectValue_input: projectValueMajor,
+    contingencyValue_input: contingencyValueMajor,
+    delay_cost_per_day: delayMajor,
+  };
+  return parseProjectContext(raw);
+}
+
 /** Validates raw object; returns validated ProjectContext or null. Handles legacy migration. */
 export function parseProjectContext(raw: unknown): ProjectContext | null {
   if (raw == null || typeof raw !== "object") return null;
@@ -130,7 +235,9 @@ export function parseProjectContext(raw: unknown): ProjectContext | null {
       ? (o.currency as ProjectCurrency)
       : "AUD";
 
-  const financialUnit =
+  const financialInputsVersion = o.financialInputsVersion === 2 ? 2 : 1;
+
+  const legacyFinancialUnit =
     typeof o.financialUnit === "string" && FINANCIAL_UNIT_VALUES.includes(o.financialUnit as FinancialUnit)
       ? (o.financialUnit as FinancialUnit)
       : "MILLIONS";
@@ -141,29 +248,54 @@ export function parseProjectContext(raw: unknown): ProjectContext | null {
   const hasNewProjectValue = isNonNegativeNumber(o.projectValue_input);
   const hasNewContingencyValue = isNonNegativeNumber(o.contingencyValue_input);
 
-  let projectValue_input: number;
-  let contingencyValue_input: number;
+  let pvScaled = 0;
+  let cvScaled = 0;
 
   if (hasNewProjectValue) {
-    projectValue_input = o.projectValue_input as number;
+    pvScaled = o.projectValue_input as number;
   } else if (hasLegacyBase) {
-    projectValue_input = o.baseCost_m as number;
-    // Legacy was stored in $m, so unit was effectively MILLIONS
-  } else {
-    projectValue_input = 0;
+    pvScaled = o.baseCost_m as number;
   }
 
   if (hasNewContingencyValue) {
-    contingencyValue_input = o.contingencyValue_input as number;
+    cvScaled = o.contingencyValue_input as number;
   } else if (hasLegacyContingency) {
-    contingencyValue_input = o.approvedContingency_m as number;
-  } else {
-    contingencyValue_input = 0;
+    cvScaled = o.approvedContingency_m as number;
   }
 
-  const projectValue_m = computeValueM(projectValue_input, financialUnit);
-  const contingencyValue_m = computeValueM(contingencyValue_input, financialUnit);
+  let projectValue_input: number;
+  let contingencyValue_input: number;
+
+  if (financialInputsVersion === 2) {
+    projectValue_input = pvScaled;
+    contingencyValue_input = cvScaled;
+  } else {
+    projectValue_input = majorCurrencyFromLegacyScaledInput(pvScaled, legacyFinancialUnit);
+    contingencyValue_input = majorCurrencyFromLegacyScaledInput(cvScaled, legacyFinancialUnit);
+  }
+
+  const projectValue_m = projectValue_input / 1e6;
+  const contingencyValue_m = contingencyValue_input / 1e6;
   const approvedBudget_m = projectValue_m + contingencyValue_m;
+
+  let delay_cost_per_day: number | null = null;
+  if (o.delay_cost_per_day !== undefined && o.delay_cost_per_day !== null) {
+    const v = o.delay_cost_per_day;
+    let n: number | null = null;
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+      n = v;
+    } else if (typeof v === "string") {
+      const t = v.trim();
+      if (t !== "") {
+        const parsed = Number(t);
+        if (Number.isFinite(parsed) && parsed >= 0) n = parsed;
+      }
+    }
+    if (n != null) {
+      delay_cost_per_day =
+        financialInputsVersion === 2 ? n : majorCurrencyFromLegacyScaledInput(n, legacyFinancialUnit);
+    }
+  }
 
   return {
     projectName,
@@ -173,12 +305,14 @@ export function parseProjectContext(raw: unknown): ProjectContext | null {
     scheduleContingency_weeks,
     riskAppetite,
     currency,
-    financialUnit,
+    financialUnit: "MILLIONS",
+    financialInputsVersion: 2,
     projectValue_input,
     contingencyValue_input,
     projectValue_m,
     contingencyValue_m,
     approvedBudget_m,
+    delay_cost_per_day,
   };
 }
 

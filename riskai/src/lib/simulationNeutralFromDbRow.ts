@@ -127,6 +127,8 @@ export function neutralSnapshotFromDbRow(row: SimulationSnapshotRow): MonteCarlo
 
   return {
     costSamples,
+    directRiskCostSamples: [],
+    delayDerivedCostSamples: [],
     timeSamples,
     summary: {
       meanCost: meanC,
@@ -143,6 +145,10 @@ export function neutralSnapshotFromDbRow(row: SimulationSnapshotRow): MonteCarlo
       p90Time: p90t,
       minTime: minT,
       maxTime: maxT,
+      costBreakdown:
+        sum && typeof sum === "object" && "costBreakdown" in sum
+          ? ((sum as Record<string, unknown>).costBreakdown as NonNullable<MonteCarloNeutralSnapshot["summary"]["costBreakdown"]>)
+          : undefined,
     },
     summaryReport: pl?.summaryReport
       ? {
@@ -155,6 +161,14 @@ export function neutralSnapshotFromDbRow(row: SimulationSnapshotRow): MonteCarlo
           p90Cost: finiteNum(pl.summaryReport.p90Cost, p90c),
           minCost: finiteNum(pl.summaryReport.minCost, minC),
           maxCost: finiteNum(pl.summaryReport.maxCost, maxC),
+          costBreakdown:
+            pl.summaryReport &&
+            typeof pl.summaryReport === "object" &&
+            "costBreakdown" in pl.summaryReport
+              ? ((pl.summaryReport as Record<string, unknown>).costBreakdown as NonNullable<
+                  MonteCarloNeutralSnapshot["summaryReport"]["costBreakdown"]
+                >)
+              : undefined,
         }
       : {
           iterationCount: iter,
@@ -165,6 +179,7 @@ export function neutralSnapshotFromDbRow(row: SimulationSnapshotRow): MonteCarlo
           p90Cost: p90c,
           minCost: minC,
           maxCost: maxC,
+          costBreakdown: undefined,
         },
     lastRunAt: ts,
     iterationCount: iter,

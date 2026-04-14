@@ -43,6 +43,7 @@ import { DEBUG_FORWARD_PROJECTION } from "@/config/debug";
 import { runForwardProjectionGuards } from "@/lib/forwardProjectionGuards";
 import { dlog, dwarn } from "@/lib/debug";
 import { projectIdFromAppPathname } from "@/lib/routes";
+import { resolveDelayCostPerDayForSimulation } from "@/lib/resolveDelayCostPerDayForSimulation";
 import { binSamplesIntoHistogram, binSamplesIntoTimeHistogram } from "@/lib/simulationDisplayUtils";
 import {
   createSnapshot,
@@ -226,6 +227,8 @@ export function buildSimulationFromDbRow(row: SimulationSnapshotRow): {
 
   const neutral: MonteCarloNeutralSnapshot = {
     costSamples,
+    directRiskCostSamples: [],
+    delayDerivedCostSamples: [],
     timeSamples,
     summary: {
       meanCost: meanC,
@@ -242,6 +245,10 @@ export function buildSimulationFromDbRow(row: SimulationSnapshotRow): {
       p90Time: p90t,
       minTime: minT,
       maxTime: maxT,
+      costBreakdown:
+        sum && typeof sum === "object" && "costBreakdown" in sum
+          ? ((sum as Record<string, unknown>).costBreakdown as NonNullable<MonteCarloNeutralSnapshot["summary"]["costBreakdown"]>)
+          : undefined,
     },
     summaryReport: pl?.summaryReport
       ? {
@@ -254,6 +261,14 @@ export function buildSimulationFromDbRow(row: SimulationSnapshotRow): {
           p90Cost: finiteNum(pl.summaryReport.p90Cost, p90c),
           minCost: finiteNum(pl.summaryReport.minCost, minC),
           maxCost: finiteNum(pl.summaryReport.maxCost, maxC),
+          costBreakdown:
+            pl.summaryReport &&
+            typeof pl.summaryReport === "object" &&
+            "costBreakdown" in pl.summaryReport
+              ? ((pl.summaryReport as Record<string, unknown>).costBreakdown as NonNullable<
+                  MonteCarloNeutralSnapshot["summaryReport"]["costBreakdown"]
+                >)
+              : undefined,
         }
       : {
           iterationCount: iter,
@@ -264,6 +279,7 @@ export function buildSimulationFromDbRow(row: SimulationSnapshotRow): {
           p90Cost: p90c,
           minCost: minC,
           maxCost: maxC,
+          costBreakdown: undefined,
         },
     lastRunAt: ts,
     iterationCount: iter,
@@ -799,137 +815,145 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
             ? state.simulation.seed
             : Math.random() * 0xffffffff;
 
-        const runStartMs = typeof performance !== "undefined" ? performance.now() : Date.now();
-
         const neutralRisks = state.risks.map((r) =>
           applyBaselineToRiskInputs(r, "neutral")
         );
-        const mcResult = runMonteCarloSimulation({
-          risks: neutralRisks,
-          iterations: iterCount,
-          seed,
-        });
-        const snapshotFields = buildSimulationSnapshotFromResult(
-          mcResult,
-          neutralRisks,
-          iterCount
-        );
-        const neutralSnapshot: SimulationSnapshot = {
-          ...snapshotFields,
-          id: "", // Pending; replaced by riskai_simulation_snapshots.id after successful persist
-          timestampIso: new Date().toISOString(),
-        };
-        const summaryReport = buildSimulationReport(mcResult, iterCount);
-        const neutral: MonteCarloNeutralSnapshot = {
-          costSamples: mcResult.costSamples,
-          timeSamples: mcResult.timeSamples,
-          summary: mcResult.summary,
-          summaryReport,
-          lastRunAt: Date.now(),
-          iterationCount: iterCount,
-        };
 
-        const runDurationMs =
-          (typeof performance !== "undefined" ? performance.now() : Date.now()) - runStartMs;
-        const runDurationRounded = Math.round(runDurationMs * 100) / 100;
-        const snapshotWithDuration: SimulationSnapshot = {
-          ...neutralSnapshot,
-          runDurationMs: runDurationRounded,
-        };
-
-        const nextHistoryRaw = [snapshotWithDuration, ...state.simulation.history].slice(
-          0,
-          SIMULATION_HISTORY_CAP
-        );
-        const enrichedForPersist = enrichSnapshotWithIntelligenceMetrics(
-          snapshotWithDuration,
-          nextHistoryRaw
-        );
-
-        const inputsUsed = neutralRisks
-          .map((r) => {
-            const inp = getEffectiveRiskInputs(r);
-            if (!inp) return null;
-            return {
-              risk_id: r.id,
-              title: r.title,
-              source_used: inp.sourceUsed,
-              probability: inp.probability,
-              cost_ml: inp.costML,
-              time_ml: inp.timeML,
-            };
-          })
-          .filter((x): x is NonNullable<typeof x> => x != null);
-
-        const distributions = {
-          costHistogram: binSamplesIntoHistogram(mcResult.costSamples, SNAPSHOT_DISTRIBUTION_BINS),
-          timeHistogram: binSamplesIntoTimeHistogram(mcResult.timeSamples, SNAPSHOT_DISTRIBUTION_BINS),
-          binCount: SNAPSHOT_DISTRIBUTION_BINS,
-        };
-
-        const payload: SimulationSnapshotPayload = {
-          summary: { ...mcResult.summary },
-          summaryReport: { ...summaryReport },
-          risks: enrichedForPersist.risks,
-          distributions,
-          seed,
-          inputs_used: inputsUsed,
-        };
-
-        const s = mcResult.summary;
-        let snapshotProjectId: string | undefined =
+        let snapshotProjectIdForDelay: string | undefined =
           typeof projectIdFromCaller === "string" && projectIdFromCaller.trim().length > 0
             ? projectIdFromCaller.trim()
             : undefined;
-        if (!snapshotProjectId && typeof window !== "undefined") {
-          snapshotProjectId = projectIdFromAppPathname(window.location.pathname) ?? undefined;
+        if (!snapshotProjectIdForDelay && typeof window !== "undefined") {
+          snapshotProjectIdForDelay = projectIdFromAppPathname(window.location.pathname) ?? undefined;
         }
-        if (!snapshotProjectId && typeof window !== "undefined") {
+        if (!snapshotProjectIdForDelay && typeof window !== "undefined") {
           try {
             const raw = window.localStorage.getItem(ACTIVE_PROJECT_KEY);
             const trimmed = raw?.trim();
-            snapshotProjectId =
+            snapshotProjectIdForDelay =
               trimmed && trimmed !== "undefined" ? trimmed : undefined;
           } catch {
             // localStorage unavailable (e.g. private browsing)
           }
         }
-        if (!snapshotProjectId) {
-          const message = "projectId is required for snapshot access";
-          console.error("[snapshots] runSimulation blocked:", message);
-          return Promise.resolve({
-            ran: false as const,
-            blockReason: "missing_project" as const,
-            message,
-          });
-        }
-        const snapshotPromise = createSnapshot(
-          {
+
+        return resolveDelayCostPerDayForSimulation(snapshotProjectIdForDelay).then(
+          async (delayCostPerDay): Promise<RunSimulationResult> => {
+          const runStartMs = typeof performance !== "undefined" ? performance.now() : Date.now();
+
+          const mcResult = runMonteCarloSimulation({
+            risks: neutralRisks,
             iterations: iterCount,
-            cost_p20: s.p20Cost,
-            cost_p50: s.p50Cost,
-            cost_p80: s.p80Cost,
-            cost_p90: s.p90Cost,
-            cost_mean: s.meanCost,
-            cost_min: s.minCost,
-            cost_max: s.maxCost,
-            time_p20: s.p20Time,
-            time_p50: s.p50Time,
-            time_p80: s.p80Time,
-            time_p90: s.p90Time,
-            time_mean: s.meanTime,
-            time_min: s.minTime,
-            time_max: s.maxTime,
-            risk_count: enrichedForPersist.risks.length,
-            engine_version: SIMULATION_ENGINE_VERSION,
-            run_duration_ms: runDurationRounded,
-            payload,
-          },
-          snapshotProjectId
-        );
-        const previous = state.simulation.current;
-        return snapshotPromise
-          .then((row) => {
+            seed,
+            delayCostPerDay,
+          });
+          const snapshotFields = buildSimulationSnapshotFromResult(
+            mcResult,
+            neutralRisks,
+            iterCount
+          );
+          const neutralSnapshot: SimulationSnapshot = {
+            ...snapshotFields,
+            id: "", // Pending; replaced by riskai_simulation_snapshots.id after successful persist
+            timestampIso: new Date().toISOString(),
+          };
+          const summaryReport = buildSimulationReport(mcResult, iterCount);
+          const neutral: MonteCarloNeutralSnapshot = {
+            costSamples: mcResult.costSamples,
+            directRiskCostSamples: mcResult.directRiskCostSamples,
+            delayDerivedCostSamples: mcResult.delayDerivedCostSamples,
+            timeSamples: mcResult.timeSamples,
+            summary: mcResult.summary,
+            summaryReport,
+            lastRunAt: Date.now(),
+            iterationCount: iterCount,
+          };
+
+          const runDurationMs =
+            (typeof performance !== "undefined" ? performance.now() : Date.now()) - runStartMs;
+          const runDurationRounded = Math.round(runDurationMs * 100) / 100;
+          const snapshotWithDuration: SimulationSnapshot = {
+            ...neutralSnapshot,
+            runDurationMs: runDurationRounded,
+          };
+
+          const nextHistoryRaw = [snapshotWithDuration, ...state.simulation.history].slice(
+            0,
+            SIMULATION_HISTORY_CAP
+          );
+          const enrichedForPersist = enrichSnapshotWithIntelligenceMetrics(
+            snapshotWithDuration,
+            nextHistoryRaw
+          );
+
+          const inputsUsed = neutralRisks
+            .map((r) => {
+              const inp = getEffectiveRiskInputs(r);
+              if (!inp) return null;
+              return {
+                risk_id: r.id,
+                title: r.title,
+                source_used: inp.sourceUsed,
+                probability: inp.probability,
+                cost_ml: inp.costML,
+                time_ml: inp.timeML,
+              };
+            })
+            .filter((x): x is NonNullable<typeof x> => x != null);
+
+          const distributions = {
+            costHistogram: binSamplesIntoHistogram(mcResult.costSamples, SNAPSHOT_DISTRIBUTION_BINS),
+            timeHistogram: binSamplesIntoTimeHistogram(mcResult.timeSamples, SNAPSHOT_DISTRIBUTION_BINS),
+            binCount: SNAPSHOT_DISTRIBUTION_BINS,
+          };
+
+          const payload: SimulationSnapshotPayload = {
+            summary: { ...mcResult.summary },
+            summaryReport: { ...summaryReport },
+            risks: enrichedForPersist.risks,
+            distributions,
+            seed,
+            inputs_used: inputsUsed,
+          };
+
+          const s = mcResult.summary;
+          const snapshotProjectId = snapshotProjectIdForDelay;
+          if (!snapshotProjectId) {
+            const message = "projectId is required for snapshot access";
+            console.error("[snapshots] runSimulation blocked:", message);
+            return {
+              ran: false as const,
+              blockReason: "missing_project" as const,
+              message,
+            };
+          }
+          const snapshotPromise = createSnapshot(
+            {
+              iterations: iterCount,
+              cost_p20: s.p20Cost,
+              cost_p50: s.p50Cost,
+              cost_p80: s.p80Cost,
+              cost_p90: s.p90Cost,
+              cost_mean: s.meanCost,
+              cost_min: s.minCost,
+              cost_max: s.maxCost,
+              time_p20: s.p20Time,
+              time_p50: s.p50Time,
+              time_p80: s.p80Time,
+              time_p90: s.p90Time,
+              time_mean: s.meanTime,
+              time_min: s.minTime,
+              time_max: s.maxTime,
+              risk_count: enrichedForPersist.risks.length,
+              engine_version: SIMULATION_ENGINE_VERSION,
+              run_duration_ms: runDurationRounded,
+              payload,
+            },
+            snapshotProjectId
+          );
+          const previous = state.simulation.current;
+          try {
+            const row = await snapshotPromise;
             if (!row?.id) {
               const message = "Snapshot was not returned from the database.";
               console.error("[snapshots]", message);
@@ -947,8 +971,7 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
               });
             }
             return { ran: true as const, snapshotId: row.id };
-          })
-          .catch((e: unknown) => {
+          } catch (e: unknown) {
             console.error("[snapshots]", e);
             const message =
               e &&
@@ -958,7 +981,9 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
                 ? (e as { message: string }).message
                 : String(e);
             return { ran: false as const, blockReason: "snapshot_persist" as const, message };
-          });
+          }
+        }
+        );
       },
       clearSimulationHistory: () => dispatch({ type: "simulation/clearHistory" }),
       hydrateSimulationFromDbSnapshot,

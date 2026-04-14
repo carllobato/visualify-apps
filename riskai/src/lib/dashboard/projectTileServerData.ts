@@ -531,7 +531,9 @@ export async function loadPortfolioProjectContingencyTable(
 
   const { data: settingsRows } = await supabase
     .from("visualify_project_settings")
-    .select("project_id, contingency_value_input, financial_unit, currency, schedule_contingency_weeks")
+    .select(
+      "project_id, contingency_value_input, financial_unit, currency, schedule_contingency_weeks, financial_inputs_version"
+    )
     .in("project_id", ids);
 
   const byProject = new Map<string, ProjectSettingsContingencyRow & { schedule_contingency_weeks?: unknown }>();

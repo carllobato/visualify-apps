@@ -1,3 +1,4 @@
+import type { MonteCarloNeutralSnapshot } from "@/domain/simulation/simulation.types";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 const SNAPSHOT_PROJECT_ID_REQUIRED = "projectId is required for snapshot access";
@@ -12,8 +13,8 @@ function requireSnapshotProjectId(projectId?: string): string {
 
 /** Full JSON persisted with each snapshot (reporting / audit). */
 export type SimulationSnapshotPayload = {
-  summary: Record<string, number>;
-  summaryReport: Record<string, number | undefined>;
+  summary: MonteCarloNeutralSnapshot["summary"];
+  summaryReport: MonteCarloNeutralSnapshot["summaryReport"];
   risks: unknown[];
   distributions: {
     costHistogram: { cost: number; frequency: number }[];

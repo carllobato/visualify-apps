@@ -542,6 +542,23 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       : "Partial";
   }, [baselineSummaryNeutral, neutralMc, current?.risks?.length]);
 
+  const costBreakdownAtP50 = useMemo(() => {
+    const fromSummary = neutralMc?.summary?.costBreakdown;
+    const fromReport = neutralMc?.summaryReport?.costBreakdown;
+    const directRiskCost = fromSummary?.directRiskCost?.p50 ?? fromReport?.directRiskCost?.p50 ?? null;
+    const delayDerivedCost = fromSummary?.delayDerivedCost?.p50 ?? fromReport?.delayDerivedCost?.p50 ?? null;
+    const totalSimulatedCost =
+      fromSummary?.totalSimulatedCost?.p50 ?? fromReport?.totalSimulatedCost?.p50 ?? neutralMc?.summary?.p50Cost ?? null;
+    return {
+      directRiskCost,
+      delayDerivedCost,
+      totalSimulatedCost,
+      hasBreakdown:
+        (directRiskCost != null && Number.isFinite(directRiskCost)) ||
+        (delayDerivedCost != null && Number.isFinite(delayDerivedCost)),
+    };
+  }, [neutralMc]);
+
   /** Risk Register Snapshot: total/status from full register. "Risks in run" and mix use live register rows excluded from MC the same way as the engine (closed/archived), not persisted snapshot length (which can lag after register edits). */
   const snapshotRiskStats = useMemo(() => {
     const statusCounts = {
@@ -1676,7 +1693,8 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   })}
                 </dl>
                 <p className={DIST_HELPER_TEXT}>
-                  P0 = minimum, P100 = maximum simulated outcome.
+                  P0 = minimum, P100 = maximum simulated outcome. Values are total simulated cost, including
+                  delay-related commercial impact when modeled.
                 </p>
                 <dl className={DIST_STATS_GRID}>
                   <div>
@@ -1720,6 +1738,40 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                     </dd>
                   </div>
                 </dl>
+                {costBreakdownAtP50.hasBreakdown ? (
+                  <div className="mt-4 rounded-lg border border-[var(--ds-color-border-default)] bg-[var(--ds-color-surface-subtle)] p-3">
+                    <div className="mb-1 text-[length:var(--ds-text-sm)] font-medium">P50 simulated cost breakdown</div>
+                    <p className={DIST_HELPER_TEXT}>
+                      Simulation-derived · not in risk register.
+                    </p>
+                    <dl className={DIST_STATS_GRID}>
+                      <div>
+                        <dt className={DIST_DT}>Direct Risk Cost</dt>
+                        <dd className={DIST_DD}>
+                          {costBreakdownAtP50.directRiskCost != null && Number.isFinite(costBreakdownAtP50.directRiskCost)
+                            ? formatCost(costBreakdownAtP50.directRiskCost)
+                            : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={DIST_DT}>Delay-related Commercial Impact</dt>
+                        <dd className={DIST_DD}>
+                          {costBreakdownAtP50.delayDerivedCost != null && Number.isFinite(costBreakdownAtP50.delayDerivedCost)
+                            ? formatCost(costBreakdownAtP50.delayDerivedCost)
+                            : "—"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className={DIST_DT}>Total Simulated Cost</dt>
+                        <dd className={DIST_DD}>
+                          {costBreakdownAtP50.totalSimulatedCost != null && Number.isFinite(costBreakdownAtP50.totalSimulatedCost)
+                            ? formatCost(costBreakdownAtP50.totalSimulatedCost)
+                            : "—"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+                ) : null}
               </CardBody>
             </Card>
           </Section>
