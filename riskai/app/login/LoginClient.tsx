@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { LegalDocumentLink } from "@/components/legal/LegalDocumentLink";
 import { useEffect, useState, type FormEvent } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { DASHBOARD_PATH } from "@/lib/routes";
@@ -153,6 +153,7 @@ function LoginSocialProviders({
 }
 
 export function LoginClient() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? DASHBOARD_PATH;
   const inviteTokenRaw = searchParams.get("invite_token");
@@ -350,7 +351,14 @@ export function LoginClient() {
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3" autoComplete="on">
+        <form
+          key={tab}
+          method="post"
+          action={pathname ?? "/"}
+          onSubmit={handleSubmit}
+          className="space-y-3"
+          autoComplete="on"
+        >
           <div>
             <Label htmlFor="login-email">Email</Label>
             <Input
@@ -378,7 +386,7 @@ export function LoginClient() {
                 required
                 autoComplete={tab === "signin" ? "current-password" : "new-password"}
                 disabled={loading}
-                minLength={6}
+                minLength={tab === "signup" ? 6 : undefined}
               />
               <Button
                 type="button"
