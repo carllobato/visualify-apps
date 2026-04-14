@@ -16,6 +16,16 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Parses `Type: issue|feature|question` from the first line of stored contact messages. */
+function riskAiContactSubjectFromMessage(message: string): string {
+  const firstLine = message.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  const m = /^Type:\s*(issue|feature|question)\s*$/i.exec(firstLine);
+  if (!m) return "RiskAI — Feedback";
+  const raw = m[1].toLowerCase();
+  const label = raw.charAt(0).toUpperCase() + raw.slice(1);
+  return `RiskAI — ${label}`;
+}
+
 type WebhookInsertPayload = {
   type?: string;
   table?: string;
@@ -314,14 +324,23 @@ Deno.serve(async (req) => {
       });
     }
     replyTo = email;
-    subject = "Visualify — Get in touch";
+    subject = riskAiContactSubjectFromMessage(message);
+    const source = record.source ? String(record.source).trim() : "";
     const company = record.company ? String(record.company).trim() : "";
-    text = [`Name: ${name}`, `Email: ${email}`, company ? `Company: ${company}` : null, "", "Message:", message]
+    text = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      source ? `Source: ${source}` : null,
+      company ? `Company: ${company}` : null,
+      "",
+      "Message:",
+      message,
+    ]
       .filter((line) => line !== null)
       .join("\n");
     html = `<p><strong>Name:</strong> ${escapeHtml(name || "—")}</p><p><strong>Email:</strong> ${escapeHtml(email)}</p>${
-      company ? `<p><strong>Company:</strong> ${escapeHtml(company)}</p>` : ""
-    }<p><strong>Message:</strong></p><p style="white-space:pre-wrap">${escapeHtml(message)}</p>`;
+      source ? `<p><strong>Source:</strong> ${escapeHtml(source)}</p>` : ""
+    }${company ? `<p><strong>Company:</strong> ${escapeHtml(company)}</p>` : ""}<p><strong>Message:</strong></p><p style="white-space:pre-wrap">${escapeHtml(message)}</p>`;
   } else if (table === "visualify_invitations") {
     const status = String(record.status ?? "").trim().toLowerCase();
     if (status !== "pending") {

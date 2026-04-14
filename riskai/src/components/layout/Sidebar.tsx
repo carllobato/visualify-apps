@@ -14,6 +14,7 @@ import {
   riskaiPath,
   RISKAI_BASE,
 } from "@/lib/routes";
+import { HelpFeedbackModal } from "./HelpFeedbackModal";
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
 const SIDENAV_KEY = "riskai-side-nav-pinned";
@@ -152,6 +153,26 @@ const CogIcon = () => (
   </svg>
 );
 
+const HelpCircleIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="shrink-0"
+    aria-hidden
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </svg>
+);
+
 type SidebarProps = {
   mobileOpen: boolean;
   onMobileClose: () => void;
@@ -199,6 +220,7 @@ export function Sidebar({
   const [portfolioIdForProject, setPortfolioIdForProject] = useState<string | null>(null);
   const [projectIdFromStorage, setProjectIdFromStorage] = useState<string | null>(null);
   const [showDebugNav, setShowDebugNav] = useState(false);
+  const [helpFeedbackOpen, setHelpFeedbackOpen] = useState(false);
 
   useEffect(() => {
     projectIdFromUrlRef.current = projectIdFromUrl;
@@ -571,6 +593,24 @@ export function Sidebar({
           ) : null}
         </nav>
 
+        <div className="shrink-0 px-[var(--ds-space-2)] pb-1 pt-0">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="ds-sidebar-collapse-btn !h-auto w-full min-w-0 !justify-start !gap-0 rounded-[var(--ds-radius-sm)] px-3 py-1 font-medium"
+            title={visuallyCollapsed ? "Help & Feedback" : undefined}
+            aria-label="Help & Feedback"
+            onClick={() => {
+              setHelpFeedbackOpen(true);
+              onMobileClose();
+            }}
+          >
+            <HelpCircleIcon />
+            <span className={navLabelClass}>Help & Feedback</span>
+          </Button>
+        </div>
+
         <div className="relative flex min-h-12 shrink-0 items-center px-[var(--ds-space-2)] py-[var(--ds-space-2)]">
           <div
             className="pointer-events-none absolute left-[var(--ds-space-2)] right-[var(--ds-space-2)] top-0 h-px bg-[var(--ds-border-subtle)]"
@@ -604,6 +644,8 @@ export function Sidebar({
           </Button>
         </div>
       </aside>
+
+      <HelpFeedbackModal open={helpFeedbackOpen} onClose={() => setHelpFeedbackOpen(false)} />
     </>
   );
 }

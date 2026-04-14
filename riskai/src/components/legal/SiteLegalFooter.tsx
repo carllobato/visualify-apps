@@ -1,4 +1,3 @@
-import { GetHelpFooterLink } from "./GetHelpFooterLink";
 import { LegalDocumentLink } from "./LegalDocumentLink";
 
 const linkClass =
@@ -12,10 +11,6 @@ export function SiteLegalFooter() {
       <div className="ds-site-footer-inner flex min-h-12 items-center border-t border-[var(--ds-border-subtle)]">
         <div className="flex flex-wrap items-center gap-y-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-tertiary)]">
           <nav aria-label="Footer" className="flex flex-wrap items-center gap-y-1">
-            <GetHelpFooterLink />
-            <span className="px-2 text-[var(--ds-text-tertiary)]" aria-hidden>
-              |
-            </span>
             <LegalDocumentLink document="privacy" className={linkClass}>
               Privacy Policy
             </LegalDocumentLink>
