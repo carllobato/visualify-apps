@@ -166,8 +166,6 @@ export function LoginClient() {
   const [tab, setTab] = useState<LoginTabId>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  /** Unlocks after first focus so browsers/password managers can fill controlled inputs (read-only-until-focus pattern). */
-  const [autofillLock, setAutofillLock] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -184,10 +182,6 @@ export function LoginClient() {
       setError(decodeURIComponent(oauthErr));
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    setAutofillLock(true);
-  }, [tab]);
 
   const redirectAfterAuth = () => {
     if (inviteToken) {
@@ -368,8 +362,6 @@ export function LoginClient() {
               placeholder="you@example.com"
               required
               autoComplete={tab === "signin" ? "username" : "email"}
-              readOnly={autofillLock}
-              onFocus={() => setAutofillLock(false)}
               disabled={loading}
             />
           </div>
@@ -385,8 +377,6 @@ export function LoginClient() {
                 className="pr-14"
                 required
                 autoComplete={tab === "signin" ? "current-password" : "new-password"}
-                readOnly={autofillLock}
-                onFocus={() => setAutofillLock(false)}
                 disabled={loading}
                 minLength={6}
               />
