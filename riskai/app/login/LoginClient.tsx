@@ -166,6 +166,8 @@ export function LoginClient() {
   const [tab, setTab] = useState<LoginTabId>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  /** Unlocks after first focus so browsers/password managers can fill controlled inputs (read-only-until-focus pattern). */
+  const [autofillLock, setAutofillLock] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -182,6 +184,10 @@ export function LoginClient() {
       setError(decodeURIComponent(oauthErr));
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    setAutofillLock(true);
+  }, [tab]);
 
   const redirectAfterAuth = () => {
     if (inviteToken) {
@@ -350,17 +356,20 @@ export function LoginClient() {
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3" autoComplete="on">
           <div>
             <Label htmlFor="login-email">Email</Label>
             <Input
               id="login-email"
+              name={tab === "signin" ? "username" : "email"}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              autoComplete="email"
+              autoComplete={tab === "signin" ? "username" : "email"}
+              readOnly={autofillLock}
+              onFocus={() => setAutofillLock(false)}
               disabled={loading}
             />
           </div>
@@ -369,12 +378,15 @@ export function LoginClient() {
             <div className="relative">
               <Input
                 id="login-password"
+                name="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pr-14"
                 required
                 autoComplete={tab === "signin" ? "current-password" : "new-password"}
+                readOnly={autofillLock}
+                onFocus={() => setAutofillLock(false)}
                 disabled={loading}
                 minLength={6}
               />
