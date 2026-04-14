@@ -266,9 +266,33 @@ export function LoginClient() {
     }
   };
 
-  const handleSubmit = tab === "signin" ? handleSignIn : handleSignUp;
-
   const legalLinkClass = "ds-text-link-muted text-[length:var(--ds-text-xs)]";
+
+  const formAction = pathname ?? "/";
+
+  const errorBlock = (
+    <div
+      className={`${tabCollapseGridClass} ${error ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+      aria-hidden={!error}
+    >
+      <div className="min-h-0 overflow-hidden">
+        {error ? (
+          <div className="space-y-1.5 text-center">
+            <Callout status="danger" role="alert" className="text-center text-[length:var(--ds-text-sm)]">
+              {error}
+            </Callout>
+            {tab === "signin" && (
+              <div>
+                <Link href="/forgot-password" className="ds-text-link-muted text-[length:var(--ds-text-xs)]">
+                  Trouble signing in?
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 
   return (
     <div className="w-full">
@@ -281,6 +305,7 @@ export function LoginClient() {
               onClick={() => {
                 if (tab !== "signin") resetFormState();
                 setSignUpAwaitingEmail(false);
+                setShowPassword(false);
                 setTab("signin");
               }}
             >
@@ -292,6 +317,7 @@ export function LoginClient() {
               onClick={() => {
                 if (tab !== "signup") resetFormState();
                 setSignUpAwaitingEmail(false);
+                setShowPassword(false);
                 setTab("signup");
               }}
             >
@@ -350,43 +376,101 @@ export function LoginClient() {
             </Button>
           </div>
         </div>
-      ) : (
+      ) : tab === "signin" ? (
         <form
-          key={tab}
           method="post"
-          action={pathname ?? "/"}
-          onSubmit={handleSubmit}
+          action={formAction}
+          onSubmit={handleSignIn}
           className="space-y-3"
           autoComplete="on"
         >
           <div>
-            <Label htmlFor="login-email">Email</Label>
+            <Label htmlFor="signin-username">Email</Label>
             <Input
-              id="login-email"
-              name={tab === "signin" ? "username" : "email"}
+              id="signin-username"
+              name="username"
               type="email"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              autoComplete={tab === "signin" ? "username" : "email"}
+              autoComplete="username"
+              autoCapitalize="off"
+              autoCorrect="off"
               disabled={loading}
             />
           </div>
           <div>
-            <Label htmlFor="login-password">Password</Label>
+            <Label htmlFor="signin-password">Password</Label>
+            <Input
+              id="signin-password"
+              name="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              disabled={loading}
+            />
+          </div>
+
+          {errorBlock}
+
+          <div className="flex justify-center pt-1">
+            <Button type="submit" variant="primary" disabled={loading} className="max-w-full min-w-0 whitespace-normal text-center">
+              {loading ? "Please wait…" : "Continue"}
+            </Button>
+          </div>
+          <p className="mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
+            Secure login | Your data is protected
+          </p>
+        </form>
+      ) : (
+        <form
+          method="post"
+          action={formAction}
+          onSubmit={handleSignUp}
+          className="space-y-3"
+          autoComplete="on"
+        >
+          <div>
+            <Label htmlFor="signup-email">Email</Label>
+            <Input
+              id="signup-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <Label htmlFor="signup-password">Password</Label>
             <div className="relative">
               <Input
-                id="login-password"
+                id="signup-password"
                 name="password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pr-14"
                 required
-                autoComplete={tab === "signin" ? "current-password" : "new-password"}
+                autoComplete="new-password"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
                 disabled={loading}
-                minLength={tab === "signup" ? 6 : undefined}
+                minLength={6}
               />
               <Button
                 type="button"
@@ -403,84 +487,16 @@ export function LoginClient() {
             </div>
           </div>
 
-          <div
-            className={`${tabCollapseGridClass} ${error ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-            aria-hidden={!error}
-          >
-            <div className="min-h-0 overflow-hidden">
-              {error ? (
-                <div className="space-y-1.5 text-center">
-                  <Callout status="danger" role="alert" className="text-center text-[length:var(--ds-text-sm)]">
-                    {error}
-                  </Callout>
-                  {tab === "signin" && (
-                    <div>
-                      <Link
-                        href="/forgot-password"
-                        className="ds-text-link-muted text-[length:var(--ds-text-xs)]"
-                      >
-                        Trouble signing in?
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          </div>
+          {errorBlock}
 
           <div className="flex justify-center pt-1">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading}
-              className="relative max-w-full min-w-0 whitespace-normal text-center"
-            >
-              {loading ? (
-                <span className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass}`}>
-                  Please wait…
-                </span>
-              ) : (
-                <>
-                  <span
-                    className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
-                      tab === "signin"
-                        ? "relative"
-                        : "pointer-events-none absolute inset-0 opacity-0"
-                    }`}
-                  >
-                    Continue
-                  </span>
-                  <span
-                    className={`flex min-h-[1.25rem] items-center justify-center ${tabCrossfadeClass} ${
-                      tab === "signup"
-                        ? "relative"
-                        : "pointer-events-none absolute inset-0 opacity-0"
-                    }`}
-                  >
-                    Sign up
-                  </span>
-                </>
-              )}
+            <Button type="submit" variant="primary" disabled={loading} className="max-w-full min-w-0 whitespace-normal text-center">
+              {loading ? "Please wait…" : "Sign up"}
             </Button>
           </div>
-          <div className="relative mt-2">
-            <p
-              className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
-                tab === "signin" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-              }`}
-              aria-hidden={tab !== "signin"}
-            >
-              Secure login | Your data is protected
-            </p>
-            <p
-              className={`text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)] ${tabCrossfadeClass} ${
-                tab === "signup" ? "opacity-100" : "pointer-events-none absolute inset-0 opacity-0"
-              }`}
-              aria-hidden={tab !== "signup"}
-            >
-              Secure sign up | Your data is protected
-            </p>
-          </div>
+          <p className="mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
+            Secure sign up | Your data is protected
+          </p>
         </form>
       )}
 
