@@ -30,6 +30,8 @@ import {
   deriveTimeHistogramFromPercentiles,
   distributionToCostCdf,
   distributionToTimeCdf,
+  percentileAtCost,
+  percentileAtTime,
   timeAtPercentile,
   type CostCdfPoint,
   type TimeCdfPoint,
@@ -251,12 +253,88 @@ export function computeNeutralForwardExposure(risks: Risk[]): PortfolioExposure 
 }
 
 export type CostDriverLine = { riskId: string; riskName: string; delta: number };
+
 export type ScheduleDriverLine = {
   riskId: string;
   riskName: string;
   totalDays: number;
   delta: number;
 };
+
+/** Same synthetic id/title as simulation cost-driver ranking (`SimulationPageContent` driversCostRanked). */
+export const SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID = "__delay_commercial_impact__";
+export const SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE = "Delay-related Commercial Impact";
+
+/**
+ * Dollar exposure for driver ranking UI: delay-derived mean or neutral forward total for the risk.
+ * Matches key single-driver exposure semantics on the project overview.
+ */
+export function costDriverExposureUsd(
+  line: CostDriverLine,
+  neutralExposure: PortfolioExposure | null,
+  neutral: MonteCarloNeutralSnapshot | null | undefined
+): number | null {
+  if (line.riskId === SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID) {
+    const m = neutral?.summary?.costBreakdown?.delayDerivedCost?.mean;
+    return m != null && Number.isFinite(m) && m >= 0 ? m : null;
+  }
+  if (!neutralExposure) return null;
+  const t = neutralExposure.topDrivers.find((d) => d.riskId === line.riskId);
+  return t != null && Number.isFinite(t.total) && t.total >= 0 ? t.total : null;
+}
+
+/**
+ * Dollar mean of delay-derived commercial impact from the neutral summary, when material vs total simulated cost
+ * (≥ 0.1% of total), matching simulation’s cost driver table.
+ */
+export function delayDerivedCommercialExposureUsdFromNeutral(
+  neutral: MonteCarloNeutralSnapshot | null | undefined
+): number | null {
+  const cb = neutral?.summary?.costBreakdown;
+  const delayMean = cb?.delayDerivedCost?.mean;
+  const totalMean = cb?.totalSimulatedCost?.mean ?? neutral?.summary?.meanCost ?? 0;
+  if (delayMean == null || !Number.isFinite(delayMean) || delayMean <= 0) return null;
+  if (!Number.isFinite(totalMean) || totalMean <= 0) return null;
+  if (delayMean / totalMean < 0.001) return null;
+  return delayMean;
+}
+
+export function delayDerivedCommercialExposureUsdFromSnapshotSummary(
+  summary: MonteCarloNeutralSnapshot["summary"] | undefined | null
+): number | null {
+  if (!summary) return null;
+  return delayDerivedCommercialExposureUsdFromNeutral({ summary } as MonteCarloNeutralSnapshot);
+}
+
+/**
+ * Merges delay-derived commercial impact with per-risk cost drivers and re-sorts by modeled $ exposure
+ * (same ordering idea as simulation cost drivers).
+ */
+export function rankCostDriverLinesWithDelayCommercial(params: {
+  baseLines: CostDriverLine[];
+  neutralExposure: PortfolioExposure;
+  neutral: MonteCarloNeutralSnapshot | null | undefined;
+}): CostDriverLine[] {
+  const { baseLines, neutralExposure, neutral } = params;
+  const exposureByRiskId = new Map(neutralExposure.topDrivers.map((d) => [d.riskId, d.total]));
+  const tuples: { line: CostDriverLine; exposure: number }[] = baseLines.map((line) => ({
+    line,
+    exposure: exposureByRiskId.get(line.riskId) ?? 0,
+  }));
+  const delayExposure = delayDerivedCommercialExposureUsdFromNeutral(neutral);
+  if (delayExposure != null) {
+    tuples.push({
+      line: {
+        riskId: SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID,
+        riskName: SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE,
+        delta: 0,
+      },
+      exposure: delayExposure,
+    });
+  }
+  tuples.sort((a, b) => b.exposure - a.exposure);
+  return tuples.map((t) => t.line);
+}
 
 /** Cost drivers aligned with Run Data, with monitoring-only planned opportunity deltas. */
 export function buildCostDriverLines(
@@ -354,6 +432,52 @@ export function formatPercentileLabel(p: number | null | undefined): string {
   if (p == null || !Number.isFinite(p)) return "—";
   const rounded = Math.round(Math.min(100, Math.max(0, p)));
   return `P${rounded}`;
+}
+
+/**
+ * Same “Current Funding Confidence” cost P as the simulation cost tile (`percentileAtCost` at held contingency,
+ * else approved budget). Built from the reporting run’s neutral snapshot CDF.
+ */
+export function currentFundingConfidenceLabelFromNeutral(params: {
+  neutral: MonteCarloNeutralSnapshot | null | undefined;
+  contingencyDollars: number | null;
+  /** Same dollars scale as simulation: `approvedBudget_m * 1e6`. */
+  approvedBudgetDollars: number | null;
+}): string | null {
+  const { neutral, contingencyDollars, approvedBudgetDollars } = params;
+  const { costCdf } = cdfsFromNeutralSnapshot(neutral ?? undefined);
+  if (!costCdf?.length) return null;
+  const costValue =
+    contingencyDollars != null && Number.isFinite(contingencyDollars)
+      ? contingencyDollars
+      : approvedBudgetDollars;
+  if (costValue == null || !Number.isFinite(costValue) || costValue <= 0) return null;
+  const p = percentileAtCost(costCdf, costValue);
+  if (p == null) return null;
+  return formatPercentileLabel(Math.round(p));
+}
+
+/**
+ * Same “current schedule P” as the simulation time tile (`percentileAtTime` at schedule contingency, else planned
+ * duration in days). Built from the reporting run’s neutral snapshot time CDF.
+ */
+export function currentScheduleConfidenceLabelFromNeutral(params: {
+  neutral: MonteCarloNeutralSnapshot | null | undefined;
+  scheduleContingencyDays: number | null;
+  /** Same scale as simulation: `(plannedDuration_months * 365) / 12`. */
+  plannedDurationDays: number | null;
+}): string | null {
+  const { neutral, scheduleContingencyDays, plannedDurationDays } = params;
+  const { timeCdf } = cdfsFromNeutralSnapshot(neutral ?? undefined);
+  if (!timeCdf?.length) return null;
+  const timeValue =
+    scheduleContingencyDays != null && Number.isFinite(scheduleContingencyDays) && scheduleContingencyDays > 0
+      ? scheduleContingencyDays
+      : plannedDurationDays;
+  if (timeValue == null || !Number.isFinite(timeValue) || timeValue <= 0) return null;
+  const p = percentileAtTime(timeCdf, timeValue);
+  if (p == null) return null;
+  return formatPercentileLabel(Math.round(p));
 }
 
 export function dollarGapVersusTargetPercentile(

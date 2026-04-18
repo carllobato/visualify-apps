@@ -49,6 +49,12 @@ export const PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE = "Active Projects";
 /** Portfolio overview KPI tile + modal slide title for the health run score (must match page `kpiTiles`). */
 export const PORTFOLIO_HEALTH_KPI_TITLE = "Portfolio Health";
 
+/** Project overview KPI tile + modal — same health-run body as {@link PORTFOLIO_HEALTH_KPI_TITLE}. */
+export const PROJECT_HEALTH_KPI_TITLE = "Project Health";
+
+/** Project overview KPI tile + modal — same reporting-position table as the portfolio “Portfolio Risk Rating” modal. */
+export const PROJECT_RISK_RATING_KPI_TITLE = "Project Risk Rating";
+
 export type DocumentKpiTileItem = {
   title: string;
   primaryValue: string;
@@ -92,8 +98,8 @@ type DocumentKpiModalProps = {
   renderSlideBodyByIndex?: (slideIndex: number) => ReactNode | null;
 };
 
-/** Same shell + density as {@link RiskRegisterTable} (`Card` + DS `Table`). */
-const KPI_MODAL_REGISTER_TABLE_CLASS =
+/** Same shell + density as {@link RiskRegisterTable} (`Card` + DS `Table`). Exported for project/portfolio KPI slide bodies that reuse this modal’s table styling. */
+export const KPI_MODAL_REGISTER_TABLE_CLASS =
   "w-full min-w-[44rem] [&_tbody_td]:py-[10px] [&_tfoot_td]:py-[10px] [&_tfoot_th]:py-[10px] [&_thead_th]:py-1.5 [&_thead_th]:text-[11px] [&_thead_th]:text-[var(--ds-text-muted)]";
 
 /** Active risks by status: project column + four equal numeric columns (see {@link PortfolioActiveRisksKpiModalBody}). */
@@ -799,9 +805,12 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
 function PortfolioNeedsAttentionKpiModalBody({
   health,
   staleCopyMode = "utcMonthSnapshot",
+  scoreEyebrow = "Portfolio health run",
 }: {
   health: PortfolioNeedsAttentionHealthRun;
   staleCopyMode?: NeedsAttentionStaleCopyMode;
+  /** “Portfolio health run” vs “Project health run” for the score-card header. */
+  scoreEyebrow?: string;
 }) {
   const { lines, opportunityDetail, totalPenalty } = buildNeedsAttentionScoreCard(health, {
     staleCopyMode,
@@ -811,7 +820,7 @@ function PortfolioNeedsAttentionKpiModalBody({
   return (
     <Card className="overflow-hidden border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] p-0 shadow-[var(--ds-elevation-tile)]">
       <div className="border-b border-[var(--ds-border-subtle)] px-5 py-5 sm:px-6 sm:py-6">
-        <p className="m-0 text-xs font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">Portfolio health run</p>
+        <p className="m-0 text-xs font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">{scoreEyebrow}</p>
         <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-2">
           <span className="inline-flex items-center gap-2" title={`RAG ${ragWord(rag)}`}>
             <span className="inline-flex shrink-0 items-center" aria-hidden>
@@ -1079,6 +1088,9 @@ export function DocumentKpiModal({
 
   const showPortfolioRagDetail = current?.title === "Portfolio Risk Rating" && projectTilePayloads != null;
 
+  const showProjectRagDetail =
+    current?.title === PROJECT_RISK_RATING_KPI_TITLE && projectTilePayloads != null && projectTilePayloads.length > 0;
+
   const showScheduleExposureDetail =
     current?.title === SCHEDULE_COVERAGE_COMBINED_TILE_TITLE && scheduleCoverageRows != null;
 
@@ -1086,7 +1098,8 @@ export function DocumentKpiModal({
     current?.title === COST_COVERAGE_COMBINED_TILE_TITLE && coverageRatioRows != null;
 
   const showNeedsAttentionDetail =
-    current?.title === PORTFOLIO_HEALTH_KPI_TITLE && needsAttentionHealthRun != null;
+    (current?.title === PORTFOLIO_HEALTH_KPI_TITLE || current?.title === PROJECT_HEALTH_KPI_TITLE) &&
+    needsAttentionHealthRun != null;
 
   const slideBodyOverride = renderSlideBodyByIndex?.(safeIndex) ?? null;
 
@@ -1095,6 +1108,7 @@ export function DocumentKpiModal({
     showProjectsList ||
     showActiveRisksDetail ||
     showPortfolioRagDetail ||
+    showProjectRagDetail ||
     showScheduleExposureDetail ||
     showNeedsAttentionDetail ||
     showCostCoverageCombinedDetail;
@@ -1159,6 +1173,9 @@ export function DocumentKpiModal({
                 <PortfolioNeedsAttentionKpiModalBody
                   health={needsAttentionHealthRun}
                   staleCopyMode={needsAttentionStaleCopyMode}
+                  scoreEyebrow={
+                    current?.title === PROJECT_HEALTH_KPI_TITLE ? "Project health run" : "Portfolio health run"
+                  }
                 />
               </div>
             ) : showCostCoverageCombinedDetail && coverageRatioRows != null ? (
@@ -1172,7 +1189,7 @@ export function DocumentKpiModal({
               <div className="w-full min-w-0">
                 <PortfolioScheduleCoverageCombinedKpiModalBody rows={scheduleCoverageRows} />
               </div>
-            ) : showPortfolioRagDetail && projectTilePayloads != null ? (
+            ) : (showPortfolioRagDetail || showProjectRagDetail) && projectTilePayloads != null ? (
               <div className="w-full min-w-0">
                 <PortfolioRagKpiModalBody
                   projectTilePayloads={projectTilePayloads}
@@ -1182,15 +1199,39 @@ export function DocumentKpiModal({
               </div>
             ) : (
               <div className="max-w-xl mx-auto w-full text-center space-y-3">
-                <p
-                  className={`text-4xl sm:text-5xl font-semibold m-0 tracking-tight tabular-nums ${
-                    current.primaryValueClassName != null && current.primaryValueClassName !== ""
-                      ? current.primaryValueClassName
-                      : "text-[var(--ds-text-primary)]"
-                  }`}
-                >
-                  {current.primaryValue}
-                </p>
+                {current.primaryRagDot != null ? (
+                  <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+                    <span
+                      className="inline-flex shrink-0 items-center"
+                      title={`RAG ${ragWord(current.primaryRagDot)}`}
+                      aria-label={`RAG ${ragWord(current.primaryRagDot)}`}
+                    >
+                      <span
+                        className={`size-[0.6875rem] shrink-0 rounded-full ${ragDotClass(current.primaryRagDot)}`}
+                        aria-hidden
+                      />
+                    </span>
+                    <p
+                      className={`m-0 text-4xl sm:text-5xl font-semibold tracking-tight tabular-nums ${
+                        current.primaryValueClassName != null && current.primaryValueClassName !== ""
+                          ? current.primaryValueClassName
+                          : "text-[var(--ds-text-primary)]"
+                      }`}
+                    >
+                      {current.primaryValue}
+                    </p>
+                  </div>
+                ) : (
+                  <p
+                    className={`text-4xl sm:text-5xl font-semibold m-0 tracking-tight tabular-nums ${
+                      current.primaryValueClassName != null && current.primaryValueClassName !== ""
+                        ? current.primaryValueClassName
+                        : "text-[var(--ds-text-primary)]"
+                    }`}
+                  >
+                    {current.primaryValue}
+                  </p>
+                )}
                 {current.subtext != null && current.subtext !== "" ? (
                   <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)] m-0">{current.subtext}</p>
                 ) : null}

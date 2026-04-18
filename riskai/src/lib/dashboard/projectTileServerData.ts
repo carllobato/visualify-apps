@@ -32,7 +32,12 @@ import {
   type ProjectSettingsContingencyRow,
 } from "@/lib/portfolioContingencyAggregate";
 import type { ProjectCurrency } from "@/lib/projectContext";
-import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
+import type { SimulationSnapshotPayload, SimulationSnapshotRow } from "@/lib/db/snapshots";
+import {
+  delayDerivedCommercialExposureUsdFromSnapshotSummary,
+  SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID,
+  SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE,
+} from "@/lib/projectOverviewReporting";
 import {
   computePortfolioReportingFooter,
   formatReportingLineStatus,
@@ -336,6 +341,78 @@ export async function getProjectTilePayloads(
   const portfolioReportingFooter = computePortfolioReportingFooter(fundingRows);
 
   return { projectTilePayloads, portfolioReportingFooter };
+}
+
+/**
+ * Builds a single {@link ProjectTilePayload} for the reporting KPI modal — same fields as rows from
+ * {@link getProjectTilePayloads}. Use from client overview when the latest locked snapshot + settings row are available.
+ */
+export function buildProjectTilePayloadForReportingModal(params: {
+  project: { id: string; name: string; created_at?: string | null };
+  lockedRow: SimulationSnapshotRow;
+  settingsRow: Record<string, unknown> | null | undefined;
+  riskCount: number;
+  highSeverityCount: number;
+  nowMs?: number;
+}): ProjectTilePayload {
+  const { project, lockedRow, settingsRow, riskCount, highSeverityCount } = params;
+  const nowMs = params.nowMs ?? Date.now();
+
+  const lastLockedAt = lockedRow != null ? (lockedRow.locked_at ?? lockedRow.created_at ?? null) : null;
+
+  const reporting = tryReportingBreakdownFromLockedRowAndSettings(lockedRow, settingsRow);
+  const reportingDrivers = tryReportingPositionDriverScalars(lockedRow, settingsRow);
+  const baseRag: RagStatus =
+    reporting?.rag ??
+    computeRag({
+      riskCount,
+      highSeverityCount,
+      lastLockedReportingAt: lastLockedAt,
+    });
+  const ragStatus = applyStaleReportingLockRag(baseRag, lockedRow, nowMs);
+
+  const base: ProjectTilePayload = {
+    id: project.id,
+    name: project.name,
+    created_at: project.created_at ?? null,
+    ragStatus,
+    ...(lastLockedAt != null && lastLockedAt !== "" ? { reportingLockedAt: lastLockedAt } : {}),
+  };
+
+  if (reporting) {
+    return {
+      ...base,
+      reportingCostStatus: formatReportingLineStatus(reporting.costLine),
+      reportingTimeStatus: formatReportingLineStatus(reporting.timeLine),
+      reportingOverallStatus: reporting.overallStatus,
+      ...(reportingDrivers != null
+        ? {
+            reportingDriverTargetP: reportingDrivers.targetPNumeric,
+            reportingDriverCurrency: reportingDrivers.currency,
+            ...(reportingDrivers.costAtTargetPDollars != null &&
+            Number.isFinite(reportingDrivers.costAtTargetPDollars)
+              ? { reportingCostAtTargetPDollars: reportingDrivers.costAtTargetPDollars }
+              : {}),
+            ...(reportingDrivers.timeAtTargetPDays != null && Number.isFinite(reportingDrivers.timeAtTargetPDays)
+              ? { reportingTimeAtTargetPDays: reportingDrivers.timeAtTargetPDays }
+              : {}),
+            ...(reportingDrivers.costShortfallDollars != null
+              ? { reportingCostShortfallAbs: reportingDrivers.costShortfallDollars }
+              : {}),
+            ...(reportingDrivers.costSurplusDollars != null && reportingDrivers.costSurplusDollars > 0
+              ? { reportingCostSurplusAbs: reportingDrivers.costSurplusDollars }
+              : {}),
+            ...(reportingDrivers.timeShortfallDays != null
+              ? { reportingTimeShortfallDays: reportingDrivers.timeShortfallDays }
+              : {}),
+            ...(reportingDrivers.timeSurplusDays != null && reportingDrivers.timeSurplusDays > 0
+              ? { reportingTimeSurplusDays: reportingDrivers.timeSurplusDays }
+              : {}),
+          }
+        : {}),
+    };
+  }
+  return base;
 }
 
 /** Red → Amber → Green for dashboard ordering. */
@@ -756,7 +833,8 @@ export type LoadPortfolioTopRiskConcentrationOptions = {
   restrictProjectIds?: string[] | null;
 };
 
-function reportingLockStaleForPortfolio(lockAt: string | null, nowMs: number): boolean {
+/** True when the reporting lock timestamp is missing or older than {@link REPORTING_LOCK_STALE_MS}. */
+export function reportingLockStaleForPortfolio(lockAt: string | null, nowMs: number): boolean {
   if (lockAt == null || lockAt === "") return true;
   const t = new Date(lockAt).getTime();
   if (!Number.isFinite(t)) return true;
@@ -869,9 +947,15 @@ export async function loadPortfolioTopRiskConcentrationRows(
   const [
     { data: riskRowsRaw, error: rErr },
     { data: snapshotRowsRaw, error: sErr },
+    { data: lockedReportingPayloadRowsRaw },
   ] = await Promise.all([
     supabase.from("riskai_risks").select(RISK_DB_SELECT_COLUMNS).in("project_id", effectiveProjectIds),
     snapshotQuery,
+    supabase
+      .from("riskai_simulation_snapshots")
+      .select("project_id, payload, locked_at, created_at")
+      .in("project_id", effectiveProjectIds)
+      .eq("locked_for_reporting", true),
   ]);
 
   if (rErr) return empty;
@@ -880,6 +964,28 @@ export async function loadPortfolioTopRiskConcentrationRows(
   const projectIdByRiskId = new Map<string, string>();
   for (const row of riskRows) {
     projectIdByRiskId.set(row.id, row.project_id);
+  }
+
+  /** Latest locked-for-reporting snapshot payload per project (for delay-derived commercial impact). */
+  const latestLockedReportingPayloadByProject = new Map<string, SimulationSnapshotPayload>();
+  const lockedPayloadRows = (lockedReportingPayloadRowsRaw ?? []) as {
+    project_id?: string;
+    payload?: unknown;
+    locked_at?: string | null;
+    created_at?: string | null;
+  }[];
+  const lockedPayloadSorted = [...lockedPayloadRows].sort((a, b) => {
+    const ta = new Date(a.locked_at ?? a.created_at ?? 0).getTime();
+    const tb = new Date(b.locked_at ?? b.created_at ?? 0).getTime();
+    return tb - ta;
+  });
+  for (const row of lockedPayloadSorted) {
+    const pid = typeof row.project_id === "string" ? row.project_id : "";
+    if (!pid || latestLockedReportingPayloadByProject.has(pid)) continue;
+    const p = row.payload;
+    if (p != null && typeof p === "object") {
+      latestLockedReportingPayloadByProject.set(pid, p as SimulationSnapshotPayload);
+    }
   }
 
   const latestSimulationAtByProject = new Map<string, string | null>();
@@ -952,31 +1058,41 @@ export async function loadPortfolioTopRiskConcentrationRows(
       risk.preMitigationCostML > 0
   );
 
+  type CostTopCandidate = {
+    exposureAbs: number;
+    projectId: string;
+    projectName: string;
+    riskId: string;
+    riskTitle: string;
+    ownerDisplay: string;
+    statusDisplay: string;
+    rating: string;
+    currency: ProjectCurrency;
+  };
+
+  const costTopCandidates: CostTopCandidate[] = [];
   const costRows: PortfolioTopRiskRow[] = [];
   const costOpportunityRows: PortfolioTopRiskRow[] = [];
+
   if (costRisks.length > 0) {
     const exposure = computePortfolioExposure(costRisks, "neutral", PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS, {
-      topN: 5,
+      topN: 50,
       includeDebug: true,
     });
     for (const d of exposure.topDrivers) {
       const risk = costRisks.find((r) => r.id === d.riskId);
       if (!risk) continue;
       const projectId = projectIdByRiskId.get(d.riskId) ?? "";
-      const projectName = projectNameById.get(projectId) ?? projectId;
-      const currency = currencyByProject.get(projectId) ?? "AUD";
-      costRows.push({
+      costTopCandidates.push({
+        exposureAbs: d.total,
         projectId,
-        projectName,
+        projectName: projectNameById.get(projectId) ?? projectId,
         riskId: d.riskId,
         riskTitle: risk.title,
         ownerDisplay: risk.owner?.trim() ? risk.owner.trim() : "Unassigned",
         statusDisplay: portfolioTopRiskStatusDisplay(risk),
         rating: getCurrentRiskRatingLetter(risk),
-        exposureDisplay: formatCurrencyInReportingUnit(d.total, currency, reportingUnit, {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }),
+        currency: currencyByProject.get(projectId) ?? "AUD",
       });
     }
 
@@ -1010,6 +1126,40 @@ export async function loadPortfolioTopRiskConcentrationRows(
         }),
       });
     }
+  }
+
+  for (const pid of effectiveProjectIds) {
+    const payload = latestLockedReportingPayloadByProject.get(pid);
+    const delayUsd = delayDerivedCommercialExposureUsdFromSnapshotSummary(payload?.summary);
+    if (delayUsd == null) continue;
+    costTopCandidates.push({
+      exposureAbs: delayUsd,
+      projectId: pid,
+      projectName: projectNameById.get(pid) ?? pid,
+      riskId: `${SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID}:${pid}`,
+      riskTitle: SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE,
+      ownerDisplay: "—",
+      statusDisplay: "Reporting",
+      rating: "—",
+      currency: currencyByProject.get(pid) ?? "AUD",
+    });
+  }
+
+  costTopCandidates.sort((a, b) => b.exposureAbs - a.exposureAbs);
+  for (const c of costTopCandidates.slice(0, 5)) {
+    costRows.push({
+      projectId: c.projectId,
+      projectName: c.projectName,
+      riskId: c.riskId,
+      riskTitle: c.riskTitle,
+      ownerDisplay: c.ownerDisplay,
+      statusDisplay: c.statusDisplay,
+      rating: c.rating,
+      exposureDisplay: formatCurrencyInReportingUnit(c.exposureAbs, c.currency, reportingUnit, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    });
   }
 
   const scheduleCandidates = allMapped.filter(
