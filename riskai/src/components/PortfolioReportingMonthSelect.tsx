@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useSyncUrlSearchParams } from "@/hooks/useSyncUrlSearchParams";
 import { Button } from "@visualify/design-system";
 import { fetchDistinctLockedReportingMonthKeys } from "@/lib/db/lockedReportingMonths";
 import { formatReportMonthLabel } from "@/lib/db/snapshots";
@@ -40,15 +41,18 @@ export type PortfolioReportingMonthSelectProps = {
   projectId?: string;
   /** Distinct months from locked reporting runs across projects in this portfolio */
   portfolioId?: string;
+  /** Request query string (with `?`); from `headers().get("x-url-search")` for SSR alignment */
+  initialUrlSearch?: string;
 };
 
 export function PortfolioReportingMonthSelect({
   projectId,
   portfolioId,
+  initialUrlSearch = "",
 }: PortfolioReportingMonthSelectProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useSyncUrlSearchParams(initialUrlSearch);
   const [monthKeys, setMonthKeys] = useState<string[] | null>(null);
   const [legacyLockedWithoutReportMonth, setLegacyLockedWithoutReportMonth] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

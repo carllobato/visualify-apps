@@ -189,6 +189,28 @@ function rawNumericFieldsFromContext(stored: ProjectContext): RawNumericFields {
   };
 }
 
+/** Stable snapshot for dirty detection (matches persisted fields + raw numeric strings). */
+function projectSettingsPersistFingerprint(form: ProjectContext, raw: RawNumericFields): string {
+  return JSON.stringify({
+    projectName: form.projectName,
+    location: form.location ?? "",
+    plannedDuration_months: form.plannedDuration_months,
+    targetCompletionDate: form.targetCompletionDate,
+    scheduleContingency_weeks: form.scheduleContingency_weeks,
+    riskAppetite: form.riskAppetite,
+    currency: form.currency,
+    projectValue_input: form.projectValue_input,
+    contingencyValue_input: form.contingencyValue_input,
+    delay_cost_per_day: form.delay_cost_per_day,
+    raw: {
+      contingencyValue_input: raw.contingencyValue_input ?? "",
+      plannedDuration_months: raw.plannedDuration_months ?? "",
+      scheduleContingency_weeks: raw.scheduleContingency_weeks ?? "",
+      delay_cost_per_day: raw.delay_cost_per_day ?? "",
+    },
+  });
+}
+
 export type ProjectInformationPageProps = { projectId?: string | null };
 type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive";
 
@@ -205,6 +227,8 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<ProjectContext>(defaultContext());
   const [rawNumericFields, setRawNumericFields] = useState<RawNumericFields>({});
+  /** Last saved / loaded fingerprint; null while (re)loading settings for a project. */
+  const [savedBaselineFingerprint, setSavedBaselineFingerprint] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
@@ -247,13 +271,20 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   useEffect(() => {
     let cancelled = false;
     const trimmedProjectId = projectId?.trim();
+    setMounted(false);
+    setSavedBaselineFingerprint(null);
 
     if (!trimmedProjectId) {
       const stored = loadProjectContext(projectId ?? undefined);
+      let nextForm = defaultContext();
+      let nextRaw: RawNumericFields = rawNumericFieldsFromContext(nextForm);
       if (stored) {
-        setForm(stored);
-        setRawNumericFields(rawNumericFieldsFromContext(stored));
+        nextForm = stored;
+        nextRaw = rawNumericFieldsFromContext(stored);
       }
+      setForm(nextForm);
+      setRawNumericFields(nextRaw);
+      setSavedBaselineFingerprint(projectSettingsPersistFingerprint(nextForm, nextRaw));
       setMounted(true);
       return;
     }
@@ -269,13 +300,15 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       if (cancelled) return;
 
       let skipApiProjectName = false;
+      let nextForm: ProjectContext = defaultContext();
+      let nextRaw: RawNumericFields = rawNumericFieldsFromContext(nextForm);
       let hydrated = false;
 
       if (!error && row && typeof row === "object") {
         const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
         if (parsed) {
-          setForm(parsed);
-          setRawNumericFields(rawNumericFieldsFromContext(parsed));
+          nextForm = parsed;
+          nextRaw = rawNumericFieldsFromContext(parsed);
           hydrated = true;
           if (parsed.projectName.trim().length > 0) {
             skipApiProjectName = true;
@@ -286,8 +319,8 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       if (!hydrated) {
         const stored = loadProjectContext(trimmedProjectId);
         if (stored) {
-          setForm(stored);
-          setRawNumericFields(rawNumericFieldsFromContext(stored));
+          nextForm = stored;
+          nextRaw = rawNumericFieldsFromContext(stored);
         }
       }
 
@@ -299,14 +332,18 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           const data: { name?: string } | null = res.ok ? await res.json() : null;
           if (cancelled) return;
           if (data && typeof data.name === "string") {
-            setForm((prev) => ({ ...prev, projectName: data.name as string }));
+            nextForm = { ...nextForm, projectName: data.name };
           }
         } catch {
           // ignore
         }
       }
 
-      if (!cancelled) setMounted(true);
+      if (cancelled) return;
+      setForm(nextForm);
+      setRawNumericFields(nextRaw);
+      setSavedBaselineFingerprint(projectSettingsPersistFingerprint(nextForm, nextRaw));
+      setMounted(true);
     })();
 
     return () => {
@@ -401,12 +438,14 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     }
 
     setForm(toSave);
-    setRawNumericFields({
+    const nextRaw: RawNumericFields = {
       contingencyValue_input: toSave.contingencyValue_input === 0 ? "" : String(toSave.contingencyValue_input),
       plannedDuration_months: toSave.plannedDuration_months === 0 ? "" : String(toSave.plannedDuration_months),
       scheduleContingency_weeks: toSave.scheduleContingency_weeks === 0 ? "" : String(toSave.scheduleContingency_weeks),
       delay_cost_per_day: toSave.delay_cost_per_day == null ? "" : String(toSave.delay_cost_per_day),
-    });
+    };
+    setRawNumericFields(nextRaw);
+    setSavedBaselineFingerprint(projectSettingsPersistFingerprint(toSave, nextRaw));
     setSaved(true);
     if (savedHideTimeoutRef.current) clearTimeout(savedHideTimeoutRef.current);
     savedHideTimeoutRef.current = setTimeout(() => {
@@ -434,14 +473,28 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     if (settingsReadOnly) return;
     setShowClearConfirm(false);
     clearProjectContext(projectId ?? undefined);
-    setForm(defaultContext());
-    setRawNumericFields({});
+    const cleared = defaultContext();
+    const clearedRaw: RawNumericFields = {};
+    setForm(cleared);
+    setRawNumericFields(clearedRaw);
+    setSavedBaselineFingerprint(projectSettingsPersistFingerprint(cleared, clearedRaw));
     setSaved(false);
     setSaveError(null);
     setValidation({});
   }, [projectId, settingsReadOnly]);
 
   const contingencyPct = getContingencyPercent(form);
+
+  const currentSettingsFingerprint = useMemo(
+    () => projectSettingsPersistFingerprint(form, rawNumericFields),
+    [form, rawNumericFields]
+  );
+
+  const isDirty = useMemo(() => {
+    if (savedBaselineFingerprint === null) return false;
+    return currentSettingsFingerprint !== savedBaselineFingerprint;
+  }, [currentSettingsFingerprint, savedBaselineFingerprint]);
+
   const headerActions = useMemo(
     () => (
       <div className="flex items-center gap-2">
@@ -450,12 +503,20 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             Clear
           </Button>
         )}
-        <Button type="button" variant="primary" onClick={onSave} disabled={settingsReadOnly}>
+        <Button
+          type="button"
+          variant="primary"
+          onClick={onSave}
+          disabled={settingsReadOnly || !mounted || !isDirty}
+          title={
+            !settingsReadOnly && mounted && !isDirty ? "No changes to save" : undefined
+          }
+        >
           Save
         </Button>
       </div>
     ),
-    [onSave, settingsReadOnly]
+    [isDirty, mounted, onSave, settingsReadOnly]
   );
 
   useEffect(() => {

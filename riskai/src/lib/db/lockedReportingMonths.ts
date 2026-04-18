@@ -56,11 +56,21 @@ export type DistinctLockedReportingMonthsResult = {
   legacyLockedWithoutReportMonth: boolean;
 };
 
-/**
- * Distinct `YYYY-MM` keys from `report_month` on snapshots locked for reporting.
- * Newest months first (lexicographic sort works for ISO year-month).
- */
-export async function fetchDistinctLockedReportingMonthKeys(scope: {
+function distinctLockedReportingMonthsCacheKey(scope: {
+  projectId?: string;
+  portfolioId?: string;
+}): string | null {
+  const pid = scope.projectId?.trim();
+  const pfid = scope.portfolioId?.trim();
+  if (pid) return `p:${pid}`;
+  if (pfid) return `pf:${pfid}`;
+  return null;
+}
+
+const distinctLockedReportingMonthsResultCache = new Map<string, DistinctLockedReportingMonthsResult>();
+const distinctLockedReportingMonthsInflight = new Map<string, Promise<DistinctLockedReportingMonthsResult>>();
+
+async function fetchDistinctLockedReportingMonthKeysUncached(scope: {
   projectId?: string;
   portfolioId?: string;
 }): Promise<DistinctLockedReportingMonthsResult> {
@@ -101,4 +111,33 @@ export async function fetchDistinctLockedReportingMonthKeys(scope: {
     monthYearKeys,
     legacyLockedWithoutReportMonth: monthYearKeys.length === 0,
   };
+}
+
+/**
+ * Distinct `YYYY-MM` keys from `report_month` on snapshots locked for reporting.
+ * Newest months first (lexicographic sort works for ISO year-month).
+ * Results are cached per project/portfolio for the session so header UI does not refetch on every route change.
+ */
+export async function fetchDistinctLockedReportingMonthKeys(scope: {
+  projectId?: string;
+  portfolioId?: string;
+}): Promise<DistinctLockedReportingMonthsResult> {
+  const key = distinctLockedReportingMonthsCacheKey(scope);
+  if (key === null) {
+    return { monthYearKeys: [], legacyLockedWithoutReportMonth: false };
+  }
+  const cached = distinctLockedReportingMonthsResultCache.get(key);
+  if (cached) return cached;
+  const inflight = distinctLockedReportingMonthsInflight.get(key);
+  if (inflight) return inflight;
+  const p = fetchDistinctLockedReportingMonthKeysUncached(scope)
+    .then((result) => {
+      distinctLockedReportingMonthsResultCache.set(key, result);
+      return result;
+    })
+    .finally(() => {
+      distinctLockedReportingMonthsInflight.delete(key);
+    });
+  distinctLockedReportingMonthsInflight.set(key, p);
+  return p;
 }

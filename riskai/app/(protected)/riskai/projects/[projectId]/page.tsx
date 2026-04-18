@@ -1,5 +1,6 @@
 import { fetchLatestReportingMonthYearKeyForScope } from "@/lib/db/fetchLatestReportingMonthYearKeyForScope";
 import { supabaseServerClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import {
   PORTFOLIO_REPORTING_MONTH_QUERY_PARAM,
   isValidReportingMonthYearKey,
@@ -58,11 +59,14 @@ export default async function ProjectDashboardPage({
     console.error("[ProjectOverview] locked reporting snapshot query failed", lockedReportingError);
   }
 
+  const initialUrlSearch = (await headers()).get("x-url-search") ?? "";
+
   return (
     <ProjectOverviewContent
       initialData={{
         projectId,
         reportingSnapshot: (lockedReportingRow as SimulationSnapshotRow | null) ?? null,
+        initialUrlSearch,
       }}
     />
   );

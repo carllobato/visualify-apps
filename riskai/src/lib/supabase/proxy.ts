@@ -66,6 +66,8 @@ export async function updateSession(request: NextRequest) {
 
   const headers = new Headers(request.headers);
   headers.set("x-pathname", pathname);
+  /** Query string including `?`, for client components that avoid `useSearchParams` Suspense on soft navigation. */
+  headers.set("x-url-search", search);
   const requestWithPath = new Request(request.url, {
     method: request.method,
     headers,

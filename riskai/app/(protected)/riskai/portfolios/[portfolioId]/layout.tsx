@@ -2,6 +2,7 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { PortfolioPageHeader } from "@/components/PortfolioPageHeader";
 import { PageHeaderExtrasProvider } from "@/contexts/PageHeaderExtrasContext";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { riskaiPath } from "@/lib/routes";
 
 export default async function PortfolioLayout({
@@ -24,9 +25,15 @@ export default async function PortfolioLayout({
     redirect(riskaiPath("/not-found"));
   }
 
+  const initialUrlSearch = (await headers()).get("x-url-search") ?? "";
+
   return (
     <PageHeaderExtrasProvider>
-      <PortfolioPageHeader portfolioId={portfolioId} portfolioName={portfolio.name} />
+      <PortfolioPageHeader
+        portfolioId={portfolioId}
+        portfolioName={portfolio.name}
+        initialUrlSearch={initialUrlSearch}
+      />
       {children}
     </PageHeaderExtrasProvider>
   );

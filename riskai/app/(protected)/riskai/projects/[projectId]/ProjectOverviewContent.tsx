@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Suspense, useCallback, useMemo, useEffect, useState } from "react";
+import { useCallback, useMemo, useEffect, useState } from "react";
 import {
   Button,
   Card,
@@ -429,6 +429,8 @@ export type ProjectOverviewInitialData = {
   projectId: string;
   /** Latest row with `locked_for_reporting`; null if none. */
   reportingSnapshot: SimulationSnapshotRow | null;
+  /** From `x-url-search` (middleware) for reporting month control without Suspense. */
+  initialUrlSearch: string;
 };
 
 type ProjectOverviewContentProps = {
@@ -758,9 +760,10 @@ function ProjectOverviewKpiDrilldownTable({
 }
 
 export function ProjectOverviewContent({ initialData }: ProjectOverviewContentProps) {
-  const { projectId, reportingSnapshot } = initialData ?? {
+  const { projectId, reportingSnapshot, initialUrlSearch } = initialData ?? {
     projectId: "",
     reportingSnapshot: null,
+    initialUrlSearch: "",
   };
 
   const { setRisks } = useRiskRegister();
@@ -1572,18 +1575,9 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const overviewHeaderEnd = useMemo(() => {
     if (!reportingSnapshot) return null;
     return (
-      <Suspense
-        fallback={
-          <div
-            className="h-9 min-w-[10.5rem] max-w-[16rem] animate-pulse rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
-            aria-hidden
-          />
-        }
-      >
-        <PortfolioReportingMonthSelect projectId={projectId} />
-      </Suspense>
+      <PortfolioReportingMonthSelect projectId={projectId} initialUrlSearch={initialUrlSearch} />
     );
-  }, [reportingSnapshot]);
+  }, [initialUrlSearch, projectId, reportingSnapshot]);
 
   useEffect(() => {
     setExtras({

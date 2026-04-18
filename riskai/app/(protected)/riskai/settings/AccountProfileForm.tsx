@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ACCOUNT_PROFILE_UPDATED_EVENT } from "@/lib/onboarding/types";
 import { saveUserProfileThroughApi } from "@/lib/profiles/profileDb";
@@ -11,6 +11,20 @@ import {
 } from "@/components/project/projectSettingsDsFormClasses";
 
 const SAVED_RESET_DELAY_MS = 2500;
+
+function profileFieldsFingerprint(p: {
+  firstName: string;
+  lastName: string;
+  company: string;
+  role: string;
+}): string {
+  return JSON.stringify({
+    fn: p.firstName.trim(),
+    ln: p.lastName.trim(),
+    co: p.company.trim(),
+    ro: p.role.trim(),
+  });
+}
 
 type Props = {
   initialFirstName?: string | null;
@@ -32,6 +46,50 @@ export function AccountProfileForm({
   const [role, setRole] = useState(initialRole ?? "");
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  /** Matches last successful save until server props catch up after `router.refresh()`. */
+  const [justSavedFingerprint, setJustSavedFingerprint] = useState<string | null>(null);
+
+  const baselineFromInitial = useMemo(
+    () =>
+      profileFieldsFingerprint({
+        firstName: initialFirstName ?? "",
+        lastName: initialLastName ?? "",
+        company: initialCompany ?? "",
+        role: initialRole ?? "",
+      }),
+    [initialCompany, initialFirstName, initialLastName, initialRole]
+  );
+
+  const currentFingerprint = useMemo(
+    () =>
+      profileFieldsFingerprint({
+        firstName,
+        lastName,
+        company,
+        role,
+      }),
+    [company, firstName, lastName, role]
+  );
+
+  const isDirty = useMemo(() => {
+    if (justSavedFingerprint != null && currentFingerprint === justSavedFingerprint) {
+      return false;
+    }
+    return currentFingerprint !== baselineFromInitial;
+  }, [baselineFromInitial, currentFingerprint, justSavedFingerprint]);
+
+  useEffect(() => {
+    setFirstName(initialFirstName ?? "");
+    setLastName(initialLastName ?? "");
+    setCompany(initialCompany ?? "");
+    setRole(initialRole ?? "");
+  }, [initialCompany, initialFirstName, initialLastName, initialRole]);
+
+  useEffect(() => {
+    if (justSavedFingerprint != null && justSavedFingerprint === baselineFromInitial) {
+      setJustSavedFingerprint(null);
+    }
+  }, [baselineFromInitial, justSavedFingerprint]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +114,14 @@ export function AccountProfileForm({
       setMessage(errMsg);
       return;
     }
+    setJustSavedFingerprint(
+      profileFieldsFingerprint({
+        firstName: fn,
+        lastName: ln,
+        company: co,
+        role: role.trim(),
+      })
+    );
     setStatus("saved");
     setMessage("Profile updated. This will appear as “Triggered by” on Run Data.");
     window.dispatchEvent(new CustomEvent(ACCOUNT_PROFILE_UPDATED_EVENT));
@@ -144,7 +210,12 @@ export function AccountProfileForm({
           {message}
         </Callout>
       )}
-      <Button type="submit" variant="primary" disabled={status === "saving"}>
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={status === "saving" || !isDirty}
+        title={status !== "saving" && !isDirty ? "No changes to save" : undefined}
+      >
         {status === "saving" ? "Saving…" : status === "saved" ? "Saved" : "Save profile"}
       </Button>
     </form>

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { PortfolioReportingMonthSelect } from "@/components/PortfolioReportingMonthSelect";
 import { portfolioRouteTitleFromPathname, riskaiPath } from "@/lib/routes";
@@ -19,6 +18,8 @@ const titleSeparatorClass =
 type PortfolioPageHeaderProps = {
   portfolioId: string;
   portfolioName: string;
+  /** From `x-url-search` (middleware); keeps reporting month control stable across client navigations. */
+  initialUrlSearch: string;
 };
 
 /**
@@ -26,7 +27,11 @@ type PortfolioPageHeaderProps = {
  * Known segments use {@link portfolioRouteTitleFromPathname} so the suffix updates with the URL
  * immediately; `extras.titleSuffix` is a fallback for other subpaths (via RegisterPageHeaderTitle, etc.).
  */
-export function PortfolioPageHeader({ portfolioId, portfolioName }: PortfolioPageHeaderProps) {
+export function PortfolioPageHeader({
+  portfolioId,
+  portfolioName,
+  initialUrlSearch,
+}: PortfolioPageHeaderProps) {
   const pathname = usePathname();
   const { extras } = usePageHeaderExtras();
   const fromPath = portfolioRouteTitleFromPathname(pathname, portfolioId);
@@ -60,16 +65,10 @@ export function PortfolioPageHeader({ portfolioId, portfolioName }: PortfolioPag
               {extras.end}
             </div>
           ) : null}
-          <Suspense
-            fallback={
-              <div
-                className="h-9 min-w-[10.5rem] max-w-[16rem] animate-pulse rounded-full bg-[var(--ds-surface-muted)]"
-                aria-hidden
-              />
-            }
-          >
-            <PortfolioReportingMonthSelect portfolioId={portfolioId} />
-          </Suspense>
+          <PortfolioReportingMonthSelect
+            portfolioId={portfolioId}
+            initialUrlSearch={initialUrlSearch}
+          />
         </div>
       </header>
       <div className="w-full shrink-0 px-[var(--ds-space-6)]">

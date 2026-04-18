@@ -93,7 +93,47 @@ export default function PortfolioSettingsContent({
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<PortfolioSettingsTab>("general");
 
+  /** Match PATCH payload normalization so “dirty” matches what would actually be saved. */
+  const normalizeDescriptionForCompare = useCallback((raw: string | null | undefined) => {
+    const t = (raw ?? "").trim();
+    return t === "" ? null : t;
+  }, []);
+
+  useEffect(() => {
+    setName(initial.name);
+    setDescription(initial.description ?? "");
+    setReportingCurrency(initial.reporting_currency ?? DEFAULT_REPORTING_CURRENCY);
+    setReportingUnit(initial.reporting_unit ?? DEFAULT_REPORTING_UNIT);
+  }, [
+    initial.name,
+    initial.description,
+    initial.reporting_currency,
+    initial.reporting_unit,
+  ]);
+
   const isFormValid = name.trim().length > 0;
+
+  const isDirty = useMemo(() => {
+    if (
+      name.trim() !== initial.name.trim() ||
+      normalizeDescriptionForCompare(description) !== normalizeDescriptionForCompare(initial.description) ||
+      reportingCurrency !== (initial.reporting_currency ?? DEFAULT_REPORTING_CURRENCY) ||
+      reportingUnit !== (initial.reporting_unit ?? DEFAULT_REPORTING_UNIT)
+    ) {
+      return true;
+    }
+    return false;
+  }, [
+    name,
+    description,
+    reportingCurrency,
+    reportingUnit,
+    initial.name,
+    initial.description,
+    initial.reporting_currency,
+    initial.reporting_unit,
+    normalizeDescriptionForCompare,
+  ]);
 
   const onSave = useCallback(async () => {
     if (!canEditPortfolioDetails) return;
@@ -143,12 +183,15 @@ export default function PortfolioSettingsContent({
         type="button"
         variant="primary"
         onClick={onSave}
-        disabled={!canEditPortfolioDetails || !isFormValid || saving}
+        disabled={!canEditPortfolioDetails || !isFormValid || saving || !isDirty}
+        title={
+          canEditPortfolioDetails && isFormValid && !saving && !isDirty ? "No changes to save" : undefined
+        }
       >
         {saving ? "Saving…" : "Save"}
       </Button>
     ),
-    [onSave, canEditPortfolioDetails, isFormValid, saving]
+    [onSave, canEditPortfolioDetails, isDirty, isFormValid, saving]
   );
 
   useEffect(() => {
