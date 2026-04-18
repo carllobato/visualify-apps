@@ -76,7 +76,7 @@
    * --ds-app-frame-bg: chrome that shares the “window” face with the sidebar (typically --ds-surface / white).
    * --ds-app-main-bg: main column behind the document sheet — canvas so the sheet and sidebar float forward.
    * --ds-app-document-bg: main reading column (soft grey in the tile/muted family); page content lives here; row tiles use --ds-surface-tile + tile elevation.
-   * --ds-app-sidebar-bg: nav rail; aliases frame so the rail matches the window face.
+   * --ds-app-sidebar-bg: nav rail; light: nudged from frame toward canvas so the rail isn’t harsher than the document sheet.
    * Border order: --ds-border-subtle < --ds-border-card; app shell chrome uses shadow only (see .ds-app-sidebar / .ds-app-document-shell).
    * Dark mode overrides these relationships without changing layout (see [data-theme="dark"]).
    */
@@ -88,7 +88,7 @@
   /* Create / “add” row — same family as --ds-surface-tile but blended down so it reads as a muted tile, not a floating patch (still no tile shadow). */
   --ds-surface-row-create: color-mix(in oklab, var(--ds-surface-tile) 38%, var(--ds-app-document-bg));
   --ds-surface-row-create-hover: color-mix(in oklab, var(--ds-surface-tile) 62%, var(--ds-app-document-bg));
-  --ds-app-sidebar-bg: var(--ds-app-frame-bg);
+  --ds-app-sidebar-bg: color-mix(in oklab, var(--ds-app-frame-bg) 96%, var(--ds-canvas) 4%);
   /* Legacy token — shells no longer draw a rim; kept for demos / overrides. */
   --ds-border-app-frame: transparent;
   --ds-border-app-document-shell: transparent;
