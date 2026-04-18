@@ -1,12 +1,31 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
-import { RISK_STATUS_ARCHIVED_LOOKUP } from "@/domain/risk/riskFieldSemantics";
+import { RISK_STATUS_ARCHIVED_LOOKUP, resolveCanonicalLookupLabel } from "@/domain/risk/riskFieldSemantics";
 import { RISK_DB_SELECT_COLUMNS, type RiskInsertRow } from "@/lib/db/risks";
 import type { RiskRow } from "@/types/risk";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+type ServerSupabase = Awaited<ReturnType<typeof supabaseServerClient>>;
+
+async function fetchActiveRiskStatusNames(supabase: ServerSupabase): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("riskai_risk_statuses")
+    .select("name")
+    .eq("is_active", true);
+  if (error) {
+    console.error("[risks API] fetchActiveRiskStatusNames", error.message);
+    return [];
+  }
+  return ((data ?? []) as { name: string }[]).map((r) => r.name).filter(Boolean);
+}
+
+function withCanonicalRiskStatus<T extends { status: string }>(row: T, statusNames: string[]): T {
+  if (statusNames.length === 0) return row;
+  return { ...row, status: resolveCanonicalLookupLabel(row.status, statusNames) };
+}
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : String(value ?? "");
@@ -97,7 +116,11 @@ export async function GET(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ risks: (data ?? []) as RiskRow[] }, { status: 200 });
+  const statusNames = await fetchActiveRiskStatusNames(supabase);
+  const rows = (data ?? []) as RiskRow[];
+  const risks = rows.map((r) => withCanonicalRiskStatus(r, statusNames));
+
+  return NextResponse.json({ risks }, { status: 200 });
 }
 
 export async function PUT(
@@ -131,16 +154,17 @@ export async function PUT(
     return NextResponse.json({ error: "Invalid payload: risks must be an array" }, { status: 400 });
   }
 
+  const supabase = await supabaseServerClient();
+  const statusNames = await fetchActiveRiskStatusNames(supabase);
+
   const rows: RiskInsertRow[] = [];
   for (const item of body.risks) {
     const normalized = normalizeRiskRow(item, projectId);
     if (!normalized) {
       return NextResponse.json({ error: "Invalid payload: malformed risk row" }, { status: 400 });
     }
-    rows.push(normalized);
+    rows.push(withCanonicalRiskStatus(normalized, statusNames));
   }
-
-  const supabase = await supabaseServerClient();
   const { data: existingRows, error: listErr } = await supabase
     .from("riskai_risks")
     .select("id")
