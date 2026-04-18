@@ -461,7 +461,7 @@ export function RiskRegisterTable({
   const filterOptionsRisks = risksForFilterOptions ?? risks;
 
   return (
-    <Card className="mt-4 overflow-hidden border-[var(--ds-border-subtle)] p-0">
+    <Card className="mt-4 ds-card-table-shell">
       <Table className="table-fixed w-full [&_tbody_td]:py-[10px] [&_thead_th]:py-1.5 [&_thead_th]:text-[11px] [&_thead_th]:text-[var(--ds-text-muted)]">
         <colgroup>
           <col style={{ width: RISK_ID_COL_PX }} />

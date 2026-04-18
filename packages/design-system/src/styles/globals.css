@@ -828,6 +828,42 @@ textarea:disabled {
   background-color: color-mix(in oklab, var(--ds-status-success) 12%, transparent) !important;
 }
 
+/*
+ * Neutral bordered controls — dev/diagnostic toolbars and inline secondary actions.
+ * Default: filled surface + sm text; `--compact`: hairline on canvas + xs text (copy / toggle).
+ */
+.ds-outline-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  border: var(--ds-border-width) solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background-color: var(--ds-surface-default);
+  color: var(--ds-text-primary);
+  font-family: inherit;
+  font-size: var(--ds-text-sm);
+  font-weight: 500;
+  line-height: 1.25;
+  padding: 0.375rem 0.75rem;
+  cursor: pointer;
+  transition: background-color var(--ds-transition-fast);
+}
+.ds-outline-btn:hover:not(:disabled):not([disabled]) {
+  background-color: var(--ds-surface-hover);
+}
+.ds-outline-btn:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+.ds-outline-btn--compact {
+  background-color: transparent;
+  font-size: var(--ds-text-xs);
+  font-weight: 400;
+  padding: 0.25rem 0.5rem;
+}
+
 /* Primary navigation links — minimal active state (text-led; optional left rail for vertical lists) */
 .ds-nav-link {
   border-radius: 0;
@@ -1131,6 +1167,16 @@ ul[role="listbox"] button:focus-visible {
 .ds-dashboard-inline-create:focus-visible {
   outline: 2px solid var(--ds-primary);
   outline-offset: 2px;
+}
+
+/*
+ * Dense register-style data tile: subtle hairline + clip overflow (risk register, members tables).
+ * Use on `Card` instead of repeating `overflow-hidden border-[var(--ds-border-subtle)]`.
+ * `border-color` must win over Card’s `border-transparent` — Tailwind utilities are emitted after this file.
+ */
+.ds-card-table-shell {
+  overflow: hidden;
+  border-color: var(--ds-border-subtle) !important;
 }
 
 .ds-dashboard-inline-create-label {

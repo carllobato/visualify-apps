@@ -49,7 +49,7 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
     <button
       type="button"
       onClick={handleCopy}
-      className="rounded border border-[var(--ds-border)] px-2 py-1 text-xs hover:bg-[var(--ds-surface-hover)]"
+      className="ds-outline-btn ds-outline-btn--compact"
     >
       {copied ? "Copied" : label}
     </button>
@@ -173,11 +173,7 @@ export default function DevHealthPage({ projectId }: DevHealthPageProps = {}) {
               />
               Strict mode (warnings count as failures)
             </label>
-            <button
-              type="button"
-              onClick={runChecks}
-              className="rounded border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-1.5 text-sm font-medium hover:bg-[var(--ds-surface-hover)]"
-            >
+            <button type="button" onClick={runChecks} className="ds-outline-btn">
               Re-run checks
             </button>
             <CopyButton text={debugBundle} label="Copy debug bundle" />
@@ -222,7 +218,7 @@ export default function DevHealthPage({ projectId }: DevHealthPageProps = {}) {
                                     <button
                                       type="button"
                                       onClick={() => toggleExpand(key)}
-                                      className="rounded border border-[var(--ds-border)] px-2 py-1 text-xs hover:bg-[var(--ds-surface-hover)]"
+                                      className="ds-outline-btn ds-outline-btn--compact"
                                     >
                                       {isExpanded ? "Hide" : "Show"} details
                                     </button>

@@ -14,19 +14,24 @@ export function ProjectMemberPermissionHints({
 }) {
   const ownerPhrase = resource === "portfolio" ? "portfolio owner" : "project owner";
 
-  return (
-    <>
-      {!canInviteMembers && (
-        <HelperText className="!mt-3">
+  if (!canInviteMembers) {
+    return (
+      <div className="border-t border-[var(--ds-border-subtle)] px-4 py-3">
+        <HelperText className="!mt-0">
           You can view members. Only owners and editors can invite; only owners can change roles or remove
           members.
         </HelperText>
-      )}
-      {canInviteMembers && !canChangeMemberRoles && (
-        <HelperText className="!mt-3">
+      </div>
+    );
+  }
+  if (!canChangeMemberRoles) {
+    return (
+      <div className="border-t border-[var(--ds-border-subtle)] px-4 py-3">
+        <HelperText className="!mt-0">
           You can invite members. Only a {ownerPhrase} can change roles or remove members.
         </HelperText>
-      )}
-    </>
-  );
+      </div>
+    );
+  }
+  return null;
 }

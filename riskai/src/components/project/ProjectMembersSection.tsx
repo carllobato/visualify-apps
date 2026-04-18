@@ -383,30 +383,35 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
 
   return (
     <>
-      <Card className="mb-4">
-        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-3">
+      <Card className="mb-4 ds-card-table-shell">
+        <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
           <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">
             Project Team
           </h2>
         </CardHeader>
-        <CardBody className="!px-4 !py-3">
-          {listError ? (
-            <Callout status="danger" className="mb-3" role="alert">
-              {listError}
-            </Callout>
-          ) : null}
-
-          {rowActionError ? (
-            <Callout status="warning" className="mb-3" role="alert">
-              {rowActionError}
-            </Callout>
+        <CardBody className="!p-0">
+          {listError || rowActionError ? (
+            <div className={`space-y-3 px-4 pt-3${loading ? "" : " pb-3"}`}>
+              {listError ? (
+                <Callout status="danger" role="alert">
+                  {listError}
+                </Callout>
+              ) : null}
+              {rowActionError ? (
+                <Callout status="warning" role="alert">
+                  {rowActionError}
+                </Callout>
+              ) : null}
+            </div>
           ) : null}
 
           {loading ? (
-            <LoadingPlaceholderCompact label="Loading members" />
+            <div className="px-4 py-3">
+              <LoadingPlaceholderCompact label="Loading members" />
+            </div>
           ) : (
-            <div className="-mx-1 overflow-x-auto">
-              <Table className="table-fixed">
+            <div className="overflow-x-auto">
+              <Table className="table-fixed w-full [&_tbody_td]:py-[10px] [&_thead_th]:py-1.5 [&_thead_th]:text-[11px] [&_thead_th]:text-[var(--ds-text-muted)]">
                 <colgroup>
                   <col style={{ width: MEMBERS_NAME_COLUMN_WIDTH }} />
                   <col />
@@ -438,11 +443,7 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                       </span>
                     </TableHeaderCell>
                     {showRowActions ? (
-                      <TableHeaderCell className="!text-center">
-                        <span className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-secondary)]">
-                          Actions
-                        </span>
-                      </TableHeaderCell>
+                      <TableHeaderCell className="text-center">Actions</TableHeaderCell>
                     ) : null}
                   </TableRow>
                 </TableHead>
@@ -519,11 +520,14 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                   })}
                 </TableBody>
               </Table>
-              {membersRows.length === 0 && !listError && (
-                <HelperText className="!mt-2">No members yet.</HelperText>
-              )}
             </div>
           )}
+
+          {!loading && membersRows.length === 0 && !listError ? (
+            <div className="border-t border-[var(--ds-border-subtle)] px-4 py-3">
+              <HelperText className="!mt-0">No members yet.</HelperText>
+            </div>
+          ) : null}
 
           {viewer ? (
             <ProjectMemberPermissionHints
