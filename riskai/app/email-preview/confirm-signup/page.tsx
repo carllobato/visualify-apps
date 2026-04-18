@@ -10,7 +10,7 @@ const DS = {
   textTertiary: "#9aa0a6",
   primary: "#3b82f6",
   primaryText: "#ffffff",
-  radiusMd: "16px",
+  radiusMd: "24px",
   radiusSm: "10px",
   font:
     "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

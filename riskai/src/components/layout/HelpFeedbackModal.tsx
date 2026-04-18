@@ -43,7 +43,7 @@ export function HelpFeedbackModal({ open, onClose }: HelpFeedbackModalProps) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [action, setAction] = useState<HelpAction | null>(null);
+  const [action, setAction] = useState<HelpAction>("issue");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -55,12 +55,12 @@ export function HelpFeedbackModal({ open, onClose }: HelpFeedbackModalProps) {
       setSubmitting(false);
       setFormError(null);
       setSubmitted(false);
-      setAction(null);
+      setAction("issue");
       setMessage("");
       return;
     }
     setSubmitted(false);
-    setAction(null);
+    setAction("issue");
     setMessage("");
     setFormError(null);
   }, [open]);
@@ -89,10 +89,6 @@ export function HelpFeedbackModal({ open, onClose }: HelpFeedbackModalProps) {
     e.preventDefault();
     setFormError(null);
 
-    if (!action) {
-      setFormError("Choose a feedback type.");
-      return;
-    }
     const bodyText = message.trim();
     if (!bodyText) {
       setFormError("Enter a message.");
@@ -177,44 +173,43 @@ export function HelpFeedbackModal({ open, onClose }: HelpFeedbackModalProps) {
                   {formError}
                 </Callout>
               ) : null}
-              <div
-                className="ds-segmented-control flex w-full flex-col gap-2"
-                role="group"
-                aria-label="Feedback type"
-              >
-                <Button
-                  type="button"
-                  variant={action === "issue" ? "primary" : "ghost"}
-                  size="sm"
-                  className="ds-segmented-control__segment w-full justify-start font-normal"
-                  aria-pressed={action === "issue"}
-                  disabled={submitting}
-                  onClick={() => setAction("issue")}
-                >
-                  Report an issue
-                </Button>
-                <Button
-                  type="button"
-                  variant={action === "feature" ? "primary" : "ghost"}
-                  size="sm"
-                  className="ds-segmented-control__segment w-full justify-start font-normal"
-                  aria-pressed={action === "feature"}
-                  disabled={submitting}
-                  onClick={() => setAction("feature")}
-                >
-                  Request a feature
-                </Button>
-                <Button
-                  type="button"
-                  variant={action === "question" ? "primary" : "ghost"}
-                  size="sm"
-                  className="ds-segmented-control__segment w-full justify-start font-normal"
-                  aria-pressed={action === "question"}
-                  disabled={submitting}
-                  onClick={() => setAction("question")}
-                >
-                  Ask a question
-                </Button>
+              <div className="flex flex-col">
+                <Label className="mb-2 block text-[var(--ds-text-secondary)]">Feedback type</Label>
+                <div className="ds-segmented-control" role="group" aria-label="Feedback type">
+                  <Button
+                    type="button"
+                    variant={action === "issue" ? "primary" : "ghost"}
+                    size="sm"
+                    className="ds-segmented-control__segment"
+                    aria-pressed={action === "issue"}
+                    disabled={submitting}
+                    onClick={() => setAction("issue")}
+                  >
+                    Report an issue
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={action === "feature" ? "primary" : "ghost"}
+                    size="sm"
+                    className="ds-segmented-control__segment"
+                    aria-pressed={action === "feature"}
+                    disabled={submitting}
+                    onClick={() => setAction("feature")}
+                  >
+                    Request a feature
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={action === "question" ? "primary" : "ghost"}
+                    size="sm"
+                    className="ds-segmented-control__segment"
+                    aria-pressed={action === "question"}
+                    disabled={submitting}
+                    onClick={() => setAction("question")}
+                  >
+                    Ask a question
+                  </Button>
+                </div>
               </div>
               <div>
                 <Label htmlFor={fieldId} className="mb-1.5 block text-[var(--ds-text-secondary)]">
@@ -231,15 +226,11 @@ export function HelpFeedbackModal({ open, onClose }: HelpFeedbackModalProps) {
                   disabled={submitting}
                 />
               </div>
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                className="w-full sm:w-auto"
-                disabled={submitting}
-              >
-                {submitting ? "Sending…" : "Submit"}
-              </Button>
+              <div className="flex justify-end">
+                <Button type="submit" variant="primary" size="sm" disabled={submitting}>
+                  {submitting ? "Sending…" : "Submit"}
+                </Button>
+              </div>
             </form>
           )}
         </div>

@@ -18,7 +18,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-sm)] font-medium " +
+    "inline-flex cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] font-medium " +
     "transition-all duration-150 ease-out focus-visible:outline focus-visible:outline-2 " +
     "focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)] " +
     "disabled:cursor-not-allowed disabled:opacity-[0.38]";

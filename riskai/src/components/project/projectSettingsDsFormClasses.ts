@@ -43,15 +43,6 @@ export function projectSettingsSelectClass(invalid: boolean, height: "md" | "sm"
   );
 }
 
-/**
- * Segmented / radiogroup tray — matches {@link projectSettingsInputClass} outer chrome
- * (`--ds-document-tile-*`). Inner controls supply interaction; the tray stays static (no hover lift).
- */
-export const projectSettingsSegmentedControlGroupClass =
-  "inline-flex flex-wrap items-center gap-1 rounded-[var(--ds-radius-md)] border border-[var(--ds-document-tile-border)] " +
-  "bg-[var(--ds-document-tile-bg)] shadow-[var(--ds-document-tile-shadow)] p-1 " +
-  "transition-[box-shadow,background-color] duration-200 ease-out";
-
 /** Shared field width presets for compact settings layouts. */
 export function projectSettingsFieldWidthClass(width: "md" | "sm" | "xsm"): string {
   if (width === "xsm") return "max-w-48";

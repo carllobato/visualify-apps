@@ -64,6 +64,25 @@ const PinOpenIcon = () => (
   </svg>
 );
 
+const CompassIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="shrink-0"
+    aria-hidden
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="m16.24 7.76-2.06 6.28L7.76 16.24l2.06-6.28 6.44-2.12z" />
+  </svg>
+);
+
 const LayoutGridIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0" aria-hidden>
     <rect width="7" height="9" x="3" y="3" rx="1" />
@@ -73,10 +92,23 @@ const LayoutGridIcon = () => (
   </svg>
 );
 
-const BriefcaseIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0" aria-hidden>
-    <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+const LayersIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="shrink-0"
+    aria-hidden
+  >
+    <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
+    <path d="m22 17.65-9.05 4.32a2 2 0 0 1-1.9 0L2 17.65" />
+    <path d="m2 12 9.05 4.32a2 2 0 0 0 1.9 0L22 12" />
   </svg>
 );
 
@@ -462,9 +494,9 @@ export function Sidebar({
           {sectionHeader("Main", true)}
           <ul className="space-y-0.5">
             <li>
-              <Link href={DASHBOARD_PATH} className={linkClass(dashboardActive)} title={visuallyCollapsed ? "Dashboard" : undefined} onClick={onMobileClose}>
-                <LayoutGridIcon />
-                <span className={navLabelClass}>Dashboard</span>
+              <Link href={DASHBOARD_PATH} className={linkClass(dashboardActive)} title={visuallyCollapsed ? "User Nav" : undefined} onClick={onMobileClose}>
+                <CompassIcon />
+                <span className={navLabelClass}>User Nav</span>
               </Link>
             </li>
           </ul>
@@ -480,7 +512,7 @@ export function Sidebar({
                     title={visuallyCollapsed ? "Portfolio Overview" : undefined}
                     onClick={onMobileClose}
                   >
-                    <BriefcaseIcon />
+                    <LayersIcon />
                     <span className={navLabelClass}>Portfolio Overview</span>
                   </Link>
                 </li>

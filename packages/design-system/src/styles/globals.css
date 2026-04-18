@@ -193,9 +193,9 @@
   --ds-risk-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-risk-neutral));
   --ds-risk-neutral-border: color-mix(in oklab, var(--ds-risk-neutral) 34%, var(--ds-border));
 
-  /* Radius scale (3 tiers): sm = dense controls (inputs, buttons); md = cards, tiles, rows, dialogs; lg = app frame & sidebar shell */
+  /* Radius scale (3 tiers): sm = dense controls (inputs, buttons); md = cards, tiles, rows; lg = app frame, modal panels & sidebar shell */
   --ds-radius-sm: 10px;
-  --ds-radius-md: 16px;
+  --ds-radius-md: 24px;
   --ds-radius-lg: 24px;
   /* Radius roles — aliases only */
   --ds-radius-app-frame: var(--ds-radius-lg);
@@ -838,7 +838,8 @@ textarea:disabled {
   transition:
     color var(--ds-transition-fast),
     background-color var(--ds-transition-fast),
-    border-color var(--ds-transition-fast);
+    border-color var(--ds-transition-fast),
+    border-radius var(--ds-transition-fast);
 }
 .ds-nav-link svg {
   display: block;
@@ -875,7 +876,22 @@ textarea:disabled {
 }
 .ds-nav-link--active.ds-nav-link--rail {
   border-left-color: color-mix(in oklab, var(--ds-text-primary) 50%, transparent);
+  /* Left accent is static — omit border-color from inherited transition */
+  transition:
+    color var(--ds-transition-fast),
+    background-color var(--ds-transition-fast),
+    border-radius var(--ds-transition-fast);
 }
+
+/* Pill hover — must follow rail radius rules so it wins on hover */
+.ds-nav-link:hover:not(.ds-nav-link--disabled) {
+  border-radius: var(--ds-radius-lg);
+}
+/* Active rail: keep a stable left accent; pill radius would animate the left edge */
+.ds-nav-link--active.ds-nav-link--rail:hover:not(.ds-nav-link--disabled) {
+  border-radius: 0;
+}
+
 .ds-nav-link--disabled {
   cursor: not-allowed;
   color: var(--ds-text-muted);
@@ -988,6 +1004,7 @@ ul[role="listbox"] button:focus-visible {
 }
 .ds-sidebar-collapse-btn:hover:not(:disabled):not([disabled]) {
   color: var(--ds-text-primary) !important;
+  border-radius: var(--ds-radius-lg);
 }
 .ds-sidebar-collapse-btn:hover:not(:disabled):not([disabled]) svg {
   color: var(--ds-text-primary);
@@ -1096,7 +1113,7 @@ ul[role="listbox"] button:focus-visible {
   flex-shrink: 0;
   align-items: center;
   gap: var(--ds-space-2);
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-md);
   padding: var(--ds-space-2) var(--ds-space-3);
   text-decoration: none;
   box-shadow: none;
@@ -1374,6 +1391,7 @@ ul[role="listbox"] button:focus-visible {
 /*
  * Generic centered modal panels — dialog shell + choice grids (e.g. Add new risk).
  * Pair with `.ds-modal-backdrop` + a z-index utility on the backdrop.
+ * Radius matches app-frame sheet (`--ds-radius-lg` / 24px).
  */
 .ds-modal-panel {
   display: flex;
@@ -1385,10 +1403,23 @@ ul[role="listbox"] button:focus-visible {
   min-width: 280px;
   min-height: 320px;
   overflow: hidden;
-  border-radius: var(--ds-radius-md);
+  border-radius: var(--ds-radius-lg);
   border: 1px solid var(--ds-border);
   background-color: var(--ds-surface-elevated);
   box-shadow: var(--ds-shadow-modal-panel);
+}
+
+/*
+ * Shrink-wrap height for small choice dialogs (e.g. Add new risk — two tiles).
+ * Default panel uses min-height + flex body fill, which leaves a tall empty band under short content.
+ */
+.ds-modal-panel.ds-modal-panel--fit-content {
+  min-height: unset;
+}
+
+.ds-modal-panel.ds-modal-panel--fit-content .ds-modal-panel-body {
+  flex: none;
+  min-height: unset;
 }
 
 .ds-modal-panel-header {

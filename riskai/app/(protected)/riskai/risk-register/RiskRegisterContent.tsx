@@ -14,8 +14,6 @@ import {
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { listRisks, replaceRisks } from "@/lib/db/risks";
 import type { Risk } from "@/domain/risk/risk.schema";
-import { mergeDraftToRisk } from "@/domain/risk/risk.mapper";
-import type { RiskMergeCluster, MergeRiskDraft } from "@/domain/risk/risk-merge.types";
 import { RiskRegisterHeader } from "@/components/risk-register/RiskRegisterHeader";
 import {
   RiskRegisterTable,
@@ -28,7 +26,6 @@ import { RiskDetailModal } from "@/components/risk-register/RiskDetailModal";
 import { CreateRiskFileModal } from "@/components/risk-register/CreateRiskFileModal";
 import { CreateRiskAIModal } from "@/components/risk-register/CreateRiskAIModal";
 import { AddNewRiskChoiceModal } from "@/components/risk-register/AddNewRiskChoiceModal";
-import { AIReviewDrawer } from "@/components/risk-register/AIReviewDrawer";
 import { RiskRegisterLookupProviders } from "@/components/risk-register/RiskRegisterLookupProviders";
 import { distinctOwnerNamesFromRisks } from "@/components/risk-register/RiskProjectOwnersContext";
 import {
@@ -37,7 +34,6 @@ import {
   getCurrentRiskRatingTitle,
   isCurrentRiskRatingNA,
   isRiskStatusArchived,
-  RISK_STATUS_ARCHIVED_LOOKUP,
 } from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
@@ -220,11 +216,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     useRiskRegister();
   const [saveToServerLoading, setSaveToServerLoading] = useState(false);
   const [saveToServerError, setSaveToServerError] = useState<string | null>(null);
-  const [aiReviewOpen, setAiReviewOpen] = useState(false);
-  const [aiReviewLoading, setAiReviewLoading] = useState(false);
-  const [aiReviewError, setAiReviewError] = useState<string | null>(null);
-  const [aiClusters, setAiClusters] = useState<RiskMergeCluster[]>([]);
-  const [aiReviewSkippedIds, setAiReviewSkippedIds] = useState<Set<string>>(new Set());
   const [tableSortState, setTableSortState] = useState<TableSortState>({
     column: "riskId",
     direction: "asc",
@@ -661,71 +652,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     router.replace(basePath, { scroll: false });
   }, [openRiskIdParam, risksLoading, risks, router, urlProjectId]);
 
-  const handleAiReviewClick = useCallback(async () => {
-    if (contentReadOnly) return;
-    const projectIdForApi = urlProjectId?.trim();
-    if (!projectIdForApi) {
-      console.error("[risk-register] AI review skipped: projectId is required for risk access");
-      return;
-    }
-    setAiReviewOpen(true);
-    setAiReviewError(null);
-    setAiClusters([]);
-    setAiReviewSkippedIds(new Set());
-    setAiReviewLoading(true);
-    try {
-      const payload = {
-        projectId: projectIdForApi,
-        risks: risks.filter((r) => !isRiskStatusArchived(r.status)),
-      };
-      const res = await fetch("/api/ai/risk-merge-review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        let msg = typeof data?.error === "string" ? data.error : "AI review failed";
-        const details = data?.details as Array<{ path?: string; message?: string }> | undefined;
-        if (Array.isArray(details) && details.length > 0) {
-          const parts = details.slice(0, 5).map((d) => (d.path ? `${d.path}: ${d.message ?? ""}` : d.message ?? ""));
-          if (parts.some(Boolean)) msg += " — " + parts.filter(Boolean).join("; ");
-        }
-        setAiReviewError(msg);
-        setAiClusters([]);
-        return;
-      }
-      setAiClusters(Array.isArray(data.clusters) ? data.clusters : []);
-    } catch (e) {
-      setAiReviewError(e instanceof Error ? e.message : "Request failed");
-      setAiClusters([]);
-    } finally {
-      setAiReviewLoading(false);
-    }
-  }, [contentReadOnly, urlProjectId, risks]);
-
-  const handleAcceptMerge = useCallback(
-    (cluster: RiskMergeCluster, draft: MergeRiskDraft) => {
-      if (contentReadOnly) return;
-      // Create merged result as a new risk (new id, next riskNumber) to avoid losing information
-      const newRisk = mergeDraftToRisk(draft, {
-        mergedFromRiskIds: cluster.riskIds,
-        aiMergeClusterId: cluster.clusterId,
-      });
-      // Archive the risks that were merged (keep for completeness, do not delete)
-      for (const id of cluster.riskIds) {
-        updateRisk(id, { status: RISK_STATUS_ARCHIVED_LOOKUP });
-      }
-      addRisk(newRisk);
-      setAiClusters((prev) => prev.filter((c) => c.clusterId !== cluster.clusterId));
-    },
-    [addRisk, contentReadOnly, updateRisk]
-  );
-
-  const handleSkipCluster = useCallback((clusterId: string) => {
-    setAiReviewSkippedIds((prev) => new Set([...prev, clusterId]));
-  }, []);
-
   const handleRetryLoad = useCallback(() => {
     setRisksLoadError(null);
     setLoadRetryKey((k) => k + 1);
@@ -749,19 +675,9 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         <Button type="button" variant="secondary" size="sm" onClick={() => setShowAddNewRiskChoiceModal(true)}>
           Generate AI Risk
         </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={handleAiReviewClick} disabled={aiReviewLoading}>
-          AI Review
-        </Button>
       </div>
     );
-  }, [
-    aiReviewLoading,
-    contentReadOnly,
-    handleAiReviewClick,
-    handleSaveToServer,
-    registerHasUnsavedServerChanges,
-    saveToServerLoading,
-  ]);
+  }, [contentReadOnly, handleSaveToServer, registerHasUnsavedServerChanges, saveToServerLoading]);
 
   useEffect(() => {
     if (!urlProjectId || !setPageHeaderExtras) return;
@@ -797,8 +713,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
               <RiskRegisterHeader
                 projectContext={projectContext}
                 readOnlyContent={contentReadOnly}
-                onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
-                aiReviewLoading={aiReviewLoading}
                 onGenerateAiRiskClick={
                   contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
                 }
@@ -826,8 +740,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
               <RiskRegisterHeader
                 projectContext={projectContext}
                 readOnlyContent={contentReadOnly}
-                onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
-                aiReviewLoading={aiReviewLoading}
                 onGenerateAiRiskClick={
                   contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
                 }
@@ -860,8 +772,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         <RiskRegisterHeader
           projectContext={projectContext}
           readOnlyContent={contentReadOnly}
-          onAiReviewClick={contentReadOnly ? undefined : handleAiReviewClick}
-          aiReviewLoading={aiReviewLoading}
           onGenerateAiRiskClick={
             contentReadOnly ? undefined : () => setShowAddNewRiskChoiceModal(true)
           }
@@ -900,7 +810,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
               type="search"
               value={registerSearchQuery}
               onChange={(e) => setRegisterSearchQuery(e.target.value)}
-              placeholder="Search risks (title, ID, description, owner, status, ratings, costs…)"
+              placeholder="Search risks..."
               aria-label="Search risks across all fields"
               className="w-full min-w-0"
               autoComplete="off"
@@ -993,10 +903,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
           setShowAddNewRiskChoiceModal(false);
           setShowCreateRiskAIModal(true);
         }}
-        onGenerateWithFile={() => {
-          setShowAddNewRiskChoiceModal(false);
-          setShowCreateRiskFileModal(true);
-        }}
       />
       <CreateRiskFileModal
         open={showCreateRiskFileModal}
@@ -1028,16 +934,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
           addRisk(risk);
           setShowAddRiskModal(false);
         }}
-      />
-      <AIReviewDrawer
-        open={aiReviewOpen}
-        onClose={() => setAiReviewOpen(false)}
-        loading={aiReviewLoading}
-        error={aiReviewError}
-        clusters={aiClusters.filter((c) => !aiReviewSkippedIds.has(c.clusterId))}
-        risks={risks}
-        onAcceptMerge={handleAcceptMerge}
-        onSkipCluster={handleSkipCluster}
       />
     </main>
     {leaveRegisterConfirmPortal}

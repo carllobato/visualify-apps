@@ -110,8 +110,8 @@ export function TopNav({
       : "ds-app-top-nav";
 
   const menuItemClass =
-    "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-2)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
-    "hover:bg-[var(--ds-surface-hover)] focus-visible:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
+    "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-3)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
+    "hover:!bg-[var(--ds-menu-item-hover-bg)] focus-visible:!bg-[var(--ds-menu-item-hover-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
   const headerPad = shellDocumentAlign
     ? "pl-[var(--ds-space-2)] pr-0 md:pr-[var(--ds-space-3)]"
@@ -196,22 +196,27 @@ export function TopNav({
             {menuOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] min-w-[200px] overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-elevated)] py-[var(--ds-space-1)] shadow-[var(--ds-shadow-lg)]"
+                className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] min-w-[200px] overflow-hidden rounded-[var(--ds-radius-app-frame)] py-0 !border-0 !bg-[var(--ds-app-document-bg)] !shadow-[var(--ds-elevation-app-frame)]"
               >
                 <Link
                   href={riskaiPath("/settings")}
                   role="menuitem"
-                  className={menuItemClass}
+                  className={`${menuItemClass} rounded-t-[var(--ds-radius-app-frame)]`}
                   onClick={() => setMenuOpen(false)}
                 >
                   Account Settings
                 </Link>
                 <div
-                  className="my-[var(--ds-space-1)] border-t border-[var(--ds-border-subtle)]"
+                  className="border-t border-[var(--ds-border-subtle)]"
                   role="separator"
                   aria-hidden
                 />
-                <button type="button" role="menuitem" className={menuItemClass} onClick={handleSignOut}>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className={`${menuItemClass} rounded-b-[var(--ds-radius-app-frame)]`}
+                  onClick={handleSignOut}
+                >
                   Sign Out
                 </button>
               </div>

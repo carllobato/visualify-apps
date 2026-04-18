@@ -2,7 +2,7 @@ type SearchParams = Record<string, string | string[] | undefined>;
 
 /** Layout tokens; colors use `.email-preview-root` CSS vars (light/dark via theme toggle). */
 const EP = {
-  radiusMd: "16px",
+  radiusMd: "24px",
   radiusSm: "10px",
   font:
     "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",

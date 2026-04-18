@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Risk } from "@/domain/risk/risk.schema";
 import type { DecisionMetrics } from "@/domain/decision/decision.types";
 import {
@@ -58,6 +59,8 @@ function truncateDescription(desc: string): string {
   return t.slice(0, DESCRIPTION_TOOLTIP_MAX_LEN).trimEnd() + "…";
 }
 
+type DescFloatBox = { top: number; left: number; maxHeight?: number };
+
 export function RiskRegisterRow({
   risk,
   rowIndex: _rowIndex,
@@ -78,8 +81,80 @@ export function RiskRegisterRow({
   const { updateRisk } = useRiskRegister();
   const readOnly = Boolean(onRiskClick);
   const [showDescCard, setShowDescCard] = useState(false);
+  const [descFloatBox, setDescFloatBox] = useState<DescFloatBox | null>(null);
+  const [portalMounted, setPortalMounted] = useState(false);
+  const titleAnchorRef = useRef<HTMLDivElement>(null);
+  const descFloatRef = useRef<HTMLDivElement>(null);
   const hasDescription = Boolean(risk.description?.trim());
   const isDraft = isRiskStatusDraft(risk.status);
+
+  useEffect(() => setPortalMounted(true), []);
+
+  const positionDescFloat = useCallback(() => {
+    const anchor = titleAnchorRef.current;
+    const floater = descFloatRef.current;
+    if (!anchor || !floater || typeof window === "undefined") return;
+    const rect = anchor.getBoundingClientRect();
+    const gap = 6;
+    const pad = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const fh = floater.scrollHeight;
+    const fw = floater.offsetWidth;
+
+    let top = rect.bottom + gap;
+    let maxHeight: number | undefined;
+
+    if (top + fh > vh - pad) {
+      const aboveTop = rect.top - gap - fh;
+      if (aboveTop >= pad) {
+        top = aboveTop;
+      } else {
+        top = pad;
+        maxHeight = vh - 2 * pad;
+      }
+    }
+
+    if (maxHeight === undefined && top + fh > vh - pad) {
+      maxHeight = Math.max(120, vh - pad - top);
+    }
+
+    let left = rect.left;
+    if (left + fw > vw - pad) {
+      left = Math.max(pad, vw - fw - pad);
+    }
+    if (left < pad) {
+      left = pad;
+    }
+
+    setDescFloatBox({ top, left, maxHeight });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!showDescCard || !hasDescription) {
+      setDescFloatBox(null);
+      return;
+    }
+    positionDescFloat();
+    const onMove = () => positionDescFloat();
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            positionDescFloat();
+          })
+        : null;
+    if (ro) {
+      if (titleAnchorRef.current) ro.observe(titleAnchorRef.current);
+      if (descFloatRef.current) ro.observe(descFloatRef.current);
+    }
+    return () => {
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
+      ro?.disconnect();
+    };
+  }, [showDescCard, hasDescription, positionDescFloat, risk.description]);
 
   const cellTextClass =
     "text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] truncate min-w-0";
@@ -106,7 +181,9 @@ export function RiskRegisterRow({
     if (hasDescription) setShowDescCard(true);
   };
   const handleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) setShowDescCard(false);
+    const next = e.relatedTarget as Node | null;
+    if (next && descFloatRef.current?.contains(next)) return;
+    if (!e.currentTarget.contains(next)) setShowDescCard(false);
   };
 
   const riskIdDisplay = risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : "—";
@@ -156,25 +233,56 @@ export function RiskRegisterRow({
         {readOnly ? (
           <TableCell className="relative align-middle" style={{ width: "35%", minWidth: 260 }}>
             <div
+              ref={titleAnchorRef}
               className="relative min-w-0 max-w-full"
               onMouseEnter={() => hasDescription && setShowDescCard(true)}
-              onMouseLeave={() => setShowDescCard(false)}
+              onMouseLeave={(e) => {
+                const next = e.relatedTarget;
+                if (next instanceof Node && descFloatRef.current?.contains(next)) return;
+                setShowDescCard(false);
+              }}
             >
               <span className={`${cellTextClass} block`} title={risk.title}>
                 {risk.title || "—"}
               </span>
-              {hasDescription && showDescCard && (
-                <Card
-                  data-description-card
-                  variant="elevated"
-                  role="tooltip"
-                  className="absolute left-0 top-full z-10 mt-1 w-max min-w-0 max-w-[320px] p-2.5 shadow-[var(--ds-shadow-md)]"
-                >
-                  <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-primary)] whitespace-normal">
-                    {truncateDescription(risk.description ?? "").split("\n").join(" ")}
-                  </p>
-                </Card>
-              )}
+              {portalMounted &&
+                hasDescription &&
+                showDescCard &&
+                typeof document !== "undefined" &&
+                createPortal(
+                  <div
+                    ref={descFloatRef}
+                    data-description-card
+                    className="pointer-events-auto fixed z-[200] w-max min-w-0 max-w-[320px]"
+                    style={
+                      descFloatBox
+                        ? {
+                            top: descFloatBox.top,
+                            left: descFloatBox.left,
+                            visibility: "visible",
+                          }
+                        : {
+                            top: -9999,
+                            left: 0,
+                            visibility: "hidden",
+                          }
+                    }
+                    onMouseEnter={() => setShowDescCard(true)}
+                    onMouseLeave={() => setShowDescCard(false)}
+                  >
+                    <Card
+                      variant="elevated"
+                      role="tooltip"
+                      className="!overflow-y-auto overflow-x-hidden p-2.5 shadow-[var(--ds-shadow-lg)] ring-1 ring-[color-mix(in_oklab,var(--ds-border)_55%,transparent)]"
+                      style={descFloatBox?.maxHeight != null ? { maxHeight: descFloatBox.maxHeight } : undefined}
+                    >
+                      <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-primary)] whitespace-normal">
+                        {truncateDescription(risk.description ?? "").split("\n").join(" ")}
+                      </p>
+                    </Card>
+                  </div>,
+                  document.body
+                )}
             </div>
           </TableCell>
         ) : (

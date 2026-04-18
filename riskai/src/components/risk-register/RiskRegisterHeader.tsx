@@ -4,8 +4,6 @@ import type { ProjectContext } from "@/lib/projectContext";
 
 export type RiskRegisterHeaderProps = {
   projectContext?: ProjectContext | null;
-  onAiReviewClick?: () => void;
-  aiReviewLoading?: boolean;
   onGenerateAiRiskClick?: () => void;
   onSaveToServer?: () => void | Promise<void>;
   saveToServerLoading?: boolean;

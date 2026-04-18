@@ -41,6 +41,9 @@ const REGISTER_TITLE_COL_PCT = "35%";
 /** Wide enough for “RISK ID” + sort arrow without truncating the header. */
 const RISK_ID_COL_PX = 100;
 
+/** Matches `RiskRegisterRow` quartet cells — keeps “Add new risk” row height aligned with data rows. */
+const REGISTER_QUARTET_TD = "max-w-0 min-w-0 overflow-hidden align-middle";
+
 export type SortColumn =
   | "riskId"
   | "title"
@@ -644,26 +647,51 @@ export function RiskRegisterTable({
               {onAddNewClick && (
                 <TableRow
                   role="row"
-                  className="cursor-pointer border-t border-dashed border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] hover:bg-[var(--ds-surface-hover)]"
+                  className="group cursor-pointer border-t border-dashed border-[var(--ds-border-subtle)] bg-transparent transition-colors hover:bg-[var(--ds-surface-hover)]"
                   onClick={onAddNewClick}
                 >
-                  <TableCell className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]" aria-hidden>
+                  <TableCell
+                    className="tabular-nums align-middle"
+                    style={{ width: RISK_ID_COL_PX, minWidth: RISK_ID_COL_PX, maxWidth: RISK_ID_COL_PX }}
+                    aria-hidden
+                  >
                     {"\u00A0"}
                   </TableCell>
-                  <TableCell className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">
-                    Add new risk
+                  <TableCell
+                    className="relative align-middle font-light text-[var(--ds-text-muted)] transition-colors group-hover:text-[var(--ds-text-primary)]"
+                    style={{ width: REGISTER_TITLE_COL_PCT, minWidth: 260 }}
+                  >
+                    <span className="block min-w-0 truncate text-[length:var(--ds-text-sm)]">
+                      Add new risk{" "}
+                      <span aria-hidden>+</span>
+                    </span>
                   </TableCell>
-                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                  <TableCell
+                    className={REGISTER_QUARTET_TD}
+                    style={{ width: REGISTER_TRIO_COL }}
+                    aria-hidden
+                  >
                     {"\u00A0"}
                   </TableCell>
-                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                  <TableCell
+                    className={REGISTER_QUARTET_TD}
+                    style={{ width: REGISTER_TRIO_COL }}
+                    aria-hidden
+                  >
                     {"\u00A0"}
                   </TableCell>
-                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+                  <TableCell
+                    className={REGISTER_QUARTET_TD}
+                    style={{ width: REGISTER_TRIO_COL }}
+                    aria-hidden
+                  >
                     {"\u00A0"}
                   </TableCell>
-                  <TableCell aria-hidden className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
-                    {"\u00A0"}
+                  <TableCell className={REGISTER_QUARTET_TD} style={{ width: REGISTER_RATING_COL }} aria-hidden>
+                    <div className="flex min-w-0 justify-start overflow-hidden">
+                      {/* Invisible footprint matches `RiskRegisterRow` rating badge (`h-7 w-7`) so row height matches. */}
+                      <span className="inline-flex h-7 w-7 min-h-[1.75rem] min-w-[1.75rem] shrink-0" aria-hidden />
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

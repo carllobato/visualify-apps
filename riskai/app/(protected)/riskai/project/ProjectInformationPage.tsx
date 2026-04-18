@@ -56,7 +56,6 @@ import {
   projectSettingsInputClass,
   projectSettingsNumberInputClass,
   projectSettingsReadOnlyFieldClass,
-  projectSettingsSegmentedControlGroupClass,
   projectSettingsSelectClass,
 } from "@/components/project/projectSettingsDsFormClasses";
 import { PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE } from "@/lib/settings/settingsPermissionMessages";
@@ -746,11 +745,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             </CardHeader>
             <CardBody className="ds-project-settings-card-body">
               <div className={projectSettingsFieldWidthClass("md")}>
-                <div
-                  className={projectSettingsSegmentedControlGroupClass}
-                  role="radiogroup"
-                  aria-label="Risk appetite"
-                >
+                <div className="ds-segmented-control" role="radiogroup" aria-label="Risk appetite">
                   {RISK_APPETITE_OPTIONS.map(({ value, label }) => {
                     const active = form.riskAppetite === value;
                     return (
@@ -763,7 +758,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                         onClick={() => update("riskAppetite", value)}
                         role="radio"
                         aria-checked={active}
-                        className="min-w-12 rounded-[var(--ds-radius-sm)] shadow-none"
+                        className="ds-segmented-control__segment"
                       >
                         {label}
                       </Button>

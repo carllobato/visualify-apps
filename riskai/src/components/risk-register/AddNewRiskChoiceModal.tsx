@@ -1,17 +1,18 @@
 "use client";
 
-/** Same document tile surface as `SummaryTile` / dashboard KPI cards (`ds-document-tile-panel`). */
+import { Button } from "@visualify/design-system";
+
+/** Card shell — click target is the `Button` below, not the whole tile. */
 const choiceTileClass =
-  "ds-document-tile-panel ds-document-tile-panel--interactive w-full min-w-0 p-4 flex flex-col min-h-[140px] text-left cursor-pointer font-inherit outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-document-tile-bg)]";
-const choiceTitleClass = "text-base font-medium text-[var(--ds-text-primary)] m-0 mb-2";
-const choiceDescClass = "text-sm text-[var(--ds-text-secondary)] flex-1 m-0";
+  "ds-document-tile-panel flex h-full min-h-0 w-full min-w-0 flex-col gap-3 p-4 text-left";
+const choiceTitleClass = "text-base font-medium text-[var(--ds-text-primary)] m-0";
+const choiceDescClass = "text-sm text-[var(--ds-text-secondary)] m-0";
 
 export function AddNewRiskChoiceModal({
   open,
   onClose,
   onAddManualRisk,
   onGenerateWithText,
-  onGenerateWithFile,
 }: {
   open: boolean;
   onClose: () => void;
@@ -19,8 +20,6 @@ export function AddNewRiskChoiceModal({
   onAddManualRisk?: () => void;
   /** Opens AI chat to generate a risk */
   onGenerateWithText?: () => void;
-  /** Opens file upload flow */
-  onGenerateWithFile?: () => void;
 }) {
   if (!open) return null;
 
@@ -36,7 +35,10 @@ export function AddNewRiskChoiceModal({
       aria-labelledby="add-new-risk-choice-title"
       onClick={handleBackdropClick}
     >
-      <div className="ds-modal-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="ds-modal-panel ds-modal-panel--fit-content"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ds-modal-panel-header">
           <h2 id="add-new-risk-choice-title" className="ds-modal-panel-title">
             Add new risk
@@ -53,57 +55,50 @@ export function AddNewRiskChoiceModal({
           </button>
         </div>
         <div className="ds-modal-panel-body">
-          <div
-            className={
-              onAddManualRisk
-                ? "ds-modal-panel-body-grid ds-modal-panel-body-grid--three"
-                : "ds-modal-panel-body-grid"
-            }
-          >
+          <div className="ds-modal-panel-body-grid items-stretch">
             {onAddManualRisk && (
-              <button
-                type="button"
-                className={choiceTileClass}
-                onClick={() => {
-                  onClose();
-                  onAddManualRisk();
-                }}
-              >
-                <span className={choiceTitleClass}>Add risk manually</span>
-                <span className={choiceDescClass}>
-                  Fill in the risk form (title, category, ratings, mitigation, etc.)
-                </span>
-              </button>
+              <div className={choiceTileClass}>
+                <div className="flex min-h-0 flex-col gap-1">
+                  <h3 className={choiceTitleClass}>Add risk manually</h3>
+                  <p className={choiceDescClass}>
+                    Fill in the risk form (title, category, ratings, mitigation, etc.)
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="mt-auto w-full shrink-0 justify-center"
+                  onClick={() => {
+                    onClose();
+                    onAddManualRisk();
+                  }}
+                >
+                  Add manually
+                </Button>
+              </div>
             )}
             {onGenerateWithText && (
-              <button
-                type="button"
-                className={choiceTileClass}
-                onClick={() => {
-                  onClose();
-                  onGenerateWithText();
-                }}
-              >
-                <span className={choiceTitleClass}>Generate risk with text</span>
-                <span className={choiceDescClass}>
-                  Chat with AI to describe the risk, then create a structured record.
-                </span>
-              </button>
-            )}
-            {onGenerateWithFile && (
-              <button
-                type="button"
-                className={choiceTileClass}
-                onClick={() => {
-                  onClose();
-                  onGenerateWithFile();
-                }}
-              >
-                <span className={choiceTitleClass}>Generate risk with a file</span>
-                <span className={choiceDescClass}>
-                  Upload an Excel file to extract one or more risks.
-                </span>
-              </button>
+              <div className={choiceTileClass}>
+                <div className="flex min-h-0 flex-col gap-1">
+                  <h3 className={choiceTitleClass}>Generate risk with text</h3>
+                  <p className={choiceDescClass}>
+                    Chat with AI to describe the risk, then create a structured record.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="mt-auto w-full shrink-0 justify-center"
+                  onClick={() => {
+                    onClose();
+                    onGenerateWithText();
+                  }}
+                >
+                  Generate with AI
+                </Button>
+              </div>
             )}
           </div>
         </div>
