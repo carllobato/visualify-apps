@@ -68,7 +68,7 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
         role="dialog"
         aria-modal="true"
         aria-labelledby="legal-doc-title"
-        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[color-mix(in_oklab,var(--ds-border)_60%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_95%,transparent)] shadow-[var(--ds-shadow-modal-panel)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] dark:bg-[var(--ds-surface-inset)]"
+        className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_60%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_95%,transparent)] shadow-[var(--ds-shadow-modal-panel)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] dark:bg-[var(--ds-surface-inset)]"
       >
         {/* Header */}
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] px-6 pt-6 sm:px-8 sm:pt-7">
