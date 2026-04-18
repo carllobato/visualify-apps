@@ -2,6 +2,11 @@
 @import "../../packages/design-system/src/styles/globals.css";
 @source "../../packages/design-system/src";
 
+/* Reserve space for the vertical scrollbar so width animations (e.g. sidebar) don’t shift the layout. */
+html {
+  scrollbar-gutter: stable;
+}
+
 /* Class-based dark mode for manual toggle; .dark / .light set by ThemeProvider + inline script */
 @custom-variant dark (&:where(.dark, .dark *));
 

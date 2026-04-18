@@ -306,7 +306,7 @@ function ProjectExposureHistogramCard({
             style={{ height: EXPOSURE_HISTOGRAM_HEIGHT }}
             aria-label={title}
           >
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
               <BarChart data={data} margin={EXPOSURE_CHART_MARGIN}>
                 <XAxis
                   type="number"
@@ -1597,7 +1597,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   if (!reportingSnapshot) {
     return (
-      <main className="ds-document-page">
+      <main className="ds-document-page pb-[var(--ds-space-3)]">
         <div className={`${overviewDocumentTileClass} max-w-lg mx-auto p-8 text-center`}>
           <p className="text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)] m-0">
             No reporting run locked
@@ -1626,7 +1626,10 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const targetLabelShort = targetAppetite;
 
   return (
-    <main className="ds-document-page" aria-busy={loadingRisks || undefined}>
+    <main
+      className="ds-document-page pb-[var(--ds-space-3)]"
+      aria-busy={loadingRisks || undefined}
+    >
       {/* Row 1 — headline KPIs (aligned with portfolio KPI strip) */}
       <section className="mb-8" aria-labelledby="project-kpi-heading">
         <h2 id="project-kpi-heading" className="sr-only">
@@ -1634,7 +1637,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {showProjectStatusSkeleton ? (
-            <div className={`${overviewDocumentTileClass} flex flex-col p-4 min-h-[88px]`}>
+            <div className={`${overviewDocumentTileClass} flex flex-col p-4 min-h-32`}>
               <p className={`${overviewTileTitleClass} mb-2`}>{PROJECT_RISK_RATING_KPI_TITLE}</p>
               <OverviewProjectStatusSkeleton />
             </div>
@@ -1651,7 +1654,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           )}
 
           {showProjectStatusSkeleton ? (
-            <div className={`${overviewDocumentTileClass} flex flex-col p-4 min-h-[88px]`}>
+            <div className={`${overviewDocumentTileClass} flex flex-col p-4 min-h-32`}>
               <p className={`${overviewTileTitleClass} mb-2`}>Project Health</p>
               <OverviewProjectStatusSkeleton />
             </div>
@@ -1815,7 +1818,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       </section>
 
       {/* Supporting breakdown — reporting-run scoped register (portfolio horizontal-bar pattern) */}
-      <section className="mb-8" aria-labelledby="project-register-mix-heading">
+      <section className="mb-0" aria-labelledby="project-register-mix-heading">
         <h2 id="project-register-mix-heading" className="sr-only">
           Risk mix by status, severity, category, and owner
         </h2>

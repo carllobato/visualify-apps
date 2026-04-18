@@ -45,14 +45,17 @@ type SummaryTileProps = {
   selected?: boolean;
 };
 
+/** Tall enough for title + 2-line primary + trend + 2-line subtext when the grid column narrows (e.g. sidebar open). */
 const tileClass =
-  "ds-document-tile-panel ds-document-tile-panel--interactive p-4 flex flex-col min-h-[88px]";
+  "ds-document-tile-panel ds-document-tile-panel--interactive p-4 flex flex-col min-h-32 min-w-0";
 
 const titleClass =
   "text-sm font-medium text-[var(--ds-text-secondary)] m-0 mb-1";
 const primaryClass =
-  "text-2xl font-semibold text-[var(--ds-text-primary)] m-0 tracking-tight";
-const subtextClass = "text-xs text-[var(--ds-text-muted)] mt-1 m-0";
+  "text-2xl font-semibold text-[var(--ds-text-primary)] m-0 tracking-tight line-clamp-2 break-words";
+const subtextClass =
+  "text-xs text-[var(--ds-text-muted)] mt-1 m-0 min-w-0 line-clamp-2 break-words";
+const trendExtraClass = "min-w-0 line-clamp-2 break-words";
 
 const interactiveFocusClass =
   "outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-app-document-bg)]";
@@ -106,7 +109,7 @@ export function SummaryTile({
         <span className={titleClass}>{title}</span>
         {primaryRow}
         {trend != null && trend.text !== "" ? (
-          <span className={trend.className}>{trend.text}</span>
+          <span className={`${trend.className} ${trendExtraClass}`}>{trend.text}</span>
         ) : null}
         {subtext != null && subtext !== "" && <span className={subtextClass}>{subtext}</span>}
       </button>
@@ -123,7 +126,7 @@ export function SummaryTile({
         <span className={titleClass}>{title}</span>
         {primaryRow}
         {trend != null && trend.text !== "" ? (
-          <span className={trend.className}>{trend.text}</span>
+          <span className={`${trend.className} ${trendExtraClass}`}>{trend.text}</span>
         ) : null}
         {subtext != null && subtext !== "" && <span className={subtextClass}>{subtext}</span>}
       </Link>
@@ -135,7 +138,7 @@ export function SummaryTile({
       <p className={titleClass}>{title}</p>
       {primaryRow}
       {trend != null && trend.text !== "" ? (
-        <span className={trend.className}>{trend.text}</span>
+        <span className={`${trend.className} ${trendExtraClass}`}>{trend.text}</span>
       ) : null}
       {subtext != null && subtext !== "" && <p className={subtextClass}>{subtext}</p>}
     </div>

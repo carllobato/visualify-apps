@@ -49,7 +49,7 @@ export function LockedReportingRunMonthSelect({
   if (options === null) {
     return (
       <div
-        className="h-9 min-w-[11rem] max-w-[min(100vw,18rem)] animate-pulse rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
+        className="h-9 min-w-[11rem] max-w-72 animate-pulse rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)]"
         aria-hidden
       />
     );
@@ -64,7 +64,7 @@ export function LockedReportingRunMonthSelect({
   return (
     <div className="flex min-w-0 items-center">
       <select
-        className={`${dsNativeSelectFieldClassName(false)} h-9 min-w-[11rem] max-w-[min(100vw,18rem)] py-0`}
+        className={`${dsNativeSelectFieldClassName(false)} h-9 min-w-[11rem] max-w-72 py-0`}
         aria-label="Load locked reporting run by month"
         disabled={disabled}
         value={value}

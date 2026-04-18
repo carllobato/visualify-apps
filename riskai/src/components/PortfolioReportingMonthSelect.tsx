@@ -33,7 +33,7 @@ const reportingMonthMenuItemClass =
   "hover:bg-[var(--ds-surface-hover)] focus-visible:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
 const reportingMonthTriggerClassName =
-  "!h-9 !max-w-[min(100vw,16rem)] !min-w-0 !rounded-full !border-0 !py-0 !pl-3 !pr-2 !gap-2 !font-normal shadow-[var(--ds-shadow-sm)] !bg-[var(--ds-surface-muted)] hover:!bg-[var(--ds-surface-subtle)] active:!brightness-[0.98] [&_svg]:text-[var(--ds-text-secondary)] hover:[&_svg]:text-[var(--ds-text-primary)]";
+  "!h-9 !max-w-64 !min-w-0 !rounded-full !border-0 !py-0 !pl-3 !pr-2 !gap-2 !font-normal shadow-[var(--ds-shadow-sm)] !bg-[var(--ds-surface-muted)] hover:!bg-[var(--ds-surface-subtle)] active:!brightness-[0.98] [&_svg]:text-[var(--ds-text-secondary)] hover:[&_svg]:text-[var(--ds-text-primary)]";
 
 export type PortfolioReportingMonthSelectProps = {
   /** Distinct months from locked reporting runs for this project only */
