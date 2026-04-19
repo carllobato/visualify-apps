@@ -332,6 +332,7 @@ export default async function PortfolioOverviewPage({
         activeRiskCount={activeRiskCount}
         contingencyPrimaryValue={contingencyTile.primaryValue}
         costExposurePrimaryValue={costExposureTile.primaryValue}
+        costExposureSubtext={costExposureTile.subtext}
         scheduleExposurePrimaryValue={scheduleExposureTile.primaryValue}
         scheduleExposureSubtext={scheduleExposureTile.subtext}
         scheduleContingencyHeldPrimaryValue={scheduleContingencyHeldDisplayValue(totalScheduleContingencyWeeks)}

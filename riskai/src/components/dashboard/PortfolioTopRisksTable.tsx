@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { PortfolioTopRiskRow } from "@/lib/dashboard/projectTileServerData";
+import { isSimulationDelayCommercialCostDriverRiskId } from "@/lib/projectOverviewReporting";
 import { riskaiPath } from "@/lib/routes";
 import {
   Badge,
@@ -172,6 +173,7 @@ export function PortfolioTopRisksTable({
         </TableHead>
         <TableBody>
           {rows.map((r) => {
+            const isSimulatedDelayCommercialRow = isSimulationDelayCommercialCostDriverRiskId(r.riskId);
             const ratingTone = badgeToneForRatingLetter(r.rating);
             const projectNameClassName = enableNavigation
               ? "block min-w-0 max-w-full cursor-pointer truncate bg-transparent p-0 text-left font-medium text-[var(--ds-text-primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)]"
@@ -231,9 +233,16 @@ export function PortfolioTopRisksTable({
                   )}
                 </TableCell>
                 <TableCell className={TD_RISK}>
-                  <span className="block min-w-0 truncate text-[var(--ds-text-secondary)]" title={r.riskTitle}>
-                    {r.riskTitle}
-                  </span>
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="min-w-0 truncate text-[var(--ds-text-secondary)]" title={r.riskTitle}>
+                      {r.riskTitle}
+                    </span>
+                    {isSimulatedDelayCommercialRow ? (
+                      <span className="shrink-0 rounded border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-muted)] px-1.5 py-px text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
+                        Simulated
+                      </span>
+                    ) : null}
+                  </div>
                 </TableCell>
                 {showOwnerColumn ? (
                   <TableCell className={TD_OWNER}>

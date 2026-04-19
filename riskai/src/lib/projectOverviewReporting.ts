@@ -266,6 +266,17 @@ export const SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID = "__delay_commercial_im
 export const SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE = "Delay-related Commercial Impact";
 
 /**
+ * Synthetic delay-commercial rows use the bare id in run/simulation UIs, or
+ * `__delay_commercial_impact__:<projectId>` when merged into portfolio top-risk tables.
+ */
+export function isSimulationDelayCommercialCostDriverRiskId(riskId: string): boolean {
+  return (
+    riskId === SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID ||
+    riskId.startsWith(`${SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID}:`)
+  );
+}
+
+/**
  * Dollar exposure for driver ranking UI: delay-derived mean or neutral forward total for the risk.
  * Matches key single-driver exposure semantics on the project overview.
  */
@@ -274,7 +285,7 @@ export function costDriverExposureUsd(
   neutralExposure: PortfolioExposure | null,
   neutral: MonteCarloNeutralSnapshot | null | undefined
 ): number | null {
-  if (line.riskId === SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID) {
+  if (isSimulationDelayCommercialCostDriverRiskId(line.riskId)) {
     const m = neutral?.summary?.costBreakdown?.delayDerivedCost?.mean;
     return m != null && Number.isFinite(m) && m >= 0 ? m : null;
   }

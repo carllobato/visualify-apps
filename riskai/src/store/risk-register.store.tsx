@@ -913,6 +913,12 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
             risks: enrichedForPersist.risks,
             distributions,
             seed,
+            delay_cost_per_day_used:
+              delayCostPerDay != null &&
+              Number.isFinite(delayCostPerDay) &&
+              delayCostPerDay > 0
+                ? delayCostPerDay
+                : null,
             inputs_used: inputsUsed,
           };
 

@@ -41,7 +41,7 @@ export function DeleteAccountSection() {
     <>
       <Card>
         <CardHeader className="!px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-status-danger-fg)]">Danger zone</h2>
+          <h2 className="m-0 text-sm font-semibold text-[var(--ds-status-danger-fg)]">Danger Zone</h2>
         </CardHeader>
         <CardBody className="!px-4 !py-3">
           <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">

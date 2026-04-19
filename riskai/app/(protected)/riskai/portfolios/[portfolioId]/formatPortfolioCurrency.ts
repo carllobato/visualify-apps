@@ -116,8 +116,6 @@ export function coverageRatioRagStatus(
 
 const CONTINGENCY_HELD_TILE_SUBTEXT = "Contingency held in this portfolio";
 
-const COST_EXPOSURE_TILE_SUBTEXT = "Forward cost exposure (12-month expected value)";
-
 /**
  * KPI tile for total portfolio forward cost exposure — same units as Coverage Ratio denominator (millions per currency).
  */
@@ -134,7 +132,7 @@ export function costExposureTileCopy(
       const c = [...byCurrency.keys()][0];
       return {
         primaryValue: formatCurrencyInReportingUnit(0, c, reportingUnit),
-        subtext: COST_EXPOSURE_TILE_SUBTEXT,
+        subtext: "",
       };
     }
     return {
@@ -150,7 +148,7 @@ export function costExposureTileCopy(
     const [c, m] = nonzero[0];
     return {
       primaryValue: formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit),
-      subtext: COST_EXPOSURE_TILE_SUBTEXT,
+      subtext: "",
     };
   }
   const parts = nonzero.map(([c, m]) => formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit));

@@ -22,6 +22,7 @@ export type SimulationSnapshotPayload = {
     binCount: number;
   };
   seed: number;
+  delay_cost_per_day_used?: number | null;
   inputs_used: Array<{
     risk_id: string;
     title: string;
@@ -255,6 +256,21 @@ export type SimulationSnapshotRow = {
   lock_note?: string | null;
   report_month?: string | null;
 } | null;
+
+export function delayCostPerDayUsedFromSnapshotPayload(
+  payload: SimulationSnapshotPayload | null | undefined
+): number | null {
+  if (payload == null) return null;
+  const v = payload.delay_cost_per_day_used;
+  if (v === undefined || v === null) return null;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+export function delayCostPerDayUsedFromSnapshotRow(
+  row: SimulationSnapshotRow | null | undefined
+): number | null {
+  return delayCostPerDayUsedFromSnapshotPayload(row?.payload ?? undefined);
+}
 
 /** Format snapshot `created_at` like Run Data: "15 Mar 2026 — 09:08:37". */
 export function formatSnapshotCreatedAtLabel(iso: string): string {

@@ -63,6 +63,12 @@ import {
   buildSimulationInputAuditRows,
   summarizeSimulationInputAudit,
 } from "@/lib/runDataSimulationInputAudit";
+import {
+  delayDerivedCommercialExposureUsdFromNeutral,
+  isSimulationDelayCommercialCostDriverRiskId,
+  SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID,
+  SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE,
+} from "@/lib/projectOverviewReporting";
 
 type ForwardExposurePayload = {
   horizonMonths: number;
@@ -298,7 +304,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
   /** Neutral baseline result. */
   const selectedResult = forwardExposure.result;
 
-  /** Cost drivers: neutral baseline only, and only risks in the run with cost impact (exclude time-only). */
+  /** Cost drivers: neutral baseline only, and only risks in the run with cost impact (exclude time-only); optional delay-commercial row (same rule as Project Overview). */
   const costDrivers = useMemo(() => {
     const runRiskIds = new Set((current?.risks ?? []).map((r) => r.id));
     const allDrivers = forwardExposure.result?.topDrivers ?? [];
@@ -310,7 +316,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       return typeof risk.preMitigationCostML === "number" && risk.preMitigationCostML > 0;
     });
     const total = forwardExposure.result?.total ?? 0;
-    return list.map((d, i) => {
+    const riskRows = list.map((d) => {
       const risk = risks.find((r) => r.id === d.riskId);
       const contributionPct =
         total > 0 && Number.isFinite(d.total) ? (d.total / total) * 100 : null;
@@ -331,7 +337,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       }
       const delta = preMitigation - d.total;
       return {
-        rank: i + 1,
+        rank: 0,
         riskId: d.riskId,
         riskName: risk?.title ?? d.riskId,
         impactType: "Cost" as const,
@@ -343,7 +349,33 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         delta,
       };
     });
-  }, [current?.risks, forwardExposure.result, risks]);
+
+    const delayExposure = delayDerivedCommercialExposureUsdFromNeutral(neutralMc);
+    const mcMeanTotal =
+      neutralMc?.summary?.costBreakdown?.totalSimulatedCost?.mean ?? neutralMc?.summary?.meanCost ?? null;
+    const merged: typeof riskRows = [...riskRows];
+    if (delayExposure != null && delayExposure > 0) {
+      const contributionPct =
+        mcMeanTotal != null && Number.isFinite(mcMeanTotal) && mcMeanTotal > 0
+          ? (delayExposure / mcMeanTotal) * 100
+          : null;
+      merged.push({
+        rank: 0,
+        riskId: SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID,
+        riskName: SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_TITLE,
+        impactType: "Cost" as const,
+        category: "Commercial",
+        total: delayExposure,
+        contributionPct,
+        preMitigation: delayExposure,
+        postMitigation: delayExposure,
+        delta: 0,
+      });
+    }
+
+    merged.sort((a, b) => b.total - a.total);
+    return merged.map((row, i) => ({ ...row, rank: i + 1 }));
+  }, [current?.risks, forwardExposure.result, risks, neutralMc]);
 
   /** Schedule drivers: from snapshot risks sorted by schedule impact (simMeanDays/expectedDays), all risks. */
   const scheduleDrivers = useMemo(() => {
@@ -1009,8 +1041,10 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       });
     }
 
-    // 9. Contribution percentages within bounds
-    const costContribSum = costDrivers.reduce((s, d) => s + (d.contributionPct ?? 0), 0);
+    // 9. Contribution percentages within bounds (risk rows only; delay commercial uses MC denominator)
+    const costContribSum = costDrivers
+      .filter((d) => !isSimulationDelayCommercialCostDriverRiskId(d.riskId))
+      .reduce((s, d) => s + (d.contributionPct ?? 0), 0);
     const scheduleContribSum = scheduleDrivers.reduce((s, d) => s + (d.contributionPct ?? 0), 0);
     const costOk = costDrivers.length === 0 ? true : costContribSum <= 100 + CONSISTENCY_EPS_RATIO;
     const scheduleOk = scheduleDrivers.length === 0 ? true : scheduleContribSum <= 100 + CONSISTENCY_EPS_RATIO;
@@ -2597,7 +2631,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           </Section>
 
           {/* ——— ANALYSIS: why the results occur ——— */}
-          {/* Simulation Drivers: cost from forwardExposure.results.neutral.topDrivers; schedule from current.risks by simMeanDays/expectedDays. */}
+          {/* Simulation Drivers: cost from forwardExposure topDrivers plus optional delay-commercial row (neutral MC); schedule from current.risks by simMeanDays/expectedDays. */}
           <Section className={SECTION_GAP} aria-label="Simulation drivers">
             <Card className={RUN_SECTION_CARD}>
               <CardHeader className={RUN_CARD_HEADER}>
@@ -2609,7 +2643,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                 <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <h3 className={DRIVER_BLOCK_HEADING}>Cost Drivers</h3>
                   <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
-                    Contribution % = each row&apos;s share of total portfolio exposure (neutral baseline). Denominator = forward exposure engine neutral total.
+                    Risk rows: contribution % = share of forward exposure total (neutral baseline). Delay-related Commercial Impact (when shown): mean delay-derived cost vs mean simulated total cost (≥0.1% materiality), same as Simulation / Project Overview.
                   </p>
                 </div>
                 <div className={DRIVER_TABLE_WRAP}>

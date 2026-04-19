@@ -49,6 +49,14 @@ import type { NeedsAttentionStaleCopyMode } from "@/lib/dashboard/needsAttention
 import type { PortfolioOverviewReportingTrendSet } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import { riskaiPath } from "@/lib/routes";
 
+/** Screen-reader caption for Top 5 Cost Risks (combined register forward exposure and simulation delay-commercial rows). */
+function topFiveCostRisksTableCaption(reportingMonthLabel: string | null): string {
+  if (reportingMonthLabel != null) {
+    return "For the selected reporting month: top five cost drivers ranked by modeled dollars combine per-risk forward exposure from the register with delay-related commercial impact from the reporting simulation when material.";
+  }
+  return "Top five cost drivers ranked by modeled dollars combine per-risk forward exposure from the register with delay-related commercial impact from the reporting simulation when material.";
+}
+
 type PortfolioBreakdownModalId =
   | "status"
   | "severity"
@@ -211,6 +219,8 @@ type PortfolioOverviewContentProps = {
   activeRiskCount: number;
   contingencyPrimaryValue: string;
   costExposurePrimaryValue: string;
+  /** Subtext from `costExposureTileCopy` (same basis as the cost exposure figure). */
+  costExposureSubtext: string;
   scheduleExposurePrimaryValue: string;
   scheduleExposureSubtext: string;
   scheduleContingencyHeldPrimaryValue: string;
@@ -272,6 +282,7 @@ export function PortfolioOverviewContent({
   activeRiskCount,
   contingencyPrimaryValue,
   costExposurePrimaryValue,
+  costExposureSubtext,
   scheduleExposurePrimaryValue,
   scheduleExposureSubtext,
   scheduleContingencyHeldPrimaryValue,
@@ -430,11 +441,7 @@ export function PortfolioOverviewContent({
           return (
             <PortfolioTopRisksTable
               rows={topCostRiskRows}
-              caption={
-                reportingMonthLabel != null
-                  ? "Top five portfolio cost risks by forward exposure (current register)"
-                  : "Top five portfolio cost risks by forward exposure"
-              }
+              caption={topFiveCostRisksTableCaption(reportingMonthLabel)}
               emptyMessage="No cost risk data available. Add cost-applicable risks with positive cost impacts in your projects to populate this view."
               showOwnerColumn
             />
@@ -560,30 +567,37 @@ export function PortfolioOverviewContent({
             modalSelected={overviewModalOpen && overviewModalIndex === 4}
             activateAriaLabel="Open cost exposure, contingency, and coverage details"
           >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
-              <div className="min-w-0 flex-1 flex flex-col">
-                <PortfolioExposureByProjectDonut
-                  mode="cost"
-                  slices={projectCostExposureSlices}
-                  reportingUnit={reportingUnit}
-                />
-              </div>
-              <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:flex lg:w-auto lg:min-h-0 lg:min-w-[11rem] lg:max-w-[15rem] lg:flex-col lg:justify-center lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
-                <div className="w-full rounded-[var(--ds-radius-sm)] border border-transparent p-2 -m-2 text-left">
-                  <PortfolioCostCoverageMetricsPanel
-                    layout="stack"
-                    compact
-                    costExposurePrimaryValue={costExposurePrimaryValue}
-                    contingencyPrimaryValue={contingencyPrimaryValue}
-                    coveragePrimaryValue={coveragePrimaryValue}
-                    coveragePrimaryRagDot={coveragePrimaryRagDot}
-                    coveragePrimaryValueClassName={coverageRatioSemanticClassName}
-                    costExposureTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.costExposure}
-                    contingencyTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.contingency}
-                    coverageRatioTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.coverageRatio}
+            <div className="flex flex-col gap-3">
+              {costExposureSubtext.trim() !== "" ? (
+                <p className="m-0 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-muted)]">
+                  {costExposureSubtext}
+                </p>
+              ) : null}
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+                <div className="min-w-0 flex-1 flex flex-col">
+                  <PortfolioExposureByProjectDonut
+                    mode="cost"
+                    slices={projectCostExposureSlices}
+                    reportingUnit={reportingUnit}
                   />
                 </div>
-              </aside>
+                <aside className="w-full shrink-0 border-t border-[var(--ds-border-subtle)] pt-4 lg:flex lg:w-auto lg:min-h-0 lg:min-w-[11rem] lg:max-w-[15rem] lg:flex-col lg:justify-center lg:border-t-0 lg:border-l lg:border-[var(--ds-border-subtle)] lg:pl-6 lg:pt-0">
+                  <div className="w-full rounded-[var(--ds-radius-sm)] border border-transparent p-2 -m-2 text-left">
+                    <PortfolioCostCoverageMetricsPanel
+                      layout="stack"
+                      compact
+                      costExposurePrimaryValue={costExposurePrimaryValue}
+                      contingencyPrimaryValue={contingencyPrimaryValue}
+                      coveragePrimaryValue={coveragePrimaryValue}
+                      coveragePrimaryRagDot={coveragePrimaryRagDot}
+                      coveragePrimaryValueClassName={coverageRatioSemanticClassName}
+                      costExposureTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.costExposure}
+                      contingencyTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.contingency}
+                      coverageRatioTrend={reportingVsPriorMonthTrends?.costCoverageSidebarMoM?.coverageRatio}
+                    />
+                  </div>
+                </aside>
+              </div>
             </div>
           </DashboardCard>
           <DashboardCard
@@ -671,11 +685,7 @@ export function PortfolioOverviewContent({
         >
           <PortfolioTopRisksTable
             rows={topCostRiskRows}
-            caption={
-              reportingMonthLabel != null
-                ? "Top five portfolio cost risks by forward exposure (current register)"
-                : "Top five portfolio cost risks by forward exposure"
-            }
+            caption={topFiveCostRisksTableCaption(reportingMonthLabel)}
             emptyMessage="No cost risk data available. Add cost-applicable risks with positive cost impacts in your projects to populate this view."
             enableNavigation={false}
           />

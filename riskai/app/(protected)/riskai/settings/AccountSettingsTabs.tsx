@@ -30,7 +30,7 @@ export function AccountSettingsTabs({
             Authentication
           </Tab>
           <Tab active={activeTab === "danger"} onClick={() => setActiveTab("danger")}>
-            Danger zone
+            Danger Zone
           </Tab>
         </Tabs>
       </div>

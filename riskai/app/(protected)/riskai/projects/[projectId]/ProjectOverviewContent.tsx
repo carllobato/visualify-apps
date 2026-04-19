@@ -79,7 +79,7 @@ import {
   interpolateSnapshotAtRiskPercentile,
   optionalBufferFromSnapshotPayload,
   rankCostDriverLinesWithDelayCommercial,
-  SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID,
+  isSimulationDelayCommercialCostDriverRiskId,
   topCostRiskTitleFromSnapshotPayload,
   topTimeRiskTitleFromSnapshotPayload,
   reportingRunActiveRiskCount,
@@ -214,17 +214,12 @@ function toBarDataTime(distribution: TimeDistributionPoint[]): ExposureBarDatum[
 
 function exposureHistogramDomain(
   data: ExposureBarDatum[],
-  currentX: number | null,
   targetX: number | null,
   pValueX: number | null = null
 ): [number, number] {
   const xs = data.map((d) => d.x);
   let lo = xs.length ? Math.min(...xs) : 0;
   let hi = xs.length ? Math.max(...xs) : 1;
-  if (currentX != null && Number.isFinite(currentX)) {
-    lo = Math.min(lo, currentX);
-    hi = Math.max(hi, currentX);
-  }
   if (targetX != null && Number.isFinite(targetX)) {
     lo = Math.min(lo, targetX);
     hi = Math.max(hi, targetX);
@@ -245,8 +240,8 @@ function exposureHistogramDomain(
 function ProjectExposureHistogramCard({
   title,
   data,
-  currentX,
   targetX,
+  currentPLineStroke,
   pValueX,
   pValueLabel,
   formatX,
@@ -259,8 +254,9 @@ function ProjectExposureHistogramCard({
 }: {
   title: string;
   data: ExposureBarDatum[];
-  currentX: number | null;
   targetX: number | null;
+  /** Vertical at contingency / funding ref (legend “Current P”) — solid RAG stroke, aligned with gap tiles. */
+  currentPLineStroke: string;
   /** X at funding (cost) or buffer/duration (time) — same ref as “current P” on the CDF. */
   pValueX?: number | null;
   /** e.g. `P28` for legend; optional when `pValueX` set. */
@@ -276,12 +272,10 @@ function ProjectExposureHistogramCard({
   embedded?: boolean;
 }) {
   const hasData = data.length > 0;
-  const showCurrent = currentX != null && Number.isFinite(currentX);
   const showTarget = targetX != null && Number.isFinite(targetX);
   const showPValue = pValueX != null && Number.isFinite(pValueX) && pValueX > 0;
   const domain = exposureHistogramDomain(
     data,
-    showCurrent ? currentX : null,
     showTarget ? targetX : null,
     showPValue ? pValueX! : null
   );
@@ -329,33 +323,24 @@ function ProjectExposureHistogramCard({
                 {showTarget ? (
                   <ReferenceLine
                     x={targetX!}
-                    stroke="var(--ds-border)"
-                    strokeOpacity={0.45}
-                    strokeWidth={1}
-                    strokeDasharray="4 3"
-                  />
-                ) : null}
-                {showCurrent ? (
-                  <ReferenceLine
-                    x={currentX!}
-                    stroke="var(--ds-text-muted)"
-                    strokeOpacity={0.78}
-                    strokeWidth={1}
+                    stroke="var(--ds-text-primary)"
+                    strokeOpacity={1}
+                    strokeWidth={1.5}
                   />
                 ) : null}
                 {showPValue ? (
                   <ReferenceLine
                     x={pValueX!}
-                    stroke="var(--ds-primary)"
-                    strokeOpacity={0.85}
-                    strokeWidth={1.5}
+                    stroke={currentPLineStroke}
+                    strokeOpacity={1}
+                    strokeWidth={2}
                   />
                 ) : null}
               </BarChart>
             </ResponsiveContainer>
           </div>
           <p className="m-0 mt-2 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)] opacity-90 leading-snug">
-            Mean · Target {targetLabel}
+            Target {targetLabel}
             {showPValue && pValueLabel != null && pValueLabel.trim() !== ""
               ? " · Current " + pValueLabel.trim()
               : showPValue
@@ -423,6 +408,26 @@ function reportingLineSeverityToValueClass(line: ReportingLineSeverity | null | 
   if (line === "on") return "text-[var(--ds-status-success-fg)]";
   if (line === "risk") return "text-[var(--ds-status-warning-fg)]";
   return "text-[var(--ds-status-danger-fg)]";
+}
+
+/**
+ * SVG stroke for exposure “Current P” vertical — same RAG resolution as Cost/Time Gap tiles.
+ * Uses base `--ds-status-*` tokens (not `*-fg`) so the line matches {@link SummaryTile} RAG dots.
+ */
+function exposureHistogramCurrentPGapStroke(
+  line: ReportingLineSeverity | null | undefined,
+  meanMinusAppetite: number | null
+): string {
+  if (line != null) {
+    if (line === "on") return "var(--ds-status-success)";
+    if (line === "risk") return "var(--ds-status-warning)";
+    return "var(--ds-status-danger)";
+  }
+  if (meanMinusAppetite == null || !Number.isFinite(meanMinusAppetite)) {
+    return "var(--ds-text-primary)";
+  }
+  if (meanMinusAppetite <= 0) return "var(--ds-status-success)";
+  return "var(--ds-status-danger)";
 }
 
 export type ProjectOverviewInitialData = {
@@ -1356,6 +1361,16 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     [reportingPositionBreakdown]
   );
 
+  const costExposureCurrentPLineStroke = useMemo(
+    () => exposureHistogramCurrentPGapStroke(reportingPositionBreakdown?.costLine, dollarGapSigned),
+    [reportingPositionBreakdown, dollarGapSigned]
+  );
+
+  const scheduleExposureCurrentPLineStroke = useMemo(
+    () => exposureHistogramCurrentPGapStroke(reportingPositionBreakdown?.timeLine, timeGapSigned),
+    [reportingPositionBreakdown, timeGapSigned]
+  );
+
   const projectKpiTiles = useMemo((): DocumentKpiTileItem[] => {
     if (!reportingSnapshot) return [];
     const rr = projectRiskRatingTileCopy(ragStatus);
@@ -1423,8 +1438,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
             <ProjectExposureHistogramCard
               title="Cost Exposure"
               data={costExposureBarData}
-              currentX={meanCostFromSnapshot}
               targetX={costAtAppetiteLine}
+              currentPLineStroke={costExposureCurrentPLineStroke}
               pValueX={costFundingReferenceDollars}
               pValueLabel={currentConfidenceLabel}
               formatX={formatCurrency}
@@ -1438,8 +1453,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
             <ProjectExposureHistogramCard
               title="Schedule Exposure"
               data={scheduleExposureBarData}
-              currentX={meanTimeFromSnapshot}
               targetX={timeAtAppetiteLine}
+              currentPLineStroke={scheduleExposureCurrentPLineStroke}
               pValueX={scheduleReferenceDaysForChart}
               pValueLabel={currentScheduleConfidenceLabel}
               formatX={formatDurationDays}
@@ -1462,9 +1477,9 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
               rows={topTenCostDriverModalRows}
               initialVisibleRows={EXEC_DRIVER_MODAL_INITIAL_ROWS}
               expandRowsBy={5}
-              isRowNavigable={(row) => row.riskId !== SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID}
+              isRowNavigable={(row) => !isSimulationDelayCommercialCostDriverRiskId(row.riskId)}
               nonNavigableAriaLabel={(row) =>
-                row.riskId === SIMULATION_DELAY_COMMERCIAL_COST_DRIVER_ID
+                isSimulationDelayCommercialCostDriverRiskId(row.riskId)
                   ? "Delay-related commercial impact — derived from schedule, not a register risk"
                   : undefined
               }
@@ -1543,14 +1558,14 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       reportingSnapshot,
       projectId,
       costExposureBarData,
-      meanCostFromSnapshot,
       costAtAppetiteLine,
+      costExposureCurrentPLineStroke,
       costFundingReferenceDollars,
       currentConfidenceLabel,
       costExposureContingencySubline,
       scheduleExposureBarData,
-      meanTimeFromSnapshot,
       timeAtAppetiteLine,
+      scheduleExposureCurrentPLineStroke,
       scheduleReferenceDaysForChart,
       currentScheduleConfidenceLabel,
       scheduleExposureContingencySubline,
@@ -1695,8 +1710,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           <ProjectExposureHistogramCard
             title="Cost Exposure"
             data={costExposureBarData}
-            currentX={meanCostFromSnapshot}
             targetX={costAtAppetiteLine}
+            currentPLineStroke={costExposureCurrentPLineStroke}
             pValueX={costFundingReferenceDollars}
             pValueLabel={currentConfidenceLabel}
             formatX={formatCurrency}
@@ -1709,8 +1724,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           <ProjectExposureHistogramCard
             title="Schedule Exposure"
             data={scheduleExposureBarData}
-            currentX={meanTimeFromSnapshot}
             targetX={timeAtAppetiteLine}
+            currentPLineStroke={scheduleExposureCurrentPLineStroke}
             pValueX={scheduleReferenceDaysForChart}
             pValueLabel={currentScheduleConfidenceLabel}
             formatX={formatDurationDays}

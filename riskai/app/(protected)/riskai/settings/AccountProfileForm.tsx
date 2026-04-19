@@ -141,7 +141,7 @@ export function AccountProfileForm({
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className={projectSettingsFieldWidthClass("sm")}>
         <Label htmlFor="profile-first-name" className="!mb-1">
-          First name{" "}
+          First Name{" "}
           <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
         </Label>
         <input
@@ -150,7 +150,7 @@ export function AccountProfileForm({
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           className={projectSettingsInputClass(false)}
-          placeholder="First name"
+          placeholder="First Name"
           autoComplete="given-name"
           required
         />

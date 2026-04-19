@@ -944,6 +944,18 @@ export async function loadPortfolioTopRiskConcentrationRows(
         .select("project_id, created_at")
         .in("project_id", effectiveProjectIds);
 
+  let lockedReportingPayloadQuery = supabase
+    .from("riskai_simulation_snapshots")
+    .select("project_id, payload, locked_at, created_at")
+    .in("project_id", effectiveProjectIds)
+    .eq("locked_for_reporting", true);
+  if (monthScopedConcentration) {
+    lockedReportingPayloadQuery = lockedReportingPayloadQuery.eq(
+      "report_month",
+      `${reportingMonthYearOpt}-01`
+    );
+  }
+
   const [
     { data: riskRowsRaw, error: rErr },
     { data: snapshotRowsRaw, error: sErr },
@@ -951,11 +963,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
   ] = await Promise.all([
     supabase.from("riskai_risks").select(RISK_DB_SELECT_COLUMNS).in("project_id", effectiveProjectIds),
     snapshotQuery,
-    supabase
-      .from("riskai_simulation_snapshots")
-      .select("project_id, payload, locked_at, created_at")
-      .in("project_id", effectiveProjectIds)
-      .eq("locked_for_reporting", true),
+    lockedReportingPayloadQuery,
   ]);
 
   if (rErr) return empty;

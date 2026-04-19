@@ -2,8 +2,7 @@ import { loadProjectContext, parseProjectContextFromVisualifyProjectSettingsRow 
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 /**
- * Delay rate for Monte Carlo: prefer project-scoped localStorage (fast), else authoritative DB row.
- * Ensures simulations include delay-derived cost when the user never opened project settings in this browser.
+ * Delay rate for Monte Carlo: prefer `visualify_project_settings` from Supabase, else project-scoped localStorage.
  */
 export async function resolveDelayCostPerDayForSimulation(
   projectId: string | undefined
@@ -11,6 +10,22 @@ export async function resolveDelayCostPerDayForSimulation(
   if (!projectId || typeof projectId !== "string") return undefined;
   const pid = projectId.trim();
   if (!pid) return undefined;
+
+  try {
+    const supabase = supabaseBrowserClient();
+    const { data: row, error } = await supabase
+      .from("visualify_project_settings")
+      .select("*")
+      .eq("project_id", pid)
+      .maybeSingle();
+    if (!error && row != null && typeof row === "object") {
+      const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
+      const d = parsed?.delay_cost_per_day;
+      if (d != null && Number.isFinite(d) && d > 0) return d;
+    }
+  } catch {
+    // Supabase or network unavailable
+  }
 
   const delayCtx = loadProjectContext(pid);
   const fromLocal =
@@ -21,19 +36,5 @@ export async function resolveDelayCostPerDayForSimulation(
       : undefined;
   if (fromLocal !== undefined) return fromLocal;
 
-  try {
-    const supabase = supabaseBrowserClient();
-    const { data: row, error } = await supabase
-      .from("visualify_project_settings")
-      .select("*")
-      .eq("project_id", pid)
-      .maybeSingle();
-    if (error || row == null || typeof row !== "object") return undefined;
-    const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
-    const d = parsed?.delay_cost_per_day;
-    if (d != null && Number.isFinite(d) && d > 0) return d;
-  } catch {
-    // Supabase or network unavailable
-  }
   return undefined;
 }

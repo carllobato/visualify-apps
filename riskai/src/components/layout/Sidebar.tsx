@@ -494,9 +494,9 @@ export function Sidebar({
           {sectionHeader("Main", true)}
           <ul className="space-y-0.5">
             <li>
-              <Link href={DASHBOARD_PATH} className={linkClass(dashboardActive)} title={visuallyCollapsed ? "User Nav" : undefined} onClick={onMobileClose}>
+              <Link href={DASHBOARD_PATH} className={linkClass(dashboardActive)} title={visuallyCollapsed ? "Dashboard" : undefined} onClick={onMobileClose}>
                 <CompassIcon />
-                <span className={navLabelClass}>User Nav</span>
+                <span className={navLabelClass}>Dashboard</span>
               </Link>
             </li>
           </ul>
