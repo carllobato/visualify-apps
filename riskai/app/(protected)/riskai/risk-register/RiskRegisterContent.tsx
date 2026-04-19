@@ -14,6 +14,7 @@ import {
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { listRisks, replaceRisks } from "@/lib/db/risks";
 import type { Risk } from "@/domain/risk/risk.schema";
+import { formatRiskRegisterNumberDisplay } from "@/domain/risk/riskRegisterDisplay";
 import { RiskRegisterHeader } from "@/components/risk-register/RiskRegisterHeader";
 import {
   RiskRegisterTable,
@@ -54,7 +55,7 @@ const HIGHLIGHT_DURATION_MS = 2000;
 function getRiskColumnValue(risk: Risk, column: SortColumn): string {
   switch (column) {
     case "riskId":
-      return risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : "";
+      return formatRiskRegisterNumberDisplay(risk.riskNumber);
     case "title":
       return risk.title?.trim() ?? "";
     case "category":
@@ -105,6 +106,8 @@ function buildRiskSearchText(risk: Risk): string {
   if (risk.riskNumber != null) {
     pushSearchToken(tokens, risk.riskNumber);
     pushSearchToken(tokens, String(risk.riskNumber).padStart(3, "0"));
+  } else {
+    pushSearchToken(tokens, "New");
   }
   pushSearchToken(tokens, risk.title);
   pushSearchToken(tokens, risk.description);

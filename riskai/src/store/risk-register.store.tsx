@@ -314,7 +314,7 @@ function ensureScoreHistory(risk: Risk): Risk {
   };
 }
 
-/** Max riskNumber in list, or 0 if none. */
+/** Max riskNumber among all risks with a defined riskNumber (including archived), or 0 if none. */
 function maxRiskNumber(risks: Risk[]): number {
   return risks.reduce((max, r) => (r.riskNumber != null && r.riskNumber > max ? r.riskNumber : max), 0);
 }
@@ -386,16 +386,16 @@ function reducer(state: State, action: Action): State {
 
     case "risks/append": {
       const existingIds = new Set(state.risks.map((r) => r.id));
-      let nextNum = maxRiskNumber(state.risks) + 1;
       const newRisks = action.risks
         .filter((r) => !existingIds.has(r.id))
         .map((r) => {
           const withStableKey = r.id
             ? r
             : { ...r, tempId: (r as Risk & { tempId?: string }).tempId ?? crypto.randomUUID() };
+          const { riskNumber: incomingRiskNumber, ...rest } = withStableKey;
           return ensureScoreHistory({
-            ...withStableKey,
-            riskNumber: withStableKey.riskNumber ?? nextNum++,
+            ...rest,
+            ...(incomingRiskNumber != null ? { riskNumber: incomingRiskNumber } : {}),
           });
         });
       return { ...state, risks: [...state.risks, ...newRisks] };
@@ -440,16 +440,16 @@ function reducer(state: State, action: Action): State {
     }
 
     case "risk/add": {
-      const nextNum = maxRiskNumber(state.risks) + 1;
       const withStableKey = action.risk.id
         ? action.risk
         : {
             ...action.risk,
             tempId: (action.risk as Risk & { tempId?: string }).tempId ?? crypto.randomUUID(),
           };
+      const { riskNumber: incomingRiskNumber, ...rest } = withStableKey;
       const risk = ensureScoreHistory({
-        ...withStableKey,
-        riskNumber: withStableKey.riskNumber ?? nextNum,
+        ...rest,
+        ...(incomingRiskNumber != null ? { riskNumber: incomingRiskNumber } : {}),
       });
       return { ...state, risks: [risk, ...state.risks] };
     }

@@ -469,7 +469,7 @@ export function AddRiskModal({
               className="w-14 shrink-0 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-muted)]"
               aria-label="Risk ID"
             >
-              —
+              New
             </span>
             <input
               type="text"

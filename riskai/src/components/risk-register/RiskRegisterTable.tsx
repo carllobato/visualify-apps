@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Risk } from "@/domain/risk/risk.schema";
+import { formatRiskRegisterNumberDisplay } from "@/domain/risk/riskRegisterDisplay";
 import { getCurrentRiskRatingLetter, normalizeRiskStatusKey } from "@/domain/risk/riskFieldSemantics";
 import type { DecisionMetrics } from "@/domain/decision/decision.types";
 import { getRiskValidationErrors } from "@/domain/risk/runnable-risk.validator";
@@ -161,7 +162,7 @@ function getDistinctValues(risks: Risk[], column: SortColumn): string[] {
   for (const r of risks) {
     switch (column) {
       case "riskId":
-        if (r.riskNumber != null) set.add(String(r.riskNumber).padStart(3, "0"));
+        set.add(formatRiskRegisterNumberDisplay(r.riskNumber));
         break;
       case "title":
         if (r.title?.trim()) set.add(r.title.trim());

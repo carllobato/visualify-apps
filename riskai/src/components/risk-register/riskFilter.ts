@@ -1,4 +1,5 @@
 import type { Risk } from "@/domain/risk/risk.schema";
+import { formatRiskRegisterNumberDisplay } from "@/domain/risk/riskRegisterDisplay";
 
 const RATING_ALIASES: Record<string, string> = {
   high: "h",
@@ -20,7 +21,7 @@ const LEVEL_LETTERS: Record<string, string> = {
 
 /** Concatenate all searchable fields for a risk (for filter across columns). */
 export function riskToSearchText(risk: Risk): string {
-  const id = risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : risk.id;
+  const id = formatRiskRegisterNumberDisplay(risk.riskNumber);
   const pre = risk.inherentRating?.level ?? "";
   const post = risk.residualRating?.level ?? "";
   const movement =

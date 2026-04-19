@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Risk } from "@/domain/risk/risk.schema";
+import { formatRiskRegisterNumberDisplay } from "@/domain/risk/riskRegisterDisplay";
 import type { DecisionMetrics } from "@/domain/decision/decision.types";
 import {
   getCurrentRiskRatingLetter,
@@ -186,7 +187,7 @@ export function RiskRegisterRow({
     if (!e.currentTarget.contains(next)) setShowDescCard(false);
   };
 
-  const riskIdDisplay = risk.riskNumber != null ? String(risk.riskNumber).padStart(3, "0") : "—";
+  const riskIdDisplay = formatRiskRegisterNumberDisplay(risk.riskNumber);
   const currentLetter = getCurrentRiskRatingLetter(risk);
   const currentRatingTitle = getCurrentRiskRatingTitle(risk);
   const currentBadge: DsBadgeTone =

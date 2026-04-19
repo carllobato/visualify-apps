@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { Risk, RiskStatus, AppliesTo, MitigationMode } from "@/domain/risk/risk.schema";
+import { formatRiskRegisterNumberOrId } from "@/domain/risk/riskRegisterDisplay";
 import { mergeMitigationProfileForMode, mitigationModeFromRisk } from "@/domain/risk/mitigationMode";
 import {
   buildRating,
@@ -905,7 +906,7 @@ export function RiskDetailModal({
                   className="w-14 shrink-0 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]"
                   aria-label="Risk ID"
                 >
-                  {currentRisk.riskNumber != null ? String(currentRisk.riskNumber).padStart(3, "0") : currentRisk.id}
+                  {formatRiskRegisterNumberOrId(currentRisk.riskNumber, currentRisk.id)}
                 </span>
                 <input
                   type="text"
