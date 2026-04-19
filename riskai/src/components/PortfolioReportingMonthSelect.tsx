@@ -8,6 +8,8 @@ import { fetchDistinctLockedReportingMonthKeys } from "@/lib/db/lockedReportingM
 import { formatReportMonthLabel } from "@/lib/db/snapshots";
 import {
   PORTFOLIO_REPORTING_MONTH_QUERY_PARAM,
+  UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE,
+  isUnpublishedReportingMonthParamValue,
   isValidReportingMonthYearKey,
 } from "@/lib/reportingMonthSelection";
 
@@ -22,25 +24,20 @@ const ChevronIcon = () => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
-    className="pointer-events-none shrink-0 text-[var(--ds-text-muted)]"
+    className="pointer-events-none shrink-0"
     aria-hidden
   >
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
 
-const reportingMonthMenuItemClass =
-  "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-2)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
-  "hover:bg-[var(--ds-surface-hover)] focus-visible:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
-
-const reportingMonthTriggerClassName =
-  "!h-9 !max-w-64 !min-w-0 !rounded-full !border-0 !py-0 !pl-3 !pr-2 !gap-2 !font-normal shadow-[var(--ds-shadow-sm)] !bg-[var(--ds-surface-muted)] hover:!bg-[var(--ds-surface-subtle)] active:!brightness-[0.98] [&_svg]:text-[var(--ds-text-secondary)] hover:[&_svg]:text-[var(--ds-text-primary)]";
-
 export type PortfolioReportingMonthSelectProps = {
   /** Distinct months from locked reporting runs for this project only */
   projectId?: string;
   /** Distinct months from locked reporting runs across projects in this portfolio */
   portfolioId?: string;
+  /** Project overview only: adds an `Unpublished` value to the same `reportingMonth` query param. */
+  showUnpublishedOption?: boolean;
   /** Request query string (with `?`); from `headers().get("x-url-search")` for SSR alignment */
   initialUrlSearch?: string;
 };
@@ -48,6 +45,7 @@ export type PortfolioReportingMonthSelectProps = {
 export function PortfolioReportingMonthSelect({
   projectId,
   portfolioId,
+  showUnpublishedOption = false,
   initialUrlSearch = "",
 }: PortfolioReportingMonthSelectProps) {
   const router = useRouter();
@@ -79,31 +77,55 @@ export function PortfolioReportingMonthSelect({
   }, [projectId, portfolioId]);
 
   const options = useMemo(() => {
-    if (!monthKeys?.length) return [];
-    return monthKeys.map((value) => ({
+    if (monthKeys === null) return [];
+    const locked = monthKeys.map((value) => ({
       value,
       label: formatReportMonthLabel(value),
     }));
-  }, [monthKeys]);
+    const pid = projectId?.trim();
+    if (showUnpublishedOption && pid) {
+      if (monthKeys.length === 0) {
+        return [{ value: UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE, label: "Unpublished" }];
+      }
+      return [
+        ...locked,
+        { value: UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE, label: "Unpublished" },
+      ];
+    }
+    if (!monthKeys.length) return [];
+    return locked;
+  }, [monthKeys, showUnpublishedOption, projectId]);
 
   const optionValueSet = useMemo(() => new Set(options.map((o) => o.value)), [options]);
 
   const rawFromUrl = searchParams.get(PORTFOLIO_REPORTING_MONTH_QUERY_PARAM);
   const fromUrl = typeof rawFromUrl === "string" ? rawFromUrl.trim() : "";
   const selected =
-    fromUrl && isValidReportingMonthYearKey(fromUrl) && optionValueSet.has(fromUrl)
+    fromUrl &&
+    optionValueSet.has(fromUrl) &&
+    (isValidReportingMonthYearKey(fromUrl) ||
+      (showUnpublishedOption && isUnpublishedReportingMonthParamValue(fromUrl)))
       ? fromUrl
       : (options[0]?.value ?? "");
 
   useEffect(() => {
-    if (monthKeys === null || monthKeys.length === 0) return;
+    if (monthKeys === null) return;
+    const pid = projectId?.trim();
+    const unpublishedOnly = monthKeys.length === 0 && showUnpublishedOption && !!pid;
+    if (monthKeys.length === 0 && !unpublishedOnly) return;
+
     const raw = searchParams.get(PORTFOLIO_REPORTING_MONTH_QUERY_PARAM);
     const param = typeof raw === "string" ? raw.trim() : "";
     if (isValidReportingMonthYearKey(param) && monthKeys.includes(param)) return;
+    if (showUnpublishedOption && pid && isUnpublishedReportingMonthParamValue(param)) return;
+
     const next = new URLSearchParams(searchParams.toString());
-    next.set(PORTFOLIO_REPORTING_MONTH_QUERY_PARAM, monthKeys[0]);
+    const fallback = unpublishedOnly
+      ? UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE
+      : (monthKeys[0] ?? UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE);
+    next.set(PORTFOLIO_REPORTING_MONTH_QUERY_PARAM, fallback);
     router.replace(`${pathname}?${next.toString()}`);
-  }, [monthKeys, pathname, router, searchParams]);
+  }, [monthKeys, pathname, projectId, router, searchParams, showUnpublishedOption]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -116,18 +138,15 @@ export function PortfolioReportingMonthSelect({
 
   if (monthKeys === null) {
     return (
-      <div
-        className="h-9 min-w-[10.5rem] max-w-[16rem] animate-pulse rounded-full bg-[var(--ds-surface-muted)]"
-        aria-hidden
-      />
+      <div className="ds-app-menu-trigger-skeleton animate-pulse" aria-hidden />
     );
   }
 
-  if (monthKeys.length === 0) {
+  if (monthKeys.length === 0 && !(showUnpublishedOption && projectId?.trim())) {
     return (
       <div className="flex min-w-0 items-center gap-[var(--ds-space-2)]">
         <span className="hidden shrink-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] sm:inline">
-          Reporting month
+          Report month:
         </span>
         <span className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
           {legacyLockedWithoutReportMonth
@@ -143,17 +162,17 @@ export function PortfolioReportingMonthSelect({
   return (
     <div className="flex min-w-0 items-center gap-[var(--ds-space-2)]">
       <span className="hidden shrink-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] sm:inline">
-        Reporting month
+        Report month:
       </span>
       <div className="relative flex min-w-0 items-center" ref={menuRef}>
         <Button
           type="button"
           variant="ghost"
           size="md"
-          className={`${reportingMonthTriggerClassName} min-w-[10.5rem]`}
+          className="ds-app-menu-trigger ds-app-menu-trigger--label-slot min-w-0"
           aria-expanded={menuOpen}
           aria-haspopup="menu"
-          aria-label="Reporting month"
+          aria-label="Report month"
           onClick={() => setMenuOpen((o) => !o)}
         >
           <span className="min-w-0 flex-1 truncate text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]">
@@ -165,14 +184,14 @@ export function PortfolioReportingMonthSelect({
         {menuOpen ? (
           <div
             role="menu"
-            className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] min-w-full overflow-hidden rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] bg-[var(--ds-surface-elevated)] py-[var(--ds-space-1)] shadow-[var(--ds-shadow-lg)]"
+            className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-full"
           >
             {options.map((o) => (
               <button
                 key={o.value}
                 type="button"
                 role="menuitem"
-                className={reportingMonthMenuItemClass}
+                className="ds-app-menu-dropdown__item"
                 onClick={() => {
                   setMenuOpen(false);
                   const params = new URLSearchParams(searchParams.toString());

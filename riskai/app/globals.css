@@ -69,3 +69,125 @@ html {
   color: var(--ds-text-muted);
   opacity: 0.62;
 }
+
+/**
+ * Pill menu triggers (top nav account, reporting month, etc.): same chrome as design-system ghost Button overrides.
+ * Modifiers only adjust padding and width where the leading control differs (avatar vs label).
+ */
+.ds-app-menu-trigger {
+  display: inline-flex;
+  height: 2.25rem !important;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px !important;
+  border-width: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-right: 0.5rem !important;
+  font-weight: 400 !important;
+  box-shadow: var(--ds-shadow-sm);
+  background-color: var(--ds-surface-muted) !important;
+}
+
+.ds-app-menu-trigger:hover {
+  background-color: var(--ds-surface-subtle) !important;
+}
+
+.ds-app-menu-trigger:active {
+  filter: brightness(0.98);
+}
+
+/* Chevron (direct svg child); avatar lives in a nested span — match pre–global Tailwind: secondary, not tertiary muted */
+.ds-app-menu-trigger > svg {
+  flex-shrink: 0;
+  color: var(--ds-text-secondary);
+}
+
+.ds-app-menu-trigger:hover > svg {
+  color: var(--ds-text-primary);
+}
+
+/** Leading slot is an icon/disc (e.g. account avatar) — tight left inset like the top nav. */
+.ds-app-menu-trigger--leading-slot {
+  padding-left: 0.25rem !important;
+}
+
+/** Leading slot is text (e.g. reporting month) — room for label + truncate; caps width for long months. */
+.ds-app-menu-trigger--label-slot {
+  max-width: 16rem;
+  min-width: min(100%, 10.5rem);
+  padding-left: 0.75rem !important;
+}
+
+/** Loading placeholder aligned to the label-slot trigger width. */
+.ds-app-menu-trigger-skeleton {
+  height: 2.25rem;
+  max-width: 16rem;
+  min-width: min(100%, 10.5rem);
+  border-radius: 9999px;
+  background-color: var(--ds-surface-muted);
+}
+
+/**
+ * Popover panel for app menus (account, reporting month, etc.) — same shell as the top-nav account dropdown.
+ * Pair with positioning utilities: `absolute right-0 top-full z-[100] mt-[var(--ds-space-1)]`.
+ */
+.ds-app-menu-dropdown {
+  overflow: hidden;
+  border-radius: var(--ds-radius-app-frame);
+  border: 0 !important;
+  background-color: var(--ds-app-document-bg) !important;
+  box-shadow: var(--ds-elevation-app-frame);
+  padding: 0;
+}
+
+.ds-app-menu-dropdown--min-w-nav {
+  min-width: 200px;
+}
+
+.ds-app-menu-dropdown--min-w-full {
+  min-width: 100%;
+}
+
+.ds-app-menu-dropdown__item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: var(--ds-space-3) var(--ds-space-4);
+  text-align: left;
+  font-size: var(--ds-text-sm);
+  font-weight: inherit;
+  font-family: inherit;
+  line-height: inherit;
+  color: var(--ds-text-primary);
+  text-decoration: none;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.ds-app-menu-dropdown__item:hover,
+.ds-app-menu-dropdown__item:focus-visible {
+  background-color: var(--ds-menu-item-hover-bg) !important;
+}
+
+.ds-app-menu-dropdown__item:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+
+.ds-app-menu-dropdown > .ds-app-menu-dropdown__item:first-child {
+  border-top-left-radius: var(--ds-radius-app-frame);
+  border-top-right-radius: var(--ds-radius-app-frame);
+}
+
+.ds-app-menu-dropdown > .ds-app-menu-dropdown__item:last-child {
+  border-bottom-left-radius: var(--ds-radius-app-frame);
+  border-bottom-right-radius: var(--ds-radius-app-frame);
+}

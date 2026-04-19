@@ -20,6 +20,13 @@ export function getReportingMonthYearOptions(now = new Date()): { value: string;
 
 export const PORTFOLIO_REPORTING_MONTH_QUERY_PARAM = "reportingMonth";
 
+/** Project overview only: selects latest non–reporting-locked snapshot via `reportingMonth=unpublished`. */
+export const UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE = "unpublished";
+
+export function isUnpublishedReportingMonthParamValue(s: string): boolean {
+  return s.trim().toLowerCase() === UNPUBLISHED_REPORTING_MONTH_PARAM_VALUE;
+}
+
 export function isValidReportingMonthYearKey(s: string): boolean {
   return /^\d{4}-\d{2}$/.test(s);
 }

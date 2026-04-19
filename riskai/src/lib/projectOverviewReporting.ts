@@ -113,16 +113,8 @@ function buildSortedPercValuePoints(
   return pts;
 }
 
-/**
- * Piecewise-linear value at a cumulative percentile using snapshot P20/P50/P80/P90 only.
- * Outside [min anchor, max anchor] returns the nearest endpoint.
- */
-export function interpolateSnapshotAtRiskPercentile(
-  row: SimulationSnapshotRow,
-  targetPercent: number,
-  kind: "cost" | "time"
-): number | null {
-  const pts = buildSortedPercValuePoints(row, kind);
+/** Piecewise-linear interpolation on sorted P/v anchors (e.g. P20–P90). */
+function interpolatePercAnchors(pts: PercValuePoint[], targetPercent: number): number | null {
   if (pts.length === 0) return null;
   const t = Math.min(100, Math.max(0, targetPercent));
   if (t <= pts[0].p) return pts[0].v;
@@ -136,6 +128,70 @@ export function interpolateSnapshotAtRiskPercentile(
     }
   }
   return null;
+}
+
+function buildTotalSimulatedCostPercValuePoints(
+  neutral: MonteCarloNeutralSnapshot | null | undefined
+): PercValuePoint[] {
+  const tot = neutral?.summary?.costBreakdown?.totalSimulatedCost;
+  if (!tot) return [];
+  const pts: PercValuePoint[] = [];
+  const add = (p: number, v: unknown) => {
+    const n = Number(v);
+    if (Number.isFinite(n)) pts.push({ p, v: n });
+  };
+  add(20, tot.p20);
+  add(50, tot.p50);
+  add(80, tot.p80);
+  add(90, tot.p90);
+  return pts.sort((a, b) => a.p - b.p);
+}
+
+/**
+ * Mean modeled total cost (direct risks + delay-derived commercial impact when modeled).
+ * Prefers persisted `costBreakdown.totalSimulatedCost.mean` so the headline matches simulation / driver tables
+ * when denormalized `cost_mean` drifts or predates breakdown.
+ */
+export function modeledTotalCostMeanDollars(
+  row: SimulationSnapshotRow,
+  neutral: MonteCarloNeutralSnapshot | null | undefined
+): number | null {
+  const tot = neutral?.summary?.costBreakdown?.totalSimulatedCost?.mean;
+  if (tot != null && Number.isFinite(Number(tot))) return Number(tot);
+  const m = neutral?.summary?.meanCost;
+  if (m != null && Number.isFinite(Number(m))) return Number(m);
+  const r = Number(row?.cost_mean);
+  return Number.isFinite(r) ? r : null;
+}
+
+/**
+ * Target-P line for **total** simulated cost (same basis as {@link modeledTotalCostMeanDollars}).
+ * Uses `totalSimulatedCost` percentile anchors from the payload when present; otherwise snapshot columns.
+ */
+export function interpolateModeledTotalCostAtRiskPercentile(
+  row: SimulationSnapshotRow,
+  neutral: MonteCarloNeutralSnapshot | null | undefined,
+  targetPercent: number
+): number | null {
+  const fromBreakdown = buildTotalSimulatedCostPercValuePoints(neutral);
+  if (fromBreakdown.length > 0) {
+    const v = interpolatePercAnchors(fromBreakdown, targetPercent);
+    if (v != null) return v;
+  }
+  return interpolateSnapshotAtRiskPercentile(row, targetPercent, "cost");
+}
+
+/**
+ * Piecewise-linear value at a cumulative percentile using snapshot P20/P50/P80/P90 only.
+ * Outside [min anchor, max anchor] returns the nearest endpoint.
+ */
+export function interpolateSnapshotAtRiskPercentile(
+  row: SimulationSnapshotRow,
+  targetPercent: number,
+  kind: "cost" | "time"
+): number | null {
+  const pts = buildSortedPercValuePoints(row, kind);
+  return interpolatePercAnchors(pts, targetPercent);
 }
 
 const SNAPSHOT_COST_BUFFER_KEYS = [

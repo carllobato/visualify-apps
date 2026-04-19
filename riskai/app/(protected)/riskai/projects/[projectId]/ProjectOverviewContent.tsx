@@ -76,7 +76,9 @@ import {
   costDriverExposureUsd,
   currentFundingConfidenceLabelFromNeutral,
   currentScheduleConfidenceLabelFromNeutral,
+  interpolateModeledTotalCostAtRiskPercentile,
   interpolateSnapshotAtRiskPercentile,
+  modeledTotalCostMeanDollars,
   optionalBufferFromSnapshotPayload,
   rankCostDriverLinesWithDelayCommercial,
   isSimulationDelayCommercialCostDriverRiskId,
@@ -432,8 +434,11 @@ function exposureHistogramCurrentPGapStroke(
 
 export type ProjectOverviewInitialData = {
   projectId: string;
-  /** Latest row with `locked_for_reporting`; null if none. */
+  /** Primary overview row: locked snapshot for the selected month, or latest unlocked snapshot in unpublished mode. */
   reportingSnapshot: SimulationSnapshotRow | null;
+  /** Latest locked reporting snapshot for stale/position comparison when `unpublishedMode` is true; otherwise null. */
+  lockedReportingBaselineSnapshot: SimulationSnapshotRow | null;
+  unpublishedMode: boolean;
   /** From `x-url-search` (middleware) for reporting month control without Suspense. */
   initialUrlSearch: string;
 };
@@ -765,11 +770,20 @@ function ProjectOverviewKpiDrilldownTable({
 }
 
 export function ProjectOverviewContent({ initialData }: ProjectOverviewContentProps) {
-  const { projectId, reportingSnapshot, initialUrlSearch } = initialData ?? {
-    projectId: "",
-    reportingSnapshot: null,
-    initialUrlSearch: "",
-  };
+  const { projectId, reportingSnapshot, initialUrlSearch, unpublishedMode, lockedReportingBaselineSnapshot } =
+    initialData ?? {
+      projectId: "",
+      reportingSnapshot: null,
+      lockedReportingBaselineSnapshot: null,
+      unpublishedMode: false,
+      initialUrlSearch: "",
+    };
+
+  /** Locked row used for reporting-position bands and monthly-lock staleness; primary row in normal mode. */
+  const staleAndPositionLockedRow = unpublishedMode ? lockedReportingBaselineSnapshot : reportingSnapshot;
+
+  /** Row for `reportingRun*` counts and overview charts: selected run, or locked baseline when unpublished has no newer unlocked snapshot. */
+  const reportingRunRiskCountSnapshotRow = reportingSnapshot ?? staleAndPositionLockedRow;
 
   const { setRisks } = useRiskRegister();
   const { setExtras } = usePageHeaderExtras();
@@ -848,9 +862,9 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   }, [projectId]);
 
   const builtFromReporting = useMemo(() => {
-    if (!reportingSnapshot) return null;
-    return buildSimulationFromDbRow(reportingSnapshot);
-  }, [reportingSnapshot]);
+    if (!reportingRunRiskCountSnapshotRow) return null;
+    return buildSimulationFromDbRow(reportingRunRiskCountSnapshotRow);
+  }, [reportingRunRiskCountSnapshotRow]);
 
   const projectContext = useMemo(() => {
     const pid = projectId?.trim();
@@ -862,28 +876,38 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   /** Single-row payload for the portfolio-style reporting-position table in the KPI modal. */
   const projectTilePayloadsForRagModal = useMemo(() => {
     const pid = projectId?.trim();
-    if (!pid || !reportingSnapshot) return undefined;
-    const riskCount = reportingRunActiveRiskCount(reportingSnapshot);
-    const highSeverityCount = reportingRunHighExtremeCount(reportingSnapshot, risks);
+    if (!pid || !staleAndPositionLockedRow) return undefined;
+    const riskCount = reportingRunActiveRiskCount(reportingRunRiskCountSnapshotRow);
+    const highSeverityCount = reportingRunHighExtremeCount(reportingRunRiskCountSnapshotRow, risks);
     const name =
       projectContext?.projectName?.trim() && projectContext.projectName.trim().length > 0
         ? projectContext.projectName.trim()
         : pid;
     const payload = buildProjectTilePayloadForReportingModal({
       project: { id: pid, name, created_at: null },
-      lockedRow: reportingSnapshot,
+      lockedRow: staleAndPositionLockedRow,
       settingsRow: visualifyProjectSettingsRow,
       riskCount,
       highSeverityCount,
     });
     return [payload];
-  }, [projectId, reportingSnapshot, visualifyProjectSettingsRow, risks, projectContext?.projectName]);
+  }, [
+    projectId,
+    reportingRunRiskCountSnapshotRow,
+    staleAndPositionLockedRow,
+    visualifyProjectSettingsRow,
+    risks,
+    projectContext?.projectName,
+  ]);
 
   /** Cost/time line severities — same as simulation reporting position (not mean−at‑P dollar gap). */
   const reportingPositionBreakdown = useMemo(() => {
-    if (!reportingSnapshot || visualifyProjectSettingsRow == null) return null;
-    return tryReportingBreakdownFromLockedRowAndSettings(reportingSnapshot, visualifyProjectSettingsRow);
-  }, [reportingSnapshot, visualifyProjectSettingsRow]);
+    if (!staleAndPositionLockedRow || visualifyProjectSettingsRow == null) return null;
+    return tryReportingBreakdownFromLockedRowAndSettings(
+      staleAndPositionLockedRow,
+      visualifyProjectSettingsRow
+    );
+  }, [staleAndPositionLockedRow, visualifyProjectSettingsRow]);
 
   const targetAppetite: RiskAppetite = projectContext?.riskAppetite ?? "P80";
   const targetPercent = riskAppetiteToPercent(targetAppetite);
@@ -927,8 +951,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const current = builtFromReporting?.current;
 
   const reportingRunRiskIdSet = useMemo(
-    () => reportingRunRiskIdsFromSnapshot(current, reportingSnapshot),
-    [current, reportingSnapshot]
+    () => reportingRunRiskIdsFromSnapshot(current, reportingRunRiskCountSnapshotRow),
+    [current, reportingRunRiskCountSnapshotRow]
   );
 
   const reportingRunRisks = useMemo(() => {
@@ -990,9 +1014,9 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const scheduleDrivers = useMemo(() => buildScheduleDriverLines(current, risks), [current, risks]);
 
   const keyCostRisk =
-    costDrivers[0]?.riskName ?? topCostRiskTitleFromSnapshotPayload(reportingSnapshot);
+    costDrivers[0]?.riskName ?? topCostRiskTitleFromSnapshotPayload(reportingRunRiskCountSnapshotRow);
   const keyTimeRisk =
-    scheduleDrivers[0]?.riskName ?? topTimeRiskTitleFromSnapshotPayload(reportingSnapshot);
+    scheduleDrivers[0]?.riskName ?? topTimeRiskTitleFromSnapshotPayload(reportingRunRiskCountSnapshotRow);
 
   const keyOpportunityInfo = useMemo(() => {
     const best = [...costDrivers].filter((d) => d.delta > 0).sort((a, b) => b.delta - a.delta)[0];
@@ -1079,37 +1103,43 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const keyTimeRiskDays = scheduleDrivers[0]?.totalDays ?? null;
 
   const snapshotPayloadBuffer = useMemo(
-    () => (reportingSnapshot ? optionalBufferFromSnapshotPayload(reportingSnapshot) : null),
-    [reportingSnapshot]
+    () =>
+      reportingRunRiskCountSnapshotRow
+        ? optionalBufferFromSnapshotPayload(reportingRunRiskCountSnapshotRow)
+        : null,
+    [reportingRunRiskCountSnapshotRow]
   );
 
-  const costAtAppetiteLine = useMemo(
-    () =>
-      reportingSnapshot
-        ? interpolateSnapshotAtRiskPercentile(reportingSnapshot, targetPercent, "cost")
-        : null,
-    [reportingSnapshot, targetPercent]
-  );
+  const costAtAppetiteLine = useMemo(() => {
+    if (!reportingRunRiskCountSnapshotRow) return null;
+    return interpolateModeledTotalCostAtRiskPercentile(
+      reportingRunRiskCountSnapshotRow,
+      builtFromReporting?.neutral ?? null,
+      targetPercent
+    );
+  }, [reportingRunRiskCountSnapshotRow, builtFromReporting?.neutral, targetPercent]);
 
   const timeAtAppetiteLine = useMemo(
     () =>
-      reportingSnapshot
-        ? interpolateSnapshotAtRiskPercentile(reportingSnapshot, targetPercent, "time")
+      reportingRunRiskCountSnapshotRow
+        ? interpolateSnapshotAtRiskPercentile(reportingRunRiskCountSnapshotRow, targetPercent, "time")
         : null,
-    [reportingSnapshot, targetPercent]
+    [reportingRunRiskCountSnapshotRow, targetPercent]
   );
 
   const meanCostFromSnapshot = useMemo(() => {
-    if (!reportingSnapshot) return null;
-    const m = Number(reportingSnapshot.cost_mean);
-    return Number.isFinite(m) ? m : null;
-  }, [reportingSnapshot]);
+    if (!reportingRunRiskCountSnapshotRow) return null;
+    return modeledTotalCostMeanDollars(
+      reportingRunRiskCountSnapshotRow,
+      builtFromReporting?.neutral ?? null
+    );
+  }, [reportingRunRiskCountSnapshotRow, builtFromReporting?.neutral]);
 
   const meanTimeFromSnapshot = useMemo(() => {
-    if (!reportingSnapshot) return null;
-    const m = Number(reportingSnapshot.time_mean);
+    if (!reportingRunRiskCountSnapshotRow) return null;
+    const m = Number(reportingRunRiskCountSnapshotRow.time_mean);
     return Number.isFinite(m) ? m : null;
-  }, [reportingSnapshot]);
+  }, [reportingRunRiskCountSnapshotRow]);
 
   const dollarGapLabel = useMemo(
     () => formatSignedDollarGap(meanCostFromSnapshot, costAtAppetiteLine),
@@ -1133,7 +1163,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   /** Same P as simulation “Current Funding Confidence” (cost CDF at contingency else approved budget). */
   const currentConfidenceLabel = useMemo(() => {
-    if (!reportingSnapshot) return null;
+    if (!reportingRunRiskCountSnapshotRow) return null;
     const approvedBudgetDollars =
       projectContext != null && Number.isFinite(projectContext.approvedBudget_m)
         ? projectContext.approvedBudget_m * 1e6
@@ -1143,7 +1173,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       contingencyDollars,
       approvedBudgetDollars,
     });
-  }, [reportingSnapshot, builtFromReporting, contingencyDollars, projectContext?.approvedBudget_m]);
+  }, [reportingRunRiskCountSnapshotRow, builtFromReporting, contingencyDollars, projectContext?.approvedBudget_m]);
 
   /** Current funding P v appetite (target P from reporting). */
   const costGapTileSubtext = useMemo(() => {
@@ -1176,14 +1206,18 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   const neutralFromReporting = builtFromReporting?.neutral ?? null;
 
   const costExposureBarData = useMemo(() => {
-    if (!reportingSnapshot || !neutralFromReporting) return [];
-    return toBarDataCost(costHistogramFromReporting(reportingSnapshot, neutralFromReporting));
-  }, [reportingSnapshot, neutralFromReporting]);
+    if (!reportingRunRiskCountSnapshotRow || !neutralFromReporting) return [];
+    return toBarDataCost(
+      costHistogramFromReporting(reportingRunRiskCountSnapshotRow, neutralFromReporting)
+    );
+  }, [reportingRunRiskCountSnapshotRow, neutralFromReporting]);
 
   const scheduleExposureBarData = useMemo(() => {
-    if (!reportingSnapshot || !neutralFromReporting) return [];
-    return toBarDataTime(timeHistogramFromReporting(reportingSnapshot, neutralFromReporting));
-  }, [reportingSnapshot, neutralFromReporting]);
+    if (!reportingRunRiskCountSnapshotRow || !neutralFromReporting) return [];
+    return toBarDataTime(
+      timeHistogramFromReporting(reportingRunRiskCountSnapshotRow, neutralFromReporting)
+    );
+  }, [reportingRunRiskCountSnapshotRow, neutralFromReporting]);
 
   const bufferCostNumeric =
     snapshotPayloadBuffer?.costDollars != null
@@ -1216,14 +1250,15 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       : null;
 
   const ragStatus = useMemo(() => {
-    const lastAt = reportingSnapshot?.locked_at ?? reportingSnapshot?.created_at ?? null;
+    const lastAt =
+      staleAndPositionLockedRow?.locked_at ?? staleAndPositionLockedRow?.created_at ?? null;
     const base = computeRag({
-      riskCount: reportingRunActiveRiskCount(reportingSnapshot),
-      highSeverityCount: reportingRunHighExtremeCount(reportingSnapshot, risks),
+      riskCount: reportingRunActiveRiskCount(reportingRunRiskCountSnapshotRow),
+      highSeverityCount: reportingRunHighExtremeCount(reportingRunRiskCountSnapshotRow, risks),
       lastLockedReportingAt: lastAt,
     });
-    return applyStaleReportingLockRag(base, reportingSnapshot ?? undefined, Date.now());
-  }, [reportingSnapshot, risks]);
+    return applyStaleReportingLockRag(base, staleAndPositionLockedRow ?? undefined, Date.now());
+  }, [reportingRunRiskCountSnapshotRow, staleAndPositionLockedRow, risks]);
 
   const effectiveRagForHealth = useMemo((): RagStatus => {
     if (ragStatus === "green" && ((dollarGapSigned ?? 0) > 0 || (timeGapSigned ?? 0) > 0)) {
@@ -1253,7 +1288,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   );
 
   const projectNeedsAttentionHealthRun = useMemo((): PortfolioNeedsAttentionHealthRun => {
-    if (!reportingSnapshot) {
+    if (!reportingRunRiskCountSnapshotRow) {
       return {
         healthScore: 100,
         primaryRagDot: "green",
@@ -1298,7 +1333,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
     const analyticsActive = reportingRunRisks.filter(isRiskActiveForPortfolioAnalytics).length;
     const projectsWithActiveRisksCount = analyticsActive > 0 ? 1 : 0;
-    const lockAt = reportingSnapshot.locked_at ?? reportingSnapshot.created_at ?? null;
+    const lockAt =
+      staleAndPositionLockedRow?.locked_at ?? staleAndPositionLockedRow?.created_at ?? null;
     const staleSimulationProjectCount =
       projectsWithActiveRisksCount > 0 && reportingLockStaleForPortfolio(lockAt, Date.now()) ? 1 : 0;
 
@@ -1318,7 +1354,14 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       materialOpportunityProjectCount,
       registerGapCount,
     };
-  }, [reportingSnapshot, reportingRunRisks, costDrivers, scheduleDrivers, risks]);
+  }, [
+    reportingRunRiskCountSnapshotRow,
+    staleAndPositionLockedRow,
+    reportingRunRisks,
+    costDrivers,
+    scheduleDrivers,
+    risks,
+  ]);
 
   const projectHealthKpiTile = useMemo((): DocumentKpiTileItem => {
     return {
@@ -1372,10 +1415,10 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   );
 
   const projectKpiTiles = useMemo((): DocumentKpiTileItem[] => {
-    if (!reportingSnapshot) return [];
+    if (!reportingRunRiskCountSnapshotRow) return [];
     const rr = projectRiskRatingTileCopy(ragStatus);
-    const activeN = reportingRunActiveRiskCount(reportingSnapshot);
-    const highN = reportingRunHighExtremeCount(reportingSnapshot, risks);
+    const activeN = reportingRunActiveRiskCount(reportingRunRiskCountSnapshotRow);
+    const highN = reportingRunHighExtremeCount(reportingRunRiskCountSnapshotRow, risks);
     const riskRatingSubtext = `${activeN} risk${activeN === 1 ? "" : "s"} in reporting run${
       highN > 0 ? ` · ${highN} high / extreme` : ""
     }`;
@@ -1404,7 +1447,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       },
     ];
   }, [
-    reportingSnapshot,
+    reportingRunRiskCountSnapshotRow,
     ragStatus,
     risks,
     projectHealthKpiTile,
@@ -1431,7 +1474,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   const renderProjectOverviewSlideBody = useCallback(
     (slideIndex: number) => {
-      if (!reportingSnapshot || slideIndex < 4) return null;
+      if (!reportingRunRiskCountSnapshotRow || slideIndex < 4) return null;
       switch (slideIndex) {
         case 4:
           return (
@@ -1555,7 +1598,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       }
     },
     [
-      reportingSnapshot,
+      reportingRunRiskCountSnapshotRow,
       projectId,
       costExposureBarData,
       costAtAppetiteLine,
@@ -1584,15 +1627,21 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   /** RAG subline can use snapshot `inputs_used` without waiting for the risk register. */
   const projectStatusStatsNeedRegister =
-    !reportingSnapshot?.payload?.inputs_used?.length;
+    !reportingRunRiskCountSnapshotRow?.payload?.inputs_used?.length;
   const showProjectStatusSkeleton = loadingRisks && projectStatusStatsNeedRegister;
 
   const overviewHeaderEnd = useMemo(() => {
-    if (!reportingSnapshot) return null;
+    const pid = projectId?.trim();
+    if (!pid) return null;
+    if (!unpublishedMode && !reportingRunRiskCountSnapshotRow) return null;
     return (
-      <PortfolioReportingMonthSelect projectId={projectId} initialUrlSearch={initialUrlSearch} />
+      <PortfolioReportingMonthSelect
+        projectId={projectId}
+        showUnpublishedOption
+        initialUrlSearch={initialUrlSearch}
+      />
     );
-  }, [initialUrlSearch, projectId, reportingSnapshot]);
+  }, [initialUrlSearch, projectId, reportingRunRiskCountSnapshotRow, unpublishedMode]);
 
   useEffect(() => {
     setExtras({
@@ -1604,16 +1653,17 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   const simulationHref = projectId ? riskaiPath(`/projects/${projectId}/simulation`) : DASHBOARD_PATH;
 
-  if (!reportingSnapshot) {
+  if (!reportingRunRiskCountSnapshotRow) {
     return (
       <main className="ds-document-page pb-[var(--ds-space-3)]">
         <div className={`${overviewDocumentTileClass} max-w-lg mx-auto p-8 text-center`}>
           <p className="text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)] m-0">
-            No reporting run locked
+            {unpublishedMode ? "No unlocked simulation data" : "No reporting run locked"}
           </p>
           <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 max-w-md mx-auto">
-            Lock a simulation for reporting to populate this overview. Reporting uses only the latest locked
-            run—not draft or unlocked simulations.
+            {unpublishedMode
+              ? "Run a simulation to see unpublished results here, or choose a reporting month above."
+              : "Lock a simulation for reporting to populate this overview. Reporting uses only the latest locked run—not draft or unlocked simulations."}
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link href={simulationHref} className="no-underline">
@@ -1626,8 +1676,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   }
 
   const riskRatingTile = showProjectStatusSkeleton ? null : projectRiskRatingTileCopy(ragStatus);
-  const activeN = reportingRunActiveRiskCount(reportingSnapshot);
-  const highN = reportingRunHighExtremeCount(reportingSnapshot, risks);
+  const activeN = reportingRunActiveRiskCount(reportingRunRiskCountSnapshotRow);
+  const highN = reportingRunHighExtremeCount(reportingRunRiskCountSnapshotRow, risks);
   const projectRiskRatingSubtext = `${activeN} risk${activeN === 1 ? "" : "s"} in reporting run${
     highN > 0 ? ` · ${highN} high / extreme` : ""
   }`;

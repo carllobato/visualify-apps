@@ -25,7 +25,7 @@ const MenuIcon = () => (
 );
 
 const ChevronIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none text-[var(--ds-text-muted)]" aria-hidden>
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none" aria-hidden>
     <path d="m6 9 6 6 6-6" />
   </svg>
 );
@@ -109,10 +109,6 @@ export function TopNav({
       ? "border-b border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-elevated)_92%,var(--ds-background))] shadow-[var(--ds-shadow-sm)] transition-[background-color,border-color] duration-[250ms] ease-in-out"
       : "ds-app-top-nav";
 
-  const menuItemClass =
-    "block w-full cursor-pointer px-[var(--ds-space-4)] py-[var(--ds-space-3)] text-left text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)] no-underline transition-[background-color,color] duration-150 ease-out " +
-    "hover:!bg-[var(--ds-menu-item-hover-bg)] focus-visible:!bg-[var(--ds-menu-item-hover-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
-
   const headerPad = shellDocumentAlign
     ? "pl-[var(--ds-space-2)] pr-0 md:pr-[var(--ds-space-3)]"
     : "px-[var(--ds-space-2)]";
@@ -175,7 +171,7 @@ export function TopNav({
               type="button"
               variant="ghost"
               size="md"
-              className="!h-9 !rounded-full !border-0 !py-0 !pl-1 !pr-2 !gap-2 !font-normal shadow-[var(--ds-shadow-sm)] !bg-[var(--ds-surface-muted)] hover:!bg-[var(--ds-surface-subtle)] active:!brightness-[0.98] [&_svg]:text-[var(--ds-text-secondary)] hover:[&_svg]:text-[var(--ds-text-primary)]"
+              className="ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               aria-label="Account menu"
@@ -196,12 +192,12 @@ export function TopNav({
             {menuOpen ? (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] min-w-[200px] overflow-hidden rounded-[var(--ds-radius-app-frame)] py-0 !border-0 !bg-[var(--ds-app-document-bg)] !shadow-[var(--ds-elevation-app-frame)]"
+                className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
               >
                 <Link
                   href={riskaiPath("/settings")}
                   role="menuitem"
-                  className={`${menuItemClass} rounded-t-[var(--ds-radius-app-frame)]`}
+                  className="ds-app-menu-dropdown__item"
                   onClick={() => setMenuOpen(false)}
                 >
                   Account Settings
@@ -214,7 +210,7 @@ export function TopNav({
                 <button
                   type="button"
                   role="menuitem"
-                  className={`${menuItemClass} rounded-b-[var(--ds-radius-app-frame)]`}
+                  className="ds-app-menu-dropdown__item"
                   onClick={handleSignOut}
                 >
                   Sign Out
