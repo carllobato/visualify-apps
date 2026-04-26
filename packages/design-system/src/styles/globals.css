@@ -1649,15 +1649,23 @@ ul[role="listbox"] button:focus-visible {
 .ds-onboarding-modal-select {
   box-sizing: border-box;
   width: 100%;
-  min-height: 2.6875rem;
+  min-height: 2.5rem;
   border-radius: var(--ds-radius-md);
-  border: none;
-  background-color: var(--ds-surface-default);
+  border: 1px solid var(--ds-document-tile-border);
+  background-color: var(--ds-document-tile-bg);
   padding: 0.625rem 2.5rem 0.625rem 0.75rem;
   font-family: inherit;
   font-size: var(--ds-text-sm);
   color: var(--ds-text-primary);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-document-tile-shadow);
+  transition:
+    box-shadow 200ms ease-out,
+    background-color 200ms ease-out;
+}
+
+.ds-onboarding-modal-select:hover:not(:disabled) {
+  background-color: var(--ds-document-tile-hover-bg);
+  box-shadow: var(--ds-document-tile-hover-shadow);
 }
 
 .ds-onboarding-modal-input::placeholder {
@@ -1667,7 +1675,7 @@ ul[role="listbox"] button:focus-visible {
 
 .ds-onboarding-modal-input:focus,
 .ds-onboarding-modal-select:focus {
-  outline: 2px solid var(--ds-border);
+  outline: 2px solid var(--ds-primary);
   outline-offset: 2px;
 }
 
