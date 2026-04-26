@@ -163,6 +163,9 @@ export function LoginClient() {
   const next = searchParams.get("next") ?? DASHBOARD_PATH;
   const inviteTokenRaw = searchParams.get("invite_token");
   const inviteToken = typeof inviteTokenRaw === "string" ? inviteTokenRaw.trim() : "";
+  const invitedEmailRaw = searchParams.get("invited_email");
+  const invitedEmail =
+    typeof invitedEmailRaw === "string" ? invitedEmailRaw.trim().toLowerCase() : "";
   const modeRaw = searchParams.get("mode");
   const initialTab: LoginTabId =
     typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "signup" ? "signup" : "signin";
@@ -170,7 +173,7 @@ export function LoginClient() {
   const reason = searchParams.get("reason");
 
   const [tab, setTab] = useState<LoginTabId>(initialTab);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(invitedEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);

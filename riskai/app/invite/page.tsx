@@ -47,6 +47,7 @@ export default async function InvitePage({
 }) {
   const params = await searchParams;
   const inviteToken = getParam(params, "invite_token").trim();
+  const invitedEmail = getParam(params, "invited_email").trim();
 
   const supabase = await supabaseServerClient();
   const {
@@ -57,7 +58,13 @@ export default async function InvitePage({
     if (!inviteToken) {
       redirect("/login?mode=signup");
     }
-    redirect(`/login?mode=signup&invite_token=${encodeURIComponent(inviteToken)}`);
+    const sp = new URLSearchParams();
+    sp.set("mode", "signup");
+    sp.set("invite_token", inviteToken);
+    if (invitedEmail) {
+      sp.set("invited_email", invitedEmail);
+    }
+    redirect(`/login?${sp.toString()}`);
   }
 
   if (!inviteToken) {

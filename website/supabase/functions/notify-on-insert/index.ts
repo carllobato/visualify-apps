@@ -369,7 +369,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    const inviteLink = `${riskaiOrigin.replace(/\/+$/, "")}/invite?invite_token=${encodeURIComponent(inviteToken)}`;
+    const normalizedInvitedEmail = email.trim().toLowerCase();
+    const inviteUrl = new URL(`${riskaiOrigin.replace(/\/+$/, "")}/invite`);
+    inviteUrl.searchParams.set("invite_token", inviteToken);
+    inviteUrl.searchParams.set("invited_email", normalizedInvitedEmail);
+    const inviteLink = inviteUrl.toString();
     to = email;
     replyTo = invitationReplyTo;
     subject = `You're invited to join ${projectName}`;
