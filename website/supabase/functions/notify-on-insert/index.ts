@@ -6,60 +6,59 @@
  * See supabase/NOTIFY_SETUP.md.
  */
 
-import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.104.1";
-
 const NOTIFY_TO_DEFAULT = "help@visualify.com.au";
 
-/**
- * Injects `filter` on GET /auth/v1/admin/users. `@supabase/supabase-js` listUsers
- * only sends `page` / `per_page`; GoTrue also supports `filter` for the same route.
- */
-function withAdminListFilter(
-  normalizedEmail: string,
-  inner: typeof fetch
-): typeof fetch {
-  return (input: string | URL | Request, init?: RequestInit) => {
-    const href =
-      typeof input === "string" ? input
-      : input instanceof URL ? input.toString()
-      : (input as Request).url;
-    const url = new URL(href);
-    if (/\/auth\/v1\/admin\/users$/.test(url.pathname) && !url.searchParams.has("filter")) {
-      url.searchParams.set("filter", normalizedEmail);
-    }
-    return inner(url, init);
-  };
-}
+type AdminListUsersResponse = { users?: Array<{ email?: string | null }> };
 
 /**
- * `true` if a row in `auth.users` matches the normalized email. On missing env, API
- * error, or exception, returns `false` (use new-user copy).
+ * `true` if a row in `auth.users` matches the normalized email. On missing env, failed
+ * request, non-2xx, or parse error, returns `false` (use new-user copy).
  */
 async function isAuthUserByEmail(
   supabaseUrl: string,
   serviceRoleKey: string,
-  normalizedEmail: string
+  email: string
 ): Promise<boolean> {
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
-    global: { fetch: withAdminListFilter(normalizedEmail, globalThis.fetch) },
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  });
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    console.warn("[notify-on-insert] isAuthUserByEmail: empty email after normalize");
+    return false;
+  }
+  const base = supabaseUrl.replace(/\/+$/, "");
+  const u = new URL(`${base}/auth/v1/admin/users`);
+  u.searchParams.set("filter", `email.eq.${normalizedEmail}`);
+  u.searchParams.set("page", "1");
+  u.searchParams.set("per_page", "1");
   try {
-    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 2 });
-    if (error) {
-      console.warn("[notify-on-insert] admin listUsers error", error.message);
+    const res = await fetch(u.toString(), {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      console.warn(
+        "[notify-on-insert] isAuthUserByEmail: non-2xx",
+        res.status,
+        detail.slice(0, 200)
+      );
       return false;
     }
-    const users = (data as { users?: User[] } | null)?.users ?? [];
+    let body: AdminListUsersResponse;
+    try {
+      body = (await res.json()) as AdminListUsersResponse;
+    } catch (e) {
+      console.warn("[notify-on-insert] isAuthUserByEmail: JSON parse failed", e);
+      return false;
+    }
+    const users = body.users ?? [];
     return users.some(
-      (u) => u.email != null && u.email.trim().toLowerCase() === normalizedEmail
+      (user) => user.email != null && user.email.trim().toLowerCase() === normalizedEmail
     );
   } catch (e) {
-    console.warn("[notify-on-insert] isAuthUserByEmail failed", e);
+    console.warn("[notify-on-insert] isAuthUserByEmail: fetch failed", e);
     return false;
   }
 }
@@ -447,13 +446,18 @@ Deno.serve(async (req) => {
     }
 
     const normalizedInvitedEmail = email.trim().toLowerCase();
+    const isExistingUser = await getIsExistingUserForInvite(normalizedInvitedEmail);
     const inviteUrl = new URL(`${riskaiOrigin.replace(/\/+$/, "")}/invite`);
     inviteUrl.searchParams.set("invite_token", inviteToken);
     inviteUrl.searchParams.set("invited_email", normalizedInvitedEmail);
+    if (isExistingUser) {
+      inviteUrl.searchParams.set("mode", "login");
+    } else {
+      inviteUrl.searchParams.set("mode", "signup");
+    }
     const inviteLink = inviteUrl.toString();
     to = email;
     replyTo = invitationReplyTo;
-    const isExistingUser = await getIsExistingUserForInvite(normalizedInvitedEmail);
     subject = isExistingUser
       ? `You're invited to join ${projectName} — log in to accept`
       : `Create your account to join ${projectName}`;
