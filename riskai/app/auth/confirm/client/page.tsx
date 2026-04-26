@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Callout } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -13,7 +13,7 @@ function safeNextPath(raw: string | null, fallback: string): string {
   return raw;
 }
 
-export default function AuthConfirmClientPage() {
+function AuthConfirmClientPageContent() {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const inviteToken = params.get("invite_token");
@@ -57,5 +57,21 @@ export default function AuthConfirmClientPage() {
         {error}
       </Callout>
     </main>
+  );
+}
+
+export default function AuthConfirmClientPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="mx-auto w-full max-w-lg px-6 py-10">
+          <Callout status="info" role="status">
+            Confirming your account...
+          </Callout>
+        </main>
+      }
+    >
+      <AuthConfirmClientPageContent />
+    </Suspense>
   );
 }
