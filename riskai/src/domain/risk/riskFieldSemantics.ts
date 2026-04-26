@@ -249,9 +249,9 @@ export function isRiskActiveForPortfolioAnalytics(risk: Risk): boolean {
 }
 
 /**
- * Schedule impact (days) for Monte Carlo and portfolio schedule exposure, by lifecycle bucket:
- * Open / Monitoring → pre-mitigation days only
- * Mitigating → post-mitigation days when modelled; otherwise pre-mitigation fallback
+ * Schedule impact (working days) for Monte Carlo and portfolio schedule exposure, by lifecycle bucket:
+ * Open / Monitoring → pre-mitigation working days only
+ * Mitigating → post-mitigation working days when modelled; otherwise pre-mitigation fallback
  *
  * Uses {@link riskLifecycleBucketForRegisterSnapshot} (same as register / portfolio analytics).
  */
@@ -272,7 +272,7 @@ export function scheduleImpactDaysMLForSimulation(risk: Risk): number {
   return 0;
 }
 
-/** Upper bound on schedule impact days before MC triangular spread (`simulatePortfolio`). */
+/** Upper bound on schedule impact working days before MC triangular spread (`simulatePortfolio`). */
 export const SCHEDULE_IMPACT_DAYS_CAP = 30;
 
 export function scheduleImpactDaysMLCappedForMonteCarlo(risk: Risk): number {

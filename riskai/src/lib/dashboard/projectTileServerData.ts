@@ -19,7 +19,7 @@ import {
 import type { AccessibleProject } from "@/lib/portfolios-server";
 import { RISK_DB_SELECT_COLUMNS, mapRiskRowToDomain } from "@/lib/db/risks";
 import { computePortfolioExposure } from "@/engine/forwardExposure";
-import { formatDurationDays, formatDurationWholeDays } from "@/lib/formatDuration";
+import { formatDurationWholeDays } from "@/lib/formatDuration";
 import type { RiskRow } from "@/types/risk";
 import {
   DEFAULT_REPORTING_UNIT,
@@ -575,11 +575,24 @@ export async function loadPortfolioProjectRiskSeveritySummary(
   return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, (risksRaw ?? []) as RiskRow[]);
 }
 
-function scheduleContingencyWeeksFromRow(raw: unknown): number | null {
+function nonNegativeNumberFromRow(raw: unknown): number | null {
   if (raw == null) return null;
   const n = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(n) || n < 0) return null;
   return n;
+}
+
+function scheduleContingencyWorkingDaysFromRow(
+  rawWorkingDays: unknown,
+  rawLegacyWeeks: unknown,
+  rawWorkingDaysPerWeek: unknown
+): number | null {
+  const workingDays = nonNegativeNumberFromRow(rawWorkingDays);
+  if (workingDays != null) return workingDays;
+  const legacyWeeks = nonNegativeNumberFromRow(rawLegacyWeeks);
+  if (legacyWeeks == null) return null;
+  const workingDaysPerWeek = nonNegativeNumberFromRow(rawWorkingDaysPerWeek) ?? 5;
+  return legacyWeeks * workingDaysPerWeek;
 }
 
 /** Per-project financial + schedule contingency from `visualify_project_settings` (same semantics as portfolio KPI). */
@@ -589,7 +602,7 @@ export type PortfolioProjectContingencyRow = {
   /** Absolute amount in `currency` (not millions). */
   contingencyAmountAbs: number;
   currency: ProjectCurrency;
-  scheduleContingencyWeeks: number | null;
+  scheduleContingencyWorkingDays: number | null;
 };
 
 export async function loadPortfolioProjectContingencyTable(
@@ -609,14 +622,30 @@ export async function loadPortfolioProjectContingencyTable(
   const { data: settingsRows } = await supabase
     .from("visualify_project_settings")
     .select(
-      "project_id, contingency_value_input, financial_unit, currency, schedule_contingency_weeks, financial_inputs_version"
+      "project_id, contingency_value_input, financial_unit, currency, schedule_contingency_working_days, schedule_contingency_weeks, working_days_per_week, financial_inputs_version"
     )
     .in("project_id", ids);
 
-  const byProject = new Map<string, ProjectSettingsContingencyRow & { schedule_contingency_weeks?: unknown }>();
+  const byProject = new Map<
+    string,
+    ProjectSettingsContingencyRow & {
+      schedule_contingency_working_days?: unknown;
+      schedule_contingency_weeks?: unknown;
+      working_days_per_week?: unknown;
+    }
+  >();
   for (const row of settingsRows ?? []) {
     const pid = typeof row.project_id === "string" ? row.project_id : "";
-    if (pid) byProject.set(pid, row as ProjectSettingsContingencyRow & { schedule_contingency_weeks?: unknown });
+    if (pid) {
+      byProject.set(
+        pid,
+        row as ProjectSettingsContingencyRow & {
+          schedule_contingency_working_days?: unknown;
+          schedule_contingency_weeks?: unknown;
+          working_days_per_week?: unknown;
+        }
+      );
+    }
   }
 
   return projects.map((p) => {
@@ -625,14 +654,20 @@ export async function loadPortfolioProjectContingencyTable(
     const m = s ? contingencyMillionsFromSettingsRow(s) : 0;
     const contingencyAmountAbs = m * 1_000_000;
     const currency: ProjectCurrency = s ? asProjectCurrency(s.currency) : "AUD";
-    const scheduleContingencyWeeks = s ? scheduleContingencyWeeksFromRow(s.schedule_contingency_weeks) : null;
+    const scheduleContingencyWorkingDays = s
+      ? scheduleContingencyWorkingDaysFromRow(
+          s.schedule_contingency_working_days,
+          s.schedule_contingency_weeks,
+          s.working_days_per_week
+        )
+      : null;
     const name = typeof p.name === "string" ? p.name.trim() : "";
     return {
       projectId: id,
       projectName: name || id,
       contingencyAmountAbs,
       currency,
-      scheduleContingencyWeeks,
+      scheduleContingencyWorkingDays,
     };
   });
 }
@@ -702,7 +737,7 @@ function preMitigationCostExpected(risk: Risk): number {
 const PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS = 12;
 
 /**
- * Expected schedule impact (days): probability × lifecycle-appropriate capped impact days
+ * Expected schedule impact (working days): probability × lifecycle-appropriate capped impact working days
  * (Open/Monitoring → pre; Mitigating → post or pre fallback), aligned with {@link simulatePortfolio}.
  */
 function expectedScheduleExposureDays(risk: Risk): number {
@@ -730,17 +765,17 @@ export type PortfolioProjectScheduleExposureSlice = {
 };
 
 /**
- * Per-project expected schedule delay (weeks), schedule contingency held (weeks), and coverage — joined from
+ * Per-project expected schedule delay, schedule contingency held, and coverage in working days — joined from
  * {@link loadPortfolioProjectContingencyTable} + schedule exposure slices (same basis as the schedule donut).
  */
 export type PortfolioProjectScheduleCoverageRow = {
   projectId: string;
   projectName: string;
-  /** Expected delay in weeks (`valueDays` / 7 from the schedule exposure engine). */
-  expectedDelayWeeks: number;
-  /** Schedule contingency from project settings; null when unset. */
-  scheduleContingencyWeeks: number | null;
-  /** `scheduleContingencyWeeks` ÷ `expectedDelayWeeks` when exposure is positive. */
+  /** Expected delay in working days from the schedule exposure engine. */
+  expectedDelayWorkingDays: number;
+  /** Schedule contingency in working days from project settings; null when unset. */
+  scheduleContingencyWorkingDays: number | null;
+  /** `scheduleContingencyWorkingDays` ÷ `expectedDelayWorkingDays` when exposure is positive. */
   coverageRatio: number | null;
 };
 

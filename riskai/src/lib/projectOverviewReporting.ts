@@ -224,6 +224,7 @@ function firstFiniteFromRecord(
 /** Optional buffer scalars if ever persisted on snapshot payload (otherwise null). */
 export function optionalBufferFromSnapshotPayload(row: SimulationSnapshotRow): {
   costDollars: number | null;
+  /** Schedule buffer in working days for v2 snapshots; legacy payloads may only imply generic days. */
   timeDays: number | null;
 } {
   const pl = row?.payload;
@@ -525,22 +526,20 @@ export function currentFundingConfidenceLabelFromNeutral(params: {
 }
 
 /**
- * Same “current schedule P” as the simulation time tile (`percentileAtTime` at schedule contingency, else planned
- * duration in days). Built from the reporting run’s neutral snapshot time CDF.
+ * Same “current schedule P” as the simulation time tile (`percentileAtTime` at schedule contingency working days).
+ * When schedule contingency is missing, return null (no fallback reference).
  */
 export function currentScheduleConfidenceLabelFromNeutral(params: {
   neutral: MonteCarloNeutralSnapshot | null | undefined;
   scheduleContingencyDays: number | null;
-  /** Same scale as simulation: `(plannedDuration_months * 365) / 12`. */
-  plannedDurationDays: number | null;
 }): string | null {
-  const { neutral, scheduleContingencyDays, plannedDurationDays } = params;
+  const { neutral, scheduleContingencyDays } = params;
   const { timeCdf } = cdfsFromNeutralSnapshot(neutral ?? undefined);
   if (!timeCdf?.length) return null;
   const timeValue =
     scheduleContingencyDays != null && Number.isFinite(scheduleContingencyDays) && scheduleContingencyDays > 0
       ? scheduleContingencyDays
-      : plannedDurationDays;
+      : null;
   if (timeValue == null || !Number.isFinite(timeValue) || timeValue <= 0) return null;
   const p = percentileAtTime(timeCdf, timeValue);
   if (p == null) return null;

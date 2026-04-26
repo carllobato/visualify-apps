@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { projectSettingsSelectClass } from "@/components/project/projectSettingsDsFormClasses";
 import type { PortfolioMemberRole } from "@/types/portfolioMembers";
 import { Callout } from "@visualify/design-system";
 import {
@@ -182,7 +181,7 @@ export function PortfolioOnboardingInviteModal({
               value={role}
               onChange={(e) => setRole(e.target.value as PortfolioMemberRole)}
               disabled={sending}
-              className={projectSettingsSelectClass(false, "sm")}
+              className="ds-onboarding-modal-select"
             >
               {INVITE_ROLES.map((o) => (
                 <option key={o.value} value={o.value}>

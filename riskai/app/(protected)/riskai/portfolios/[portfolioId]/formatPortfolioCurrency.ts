@@ -47,14 +47,14 @@ export function formatPortfolioCurrency(value: number): string {
  * - Multiple currencies: shows "—" with per-currency percentages.
  * - No data (no exposure to compare against): shows "—".
  */
-function formatScheduleWeeksHeldLabel(weeks: number): string {
-  if (!Number.isFinite(weeks) || weeks <= 0) return "";
-  if (weeks === 1) return "1 week schedule reserve";
-  return `${weeks} weeks schedule reserve`;
+function formatScheduleWorkingDaysHeldLabel(workingDays: number): string {
+  if (!Number.isFinite(workingDays) || workingDays <= 0) return "";
+  const formatted = formatDurationDays(workingDays);
+  return formatted === "—" ? "" : `${formatted} schedule reserve`;
 }
 
 /**
- * @param scheduleCoverageRatio — schedule contingency weeks ÷ schedule exposure (weeks); omit when unknown.
+ * @param scheduleCoverageRatio — schedule contingency working days ÷ schedule exposure working days; omit when unknown.
  */
 export function coverageRatioTileCopy(
   ratioByCurrency: Map<ProjectCurrency, number>,
@@ -159,17 +159,17 @@ export function costExposureTileCopy(
 }
 
 /**
- * @param totalScheduleContingencyWeeks — sum of schedule contingency from project settings (weeks).
- * @param scheduleCoverageRatio — weeks held ÷ exposure (weeks); shown when exposure > 0.
+ * @param totalScheduleContingencyWorkingDays — sum of schedule contingency from project settings (working days).
+ * @param scheduleCoverageRatio — working days held ÷ exposure working days; shown when exposure > 0.
  */
 export function scheduleExposureTileCopy(
   totalDays: number,
-  totalScheduleContingencyWeeks?: number,
+  totalScheduleContingencyWorkingDays?: number,
   scheduleCoverageRatio?: number | null,
   options?: { exposureBasisSubtext?: string }
 ): { primaryValue: string; subtext: string } {
   if (!Number.isFinite(totalDays) || totalDays <= 0) {
-    const held = formatScheduleWeeksHeldLabel(totalScheduleContingencyWeeks ?? 0);
+    const held = formatScheduleWorkingDaysHeldLabel(totalScheduleContingencyWorkingDays ?? 0);
     return {
       primaryValue: "—",
       subtext:
@@ -178,7 +178,7 @@ export function scheduleExposureTileCopy(
           : "No schedule exposure data",
     };
   }
-  const held = formatScheduleWeeksHeldLabel(totalScheduleContingencyWeeks ?? 0);
+  const held = formatScheduleWorkingDaysHeldLabel(totalScheduleContingencyWorkingDays ?? 0);
   const ratioPart =
     scheduleCoverageRatio != null &&
     Number.isFinite(scheduleCoverageRatio) &&
@@ -190,16 +190,15 @@ export function scheduleExposureTileCopy(
   const subtext =
     held !== "" ? `${base} · ${held}${ratioPart}` : `${base}${ratioPart}`;
   return {
-    primaryValue: formatDurationDays(totalDays, { weekDecimals: 1 }),
+    primaryValue: formatDurationDays(totalDays),
     subtext,
   };
 }
 
-/** Sum of schedule contingency weeks — for schedule metrics panels beside the donut. */
-export function scheduleContingencyHeldDisplayValue(totalWeeks: number): string {
-  if (!Number.isFinite(totalWeeks) || totalWeeks <= 0) return "—";
-  const w = Math.round(totalWeeks);
-  return w === 1 ? "1 week" : `${w} weeks`;
+/** Sum of schedule contingency working days — for schedule metrics panels beside the donut. */
+export function scheduleContingencyHeldDisplayValue(totalWorkingDays: number): string {
+  if (!Number.isFinite(totalWorkingDays) || totalWorkingDays <= 0) return "—";
+  return formatDurationDays(totalWorkingDays);
 }
 
 /** Schedule reserve ÷ expected delay as a percentage (same ratio as tile subtext multiplier). */
@@ -249,19 +248,19 @@ export function needsAttentionTileCopy(
   };
 }
 
-function appendScheduleHeldToSubtext(subtext: string, totalScheduleContingencyWeeks: number): string {
-  const held = formatScheduleWeeksHeldLabel(totalScheduleContingencyWeeks);
+function appendScheduleHeldToSubtext(subtext: string, totalScheduleContingencyWorkingDays: number): string {
+  const held = formatScheduleWorkingDaysHeldLabel(totalScheduleContingencyWorkingDays);
   if (held === "") return subtext;
   return `${subtext} · ${held}`;
 }
 
 /**
- * @param totalScheduleContingencyWeeks — sum of `schedule_contingency_weeks` across projects (whole weeks).
+ * @param totalScheduleContingencyWorkingDays — sum of schedule contingency across projects (working days).
  */
 export function contingencyHeldTileCopy(
   byCurrency: Map<ProjectCurrency, number>,
   projectCount: number,
-  totalScheduleContingencyWeeks = 0,
+  totalScheduleContingencyWorkingDays = 0,
   reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
   options?: {
     heldBaseSubtext?: string;
@@ -277,7 +276,7 @@ export function contingencyHeldTileCopy(
       const c = [...byCurrency.keys()][0];
       return {
         primaryValue: formatCurrencyInReportingUnit(0, c, reportingUnit),
-        subtext: appendScheduleHeldToSubtext(heldBase, totalScheduleContingencyWeeks),
+        subtext: appendScheduleHeldToSubtext(heldBase, totalScheduleContingencyWorkingDays),
       };
     }
     return {
@@ -286,7 +285,7 @@ export function contingencyHeldTileCopy(
         projectCount === 0
           ? options?.emptyNoProjectsSubtext ?? "No projects in portfolio"
           : options?.emptyNoContingencySubtext ?? "No contingency in project settings",
-        totalScheduleContingencyWeeks
+        totalScheduleContingencyWorkingDays
       ),
     };
   }
@@ -295,7 +294,7 @@ export function contingencyHeldTileCopy(
     const [c, m] = nonzero[0];
     return {
       primaryValue: formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit),
-      subtext: appendScheduleHeldToSubtext(heldBase, totalScheduleContingencyWeeks),
+      subtext: appendScheduleHeldToSubtext(heldBase, totalScheduleContingencyWorkingDays),
     };
   }
   const parts = nonzero.map(([c, m]) => formatCurrencyInReportingUnit(toAbs(m), c, reportingUnit));
@@ -303,7 +302,7 @@ export function contingencyHeldTileCopy(
     primaryValue: "—",
     subtext: appendScheduleHeldToSubtext(
       `${parts.join(" · ")} · not converted (multiple currencies)`,
-      totalScheduleContingencyWeeks
+      totalScheduleContingencyWorkingDays
     ),
   };
 }

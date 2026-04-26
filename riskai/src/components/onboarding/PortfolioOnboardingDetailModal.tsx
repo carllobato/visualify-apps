@@ -8,10 +8,7 @@ import {
   REPORTING_UNIT_LABELS,
   REPORTING_UNIT_OPTIONS,
 } from "@/lib/portfolio/reportingPreferences";
-import {
-  projectSettingsFieldWidthClass,
-  projectSettingsSelectClass,
-} from "@/components/project/projectSettingsDsFormClasses";
+import { projectSettingsFieldWidthClass } from "@/components/project/projectSettingsDsFormClasses";
 import { Callout } from "@visualify/design-system";
 import {
   OnboardingStepLabel,
@@ -115,7 +112,7 @@ export function PortfolioOnboardingDetailModal({
               value={reportingCurrency}
               onChange={(e) => setReportingCurrency(e.target.value)}
               disabled={saving}
-              className={projectSettingsSelectClass(false, "sm")}
+              className="ds-onboarding-modal-select"
             >
               {REPORTING_CURRENCY_OPTIONS.map((c) => (
                 <option key={c} value={c}>
@@ -133,7 +130,7 @@ export function PortfolioOnboardingDetailModal({
               value={reportingUnit}
               onChange={(e) => setReportingUnit(e.target.value)}
               disabled={saving}
-              className={projectSettingsSelectClass(false, "sm")}
+              className="ds-onboarding-modal-select"
             >
               {REPORTING_UNIT_OPTIONS.map((u) => (
                 <option key={u} value={u}>

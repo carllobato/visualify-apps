@@ -1836,7 +1836,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
                   })}
                 </dl>
                 <p className={DIST_HELPER_TEXT}>
-                  P0 = minimum, P100 = maximum simulated outcome.
+                  P0 = minimum, P100 = maximum simulated outcome. Schedule values are working days.
                 </p>
                 <dl className={DIST_STATS_GRID}>
                   <div>

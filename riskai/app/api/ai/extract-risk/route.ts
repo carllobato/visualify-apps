@@ -81,8 +81,8 @@ ${json}
 ### How to use this block
 - Prefer mapping these fields into the extraction output **together with** the user-message transcript.
 - If the transcript **clearly contradicts** this JSON on a specific fact, **use the transcript** for that fact.
-- **Do not invent** dollar amounts, day counts, or probability percentages that are not grounded in either this JSON or the transcript. If a numeric value cannot be justified, use **0** for required pre-mitigation cost/time fields (and set \`appliesTo\` consistently: cost-only / time-only / both from what is evidenced).
-- **Inherent mapping (pre-mitigation):** interpret \`fields.inherent.probability\`, \`.cost\`, and \`.time\` into \`probability\` (0–100), \`costMin\` / \`costMostLikely\` / \`costMax\`, \`timeMin\` / \`timeMostLikely\` / \`timeMax\`. Use qualitative text only to derive numeric bands when the wording supports a defensible conversion; otherwise **0**.
+- **Do not invent** dollar amounts, working-day counts, or probability percentages that are not grounded in either this JSON or the transcript. If a numeric value cannot be justified, use **0** for required pre-mitigation cost/time fields (and set \`appliesTo\` consistently: cost-only / time-only / both from what is evidenced).
+- **Inherent mapping (pre-mitigation):** interpret \`fields.inherent.probability\`, \`.cost\`, and \`.time\` into \`probability\` (0–100), \`costMin\` / \`costMostLikely\` / \`costMax\`, \`timeMin\` / \`timeMostLikely\` / \`timeMax\` in working days. Use qualitative text only to derive numeric bands when the wording supports a defensible conversion; otherwise **0**.
 - **Residual mapping (post-mitigation):** interpret \`fields.residual.*\` into \`postProbability\`, \`postCostMin\` / \`postCostMostLikely\` / \`postCostMax\`, \`postTimeMin\` / \`postTimeMostLikely\` / \`postTimeMax\` **only when** residual figures are present in this JSON or clearly in the transcript. If residual impact was **not** captured, **omit all post\*** keys (do not guess revised values).
 - **Mitigation:** set output \`mitigation\` from \`fields.mitigation.description\` when present; otherwise derive only from the transcript.
 - **Mitigation in place:** use \`fields.mitigation.inPlace\` as context — \`true\` = controls already active (residual should reflect current remaining exposure); \`false\` = not yet implemented (do not confuse with \`mitigationCost\`, which is spend to implement a plan). Do not invent \`mitigationCost\` unless the transcript or structured context states a spend.
@@ -95,8 +95,8 @@ function buildGuidedImpactSection(guided: GuidedExtractImpact | undefined): stri
 The accompanying risk-chat flow did **not** firmly establish whether this risk affects cost, time, or both (impact remained unclear).
 
 **Follow these even where other sections ask you to infer or fill pre-mitigation fields:**
-- Do **not** invent dollar amounts, day counts, or cost/time **bands** from vague language (severity, concern, "material", "major", priority) or from the fact that a risk exists.
-- Use **0** for costMin, costMostLikely, costMax and for timeMin, timeMostLikely, timeMax unless the transcript states **explicit** numbers, currency, or calendar durations tied to this risk.
+- Do **not** invent dollar amounts, working-day counts, or cost/time **bands** from vague language (severity, concern, "material", "major", priority) or from the fact that a risk exists.
+- Use **0** for costMin, costMostLikely, costMax and for timeMin, timeMostLikely, timeMax unless the transcript states **explicit** numbers, currency, or durations tied to this risk.
 - Set appliesTo to "cost", "time", or "both" only according to explicit transcript evidence; if cost vs time was never distinguished, use "both" with **all** cost and time magnitudes at **0**.
 - Probability may still reflect stated likelihood; do not use probability to justify fabricated cost or time values.`;
   }
@@ -132,10 +132,12 @@ Prefer intelligent estimation over leaving blanks. We are building a decision in
 - Interpret "k" as thousands, "m" as millions. No commas in numbers.
 
 ## 2. Time ranges
-- Convert everything to DAYS: 1 week = 7 days, 1 month = 30 days.
-- If text gives a range (e.g. "8–12 weeks", "2 to 3 months", "10–15 days"):
-  - timeMin = lower bound (days)
-  - timeMax = upper bound (days)
+- Schedule impacts MUST be returned in working days.
+- Convert durations to working days only: 1 week = 5 working days, 1 month = 22 working days.
+- Do not use calendar-day conversion.
+- If text gives a range (e.g. "8–12 weeks", "2 to 3 months", "10–15 working days"):
+  - timeMin = lower bound (working days)
+  - timeMax = upper bound (working days)
   - timeMostLikely = midpoint (integer)
 - If only one duration is given:
   - timeMin = floor(0.75 × value)
@@ -179,7 +181,7 @@ Infer from category/keywords:
 
 **Critical distinction:**
 - **mitigationCost** = the cost TO APPLY the mitigation (e.g. $250k to expedite, budget/spend). This is NOT the residual risk. Store in mitigationCost only.
-- **Post-mitigation (residual) fields** = the REMAINING risk after mitigation: lower probability and REDUCED impact (cost/time). postCostMin/ML/Max and postTimeMin/ML/Max are the remaining exposure, never the cost of doing the mitigation.
+- **Post-mitigation (residual) fields** = the REMAINING risk after mitigation: lower probability and REDUCED impact (cost/time). postCostMin/ML/Max and postTimeMin/ML/Max are the remaining exposure; postTime* is in working days and never the cost of doing the mitigation.
 
 ### 9.1 Extract mitigation cost
 If text includes: "at a cost of $250k", "for $250,000", "$250k acceleration", "deposit of 250k", "mitigation cost $1.2m":
@@ -226,7 +228,7 @@ Optional (include when mitigation is detected):
 
 Also allow: "contingency" (string or omit).
 
-Example with full mitigation (residual = 0): { "title": "Supplier Delivery Slip", "probability": 60, "costMin": 500000, "costMostLikely": 750000, "costMax": 1000000, "timeMin": 28, "timeMostLikely": 42, "timeMax": 56, "appliesTo": "both", "mitigation": "Expedite with premium supplier", "mitigationCost": 250000, "postProbability": 0, "postCostMin": 0, "postCostMostLikely": 0, "postCostMax": 0, "postTimeMin": 0, "postTimeMostLikely": 0, "postTimeMax": 0 }
+Example with full mitigation (residual = 0): { "title": "Supplier Delivery Slip", "probability": 60, "costMin": 500000, "costMostLikely": 750000, "costMax": 1000000, "timeMin": 20, "timeMostLikely": 30, "timeMax": 40, "appliesTo": "both", "mitigation": "Expedite with premium supplier", "mitigationCost": 250000, "postProbability": 0, "postCostMin": 0, "postCostMostLikely": 0, "postCostMax": 0, "postTimeMin": 0, "postTimeMostLikely": 0, "postTimeMax": 0 }
 Example with partial mitigation (residual reduced): postProbability = 30, postCost/postTime = 50% of pre; mitigationCost = 250000 (separate).`;
 
 function buildExtractSystem(

@@ -1,15 +1,38 @@
-import { loadProjectContext, parseProjectContextFromVisualifyProjectSettingsRow } from "@/lib/projectContext";
+import {
+  loadProjectContext,
+  parseProjectContextFromVisualifyProjectSettingsRow,
+  type WorkingDaysPerWeek,
+} from "@/lib/projectContext";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
+export type SimulationScheduleSettings = {
+  delayCostPerWorkingDay?: number;
+  workingDaysPerWeek: WorkingDaysPerWeek;
+};
+
+const DEFAULT_WORKING_DAYS_PER_WEEK: WorkingDaysPerWeek = 5;
+
+function positiveFiniteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
+}
+
 /**
- * Delay rate for Monte Carlo: prefer `visualify_project_settings` from Supabase, else project-scoped localStorage.
+ * Schedule settings for Monte Carlo: prefer `visualify_project_settings` from Supabase,
+ * else project-scoped localStorage. Delay cost is interpreted per working day.
  */
-export async function resolveDelayCostPerDayForSimulation(
+export async function resolveScheduleSettingsForSimulation(
   projectId: string | undefined
-): Promise<number | undefined> {
-  if (!projectId || typeof projectId !== "string") return undefined;
+): Promise<SimulationScheduleSettings> {
+  if (!projectId || typeof projectId !== "string") {
+    return { workingDaysPerWeek: DEFAULT_WORKING_DAYS_PER_WEEK };
+  }
   const pid = projectId.trim();
-  if (!pid) return undefined;
+  if (!pid) return { workingDaysPerWeek: DEFAULT_WORKING_DAYS_PER_WEEK };
+
+  let workingDaysPerWeek = DEFAULT_WORKING_DAYS_PER_WEEK;
+  let hasDbWorkingDaysPerWeek = false;
 
   try {
     const supabase = supabaseBrowserClient();
@@ -20,21 +43,40 @@ export async function resolveDelayCostPerDayForSimulation(
       .maybeSingle();
     if (!error && row != null && typeof row === "object") {
       const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
-      const d = parsed?.delay_cost_per_day;
-      if (d != null && Number.isFinite(d) && d > 0) return d;
+      if (parsed) {
+        workingDaysPerWeek = parsed.workingDaysPerWeek;
+        hasDbWorkingDaysPerWeek = true;
+        const delayCostPerWorkingDay = positiveFiniteNumber(parsed.delay_cost_per_working_day);
+        if (delayCostPerWorkingDay !== undefined) {
+          return { delayCostPerWorkingDay, workingDaysPerWeek };
+        }
+      }
     }
   } catch {
     // Supabase or network unavailable
   }
 
   const delayCtx = loadProjectContext(pid);
-  const fromLocal =
-    delayCtx?.delay_cost_per_day != null &&
-    Number.isFinite(delayCtx.delay_cost_per_day) &&
-    delayCtx.delay_cost_per_day > 0
-      ? delayCtx.delay_cost_per_day
-      : undefined;
-  if (fromLocal !== undefined) return fromLocal;
+  if (delayCtx) {
+    return {
+      delayCostPerWorkingDay:
+        positiveFiniteNumber(delayCtx.delay_cost_per_working_day) ??
+        positiveFiniteNumber(delayCtx.delay_cost_per_day),
+      workingDaysPerWeek: hasDbWorkingDaysPerWeek
+        ? workingDaysPerWeek
+        : delayCtx.workingDaysPerWeek,
+    };
+  }
 
-  return undefined;
+  return { workingDaysPerWeek };
+}
+
+/**
+ * @deprecated Use resolveScheduleSettingsForSimulation so callers also receive working-days metadata.
+ */
+export async function resolveDelayCostPerDayForSimulation(
+  projectId: string | undefined
+): Promise<number | undefined> {
+  const settings = await resolveScheduleSettingsForSimulation(projectId);
+  return settings.delayCostPerWorkingDay;
 }

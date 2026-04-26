@@ -90,6 +90,8 @@ export type MonteCarloNeutralSnapshot = {
     p90Time: number;
     minTime: number;
     maxTime: number;
+    time_basis?: "working_days";
+    working_days_per_week?: number;
     costBreakdown?: {
       directRiskCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };
       delayDerivedCost: { mean: number; p20: number; p50: number; p80: number; p90: number; min: number; max: number };

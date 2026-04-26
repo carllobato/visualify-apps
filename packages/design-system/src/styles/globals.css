@@ -1523,6 +1523,7 @@ ul[role="listbox"] button:focus-visible {
 
 /* Onboarding / first-run modals — panel chrome (RiskAI onboarding flow). */
 .ds-onboarding-modal-panel {
+  box-sizing: border-box;
   width: 100%;
   max-width: 28rem;
   border-radius: var(--ds-radius-lg);
@@ -1530,6 +1531,16 @@ ul[role="listbox"] button:focus-visible {
   background-color: var(--ds-surface-elevated);
   padding: var(--ds-space-6);
   box-shadow: var(--ds-shadow-lg);
+}
+
+.ds-onboarding-modal-scroll-area {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  margin: calc(-1 * var(--ds-space-6));
+  padding: var(--ds-space-6);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .ds-onboarding-modal-panel-header {
@@ -1622,11 +1633,28 @@ ul[role="listbox"] button:focus-visible {
 }
 
 .ds-onboarding-modal-input {
+  box-sizing: border-box;
   width: 100%;
-  border-radius: var(--ds-radius-sm);
-  border: 1px solid var(--ds-border);
+  min-height: 2.6875rem;
+  border-radius: var(--ds-radius-md);
+  border: none;
   background-color: var(--ds-surface-default);
   padding: 0.625rem 0.75rem;
+  font-family: inherit;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-primary);
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ds-onboarding-modal-select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 2.6875rem;
+  border-radius: var(--ds-radius-md);
+  border: none;
+  background-color: var(--ds-surface-default);
+  padding: 0.625rem 2.5rem 0.625rem 0.75rem;
+  font-family: inherit;
   font-size: var(--ds-text-sm);
   color: var(--ds-text-primary);
   box-shadow: var(--ds-shadow-sm);
@@ -1637,12 +1665,14 @@ ul[role="listbox"] button:focus-visible {
   opacity: 1;
 }
 
-.ds-onboarding-modal-input:focus {
+.ds-onboarding-modal-input:focus,
+.ds-onboarding-modal-select:focus {
   outline: 2px solid var(--ds-border);
   outline-offset: 2px;
 }
 
-.ds-onboarding-modal-input:disabled {
+.ds-onboarding-modal-input:disabled,
+.ds-onboarding-modal-select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -1694,7 +1724,7 @@ ul[role="listbox"] button:focus-visible {
  */
 .ds-onboarding-modal-primary {
   width: 100%;
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-md);
   border: none;
   background-color: var(--ds-primary);
   color: var(--ds-primary-text);
@@ -1748,30 +1778,40 @@ ul[role="listbox"] button:focus-visible {
 
 @media (min-width: 640px) {
   .ds-onboarding-step-actions {
-    flex-direction: row;
-    align-items: stretch;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: var(--ds-space-4);
   }
 }
 
 .ds-onboarding-step-actions__back {
-  border-radius: var(--ds-radius-sm);
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 0;
+  border-radius: var(--ds-radius-md);
   border: none;
-  background-color: transparent;
+  background-color: var(--ds-surface-default);
+  box-shadow: var(--ds-elevation-button-secondary);
   padding: 0.625rem var(--ds-space-4);
+  font-family: inherit;
   font-size: var(--ds-text-sm);
   font-weight: 500;
-  color: var(--ds-text-secondary);
+  color: var(--ds-text-primary);
   cursor: pointer;
-  transition:
-    color 150ms ease-out,
-    background-color 150ms ease-out;
+  transition: background-color var(--ds-transition-fast);
 }
 
 .ds-onboarding-step-actions__back:hover:not(:disabled) {
   background-color: var(--ds-surface-hover);
-  color: var(--ds-text-primary);
+  box-shadow: var(--ds-elevation-button-secondary-hover);
+}
+
+.ds-onboarding-step-actions__back:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
 }
 
 .ds-onboarding-step-actions__back:disabled {
@@ -1781,7 +1821,7 @@ ul[role="listbox"] button:focus-visible {
 
 @media (min-width: 640px) {
   .ds-onboarding-step-actions__back {
-    min-width: 100px;
+    min-width: 0;
   }
 }
 
@@ -1792,7 +1832,11 @@ ul[role="listbox"] button:focus-visible {
 
 @media (min-width: 640px) {
   .ds-onboarding-step-actions__forward {
-    max-width: 24rem;
-    flex: 0 0 auto;
+    max-width: none;
+  }
+
+  .ds-onboarding-step-actions .ds-onboarding-modal-primary--auto-sm {
+    width: 100%;
+    min-width: 0;
   }
 }

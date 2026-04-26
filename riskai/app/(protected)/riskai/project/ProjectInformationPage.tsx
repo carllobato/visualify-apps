@@ -14,6 +14,7 @@ import {
   type ProjectContext,
   type RiskAppetite,
   type ProjectCurrency,
+  type WorkingDaysPerWeek,
   loadProjectContext,
   saveProjectContext,
   clearProjectContext,
@@ -79,16 +80,22 @@ const CURRENCY_OPTIONS: { value: ProjectCurrency; label: string }[] = [
 ];
 
 const MAX_MONTHS = 600;
-const MAX_WEEKS = 520;
+const MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS = 3120;
+
+const WORKING_CALENDAR_OPTIONS: { value: WorkingDaysPerWeek; label: string }[] = [
+  { value: 5, label: "5 days" },
+  { value: 5.5, label: "5.5 days" },
+  { value: 6, label: "6 days" },
+];
 
 const REQUIRED_NUMERIC_KEYS = [
   "contingencyValue_input",
   "plannedDuration_months",
-  "scheduleContingency_weeks",
+  "scheduleContingency_workingDays",
 ] as const;
 
 type RawNumericFields = Partial<
-  Record<(typeof REQUIRED_NUMERIC_KEYS)[number] | "delay_cost_per_day", string>
+  Record<(typeof REQUIRED_NUMERIC_KEYS)[number] | "delay_cost_per_working_day", string>
 >;
 
 function defaultContext(): ProjectContext {
@@ -98,6 +105,9 @@ function defaultContext(): ProjectContext {
     plannedDuration_months: 0,
     targetCompletionDate: "",
     scheduleContingency_weeks: 0,
+    workingDaysPerWeek: 5,
+    scheduleContingency_workingDays: 0,
+    scheduleInputsVersion: 2,
     riskAppetite: "P80",
     currency: "AUD",
     financialUnit: "MILLIONS",
@@ -108,6 +118,7 @@ function defaultContext(): ProjectContext {
     contingencyValue_m: 0,
     approvedBudget_m: 0,
     delay_cost_per_day: null,
+    delay_cost_per_working_day: null,
   };
 }
 
@@ -126,11 +137,11 @@ function getValidationErrors(
     if (Number.isNaN(n) || n < 0) err.contingencyValue_input = "Enter a valid number";
   }
   const rawDelay =
-    rawNumeric.delay_cost_per_day ??
-    (form.delay_cost_per_day == null ? "" : String(form.delay_cost_per_day));
+    rawNumeric.delay_cost_per_working_day ??
+    (form.delay_cost_per_working_day == null ? "" : String(form.delay_cost_per_working_day));
   if (rawDelay !== "") {
     const n = Number(rawDelay);
-    if (Number.isNaN(n) || n < 0) err.delay_cost_per_day = "Enter a valid number";
+    if (Number.isNaN(n) || n < 0) err.delay_cost_per_working_day = "Enter a valid number";
   }
   const rawDur = rawNumeric.plannedDuration_months ?? (form.plannedDuration_months === 0 ? "" : String(form.plannedDuration_months));
   if (rawDur === "") err.plannedDuration_months = "This field is required";
@@ -140,12 +151,17 @@ function getValidationErrors(
     else if (n > MAX_MONTHS) err.plannedDuration_months = `Duration must be between 0 and ${MAX_MONTHS} months.`;
   }
   if (!form.targetCompletionDate.trim()) err.targetCompletionDate = "This field is required";
-  const rawSc = rawNumeric.scheduleContingency_weeks ?? (form.scheduleContingency_weeks === 0 ? "" : String(form.scheduleContingency_weeks));
-  if (rawSc === "") err.scheduleContingency_weeks = "This field is required";
+  const rawSc =
+    rawNumeric.scheduleContingency_workingDays ??
+    (form.scheduleContingency_workingDays === 0 ? "" : String(form.scheduleContingency_workingDays));
+  if (rawSc === "") err.scheduleContingency_workingDays = "This field is required";
   else {
     const n = Number(rawSc);
-    if (Number.isNaN(n) || n < 0) err.scheduleContingency_weeks = "Enter a valid number";
-    else if (n > MAX_WEEKS) err.scheduleContingency_weeks = `Schedule contingency must be between 0 and ${MAX_WEEKS} weeks.`;
+    if (Number.isNaN(n) || n < 0) err.scheduleContingency_workingDays = "Enter a valid number";
+    else if (n > MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS) {
+      err.scheduleContingency_workingDays =
+        `Schedule contingency must be between 0 and ${MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS} working days.`;
+    }
   }
   return err;
 }
@@ -156,7 +172,7 @@ const FIRST_INVALID_FIELD_ORDER = [
   "contingencyValue_input",
   "plannedDuration_months",
   "targetCompletionDate",
-  "scheduleContingency_weeks",
+  "scheduleContingency_workingDays",
 ] as const;
 
 const FIELD_TAB_MAP: Partial<Record<(typeof FIRST_INVALID_FIELD_ORDER)[number], ProjectSettingsTab>> = {
@@ -165,7 +181,7 @@ const FIELD_TAB_MAP: Partial<Record<(typeof FIRST_INVALID_FIELD_ORDER)[number], 
   contingencyValue_input: "parameters",
   plannedDuration_months: "parameters",
   targetCompletionDate: "parameters",
-  scheduleContingency_weeks: "parameters",
+  scheduleContingency_workingDays: "parameters",
 };
 
 const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
@@ -184,8 +200,10 @@ function rawNumericFieldsFromContext(stored: ProjectContext): RawNumericFields {
   return {
     contingencyValue_input: stored.contingencyValue_input === 0 ? "" : String(stored.contingencyValue_input),
     plannedDuration_months: stored.plannedDuration_months === 0 ? "" : String(stored.plannedDuration_months),
-    scheduleContingency_weeks: stored.scheduleContingency_weeks === 0 ? "" : String(stored.scheduleContingency_weeks),
-    delay_cost_per_day: stored.delay_cost_per_day == null ? "" : String(stored.delay_cost_per_day),
+    scheduleContingency_workingDays:
+      stored.scheduleContingency_workingDays === 0 ? "" : String(stored.scheduleContingency_workingDays),
+    delay_cost_per_working_day:
+      stored.delay_cost_per_working_day == null ? "" : String(stored.delay_cost_per_working_day),
   };
 }
 
@@ -196,17 +214,19 @@ function projectSettingsPersistFingerprint(form: ProjectContext, raw: RawNumeric
     location: form.location ?? "",
     plannedDuration_months: form.plannedDuration_months,
     targetCompletionDate: form.targetCompletionDate,
-    scheduleContingency_weeks: form.scheduleContingency_weeks,
+    workingDaysPerWeek: form.workingDaysPerWeek,
+    scheduleContingency_workingDays: form.scheduleContingency_workingDays,
+    scheduleInputsVersion: form.scheduleInputsVersion,
     riskAppetite: form.riskAppetite,
     currency: form.currency,
     projectValue_input: form.projectValue_input,
     contingencyValue_input: form.contingencyValue_input,
-    delay_cost_per_day: form.delay_cost_per_day,
+    delay_cost_per_working_day: form.delay_cost_per_working_day,
     raw: {
       contingencyValue_input: raw.contingencyValue_input ?? "",
       plannedDuration_months: raw.plannedDuration_months ?? "",
-      scheduleContingency_weeks: raw.scheduleContingency_weeks ?? "",
-      delay_cost_per_day: raw.delay_cost_per_day ?? "",
+      scheduleContingency_workingDays: raw.scheduleContingency_workingDays ?? "",
+      delay_cost_per_working_day: raw.delay_cost_per_working_day ?? "",
     },
   });
 }
@@ -254,16 +274,18 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const contingencyValueRef = useRef<HTMLInputElement>(null);
   const plannedDurationRef = useRef<HTMLInputElement>(null);
   const targetCompletionDateRef = useRef<HTMLInputElement>(null);
+  const workingCalendarRef = useRef<HTMLSelectElement>(null);
   const scheduleContingencyRef = useRef<HTMLInputElement>(null);
-  const delayCostPerDayRef = useRef<HTMLInputElement>(null);
-  const fieldRefsRef = useRef<Record<string, RefObject<HTMLInputElement | null>>>({
+  const delayCostPerWorkingDayRef = useRef<HTMLInputElement>(null);
+  const fieldRefsRef = useRef<Record<string, RefObject<HTMLElement | null>>>({
     projectName: projectNameRef,
     projectValue_input: projectValueRef,
     contingencyValue_input: contingencyValueRef,
-    delay_cost_per_day: delayCostPerDayRef,
+    delay_cost_per_working_day: delayCostPerWorkingDayRef,
     plannedDuration_months: plannedDurationRef,
     targetCompletionDate: targetCompletionDateRef,
-    scheduleContingency_weeks: scheduleContingencyRef,
+    workingDaysPerWeek: workingCalendarRef,
+    scheduleContingency_workingDays: scheduleContingencyRef,
   });
 
   const riskRegisterHref = projectId ? riskaiPath(`/projects/${projectId}/risks`) : DASHBOARD_PATH;
@@ -363,17 +385,31 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         const next = { ...prev, [key]: value };
         const pvInput = key === "projectValue_input" ? (value as number) : prev.projectValue_input;
         const cvInput = key === "contingencyValue_input" ? (value as number) : prev.contingencyValue_input;
+        const workingDaysPerWeek =
+          key === "workingDaysPerWeek" ? (value as WorkingDaysPerWeek) : prev.workingDaysPerWeek;
+        const scheduleContingencyWorkingDays =
+          key === "scheduleContingency_workingDays"
+            ? (value as number)
+            : prev.scheduleContingency_workingDays;
         if (key === "projectValue_input" || key === "contingencyValue_input") {
           next.projectValue_m = pvInput / 1e6;
           next.contingencyValue_m = cvInput / 1e6;
           next.approvedBudget_m = next.projectValue_m + next.contingencyValue_m;
+        }
+        if (key === "workingDaysPerWeek" || key === "scheduleContingency_workingDays") {
+          next.scheduleInputsVersion = 2;
+          next.scheduleContingency_weeks =
+            workingDaysPerWeek > 0 ? scheduleContingencyWorkingDays / workingDaysPerWeek : 0;
+        }
+        if (key === "delay_cost_per_working_day") {
+          next.delay_cost_per_day = value as number | null;
         }
         return next;
       });
       if (
         raw !== undefined &&
         (REQUIRED_NUMERIC_KEYS.includes(key as (typeof REQUIRED_NUMERIC_KEYS)[number]) ||
-          key === "delay_cost_per_day")
+          key === "delay_cost_per_working_day")
       ) {
         setRawNumericFields((prev) => ({ ...prev, [key]: raw }));
       }
@@ -421,8 +457,12 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           planned_duration_months: toSave.plannedDuration_months,
           target_completion_date: toSave.targetCompletionDate,
           schedule_contingency_weeks: toSave.scheduleContingency_weeks,
+          working_days_per_week: toSave.workingDaysPerWeek,
+          schedule_contingency_working_days: toSave.scheduleContingency_workingDays,
+          schedule_inputs_version: 2,
           risk_appetite: toSave.riskAppetite,
           delay_cost_per_day: toSave.delay_cost_per_day,
+          delay_cost_per_working_day: toSave.delay_cost_per_working_day,
         },
         { onConflict: "project_id" }
       );
@@ -441,8 +481,10 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     const nextRaw: RawNumericFields = {
       contingencyValue_input: toSave.contingencyValue_input === 0 ? "" : String(toSave.contingencyValue_input),
       plannedDuration_months: toSave.plannedDuration_months === 0 ? "" : String(toSave.plannedDuration_months),
-      scheduleContingency_weeks: toSave.scheduleContingency_weeks === 0 ? "" : String(toSave.scheduleContingency_weeks),
-      delay_cost_per_day: toSave.delay_cost_per_day == null ? "" : String(toSave.delay_cost_per_day),
+      scheduleContingency_workingDays:
+        toSave.scheduleContingency_workingDays === 0 ? "" : String(toSave.scheduleContingency_workingDays),
+      delay_cost_per_working_day:
+        toSave.delay_cost_per_working_day == null ? "" : String(toSave.delay_cost_per_working_day),
     };
     setRawNumericFields(nextRaw);
     setSavedBaselineFingerprint(projectSettingsPersistFingerprint(toSave, nextRaw));
@@ -683,37 +725,37 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                 {validation.contingencyValue_input ? <FieldError className="!mt-1">{validation.contingencyValue_input}</FieldError> : null}
               </div>
               <div className={projectSettingsFieldWidthClass("sm")}>
-                <Label htmlFor="delay_cost_per_day" className="!mb-1">
-                  Delay Cost Per Day
+                <Label htmlFor="delay_cost_per_working_day" className="!mb-1">
+                  Delay Cost Per Working Day
                 </Label>
                 <input
-                  ref={delayCostPerDayRef}
-                  id="delay_cost_per_day"
+                  ref={delayCostPerWorkingDayRef}
+                  id="delay_cost_per_working_day"
                   type="text"
                   inputMode="decimal"
                   readOnly={settingsReadOnly}
                   value={
-                    (rawNumericFields.delay_cost_per_day ??
-                      (form.delay_cost_per_day == null ? "" : String(form.delay_cost_per_day))) === ""
+                    (rawNumericFields.delay_cost_per_working_day ??
+                      (form.delay_cost_per_working_day == null ? "" : String(form.delay_cost_per_working_day))) === ""
                       ? ""
-                      : formatMajorCurrencyDisplay(form.delay_cost_per_day ?? 0, form.currency)
+                      : formatMajorCurrencyDisplay(form.delay_cost_per_working_day ?? 0, form.currency)
                   }
                   onChange={(e) => {
                     const raw = e.target.value.replace(/[^0-9.]/g, "");
                     const num = Number(raw);
                     const safe =
                       raw === "" ? null : Number.isFinite(num) ? Math.max(0, num) : null;
-                    update("delay_cost_per_day", safe, raw);
+                    update("delay_cost_per_working_day", safe, raw);
                   }}
-                  aria-invalid={!!validation.delay_cost_per_day}
-                  className={projectSettingsInputClass(!!validation.delay_cost_per_day) + readOnlyChrome}
+                  aria-invalid={!!validation.delay_cost_per_working_day}
+                  className={projectSettingsInputClass(!!validation.delay_cost_per_working_day) + readOnlyChrome}
                   placeholder="e.g. 50,000"
                 />
-                {validation.delay_cost_per_day ? (
-                  <FieldError className="!mt-1">{validation.delay_cost_per_day}</FieldError>
+                {validation.delay_cost_per_working_day ? (
+                  <FieldError className="!mt-1">{validation.delay_cost_per_working_day}</FieldError>
                 ) : (
                   <HelperText className="!mt-1">
-                    Used to convert schedule delay into indirect cost impact.
+                    Used to convert working-day schedule delay into indirect cost impact.
                   </HelperText>
                 )}
               </div>
@@ -754,6 +796,26 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                 {validation.plannedDuration_months ? <FieldError className="!mt-1">{validation.plannedDuration_months}</FieldError> : null}
               </div>
               <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="workingDaysPerWeek" className="!mb-1">
+                  Working Calendar
+                </Label>
+                <select
+                  ref={workingCalendarRef}
+                  id="workingDaysPerWeek"
+                  value={String(form.workingDaysPerWeek)}
+                  disabled={settingsReadOnly}
+                  onChange={(e) => update("workingDaysPerWeek", Number(e.target.value) as WorkingDaysPerWeek)}
+                  className={projectSettingsSelectClass(false, "sm") + readOnlyChrome}
+                  aria-label="Working Calendar"
+                >
+                  {WORKING_CALENDAR_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="targetCompletionDate" className="!mb-1">
                   Target completion date <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
@@ -770,32 +832,39 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                 {validation.targetCompletionDate ? <FieldError className="!mt-1">{validation.targetCompletionDate}</FieldError> : null}
               </div>
               <div className={projectSettingsFieldWidthClass("xsm")}>
-                <Label htmlFor="scheduleContingency_weeks" className="!mb-1">
-                  Schedule contingency <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                <Label htmlFor="scheduleContingency_workingDays" className="!mb-1">
+                  Schedule Contingency Working Days <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <input
                   ref={scheduleContingencyRef}
-                  id="scheduleContingency_weeks"
+                  id="scheduleContingency_workingDays"
                   type="text"
                   inputMode="numeric"
                   readOnly={settingsReadOnly}
                   value={
-                    (rawNumericFields.scheduleContingency_weeks ??
-                      (form.scheduleContingency_weeks === 0 ? "" : String(form.scheduleContingency_weeks))) === ""
+                    (rawNumericFields.scheduleContingency_workingDays ??
+                      (form.scheduleContingency_workingDays === 0 ? "" : String(form.scheduleContingency_workingDays))) === ""
                       ? ""
-                      : `${formatGroupedNumber(form.scheduleContingency_weeks)} weeks`
+                      : `${formatGroupedNumber(form.scheduleContingency_workingDays)} working days`
                   }
                   onChange={(e) => {
                     const raw = e.target.value.replace(/[^0-9]/g, "");
                     const num = Number(raw);
-                    const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, Math.min(MAX_WEEKS, Math.floor(num))) : 0);
-                    update("scheduleContingency_weeks", safe, raw);
+                    const safe =
+                      raw === ""
+                        ? 0
+                        : (Number.isFinite(num)
+                          ? Math.max(0, Math.min(MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS, Math.floor(num)))
+                          : 0);
+                    update("scheduleContingency_workingDays", safe, raw);
                   }}
-                  aria-invalid={!!validation.scheduleContingency_weeks}
-                  className={projectSettingsNumberInputClass(!!validation.scheduleContingency_weeks) + readOnlyChrome}
-                  placeholder="e.g. 4 weeks"
+                  aria-invalid={!!validation.scheduleContingency_workingDays}
+                  className={projectSettingsNumberInputClass(!!validation.scheduleContingency_workingDays) + readOnlyChrome}
+                  placeholder="e.g. 20 working days"
                 />
-                {validation.scheduleContingency_weeks ? <FieldError className="!mt-1">{validation.scheduleContingency_weeks}</FieldError> : null}
+                {validation.scheduleContingency_workingDays ? (
+                  <FieldError className="!mt-1">{validation.scheduleContingency_workingDays}</FieldError>
+                ) : null}
               </div>
             </CardBody>
           </Card>

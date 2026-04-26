@@ -73,7 +73,7 @@ function simulationProbability01(
  * - Excludes closed and archived risks (returns null).
  * - Post-mitigation values only when `mitigationProfile.status === "active"` and post ML cost & time are valid; else pre (including active with incomplete post).
  * - Probability: scale-based pre/post per `usePost`, with `risk.probability` used only when it aligns with that side vs the other scale.
- * - Cost and time in dollars and days; zeroed per `appliesTo` for cost-only / time-only risks.
+ * - Cost in dollars and time in working days; zeroed per `appliesTo` for cost-only / time-only risks.
  */
 export function getEffectiveRiskInputs(risk: Risk): EffectiveRiskInputs | null {
   if (isRiskStatusExcludedFromSimulation(risk.status)) return null;
@@ -137,7 +137,7 @@ function getCostMLForSimulation(risk: Risk, usePost: boolean): number {
   return consequenceToCostFallback(risk, usePost);
 }
 
-/** Maximum schedule impact (days) used in simulation; range is 0–30 days. */
+/** Maximum schedule impact (working days) used in simulation; range is 0–30 working days. */
 const SCHEDULE_IMPACT_DAYS_CAP = 30;
 
 function getTimeMLForSimulation(risk: Risk, usePost: boolean): number {
@@ -225,6 +225,8 @@ export type SimulationResult = {
     p90Time: number;
     minTime: number;
     maxTime: number;
+    time_basis: "working_days";
+    working_days_per_week?: number;
     costBreakdown: {
       directRiskCost: {
         mean: number;
@@ -313,7 +315,8 @@ function computeSummary(
   directRiskCostSamples: number[],
   delayDerivedCostSamples: number[],
   timeSamples: number[],
-  n: number
+  n: number,
+  workingDaysPerWeek?: number
 ): SimulationResult["summary"] {
   const costSorted = costSamples.slice().sort((a, b) => a - b);
   const directRiskCostSorted = directRiskCostSamples.slice().sort((a, b) => a - b);
@@ -335,6 +338,8 @@ function computeSummary(
     p90Time: timeSorted[percentileIndex(timeSorted, 90)] ?? 0,
     minTime: timeSorted[0] ?? 0,
     maxTime: timeSorted[n - 1] ?? 0,
+    time_basis: "working_days",
+    ...(workingDaysPerWeek != null && { working_days_per_week: workingDaysPerWeek }),
     costBreakdown: {
       directRiskCost: {
         mean: mean(directRiskCostSamples),
@@ -372,12 +377,15 @@ export type RunMonteCarloOptions = {
   iterations?: number;
   seed?: number;
   /**
-   * Project setting: indirect cost (same currency as risk cost ML) per calendar day of schedule delay.
-   * Simulation time samples are total delay in days (see `totalTime` loop); when this is set and > 0,
-   * each iteration adds `totalTime * delayCostPerDay` to the cost sample (on top of direct risk cost).
+   * Project setting: indirect cost (same currency as risk cost ML) per working day of schedule delay.
+   * Simulation time samples are total delay in working days; when this is set and > 0,
+   * each iteration adds `totalWorkingDays * delayCostPerWorkingDay` to the cost sample (on top of direct risk cost).
    * Omit, null, or ≤0 leaves cost samples unchanged from direct risk cost only.
    */
+  delayCostPerWorkingDay?: number | null;
+  /** @deprecated Use delayCostPerWorkingDay. Kept as a compatibility fallback for legacy callers. */
   delayCostPerDay?: number | null;
+  workingDaysPerWeek?: number | null;
 };
 
 /**
@@ -389,15 +397,29 @@ export type RunMonteCarloOptions = {
 export function runMonteCarloSimulation(
   options: RunMonteCarloOptions
 ): SimulationResult {
-  const { risks, iterations = 10000, seed, delayCostPerDay: delayCostPerDayRaw } = options;
+  const {
+    risks,
+    iterations = 10000,
+    seed,
+    delayCostPerWorkingDay: delayCostPerWorkingDayRaw,
+    delayCostPerDay: legacyDelayCostPerDayRaw,
+    workingDaysPerWeek: workingDaysPerWeekRaw,
+  } = options;
   const effective = risks.map((r) => getEffectiveRiskInputs(r)).filter((x): x is EffectiveRiskInputs => x != null);
   const n = Math.max(0, Math.floor(iterations));
   const random = seed != null ? seededRandom(seed) : () => Math.random();
 
-  const delayCostPerDay =
-    delayCostPerDayRaw != null && Number.isFinite(delayCostPerDayRaw) && delayCostPerDayRaw > 0
-      ? delayCostPerDayRaw
+  const delayCostPerWorkingDayInput = delayCostPerWorkingDayRaw ?? legacyDelayCostPerDayRaw;
+  const delayCostPerWorkingDay =
+    delayCostPerWorkingDayInput != null &&
+    Number.isFinite(delayCostPerWorkingDayInput) &&
+    delayCostPerWorkingDayInput > 0
+      ? delayCostPerWorkingDayInput
       : null;
+  const workingDaysPerWeek =
+    workingDaysPerWeekRaw != null && Number.isFinite(workingDaysPerWeekRaw) && workingDaysPerWeekRaw > 0
+      ? workingDaysPerWeekRaw
+      : undefined;
 
   const costSamples: number[] = [];
   const directRiskCostSamples: number[] = [];
@@ -406,26 +428,35 @@ export function runMonteCarloSimulation(
 
   for (let i = 0; i < n; i++) {
     let directCost = 0;
-    /** Sum of sampled schedule delay (days) when time-impacting risks trigger; same units as `timeML` / cap in this engine. */
-    let totalTime = 0;
+    /** Sum of sampled schedule delay (working days) when time-impacting risks trigger; same units as `timeML` / cap in this engine. */
+    let totalWorkingDays = 0;
     for (const inp of effective) {
       const trigger = random() < inp.probability;
       if (trigger) {
         directCost += sampleTriangular(random, inp.costMin, inp.costML, inp.costMax);
-        totalTime += sampleTriangular(random, inp.timeMin, inp.timeML, inp.timeMax);
+        totalWorkingDays += sampleTriangular(random, inp.timeMin, inp.timeML, inp.timeMax);
       }
     }
-    // totalTime is aggregate delay in days (not weeks/months); indirect cost from project settings.
+    // totalWorkingDays is aggregate delay in working days (not weeks/months); indirect cost from project settings.
     const derivedDelayCost =
-      delayCostPerDay != null && totalTime > 0 ? totalTime * delayCostPerDay : 0;
+      delayCostPerWorkingDay != null && totalWorkingDays > 0
+        ? totalWorkingDays * delayCostPerWorkingDay
+        : 0;
     const totalCost = directCost + derivedDelayCost;
     directRiskCostSamples.push(directCost);
     delayDerivedCostSamples.push(derivedDelayCost);
     costSamples.push(totalCost);
-    timeSamples.push(totalTime);
+    timeSamples.push(totalWorkingDays);
   }
 
-  const summary = computeSummary(costSamples, directRiskCostSamples, delayDerivedCostSamples, timeSamples, n);
+  const summary = computeSummary(
+    costSamples,
+    directRiskCostSamples,
+    delayDerivedCostSamples,
+    timeSamples,
+    n,
+    workingDaysPerWeek
+  );
 
   return {
     costSamples,

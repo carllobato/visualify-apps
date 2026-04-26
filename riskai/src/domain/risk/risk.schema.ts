@@ -100,7 +100,7 @@ export const RiskSchema = z.object({
   preMitigationCostMin: z.number().min(0).optional(),
   preMitigationCostML: z.number().min(0).optional(),
   preMitigationCostMax: z.number().min(0).optional(),
-  /** Pre-mitigation time range (days). */
+  /** Pre-mitigation time range (working days). Stored in pre_time_min / pre_time_ml / pre_time_max. */
   preMitigationTimeMin: z.number().int().min(0).optional(),
   preMitigationTimeML: z.number().int().min(0).optional(),
   preMitigationTimeMax: z.number().int().min(0).optional(),
@@ -110,7 +110,7 @@ export const RiskSchema = z.object({
   postMitigationCostMin: z.number().min(0).optional(),
   postMitigationCostML: z.number().min(0).optional(),
   postMitigationCostMax: z.number().min(0).optional(),
-  /** Post-mitigation time range (days). */
+  /** Post-mitigation time range (working days). Stored in post_time_min / post_time_ml / post_time_max. */
   postMitigationTimeMin: z.number().int().min(0).optional(),
   postMitigationTimeML: z.number().int().min(0).optional(),
   postMitigationTimeMax: z.number().int().min(0).optional(),
@@ -193,6 +193,7 @@ function intCoerce(minVal = 0): z.ZodType<number> {
 /**
  * Single-risk intelligent extraction draft (Generate AI Risk from free text).
  * All numeric fields are required; use 0 when impact type does not apply.
+ * Time fields are integer working days.
  * Post-mitigation fields: when mitigation is detected, AI must populate; otherwise omit and mapper uses pre-values.
  */
 export const IntelligentExtractDraftSchema = z.object({

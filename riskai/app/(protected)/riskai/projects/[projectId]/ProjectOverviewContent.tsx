@@ -384,17 +384,15 @@ function formatSignedDollarGap(meanCost: number | null, appetiteLineCost: number
   return `${sign}${formatCurrency(Math.abs(d))}`;
 }
 
-/** Signed gap in weeks (mean − target P line), for headline KPI. */
-function formatSignedTimeGapWeeks(meanDays: number | null, appetiteLineDays: number | null): string {
+/** Signed gap in working days (mean − target P line), for headline KPI. */
+function formatSignedTimeGapWorkingDays(meanDays: number | null, appetiteLineDays: number | null): string {
   if (meanDays == null || appetiteLineDays == null) return "—";
   if (!Number.isFinite(meanDays) || !Number.isFinite(appetiteLineDays)) return "—";
-  const w = (meanDays - appetiteLineDays) / 7;
-  if (!Number.isFinite(w)) return "—";
-  if (w === 0) return "0 wks";
-  const sign = w < 0 ? "-" : "+";
-  const abs = Math.abs(w);
-  const n = abs < 10 ? abs.toFixed(1) : abs.toFixed(0);
-  return `${sign}${n} wks`;
+  const d = meanDays - appetiteLineDays;
+  if (!Number.isFinite(d)) return "—";
+  if (d === 0) return "0 working days";
+  const sign = d < 0 ? "-" : "+";
+  return `${sign}${formatDurationDays(Math.abs(d))}`;
 }
 
 /** Maps simulation reporting cost/time line (same as portfolio reporting table). */
@@ -413,7 +411,7 @@ function reportingLineSeverityToValueClass(line: ReportingLineSeverity | null | 
 }
 
 /**
- * SVG stroke for exposure “Current P” vertical — same RAG resolution as Cost/Time Gap tiles.
+ * SVG stroke for exposure “Current P” vertical — same RAG resolution as Cost/Schedule Gap tiles.
  * Uses base `--ds-status-*` tokens (not `*-fg`) so the line matches {@link SummaryTile} RAG dots.
  */
 function exposureHistogramCurrentPGapStroke(
@@ -918,18 +916,13 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       : null;
 
   const scheduleContingencyDays: number | null =
-    projectContext?.scheduleContingency_weeks != null &&
-    Number.isFinite(projectContext.scheduleContingency_weeks)
-      ? projectContext.scheduleContingency_weeks * 7
-      : null;
-
-  /** Same days scale as simulation schedule reference for time-CDF percentile. */
-  const plannedDurationDays: number | null =
-    projectContext?.plannedDuration_months != null &&
-    Number.isFinite(projectContext.plannedDuration_months) &&
-    projectContext.plannedDuration_months > 0
-      ? (projectContext.plannedDuration_months * 365) / 12
-      : null;
+    projectContext?.scheduleContingency_workingDays != null &&
+    Number.isFinite(projectContext.scheduleContingency_workingDays)
+      ? projectContext.scheduleContingency_workingDays
+      : projectContext?.scheduleContingency_weeks != null &&
+          Number.isFinite(projectContext.scheduleContingency_weeks)
+        ? projectContext.scheduleContingency_weeks * projectContext.workingDaysPerWeek
+        : null;
 
   /** Cost axis value for “current P” marker — contingency else approved budget (same as funding-confidence P). */
   const costFundingReferenceDollars = useMemo((): number | null => {
@@ -940,13 +933,13 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     return null;
   }, [contingencyDollars, projectContext?.approvedBudget_m]);
 
-  /** Time axis value for “current P” marker — schedule contingency else planned duration. */
+  /** Time axis value for “current P” marker — schedule contingency only. */
   const scheduleReferenceDaysForChart = useMemo((): number | null => {
     if (scheduleContingencyDays != null && Number.isFinite(scheduleContingencyDays) && scheduleContingencyDays > 0) {
       return scheduleContingencyDays;
     }
-    return plannedDurationDays;
-  }, [scheduleContingencyDays, plannedDurationDays]);
+    return null;
+  }, [scheduleContingencyDays]);
 
   const current = builtFromReporting?.current;
 
@@ -1146,8 +1139,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     [meanCostFromSnapshot, costAtAppetiteLine]
   );
 
-  const timeGapWeeksLabel = useMemo(
-    () => formatSignedTimeGapWeeks(meanTimeFromSnapshot, timeAtAppetiteLine),
+  const timeGapWorkingDaysLabel = useMemo(
+    () => formatSignedTimeGapWorkingDays(meanTimeFromSnapshot, timeAtAppetiteLine),
     [meanTimeFromSnapshot, timeAtAppetiteLine]
   );
 
@@ -1184,24 +1177,26 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     return `Mean v ${targetAppetite} Target`;
   }, [currentConfidenceLabel, targetAppetite]);
 
-  /** Same P as simulation schedule position (contingency / planned duration on the time CDF). */
+  /** Same P as simulation schedule position (schedule contingency on the time CDF). */
   const currentScheduleConfidenceLabel = useMemo(
     () =>
       currentScheduleConfidenceLabelFromNeutral({
         neutral: builtFromReporting?.neutral ?? null,
         scheduleContingencyDays,
-        plannedDurationDays,
       }),
-    [builtFromReporting?.neutral, scheduleContingencyDays, plannedDurationDays]
+    [builtFromReporting?.neutral, scheduleContingencyDays]
   );
 
   const timeGapTileSubtext = useMemo(() => {
+    if (scheduleContingencyDays == null || !Number.isFinite(scheduleContingencyDays) || scheduleContingencyDays <= 0) {
+      return "No schedule contingency set";
+    }
     const cur = currentScheduleConfidenceLabel?.trim();
     if (cur != null && cur !== "") {
       return `At ${cur} v ${targetAppetite} Target`;
     }
     return `Schedule mean v ${targetAppetite} Target`;
-  }, [currentScheduleConfidenceLabel, targetAppetite]);
+  }, [currentScheduleConfidenceLabel, scheduleContingencyDays, targetAppetite]);
 
   const neutralFromReporting = builtFromReporting?.neutral ?? null;
 
@@ -1439,8 +1434,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         subtext: costGapTileSubtext,
       },
       {
-        title: "Time Gap to Target",
-        primaryValue: timeGapWeeksLabel,
+        title: "Schedule Gap to Target",
+        primaryValue: timeGapWorkingDaysLabel,
         primaryValueClassName: timeGapPrimaryClass,
         primaryRagDot: timeGapPrimaryRag,
         subtext: timeGapTileSubtext,
@@ -1455,7 +1450,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     dollarGapSigned,
     costGapTileSubtext,
     timeGapTileSubtext,
-    timeGapWeeksLabel,
+    timeGapWorkingDaysLabel,
     costGapPrimaryClass,
     costGapPrimaryRag,
     timeGapPrimaryClass,
@@ -1740,8 +1735,8 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
           />
 
           <SummaryTile
-            title="Time Gap to Target"
-            primaryValue={timeGapWeeksLabel}
+            title="Schedule Gap to Target"
+            primaryValue={timeGapWorkingDaysLabel}
             primaryValueClassName={timeGapPrimaryClass}
             primaryRagDot={timeGapPrimaryRag}
             subtext={timeGapTileSubtext}

@@ -37,7 +37,7 @@ export type PortfolioScheduleExposureMetricsPanelProps = {
   scheduleCoverageRatioPrimaryRagDot?: RagStatus;
   scheduleCoverageRatioPrimaryValueClassName?: string;
   scheduleExposureTrend?: PortfolioReportingTrendLine | null;
-  scheduleContingencyWeeksTrend?: PortfolioReportingTrendLine | null;
+  scheduleContingencyWorkingDaysTrend?: PortfolioReportingTrendLine | null;
   scheduleCoverageRatioTrend?: PortfolioReportingTrendLine | null;
   layout?: "grid" | "stack";
   compact?: boolean;
@@ -98,7 +98,7 @@ export function PortfolioScheduleExposureMetricsPanel({
   scheduleCoverageRatioPrimaryRagDot,
   scheduleCoverageRatioPrimaryValueClassName,
   scheduleExposureTrend,
-  scheduleContingencyWeeksTrend,
+  scheduleContingencyWorkingDaysTrend,
   scheduleCoverageRatioTrend,
   layout = "grid",
   compact = false,
@@ -125,7 +125,7 @@ export function PortfolioScheduleExposureMetricsPanel({
         label="Contingency Held"
         value={scheduleContingencyHeldPrimaryValue}
         valueClassName={valueClass}
-        momTrend={scheduleContingencyWeeksTrend}
+        momTrend={scheduleContingencyWorkingDaysTrend}
       />
       <MetricBlock
         label="Coverage Ratio"

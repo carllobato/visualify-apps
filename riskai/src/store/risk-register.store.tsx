@@ -43,7 +43,7 @@ import { DEBUG_FORWARD_PROJECTION } from "@/config/debug";
 import { runForwardProjectionGuards } from "@/lib/forwardProjectionGuards";
 import { dlog, dwarn } from "@/lib/debug";
 import { projectIdFromAppPathname } from "@/lib/routes";
-import { resolveDelayCostPerDayForSimulation } from "@/lib/resolveDelayCostPerDayForSimulation";
+import { resolveScheduleSettingsForSimulation } from "@/lib/resolveDelayCostPerDayForSimulation";
 import { binSamplesIntoHistogram, binSamplesIntoTimeHistogram } from "@/lib/simulationDisplayUtils";
 import {
   createSnapshot,
@@ -837,15 +837,16 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
           }
         }
 
-        return resolveDelayCostPerDayForSimulation(snapshotProjectIdForDelay).then(
-          async (delayCostPerDay): Promise<RunSimulationResult> => {
+        return resolveScheduleSettingsForSimulation(snapshotProjectIdForDelay).then(
+          async ({ delayCostPerWorkingDay, workingDaysPerWeek }): Promise<RunSimulationResult> => {
           const runStartMs = typeof performance !== "undefined" ? performance.now() : Date.now();
 
           const mcResult = runMonteCarloSimulation({
             risks: neutralRisks,
             iterations: iterCount,
             seed,
-            delayCostPerDay,
+            delayCostPerWorkingDay,
+            workingDaysPerWeek,
           });
           const snapshotFields = buildSimulationSnapshotFromResult(
             mcResult,
@@ -897,6 +898,7 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
                 probability: inp.probability,
                 cost_ml: inp.costML,
                 time_ml: inp.timeML,
+                time_basis: "working_days" as const,
               };
             })
             .filter((x): x is NonNullable<typeof x> => x != null);
@@ -908,16 +910,30 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
           };
 
           const payload: SimulationSnapshotPayload = {
-            summary: { ...mcResult.summary },
+            payload_schema_version: 2,
+            schedule_delay_basis: "working_days",
+            time_basis: "working_days",
+            working_days_per_week: workingDaysPerWeek,
+            summary: {
+              ...mcResult.summary,
+              time_basis: "working_days",
+              working_days_per_week: workingDaysPerWeek,
+            },
             summaryReport: { ...summaryReport },
             risks: enrichedForPersist.risks,
             distributions,
             seed,
+            delay_cost_per_working_day_used:
+              delayCostPerWorkingDay != null &&
+              Number.isFinite(delayCostPerWorkingDay) &&
+              delayCostPerWorkingDay > 0
+                ? delayCostPerWorkingDay
+                : null,
             delay_cost_per_day_used:
-              delayCostPerDay != null &&
-              Number.isFinite(delayCostPerDay) &&
-              delayCostPerDay > 0
-                ? delayCostPerDay
+              delayCostPerWorkingDay != null &&
+              Number.isFinite(delayCostPerWorkingDay) &&
+              delayCostPerWorkingDay > 0
+                ? delayCostPerWorkingDay
                 : null,
             inputs_used: inputsUsed,
           };

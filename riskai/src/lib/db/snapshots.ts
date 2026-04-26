@@ -13,6 +13,10 @@ function requireSnapshotProjectId(projectId?: string): string {
 
 /** Full JSON persisted with each snapshot (reporting / audit). */
 export type SimulationSnapshotPayload = {
+  payload_schema_version?: 1 | 2;
+  schedule_delay_basis?: "working_days";
+  time_basis?: "working_days";
+  working_days_per_week?: number;
   summary: MonteCarloNeutralSnapshot["summary"];
   summaryReport: MonteCarloNeutralSnapshot["summaryReport"];
   risks: unknown[];
@@ -22,6 +26,8 @@ export type SimulationSnapshotPayload = {
     binCount: number;
   };
   seed: number;
+  delay_cost_per_working_day_used?: number | null;
+  /** Legacy compatibility alias for consumers that have not migrated to delay_cost_per_working_day_used. */
   delay_cost_per_day_used?: number | null;
   inputs_used: Array<{
     risk_id: string;
@@ -30,6 +36,7 @@ export type SimulationSnapshotPayload = {
     probability: number;
     cost_ml: number;
     time_ml: number;
+    time_basis?: "working_days";
   }>;
 };
 
@@ -261,7 +268,7 @@ export function delayCostPerDayUsedFromSnapshotPayload(
   payload: SimulationSnapshotPayload | null | undefined
 ): number | null {
   if (payload == null) return null;
-  const v = payload.delay_cost_per_day_used;
+  const v = payload.delay_cost_per_working_day_used ?? payload.delay_cost_per_day_used;
   if (v === undefined || v === null) return null;
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }

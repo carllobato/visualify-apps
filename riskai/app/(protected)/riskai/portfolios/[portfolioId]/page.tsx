@@ -117,8 +117,8 @@ export default async function PortfolioOverviewPage({
       ? contingencyTableRowsFull.filter((row) => reportingMonthScopedIds.includes(row.projectId))
       : contingencyTableRowsFull;
 
-  const totalScheduleContingencyWeeks = contingencyTableRows.reduce(
-    (sum, row) => sum + (row.scheduleContingencyWeeks ?? 0),
+  const totalScheduleContingencyWorkingDays = contingencyTableRows.reduce(
+    (sum, row) => sum + (row.scheduleContingencyWorkingDays ?? 0),
     0
   );
   const reportingMonthKpiCopy =
@@ -143,7 +143,7 @@ export default async function PortfolioOverviewPage({
   const contingencyTile = contingencyHeldTileCopy(
     contingencyByCurrency,
     reportingMonthYear != null ? dashboardProjectCount : portfolioProjectCount ?? 0,
-    totalScheduleContingencyWeeks,
+    totalScheduleContingencyWorkingDays,
     reportingUnit,
     reportingMonthKpiCopy?.contingency
   );
@@ -182,10 +182,9 @@ export default async function PortfolioOverviewPage({
   }
   const coverageRatioByCurrency = computeCoverageRatioByCurrency(contingencyByCurrency, exposureByCurrency);
   const scheduleTotalDays = projectScheduleExposureSlices.reduce((sum, s) => sum + s.valueDays, 0);
-  const scheduleExposureWeeks = scheduleTotalDays > 0 ? scheduleTotalDays / 7 : 0;
   const scheduleCoverageRatio =
-    scheduleExposureWeeks > 0 && Number.isFinite(totalScheduleContingencyWeeks)
-      ? totalScheduleContingencyWeeks / scheduleExposureWeeks
+    scheduleTotalDays > 0 && Number.isFinite(totalScheduleContingencyWorkingDays)
+      ? totalScheduleContingencyWorkingDays / scheduleTotalDays
       : null;
   const coverageTile = coverageRatioTileCopy(coverageRatioByCurrency, scheduleCoverageRatio);
   const projectCountForExposureTiles =
@@ -198,7 +197,7 @@ export default async function PortfolioOverviewPage({
   );
   const scheduleExposureTile = scheduleExposureTileCopy(
     scheduleTotalDays,
-    totalScheduleContingencyWeeks,
+    totalScheduleContingencyWorkingDays,
     scheduleCoverageRatio,
     reportingMonthKpiCopy?.schedule
   );
@@ -249,14 +248,13 @@ export default async function PortfolioOverviewPage({
         const priorContingencyTableRows = contingencyTableRowsFull.filter((row) =>
           priorScopedIds.includes(row.projectId)
         );
-        const priorTotalScheduleContingencyWeeks = priorContingencyTableRows.reduce(
-          (sum, row) => sum + (row.scheduleContingencyWeeks ?? 0),
+        const priorTotalScheduleContingencyWorkingDays = priorContingencyTableRows.reduce(
+          (sum, row) => sum + (row.scheduleContingencyWorkingDays ?? 0),
           0
         );
-        const priorScheduleExposureWeeks = priorScheduleTotalDays > 0 ? priorScheduleTotalDays / 7 : 0;
         const priorScheduleCoverageRatio =
-          priorScheduleExposureWeeks > 0 && Number.isFinite(priorTotalScheduleContingencyWeeks)
-            ? priorTotalScheduleContingencyWeeks / priorScheduleExposureWeeks
+          priorScheduleTotalDays > 0 && Number.isFinite(priorTotalScheduleContingencyWorkingDays)
+            ? priorTotalScheduleContingencyWorkingDays / priorScheduleTotalDays
             : null;
         reportingVsPriorMonthTrends = computePortfolioOverviewReportingTrends(
           {
@@ -267,7 +265,7 @@ export default async function PortfolioOverviewPage({
             exposureByCurrency,
             contingencyByCurrency,
             scheduleExposureTotalDays: scheduleTotalDays,
-            scheduleContingencyTotalWeeks: totalScheduleContingencyWeeks,
+            scheduleContingencyTotalWorkingDays: totalScheduleContingencyWorkingDays,
             scheduleCoverageRatio,
           },
           {
@@ -278,7 +276,7 @@ export default async function PortfolioOverviewPage({
             exposureByCurrency: priorExposureByCurrency,
             contingencyByCurrency: priorContingencyByCurrency,
             scheduleExposureTotalDays: priorScheduleTotalDays,
-            scheduleContingencyTotalWeeks: priorTotalScheduleContingencyWeeks,
+            scheduleContingencyTotalWorkingDays: priorTotalScheduleContingencyWorkingDays,
             scheduleCoverageRatio: priorScheduleCoverageRatio,
           },
           { formatGapMoneyDelta: (absDollars) => formatPortfolioCurrency(absDollars) }
@@ -305,19 +303,23 @@ export default async function PortfolioOverviewPage({
     };
   });
 
-  const scheduleDelayWeeksByProjectId = new Map(
-    projectScheduleExposureSlices.map((s) => [s.projectId, s.valueDays / 7])
+  const scheduleDelayWorkingDaysByProjectId = new Map(
+    projectScheduleExposureSlices.map((s) => [s.projectId, s.valueDays])
   );
   const scheduleCoverageRows: PortfolioProjectScheduleCoverageRow[] = contingencyTableRows.map((row) => {
-    const expectedDelayWeeks = scheduleDelayWeeksByProjectId.get(row.projectId) ?? 0;
-    const sw = row.scheduleContingencyWeeks;
+    const expectedDelayWorkingDays = scheduleDelayWorkingDaysByProjectId.get(row.projectId) ?? 0;
+    const scheduleContingencyWorkingDays = row.scheduleContingencyWorkingDays;
     const coverageRatio =
-      expectedDelayWeeks > 0 && sw != null && Number.isFinite(sw) ? sw / expectedDelayWeeks : null;
+      expectedDelayWorkingDays > 0 &&
+      scheduleContingencyWorkingDays != null &&
+      Number.isFinite(scheduleContingencyWorkingDays)
+        ? scheduleContingencyWorkingDays / expectedDelayWorkingDays
+        : null;
     return {
       projectId: row.projectId,
       projectName: row.projectName,
-      expectedDelayWeeks,
-      scheduleContingencyWeeks: sw,
+      expectedDelayWorkingDays,
+      scheduleContingencyWorkingDays,
       coverageRatio,
     };
   });
@@ -335,7 +337,7 @@ export default async function PortfolioOverviewPage({
         costExposureSubtext={costExposureTile.subtext}
         scheduleExposurePrimaryValue={scheduleExposureTile.primaryValue}
         scheduleExposureSubtext={scheduleExposureTile.subtext}
-        scheduleContingencyHeldPrimaryValue={scheduleContingencyHeldDisplayValue(totalScheduleContingencyWeeks)}
+        scheduleContingencyHeldPrimaryValue={scheduleContingencyHeldDisplayValue(totalScheduleContingencyWorkingDays)}
         scheduleCoverageRatioPrimaryValue={scheduleCoverageRatioDisplayValue(scheduleCoverageRatio)}
         scheduleCoverageRatioPrimaryRagDot={scheduleCoverageRatioRagStatus(scheduleCoverageRatio)}
         scheduleCoverageRatioSemanticClassName={scheduleCoverageRatioSemanticClassName(scheduleCoverageRatio)}

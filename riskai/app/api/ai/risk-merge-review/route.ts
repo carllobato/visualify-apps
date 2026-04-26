@@ -65,7 +65,7 @@ Cost:
 • DO NOT sum
 • Use the higher ML value
 • Min/Max should align proportionally
-Time:
+Time (working days):
 • DO NOT sum
 • Use the higher ML value
 B) overlap
@@ -75,7 +75,7 @@ Cost:
 • Do NOT mechanically sum
 • Choose a defensible consolidated ML
 • Only increase beyond highest ML if clearly justified by scope
-Time:
+Time (working days):
 • Use greater ML (not sum)
 C) parallel (NEW TYPE)
 This applies when:
@@ -88,10 +88,10 @@ Probability:
 Cost:
 • Sum ML values
 • Sum Min and Max proportionally
-Time:
+Time (working days):
 • Use the greater ML value (not sum)
 • Use greater Min/Max accordingly
-Never sum time unless explicitly sequential (rare).
+Never sum time unless explicitly sequential (rare). All time values are working days.
 D) do_not_merge
 Do not output mergedDraft.
 
@@ -100,7 +100,7 @@ If source risks contain numeric data:
 You MUST populate:
 • preMitigationProbabilityPct
 • preMitigationCostML (if cost exists)
-• preMitigationTimeML (if time exists)
+• preMitigationTimeML in working days (if time exists)
 If post-mitigation data exists, apply same logic.
 Never leave required numeric fields blank when source values exist.
 
@@ -135,6 +135,7 @@ No markdown.
 No commentary.
 No explanation text.
 Shape:
+All pre/post time fields in mergedDraft are integer working days.
 {
   "clusters": [
     {
@@ -276,7 +277,7 @@ export async function POST(req: Request) {
 
     const userContent = `Project ID: ${projectId}
 
-For each cluster you output, the mergedDraft MUST include refined pre- and post-mitigation values: probability (%), cost most likely ($), and time most likely (days), derived from the source risks in that cluster. Do not omit these when the source risks have them.
+For each cluster you output, the mergedDraft MUST include refined pre- and post-mitigation values: probability (%), cost most likely ($), and time most likely (working days), derived from the source risks in that cluster. Do not omit these when the source risks have them.
 
 Risks (JSON):
 ${buildUserPayload(risks)}`;

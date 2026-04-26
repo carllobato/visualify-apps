@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { projectSettingsSelectClass } from "@/components/project/projectSettingsDsFormClasses";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import { Callout } from "@visualify/design-system";
 import {
@@ -106,7 +105,7 @@ export function ProjectOnboardingInviteModal({
       aria-labelledby="project-onboarding-invite-title"
     >
       <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+        <div className="ds-onboarding-modal-scroll-area">
         <div className="ds-onboarding-modal-panel-header">
           <div className="min-w-0 flex-1 space-y-1">
             <OnboardingStepLabel step={6} of={PROJECT_ONBOARDING_STEP_TOTAL} />
@@ -179,7 +178,7 @@ export function ProjectOnboardingInviteModal({
               value={role}
               onChange={(e) => setRole(e.target.value as ProjectMemberRole)}
               disabled={sending}
-              className={projectSettingsSelectClass(false, "sm")}
+              className="ds-onboarding-modal-select"
             >
               {INVITE_ROLES.map((o) => (
                 <option key={o.value} value={o.value}>

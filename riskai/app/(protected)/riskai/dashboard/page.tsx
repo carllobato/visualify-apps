@@ -119,7 +119,7 @@ export default async function DashboardPage() {
           </h2>
         </div>
         {projects.length === 0 ? (
-          <Card variant="inset" className="text-center">
+          <Card variant="inset" className="!border-0 text-center">
             <CardBody className="py-[var(--ds-space-6)]">
               <p className="ds-dashboard-empty-title">No projects yet</p>
               <OpenProjectOnboardingLink className="ds-dashboard-empty-primary">

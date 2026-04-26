@@ -150,11 +150,11 @@ export function MitigationOptimisationPanel({ risks, neutralSnapshot, targetPerc
         <div className="mb-4">
           <span className="text-xs font-medium text-[var(--ds-text-muted)] uppercase tracking-wide">Baseline (Neutral) target schedule ({`P${Math.round(data.baseline.targetPercent)}`})</span>
           <div className="mt-0.5 text-lg font-semibold text-[var(--ds-text-primary)]">
-            {`${Math.round(data.baseline.neutralTargetDays).toLocaleString()} days`}
+            {`${Math.round(data.baseline.neutralTargetDays).toLocaleString()} working days`}
           </div>
         </div>
         <p className="text-xs text-[var(--ds-text-muted)] mb-2">
-          ROI metric is dimension-aware: Cost table uses cost reduced per dollar; Schedule table uses days reduced per dollar. Best ROI band may differ from the first spend band.
+          ROI metric is dimension-aware: Cost table uses cost reduced per dollar; Schedule table uses working days reduced per dollar. Best ROI band may differ from the first spend band.
         </p>
         <div className="text-xs font-medium text-[var(--ds-text-secondary)] mb-1">Cost leverage</div>
         <div className="overflow-x-auto">
@@ -206,8 +206,8 @@ export function MitigationOptimisationPanel({ risks, neutralSnapshot, targetPerc
               <tr className="border-b border-[var(--ds-border)]">
                 <th className="text-left py-2 px-2 font-medium text-[var(--ds-text-secondary)]">#</th>
                 <th className="text-left py-2 px-2 font-medium text-[var(--ds-text-secondary)]">Risk</th>
-                <th className="text-left py-2 px-2 font-medium text-[var(--ds-text-secondary)]">Best improvement (days)</th>
-                <th className="text-right py-2 px-2 font-medium text-[var(--ds-text-secondary)]">$ per day reduced</th>
+                <th className="text-left py-2 px-2 font-medium text-[var(--ds-text-secondary)]">Best improvement (working days)</th>
+                <th className="text-right py-2 px-2 font-medium text-[var(--ds-text-secondary)]">$ per working day reduced</th>
                 <th className="text-left py-2 px-2 font-medium text-[var(--ds-text-secondary)]">Explanation</th>
               </tr>
             </thead>
@@ -218,7 +218,7 @@ export function MitigationOptimisationPanel({ risks, neutralSnapshot, targetPerc
                   <td className="py-2 px-2 text-[var(--ds-text-primary)]">{row.riskName}</td>
                   <td className="py-2 px-2 text-[var(--ds-text-secondary)]">
                     {typeof row.bestROIBandBenefit === "number" && Number.isFinite(row.bestROIBandBenefit)
-                      ? `${row.bestROIBandBenefit.toFixed(2)} days`
+                      ? `${row.bestROIBandBenefit.toFixed(2)} working days`
                       : "—"}
                   </td>
                   <td className="py-2 px-2 text-right font-medium text-[var(--ds-text-primary)]">

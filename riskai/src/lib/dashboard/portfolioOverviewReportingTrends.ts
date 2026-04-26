@@ -8,6 +8,7 @@ import {
   type ProjectTilePayload,
   type RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
+import { formatDurationDays } from "@/lib/formatDuration";
 
 export type PortfolioReportingTrendLine = { text: string; className: string };
 
@@ -21,7 +22,7 @@ export type CostCoverageSidebarMoM = {
 /** Per-row MoM lines beside schedule donut metrics. */
 export type ScheduleCoverageSidebarMoM = {
   scheduleExposure: PortfolioReportingTrendLine | null;
-  scheduleContingencyWeeks: PortfolioReportingTrendLine | null;
+  scheduleContingencyWorkingDays: PortfolioReportingTrendLine | null;
   /** Null when exposure or reserve is zero in either month (no comparable ratio). */
   scheduleCoverageRatio: PortfolioReportingTrendLine | null;
 };
@@ -45,7 +46,7 @@ type MonthSnapshot = {
   exposureByCurrency?: Map<ProjectCurrency, number>;
   contingencyByCurrency?: Map<ProjectCurrency, number>;
   scheduleExposureTotalDays?: number;
-  scheduleContingencyTotalWeeks?: number;
+  scheduleContingencyTotalWorkingDays?: number;
   scheduleCoverageRatio?: number | null;
 };
 
@@ -100,18 +101,9 @@ function moneyMoMContingency(deltaAbsDollars: number, formatMoney: (abs: number)
     : { text: `↓ ${formatMoney(abs)}`, className: cx(T.lineCard, T.unfavorable) };
 }
 
-/** Same 14-day threshold as {@link formatDurationDays} — under it show days; at/above show weeks as `wks`. */
-const SCHEDULE_DELTA_DAYS_SHOW_WEEKS = 14;
-
 function formatScheduleExposureDeltaAbsDays(absDays: number): string {
   if (!Number.isFinite(absDays) || absDays < 0) return "—";
-  if (absDays === 0) return "0 days";
-  if (absDays < SCHEDULE_DELTA_DAYS_SHOW_WEEKS) {
-    const n = Math.round(absDays);
-    return n === 1 ? "1 day" : `${n} days`;
-  }
-  const w = absDays / 7;
-  return `${w.toFixed(1)} wks`;
+  return formatDurationDays(absDays);
 }
 
 function coverageRatioPpMoM(deltaPctPoints: number): PortfolioReportingTrendLine {
@@ -134,13 +126,12 @@ function scheduleExposureDaysMoM(deltaDays: number): PortfolioReportingTrendLine
     : { text: `↓ ${label}`, className: cx(T.lineCard, T.favorable) };
 }
 
-function scheduleWeeksHeldMoM(deltaWeeks: number): PortfolioReportingTrendLine {
-  if (deltaWeeks === 0) {
+function scheduleWorkingDaysHeldMoM(deltaWorkingDays: number): PortfolioReportingTrendLine {
+  if (deltaWorkingDays === 0) {
     return { text: "→ Unchanged", className: cx(T.lineCard, T.neutral) };
   }
-  const w = Math.abs(deltaWeeks);
-  const label = w === 1 ? "1 wk" : `${Number.isInteger(w) ? w : w.toFixed(1)} wks`;
-  return deltaWeeks > 0
+  const label = formatDurationDays(Math.abs(deltaWorkingDays));
+  return deltaWorkingDays > 0
     ? { text: `↑ ${label}`, className: cx(T.lineCard, T.favorable) }
     : { text: `↓ ${label}`, className: cx(T.lineCard, T.unfavorable) };
 }
@@ -204,8 +195,8 @@ function buildScheduleCoverageSidebarMoM(
 ): ScheduleCoverageSidebarMoM | null {
   const cd = current.scheduleExposureTotalDays;
   const pd = previous.scheduleExposureTotalDays;
-  const cw = current.scheduleContingencyTotalWeeks;
-  const pw = previous.scheduleContingencyTotalWeeks;
+  const cw = current.scheduleContingencyTotalWorkingDays;
+  const pw = previous.scheduleContingencyTotalWorkingDays;
   const cr = current.scheduleCoverageRatio;
   const pr = previous.scheduleCoverageRatio;
   if (
@@ -223,7 +214,7 @@ function buildScheduleCoverageSidebarMoM(
 
   return {
     scheduleExposure: scheduleExposureDaysMoM(cd - pd),
-    scheduleContingencyWeeks: scheduleWeeksHeldMoM(cw - pw),
+    scheduleContingencyWorkingDays: scheduleWorkingDaysHeldMoM(cw - pw),
     scheduleCoverageRatio: scheduleRatioMoM(cr ?? null, pr ?? null),
   };
 }

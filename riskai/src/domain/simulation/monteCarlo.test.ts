@@ -119,7 +119,7 @@ describe("runMonteCarloSimulation", () => {
     assert(maxCost < 100_000, "closed risk should not contribute; max cost should be from open risk only");
   });
 
-  it("adds delayCostPerDay * simulated delay days to each cost sample; time samples unchanged", () => {
+  it("adds delayCostPerWorkingDay * simulated working-day delay to each cost sample; time samples unchanged", () => {
     const risks: Risk[] = [
       makeRisk({
         id: "sched",
@@ -135,8 +135,11 @@ describe("runMonteCarloSimulation", () => {
       risks,
       iterations: 20,
       seed: 7,
-      delayCostPerDay: 1000,
+      delayCostPerWorkingDay: 1000,
+      workingDaysPerWeek: 5,
     });
+    assert.strictEqual(withDelay.summary.time_basis, "working_days");
+    assert.strictEqual(withDelay.summary.working_days_per_week, 5);
     assert.deepStrictEqual(noDelay.timeSamples, withDelay.timeSamples);
     assert.deepStrictEqual(noDelay.directRiskCostSamples, withDelay.directRiskCostSamples);
     for (let i = 0; i < 20; i++) {

@@ -82,26 +82,26 @@ export function costToConsequenceScale(cost: number): number {
   return 5;
 }
 
-/** Map time (days) to consequence 1–5 scale. */
-export function timeDaysToConsequenceScale(days: number): number {
-  if (days <= 0) return 1;
-  if (days <= 7) return 1;
-  if (days <= 30) return 2;
-  if (days <= 90) return 3;
-  if (days <= 180) return 4;
+/** Map risk-level schedule impact (working days) to consequence 1–5 scale. */
+export function timeDaysToConsequenceScale(workingDays: number): number {
+  if (workingDays <= 0) return 1;
+  if (workingDays <= 7) return 1;
+  if (workingDays <= 30) return 2;
+  if (workingDays <= 90) return 3;
+  if (workingDays <= 180) return 4;
   return 5;
 }
 
-/** Consequence scale (1–5) from `applies_to` text and cost/time ML. */
+/** Consequence scale (1–5) from `applies_to` text, cost ML, and time ML in working days. */
 export function consequenceScaleFromAppliesTo(
   appliesTo: string | undefined,
   costML: number,
-  timeML: number
+  timeMLWorkingDays: number
 ): number {
   const k = normalizeAppliesToKey(appliesTo);
-  if (k === "time") return timeDaysToConsequenceScale(timeML);
+  if (k === "time") return timeDaysToConsequenceScale(timeMLWorkingDays);
   if (k === "cost") return costToConsequenceScale(costML);
-  return Math.max(costToConsequenceScale(costML), timeDaysToConsequenceScale(timeML));
+  return Math.max(costToConsequenceScale(costML), timeDaysToConsequenceScale(timeMLWorkingDays));
 }
 
 /**

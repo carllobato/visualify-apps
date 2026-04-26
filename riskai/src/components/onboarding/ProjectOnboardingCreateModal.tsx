@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { projectSettingsSelectClass } from "@/components/project/projectSettingsDsFormClasses";
 import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
 import type { FinancialUnit, ProjectCurrency, RiskAppetite } from "@/lib/projectContext";
+import type { WorkingDaysPerWeek } from "@/lib/workingDays";
 import { Callout } from "@visualify/design-system";
 import {
   OnboardingStepLabel,
@@ -38,7 +38,8 @@ export function ProjectOnboardingCreateModal({
   const [contingencyValueInput, setContingencyValueInput] = useState("");
   const [plannedDurationMonths, setPlannedDurationMonths] = useState("");
   const [targetCompletionDate, setTargetCompletionDate] = useState("");
-  const [scheduleContingencyWeeks, setScheduleContingencyWeeks] = useState("");
+  const [workingDaysPerWeek, setWorkingDaysPerWeek] = useState<WorkingDaysPerWeek>(5);
+  const [scheduleContingencyWorkingDays, setScheduleContingencyWorkingDays] = useState("");
   const [riskAppetite, setRiskAppetite] = useState<RiskAppetite>("P80");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +55,8 @@ export function ProjectOnboardingCreateModal({
     setContingencyValueInput("");
     setPlannedDurationMonths("");
     setTargetCompletionDate("");
-    setScheduleContingencyWeeks("");
+    setWorkingDaysPerWeek(5);
+    setScheduleContingencyWorkingDays("");
     setRiskAppetite("P80");
     setError(null);
   }, [open, portfolioId, initialStep]);
@@ -103,7 +105,7 @@ export function ProjectOnboardingCreateModal({
         setError("Target completion date is required.");
         return false;
       }
-      const scheduleContingency = Number(scheduleContingencyWeeks);
+      const scheduleContingency = Number(scheduleContingencyWorkingDays);
       if (!Number.isInteger(scheduleContingency) || scheduleContingency < 0) {
         setError("Schedule contingency is required.");
         return false;
@@ -127,7 +129,8 @@ export function ProjectOnboardingCreateModal({
     const projectValue = Number(projectValueInput);
     const contingencyValue = Number(contingencyValueInput);
     const plannedDuration = Number(plannedDurationMonths);
-    const scheduleContingency = Number(scheduleContingencyWeeks);
+    const scheduleContingency = Number(scheduleContingencyWorkingDays);
+    const scheduleContingencyWeeks = scheduleContingency / workingDaysPerWeek;
 
     setCreating(true);
     try {
@@ -158,7 +161,10 @@ export function ProjectOnboardingCreateModal({
           contingency_value_input: contingencyValue,
           planned_duration_months: plannedDuration,
           target_completion_date: targetCompletionDate,
-          schedule_contingency_weeks: scheduleContingency,
+          working_days_per_week: workingDaysPerWeek,
+          schedule_contingency_working_days: scheduleContingency,
+          schedule_inputs_version: 2,
+          schedule_contingency_weeks: scheduleContingencyWeeks,
           risk_appetite: riskAppetite,
         }),
       });
@@ -185,7 +191,7 @@ export function ProjectOnboardingCreateModal({
         against the frosted backdrop (noticeable on step 5+ and invite). Outer keeps the full “card” ring.
       */}
       <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">
+        <div className="ds-onboarding-modal-scroll-area">
         <div className="ds-onboarding-modal-panel-header">
           <div className="min-w-0 flex-1 space-y-1">
             <OnboardingStepLabel step={step} of={PROJECT_ONBOARDING_STEP_TOTAL} />
@@ -260,7 +266,7 @@ export function ProjectOnboardingCreateModal({
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value as ProjectCurrency)}
                   disabled={creating}
-                  className={projectSettingsSelectClass(false, "sm")}
+                  className="ds-onboarding-modal-select"
                 >
                   <option value="AUD">AUD</option>
                   <option value="USD">USD</option>
@@ -276,7 +282,7 @@ export function ProjectOnboardingCreateModal({
                   value={financialUnit}
                   onChange={(e) => setFinancialUnit(e.target.value as FinancialUnit)}
                   disabled={creating}
-                  className={projectSettingsSelectClass(false, "sm")}
+                  className="ds-onboarding-modal-select"
                 >
                   {REPORTING_UNIT_OPTIONS.map((u) => (
                     <option key={u} value={u}>
@@ -297,7 +303,7 @@ export function ProjectOnboardingCreateModal({
                 value={riskAppetite}
                 onChange={(e) => setRiskAppetite(e.target.value as RiskAppetite)}
                 disabled={creating}
-                className={projectSettingsSelectClass(false, "sm")}
+                className="ds-onboarding-modal-select"
               >
                 <option value="P10">P10</option>
                 <option value="P20">P20</option>
@@ -379,18 +385,34 @@ export function ProjectOnboardingCreateModal({
                 />
               </div>
               <div>
+                <label htmlFor="project-onboarding-working-calendar" className="ds-onboarding-modal-label">
+                  Working calendar <span className="text-[var(--ds-status-danger)]">*</span>
+                </label>
+                <select
+                  id="project-onboarding-working-calendar"
+                  value={workingDaysPerWeek}
+                  onChange={(e) => setWorkingDaysPerWeek(Number(e.target.value) as WorkingDaysPerWeek)}
+                  disabled={creating}
+                  className="ds-onboarding-modal-select"
+                >
+                  <option value={5}>5 days</option>
+                  <option value={5.5}>5.5 days</option>
+                  <option value={6}>6 days</option>
+                </select>
+              </div>
+              <div>
                 <label htmlFor="project-onboarding-schedule-contingency" className="ds-onboarding-modal-label">
-                  Schedule contingency (weeks) <span className="text-[var(--ds-status-danger)]">*</span>
+                  Schedule contingency (working days) <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <input
                   id="project-onboarding-schedule-contingency"
                   type="number"
                   min={0}
                   step={1}
-                  value={scheduleContingencyWeeks}
-                  onChange={(e) => setScheduleContingencyWeeks(e.target.value)}
+                  value={scheduleContingencyWorkingDays}
+                  onChange={(e) => setScheduleContingencyWorkingDays(e.target.value)}
                   className="ds-onboarding-modal-input"
-                  placeholder="e.g. 4"
+                  placeholder="e.g. 20"
                   disabled={creating}
                 />
               </div>

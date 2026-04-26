@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
 const CURRENCIES = new Set(["AUD", "USD", "GBP"]);
 const FINANCIAL_UNITS = new Set(["THOUSANDS", "MILLIONS", "BILLIONS"]);
 const RISK_APPETITES = new Set(["P10", "P20", "P30", "P40", "P50", "P60", "P70", "P80", "P90"]);
+const WORKING_DAYS_PER_WEEK = new Set([5, 5.5, 6]);
 const MAX_MONTHS = 1200;
-const MAX_WEEKS = 520;
+const MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS = 3120;
 
 function asNonNegativeNumber(v: unknown): number | null {
   if (typeof v !== "number" || !Number.isFinite(v) || v < 0) return null;
@@ -19,6 +20,11 @@ function asNonNegativeNumber(v: unknown): number | null {
 function asNonNegativeInteger(v: unknown): number | null {
   if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || !Number.isInteger(v)) return null;
   return v;
+}
+
+function asWorkingDaysPerWeek(v: unknown): 5 | 5.5 | 6 | null {
+  if (typeof v !== "number" || !Number.isFinite(v) || !WORKING_DAYS_PER_WEEK.has(v)) return null;
+  return v as 5 | 5.5 | 6;
 }
 
 function asIsoDate(v: unknown): string | null {
@@ -105,15 +111,41 @@ export async function PATCH(
     return NextResponse.json({ error: "Target completion date is required" }, { status: 400 });
   }
 
-  const scheduleContingencyWeeks = asNonNegativeInteger(body.schedule_contingency_weeks);
-  if (
-    scheduleContingencyWeeks == null ||
-    scheduleContingencyWeeks > MAX_WEEKS
-  ) {
+  const workingDaysPerWeek = asWorkingDaysPerWeek(body.working_days_per_week) ?? 5;
+  const scheduleContingencyWorkingDays =
+    asNonNegativeInteger(body.schedule_contingency_working_days) ??
+    (() => {
+      const legacyWeeks = asNonNegativeNumber(body.schedule_contingency_weeks);
+      return legacyWeeks == null ? null : Math.round(legacyWeeks * workingDaysPerWeek);
+    })();
+  if (scheduleContingencyWorkingDays == null || scheduleContingencyWorkingDays > MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS) {
     return NextResponse.json(
-      { error: `Schedule contingency must be between 0 and ${MAX_WEEKS} weeks` },
+      { error: `Schedule contingency must be between 0 and ${MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS} working days` },
       { status: 400 }
     );
+  }
+  const scheduleContingencyWeeks =
+    asNonNegativeNumber(body.schedule_contingency_weeks) ??
+    scheduleContingencyWorkingDays / workingDaysPerWeek;
+
+  const hasDelayCostPerWorkingDayField = Object.prototype.hasOwnProperty.call(body, "delay_cost_per_working_day");
+  const hasDelayCostPerDayField = Object.prototype.hasOwnProperty.call(body, "delay_cost_per_day");
+  const hasDelayCostField = hasDelayCostPerWorkingDayField || hasDelayCostPerDayField;
+  const parsedDelayCostPerWorkingDay = asNonNegativeNumber(body.delay_cost_per_working_day);
+  const parsedDelayCostPerDay = asNonNegativeNumber(body.delay_cost_per_day);
+  const delayCostPerWorkingDay = hasDelayCostField ? (parsedDelayCostPerWorkingDay ?? parsedDelayCostPerDay) : undefined;
+
+  const hasInvalidDelayCostPerWorkingDay =
+    hasDelayCostPerWorkingDayField &&
+    body.delay_cost_per_working_day !== null &&
+    parsedDelayCostPerWorkingDay == null;
+  const hasInvalidDelayCostPerDay =
+    hasDelayCostPerDayField &&
+    body.delay_cost_per_day !== null &&
+    parsedDelayCostPerDay == null;
+
+  if (hasInvalidDelayCostPerWorkingDay || hasInvalidDelayCostPerDay) {
+    return NextResponse.json({ error: "Delay cost per working day must be non-negative" }, { status: 400 });
   }
 
   const riskAppetite = typeof body.risk_appetite === "string" ? body.risk_appetite.trim() : "";
@@ -122,20 +154,31 @@ export async function PATCH(
   }
 
   const supabase = await supabaseServerClient();
+  const settingsPayload = {
+    project_id: projectId,
+    project_name: projectName,
+    location: location || null,
+    currency,
+    financial_unit: financialUnit,
+    project_value_input: projectValueInput,
+    contingency_value_input: contingencyValueInput,
+    planned_duration_months: plannedDurationMonths,
+    target_completion_date: targetCompletionDate,
+    schedule_contingency_weeks: scheduleContingencyWeeks,
+    working_days_per_week: workingDaysPerWeek,
+    schedule_contingency_working_days: scheduleContingencyWorkingDays,
+    schedule_inputs_version: 2,
+    risk_appetite: riskAppetite,
+    ...(hasDelayCostField
+      ? {
+          delay_cost_per_working_day: delayCostPerWorkingDay ?? null,
+          delay_cost_per_day: delayCostPerWorkingDay ?? null,
+        }
+      : {}),
+  };
+
   const { error } = await supabase.from("visualify_project_settings").upsert(
-    {
-      project_id: projectId,
-      project_name: projectName,
-      location: location || null,
-      currency,
-      financial_unit: financialUnit,
-      project_value_input: projectValueInput,
-      contingency_value_input: contingencyValueInput,
-      planned_duration_months: plannedDurationMonths,
-      target_completion_date: targetCompletionDate,
-      schedule_contingency_weeks: scheduleContingencyWeeks,
-      risk_appetite: riskAppetite,
-    },
+    settingsPayload,
     { onConflict: "project_id" }
   );
 

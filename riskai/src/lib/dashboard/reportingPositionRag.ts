@@ -8,7 +8,10 @@
 import type { MonteCarloNeutralSnapshot } from "@/domain/simulation/simulation.types";
 import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
 import type { ProjectContext, ProjectCurrency } from "@/lib/projectContext";
-import { parseProjectContextFromVisualifyProjectSettingsRow, riskAppetiteToPercent } from "@/lib/projectContext";
+import {
+  parseProjectContextFromVisualifyProjectSettingsRow,
+  riskAppetiteToPercent,
+} from "@/lib/projectContext";
 import { neutralSnapshotFromDbRow } from "@/lib/simulationNeutralFromDbRow";
 import {
   binSamplesIntoHistogram,
@@ -47,16 +50,16 @@ export type PortfolioReportingFooterRow = {
   costShortfallAbs?: number;
   /** Σ(contingency) − Σ(simulated cost at P) when > 0 — KPI modal driver line. */
   costSurplusAbs?: number;
-  /** Σ(delay at P) − Σ(schedule contingency days) when > 0 — KPI modal driver line. */
+  /** Σ(delay at P) − Σ(schedule contingency working days) when > 0 — KPI modal driver line. */
   timeShortfallDays?: number;
-  /** Σ(schedule contingency days) − Σ(delay at P) when > 0 — KPI modal driver line. */
+  /** Σ(schedule contingency working days) − Σ(delay at P) when > 0 — KPI modal driver line. */
   timeSurplusDays?: number;
   /** Mean risk-appetite P across projects in the aggregate (display). */
   driverTargetP: number;
   driverCurrency: ProjectCurrency;
   /** Σ simulated cost at target P (same as cost line denominator). */
   sumCostAtTargetPDollars?: number;
-  /** Σ simulated delay at target P (days). */
+  /** Σ simulated delay at target P (working days for v2 snapshots). */
   sumDelayAtTargetPDays?: number;
 };
 
@@ -133,7 +136,7 @@ export type ReportingFundingScalars = {
   /** Simulated total cost at risk-appetite target P (reporting run). */
   costAtTargetPDollars: number | null;
   scheduleContingencyDays: number | null;
-  /** Simulated schedule (delay days) at target P. */
+  /** Simulated schedule (delay working days for v2 snapshots) at target P. */
   timeAtTargetPDays: number | null;
   targetPNumeric: number;
 };
@@ -145,13 +148,13 @@ export type ReportingPositionDriverScalars = {
   costShortfallDollars: number | null;
   /** max(0, held funds − simulated cost at target P). */
   costSurplusDollars: number | null;
-  /** max(0, simulated delay at target P − schedule contingency days); null when no schedule buffer. */
+  /** max(0, simulated delay at target P − schedule contingency working days); null when no schedule buffer. */
   timeShortfallDays: number | null;
-  /** max(0, schedule contingency − simulated delay at target P). */
+  /** max(0, schedule contingency working days − simulated delay at target P). */
   timeSurplusDays: number | null;
   /** Simulated total cost at appetite P (for KPI sublines vs bare “P90”). */
   costAtTargetPDollars: number | null;
-  /** Simulated delay at appetite P (days). */
+  /** Simulated delay at appetite P (working days for v2 snapshots). */
   timeAtTargetPDays: number | null;
   currency: ProjectCurrency;
   targetPNumeric: number;
@@ -237,9 +240,12 @@ export function reportingFundingScalars(
     timeAtTargetPDays = v != null && Number.isFinite(v) ? v : null;
   }
 
-  const w = ctx.scheduleContingency_weeks;
   const scheduleContingencyDays =
-    Number.isFinite(w) && w != null && w >= 0 ? w * 7 : null;
+    Number.isFinite(ctx.scheduleContingency_workingDays) && ctx.scheduleContingency_workingDays >= 0
+      ? ctx.scheduleContingency_workingDays
+      : Number.isFinite(ctx.scheduleContingency_weeks) && ctx.scheduleContingency_weeks >= 0
+        ? ctx.scheduleContingency_weeks * ctx.workingDaysPerWeek
+        : null;
 
   return {
     currency: ctx.currency,
@@ -253,7 +259,7 @@ export function reportingFundingScalars(
 
 /**
  * Portfolio aggregate row: Σ contingency held vs Σ simulated cost at target P (cost);
- * Σ schedule contingency days vs Σ delay at target P (time). Same P-band rules as project rows.
+ * Σ schedule contingency working days vs Σ delay at target P (time). Same P-band rules as project rows.
  * Returns null for mixed currencies or when no reporting projects contribute usable sums.
  */
 export function computePortfolioReportingFooter(rows: ReportingFundingScalars[]): PortfolioReportingFooterRow | null {
@@ -360,14 +366,16 @@ export function reportingPositionBreakdownFromLockedSnapshot(
       ? contingencyValueDollars
       : approvedBudgetBase;
 
-  const plannedDurationDays = (ctx.plannedDuration_months * 365) / 12;
-  const w = ctx.scheduleContingency_weeks;
   const scheduleContingencyDays =
-    Number.isFinite(w) && w != null && w >= 0 ? w * 7 : null;
+    Number.isFinite(ctx.scheduleContingency_workingDays) && ctx.scheduleContingency_workingDays >= 0
+      ? ctx.scheduleContingency_workingDays
+      : Number.isFinite(ctx.scheduleContingency_weeks) && ctx.scheduleContingency_weeks >= 0
+        ? ctx.scheduleContingency_weeks * ctx.workingDaysPerWeek
+        : null;
   const timeRef =
     scheduleContingencyDays != null && Number.isFinite(scheduleContingencyDays)
       ? scheduleContingencyDays
-      : plannedDurationDays;
+      : null;
 
   let costCurrentP: number | null = null;
   if (costCdf.length > 0 && costRef != null && costRef > 0) {

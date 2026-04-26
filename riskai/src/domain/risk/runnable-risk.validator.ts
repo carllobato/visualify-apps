@@ -18,7 +18,7 @@ function toNum(v: unknown): number {
   return NaN;
 }
 
-/** Coerce to integer for time (days). */
+/** Coerce to integer for time (working days). */
 function toInt(v: unknown): number {
   const n = toNum(v);
   return Number.isFinite(n) ? Math.floor(n) : NaN;
@@ -81,7 +81,7 @@ export function getRiskValidationErrors(risk: Risk): string[] {
     preTimeMin > preTimeML ||
     preTimeML > preTimeMax
   ) {
-    errors.push("Pre-mitigation time (days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+    errors.push("Pre-mitigation time (working days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
   }
 
   const hasMitigation = Boolean(risk.mitigation?.trim());
@@ -120,7 +120,7 @@ export function getRiskValidationErrors(risk: Risk): string[] {
       postTimeMin > postTimeML ||
       postTimeML > postTimeMax
     ) {
-      errors.push("Post-mitigation time (days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+      errors.push("Post-mitigation time (working days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
     }
   }
 

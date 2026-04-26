@@ -260,7 +260,7 @@ type PortfolioOverviewContentProps = {
   projectCostExposureSlices: PortfolioProjectCostExposureSlice[];
   /** Per-project schedule exposure (expected days) shares — exposure-by-project donut. */
   projectScheduleExposureSlices: PortfolioProjectScheduleExposureSlice[];
-  /** Per-project schedule exposure, contingency (weeks), and coverage — Schedule Exposure & Coverage KPI modal. */
+  /** Per-project schedule exposure, contingency (working days), and coverage — Schedule Exposure & Coverage KPI modal. */
   scheduleCoverageRows: PortfolioProjectScheduleCoverageRow[];
   /** Active risks grouped by category — risks-by-category bars. */
   riskCategoryCounts: PortfolioRiskCategoryCount[];
@@ -621,8 +621,8 @@ export function PortfolioOverviewContent({
                     scheduleCoverageRatioPrimaryRagDot={scheduleCoverageRatioPrimaryRagDot}
                     scheduleCoverageRatioPrimaryValueClassName={scheduleCoverageRatioSemanticClassName}
                     scheduleExposureTrend={reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleExposure}
-                    scheduleContingencyWeeksTrend={
-                      reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleContingencyWeeks
+                    scheduleContingencyWorkingDaysTrend={
+                      reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleContingencyWorkingDays
                     }
                     scheduleCoverageRatioTrend={
                       reportingVsPriorMonthTrends?.scheduleCoverageSidebarMoM?.scheduleCoverageRatio

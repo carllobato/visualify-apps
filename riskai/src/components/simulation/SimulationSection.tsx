@@ -244,7 +244,7 @@ function smoothBarPctTime(
 export type SimulationSectionBaseline = {
   targetPNumeric: number;
   targetPLabel: string;
-  /** For cost: approved budget in dollars. For time: fallback reference in days when `contingencyTimeDays` is omitted (planned duration); simulation time axis is risk delay days only. */
+  /** For cost: approved budget in dollars. For time: fallback reference in working days when `contingencyTimeDays` is omitted; simulation time axis is risk delay working days only. */
   approvedValue: number;
 };
 
@@ -282,8 +282,8 @@ export type SimulationSectionProps = {
   /** For cost mode: contingency value in dollars. When provided, first tile = P at contingency; third tile = (cost at target P) − contingency. */
   contingencyValueDollars?: number | null;
   /**
-   * For time mode: schedule contingency in days (risk delay buffer). Same units as simulation time samples.
-   * When provided, first tile = P at this delay; second tile = (time at target P) − contingency days.
+   * For time mode: schedule contingency in working days (risk delay buffer). Same units as simulation time samples.
+   * When provided, first tile = P at this delay; second tile = (time at target P) − contingency working days.
    */
   contingencyTimeDays?: number | null;
   /** Optional href for "Target P-Value" / settings link (debug only). When provided, used instead of /project. */
@@ -804,7 +804,7 @@ function TimeChart({
   targetPNumeric: number;
   targetPLabel: string;
   isDebug?: boolean;
-  /** Delay (days) at current P; vertical reference on chart (matches cost chart current line). */
+  /** Delay (working days) at current P; vertical reference on chart (matches cost chart current line). */
   currentPTime?: number | null;
   currentPLabel?: string | null;
   deltaToTargetP?: number | null;
@@ -1045,7 +1045,7 @@ function TimeChart({
     <section className={SIM_SECTION_SHELL}>
       <div className="border-b border-[var(--ds-border)] px-4 py-2.5">
         <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
-          Time Distribution
+          Schedule Distribution
         </h3>
         {!empty && isDebug && (
           <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
@@ -1296,7 +1296,7 @@ export function SimulationSection(props: SimulationSectionProps) {
 
   /**
    * First tile: cost = P at contingency $ when provided, else at approved budget.
-   * Time = P at schedule contingency (delay days) when provided, else at planned duration fallback — both on the risk-delay / incremental cost CDF.
+   * Time = P at schedule contingency (delay working days) when provided, else at fallback reference — both on the risk-delay / incremental cost CDF.
    */
   const currentPValue = useMemo(() => {
     if (mode === "cost" && costCdf?.length) {
@@ -1319,7 +1319,7 @@ export function SimulationSection(props: SimulationSectionProps) {
     return null;
   }, [mode, costCdf, timeCdf, approvedValue, contingencyValueDollars, contingencyTimeDays]);
 
-  /** Cost ($) or time (days) at the target P percentile. */
+  /** Cost ($) or time (working days) at the target P percentile. */
   const valueAtTargetP = useMemo(() => {
     if (mode === "cost" && costCdf?.length) {
       return costAtPercentile(costCdf, targetPNumeric);
@@ -1332,7 +1332,7 @@ export function SimulationSection(props: SimulationSectionProps) {
 
   /**
    * Cost: (cost at target P) − contingency $.
-   * Time: (risk delay days at target P) − schedule contingency days. Same units as simulation outputs.
+   * Time: (risk delay working days at target P) − schedule contingency working days. Same units as simulation outputs.
    */
   const deltaToTargetP = useMemo(() => {
     if (valueAtTargetP == null) return null;
@@ -1353,7 +1353,7 @@ export function SimulationSection(props: SimulationSectionProps) {
     return costAtPercentile(costCdf, currentPValue);
   }, [mode, currentPValue, costCdf]);
 
-  /** Risk delay (days) at current P (for vertical line on time chart; mirrors costAtCurrentP). */
+  /** Risk delay (working days) at current P (for vertical line on time chart; mirrors costAtCurrentP). */
   const timeAtCurrentP = useMemo(() => {
     if (mode !== "time" || currentPValue == null || !timeCdf?.length) return null;
     return timeAtPercentile(timeCdf, currentPValue);
@@ -1372,7 +1372,7 @@ export function SimulationSection(props: SimulationSectionProps) {
           <div className={`${SIM_KPI_TILE_CLASS} flex min-h-[8.5rem] flex-col`}>
             <div className="flex flex-1 flex-col p-4">
             <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
-              {mode === "cost" ? "Current Funding Confidence" : "Current P-Value (Time)"}
+              {mode === "cost" ? "Current Funding Confidence" : "Current Schedule P-Value"}
             </div>
             <div className="mt-1 text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">
               {currentPValue != null ? `P${currentPValue}` : "—"}
@@ -1385,8 +1385,8 @@ export function SimulationSection(props: SimulationSectionProps) {
             {mode === "time" && (
               <div className="mt-0.5 text-[11px] text-[var(--ds-text-muted)]">
                 {contingencyTimeDays != null && Number.isFinite(contingencyTimeDays)
-                  ? "Confidence within schedule contingency (risk delay)"
-                  : "Planned duration as reference (chart is risk delay, not programme length)"}
+                  ? "Confidence within schedule contingency (risk delay working days)"
+                  : "Reference position on risk delay working-day distribution"}
               </div>
             )}
             </div>
@@ -1401,7 +1401,7 @@ export function SimulationSection(props: SimulationSectionProps) {
           >
             <div className="flex flex-1 flex-col p-4">
             <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
-              Funding Position vs Target{mode === "cost" ? "" : " (Time)"}
+              {mode === "cost" ? "Funding Position vs Target" : "Schedule Position vs Target"}
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-[length:var(--ds-text-lg)] font-semibold text-[var(--ds-text-primary)]">

@@ -83,7 +83,7 @@ type DocumentKpiModalProps = {
   activeRiskStatusSummaryRows?: PortfolioProjectRiskStatusRow[];
   /** Per-project contingency vs exposure for the Cost Exposure & Coverage KPI modal. */
   coverageRatioRows?: PortfolioProjectCoverageRow[];
-  /** Per-project schedule exposure, contingency (weeks), and coverage — Schedule Exposure & Coverage KPI modal. */
+  /** Per-project schedule exposure, contingency (working days), and coverage — Schedule Exposure & Coverage KPI modal. */
   scheduleCoverageRows?: PortfolioProjectScheduleCoverageRow[];
   /** Health run score card (Portfolio Health KPI modal). */
   needsAttentionHealthRun?: PortfolioNeedsAttentionHealthRun;
@@ -244,7 +244,7 @@ function reportingDelayAtPTargetPhrase(p: ProjectTilePayload): string | null {
   if (tp == null) return null;
   const pr = Math.round(tp);
   if (days != null && Number.isFinite(days) && days >= 0) {
-    return `${formatDurationDays(days, { weekDecimals: 1 })} (P${pr})`;
+    return `${formatDurationDays(days)} (P${pr})`;
   }
   return `P${pr}`;
 }
@@ -270,7 +270,7 @@ function portfolioDelayAtPTargetPhrase(footer: PortfolioReportingFooterRow): str
   if (tp == null) return null;
   const pr = Math.round(tp);
   if (days != null && Number.isFinite(days) && days >= 0) {
-    return `${formatDurationDays(days, { weekDecimals: 1 })} (P${pr})`;
+    return `${formatDurationDays(days)} (P${pr})`;
   }
   return `P${pr}`;
 }
@@ -318,14 +318,14 @@ function reportingTimeMetricSubline(p: ProjectTilePayload): string | null {
   const short = p.reportingTimeShortfallDays;
   const sur = p.reportingTimeSurplusDays;
   if (short != null && Number.isFinite(short) && short > 0) {
-    const dur = formatDurationDays(short, { weekDecimals: 1 });
+    const dur = formatDurationDays(short);
     if (reportingLineLabelIsOnTrack(p.reportingTimeStatus)) {
       return `P${pr} band on track · ${dur} below ${atP}`;
     }
     return `Schedule short: ${dur} v ${atP}`;
   }
   if (sur != null && Number.isFinite(sur) && sur > 0) {
-    return `Schedule buffer: ${formatDurationDays(sur, { weekDecimals: 1 })} v ${atP}`;
+    return `Schedule buffer: ${formatDurationDays(sur)} v ${atP}`;
   }
   const st = p.reportingTimeStatus?.trim() ?? "";
   if (st !== "" && st !== "—") {
@@ -370,14 +370,14 @@ function portfolioReportingTimeMetricSubline(footer: PortfolioReportingFooterRow
   const short = footer.timeShortfallDays;
   const sur = footer.timeSurplusDays;
   if (short != null && Number.isFinite(short) && short > 0) {
-    const dur = formatDurationDays(short, { weekDecimals: 1 });
+    const dur = formatDurationDays(short);
     if (reportingLineLabelIsOnTrack(footer.timeStatus)) {
       return `P${pr} band on track · ${dur} below ${atP}`;
     }
     return `Schedule short: ${dur} v ${atP}`;
   }
   if (sur != null && Number.isFinite(sur) && sur > 0) {
-    return `Schedule buffer: ${formatDurationDays(sur, { weekDecimals: 1 })} v ${atP}`;
+    return `Schedule buffer: ${formatDurationDays(sur)} v ${atP}`;
   }
   if (footer.timeStatus?.trim() && footer.timeStatus !== "—") {
     return `Schedule v ${atP}`;
@@ -693,12 +693,9 @@ function coverageRatioClass(ratio: number | null): string {
   return "font-medium text-[var(--ds-status-success-fg)] tabular-nums";
 }
 
-function formatScheduleContingencyWeeksLabel(weeks: number | null): string {
-  if (weeks == null || !Number.isFinite(weeks)) return "—";
-  const w = Math.round(weeks);
-  if (w === 0) return "0 weeks";
-  if (w === 1) return "1 week";
-  return `${w} weeks`;
+function formatScheduleWorkingDaysLabel(workingDays: number | null): string {
+  if (workingDays == null || !Number.isFinite(workingDays)) return "—";
+  return formatDurationDays(workingDays);
 }
 
 /** Portfolio overview combined financial KPI — must match `kpiTiles` title in `PortfolioOverviewContent`. */
@@ -718,11 +715,14 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
     router.push(riskaiPath(`/projects/${projectId}/settings`));
   };
 
-  const totalExpectedDelayWeeks = rows.reduce((a, r) => a + r.expectedDelayWeeks, 0);
-  const totalScheduleContingencyWeeks = rows.reduce((a, r) => a + (r.scheduleContingencyWeeks ?? 0), 0);
+  const totalExpectedDelayWorkingDays = rows.reduce((a, r) => a + r.expectedDelayWorkingDays, 0);
+  const totalScheduleContingencyWorkingDays = rows.reduce(
+    (a, r) => a + (r.scheduleContingencyWorkingDays ?? 0),
+    0
+  );
   const portfolioRatio =
-    totalExpectedDelayWeeks > 0 && Number.isFinite(totalScheduleContingencyWeeks)
-      ? totalScheduleContingencyWeeks / totalExpectedDelayWeeks
+    totalExpectedDelayWorkingDays > 0 && Number.isFinite(totalScheduleContingencyWorkingDays)
+      ? totalScheduleContingencyWorkingDays / totalExpectedDelayWorkingDays
       : null;
 
   return (
@@ -761,12 +761,12 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
                 </span>
               </TableCell>
               <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-secondary)]">
-                {r.expectedDelayWeeks > 0
-                  ? formatDurationDays(r.expectedDelayWeeks * 7, { weekDecimals: 1 })
+                {r.expectedDelayWorkingDays > 0
+                  ? formatDurationDays(r.expectedDelayWorkingDays)
                   : "—"}
               </TableCell>
               <TableCell className="text-right tabular-nums align-middle text-[var(--ds-text-primary)]">
-                {formatScheduleContingencyWeeksLabel(r.scheduleContingencyWeeks)}
+                {formatScheduleWorkingDaysLabel(r.scheduleContingencyWorkingDays)}
               </TableCell>
               <TableCell className="text-right align-middle">
                 <span className={coverageRatioClass(r.coverageRatio)}>{formatCoverageRatioPct(r.coverageRatio)}</span>
@@ -783,12 +783,12 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
               Portfolio
             </TableHeaderCell>
             <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]">
-              {totalExpectedDelayWeeks > 0
-                ? formatDurationDays(totalExpectedDelayWeeks * 7, { weekDecimals: 1 })
+              {totalExpectedDelayWorkingDays > 0
+                ? formatDurationDays(totalExpectedDelayWorkingDays)
                 : "—"}
             </TableCell>
             <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-primary)]">
-              {formatScheduleContingencyWeeksLabel(totalScheduleContingencyWeeks)}
+              {formatScheduleWorkingDaysLabel(totalScheduleContingencyWorkingDays)}
             </TableCell>
             <TableCell className="text-right align-middle">
               <span className={`font-semibold ${coverageRatioClass(portfolioRatio)}`}>

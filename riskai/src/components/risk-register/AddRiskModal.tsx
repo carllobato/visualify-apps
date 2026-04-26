@@ -113,11 +113,11 @@ function validateAddRiskNonDraft(form: {
   }
   if (appliesToAffectsTime(form.appliesTo)) {
     const preTimeMin = parseInt(form.preMitigationTimeMin, 10);
-    if (form.preMitigationTimeMin.trim() === "" || !Number.isFinite(preTimeMin) || preTimeMin < 0) errors.push("Pre-Mitigation Time Min");
+    if (form.preMitigationTimeMin.trim() === "" || !Number.isFinite(preTimeMin) || preTimeMin < 0) errors.push("Pre-Mitigation Time Min (working days)");
     const v = parseInt(form.preMitigationTimeML, 10);
-    if (!Number.isFinite(v) || v < 0) errors.push("Pre-Mitigation Time ML (days)");
+    if (!Number.isFinite(v) || v < 0) errors.push("Pre-Mitigation Time ML (working days)");
     const preTimeMax = parseInt(form.preMitigationTimeMax, 10);
-    if (form.preMitigationTimeMax.trim() === "" || !Number.isFinite(preTimeMax) || preTimeMax < 0) errors.push("Pre-Mitigation Time Max");
+    if (form.preMitigationTimeMax.trim() === "" || !Number.isFinite(preTimeMax) || preTimeMax < 0) errors.push("Pre-Mitigation Time Max (working days)");
   }
   if (persistMitigation) {
     if (!form.mitigation.trim()) errors.push("Mitigation description");
@@ -133,11 +133,11 @@ function validateAddRiskNonDraft(form: {
     }
     if (appliesToAffectsTime(form.appliesTo)) {
       const postTimeMin = parseInt(form.postMitigationTimeMin, 10);
-      if (form.postMitigationTimeMin.trim() === "" || !Number.isFinite(postTimeMin) || postTimeMin < 0) errors.push("Post-Mitigation Time Min");
+      if (form.postMitigationTimeMin.trim() === "" || !Number.isFinite(postTimeMin) || postTimeMin < 0) errors.push("Post-Mitigation Time Min (working days)");
       const v = parseInt(form.postMitigationTimeML, 10);
-      if (!Number.isFinite(v) || v < 0) errors.push("Post-Mitigation Time ML (days)");
+      if (!Number.isFinite(v) || v < 0) errors.push("Post-Mitigation Time ML (working days)");
       const postTimeMax = parseInt(form.postMitigationTimeMax, 10);
-      if (form.postMitigationTimeMax.trim() === "" || !Number.isFinite(postTimeMax) || postTimeMax < 0) errors.push("Post-Mitigation Time Max");
+      if (form.postMitigationTimeMax.trim() === "" || !Number.isFinite(postTimeMax) || postTimeMax < 0) errors.push("Post-Mitigation Time Max (working days)");
     }
   }
   return errors;
@@ -651,15 +651,15 @@ export function AddRiskModal({
                     {appliesToAffectsTime(appliesTo) && (
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <Label htmlFor="add-risk-pre-time-min" className="block">Time Min (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                        <Label htmlFor="add-risk-pre-time-min" className="block">Time Min (working days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="add-risk-pre-time-min" type="number" min={0} step={1} value={preMitigationTimeMin} onChange={(e) => setPreMitigationTimeMin(e.target.value)} />
                       </div>
                       <div>
-                        <Label htmlFor="add-risk-pre-time-ml" className="block">Time ML (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                        <Label htmlFor="add-risk-pre-time-ml" className="block">Time ML (working days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="add-risk-pre-time-ml" type="number" min={0} step={1} value={preMitigationTimeML} onChange={(e) => setPreMitigationTimeML(e.target.value)} />
                       </div>
                       <div>
-                        <Label htmlFor="add-risk-pre-time-max" className="block">Time Max (days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
+                        <Label htmlFor="add-risk-pre-time-max" className="block">Time Max (working days) {!isRiskStatusDraft(status) && <RequiredStar />}</Label>
                         <Input id="add-risk-pre-time-max" type="number" min={0} step={1} value={preMitigationTimeMax} onChange={(e) => setPreMitigationTimeMax(e.target.value)} />
                       </div>
                     </div>
@@ -788,15 +788,15 @@ export function AddRiskModal({
                         {appliesToAffectsTime(appliesTo) && (
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <Label htmlFor="add-risk-post-time-min" className="block">Time Min (days)</Label>
+                            <Label htmlFor="add-risk-post-time-min" className="block">Time Min (working days)</Label>
                             <Input id="add-risk-post-time-min" type="number" min={0} step={1} value={postMitigationTimeMin} onChange={(e) => setPostMitigationTimeMin(e.target.value)} />
                           </div>
                           <div>
-                            <Label htmlFor="add-risk-post-time-ml" className="block">Time ML (days)</Label>
+                            <Label htmlFor="add-risk-post-time-ml" className="block">Time ML (working days)</Label>
                             <Input id="add-risk-post-time-ml" type="number" min={0} step={1} value={postMitigationTimeML} onChange={(e) => setPostMitigationTimeML(e.target.value)} />
                           </div>
                           <div>
-                            <Label htmlFor="add-risk-post-time-max" className="block">Time Max (days)</Label>
+                            <Label htmlFor="add-risk-post-time-max" className="block">Time Max (working days)</Label>
                             <Input id="add-risk-post-time-max" type="number" min={0} step={1} value={postMitigationTimeMax} onChange={(e) => setPostMitigationTimeMax(e.target.value)} />
                           </div>
                         </div>

@@ -88,7 +88,7 @@ export function getNeutralSamples(state: AnalysisSelectorState): number[] | null
 }
 
 /**
- * Raw time (days) samples from Monte Carlo neutral snapshot when available.
+ * Raw time (working days) samples from Monte Carlo neutral snapshot when available.
  */
 export function getNeutralTimeSamples(state: AnalysisSelectorState): number[] | null {
   return state.simulation.neutral?.timeSamples ?? null;

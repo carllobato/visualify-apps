@@ -71,7 +71,7 @@ function getCost(r: RiskInput): number {
   return map[cc] ?? 0;
 }
 
-/** Time (days): post ML if mitigated and set, else pre ML, else consequence 1–5 map. */
+/** Time (working days): post ML if mitigated and set, else pre ML, else consequence 1–5 map. */
 function getTime(r: RiskInput): number {
   if (!affectsTime(r)) return 0;
   const hasMitigation = Boolean(r.mitigation?.trim());
@@ -225,7 +225,7 @@ export function computeMitigationOptimisation(args: {
     const defaultsUsed: string[] = [];
     if (maxReduction === DEFAULT_MAX_REDUCTION) defaultsUsed.push("default maxReduction 0.25");
     if (typeof conf !== "number") defaultsUsed.push("default k");
-    const benefitUnitLabel = dimension === "schedule" ? "days reduced per dollar" : "cost reduced per dollar";
+    const benefitUnitLabel = dimension === "schedule" ? "working days reduced per dollar" : "cost reduced per dollar";
     const explanation =
       `Materiality weight ${w.toFixed(3)}; best ROI band $${bestROIBand.from.toLocaleString()}–$${bestROIBand.to.toLocaleString()} (${topBandBenefitPerDollar.toFixed(4)} ${benefitUnitLabel}).` +
       (defaultsUsed.length ? ` ${defaultsUsed.join("; ")}.` : "");

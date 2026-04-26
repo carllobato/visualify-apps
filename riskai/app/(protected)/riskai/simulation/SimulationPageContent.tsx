@@ -38,6 +38,7 @@ import {
   getNeutralTimeSummary,
 } from "@/store/selectors";
 import {
+  approxWorkingDaysFromMonths,
   loadProjectContext,
   formatMoneyMillions,
   isProjectContextComplete,
@@ -49,6 +50,7 @@ import {
   formatDurationDaysBarLabel,
   formatDurationWholeDays,
 } from "@/lib/formatDuration";
+import { addWorkingDaysLocal } from "@/lib/workingDays";
 import {
   costAtPercentile,
   distributionToCostCdf,
@@ -944,10 +946,10 @@ function ScheduleDurationContingencyGanttCard({
 }: {
   plannedDurationDays: number | undefined;
   scheduleContingencyDays: number | null;
-  /** Risk delay days at target P from the schedule simulation CDF (same axis as schedule contingency). */
+  /** Risk delay working days at target P from the schedule simulation CDF (same axis as schedule contingency). */
   simulationRiskDelayDays: number | null | undefined;
   targetPLabel: string;
-  /** Simulated risk delay at target P minus schedule contingency: "X required" or "X buffer". */
+  /** Simulated risk delay working days at target P minus schedule contingency: "X required" or "X buffer". */
   scheduleVsContingencyText: string;
   /** Target completion date shifted by (risk delay at P − schedule contingency days), formatted. */
   forecastCompletionDateDisplay: string;
@@ -981,7 +983,7 @@ function ScheduleDurationContingencyGanttCard({
       ? formatDurationDaysBarLabel(Math.max(0, scheduleContingencyDays))
       : "—";
 
-  /** Risk delay (days) at target P from the schedule CDF — same axis as schedule contingency, not full programme length. */
+  /** Risk delay (working days) at target P from the schedule CDF — same axis as schedule contingency, not full programme length. */
   const simulationDays =
     simulationRiskDelayDays != null && Number.isFinite(simulationRiskDelayDays) && simulationRiskDelayDays >= 0
       ? simulationRiskDelayDays
@@ -1592,12 +1594,6 @@ function parseProjectDay(isoDay: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function addCalendarDaysLocal(d: Date, days: number): Date {
-  const out = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  out.setDate(out.getDate() + days);
-  return out;
-}
-
 function formatForecastCompletionDate(d: Date): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
@@ -1934,15 +1930,24 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
 
   const plannedDurationDays = useMemo(() => {
     if (!displayContext) return null;
-    return (displayContext.plannedDuration_months * 365) / 12;
+    return approxWorkingDaysFromMonths(
+      displayContext.plannedDuration_months,
+      displayContext.workingDaysPerWeek
+    );
   }, [displayContext]);
 
-  /** Schedule contingency in days (same axis as simulation time samples: risk delay days). */
+  /** Schedule contingency in working days (same axis as simulation time samples: risk delay working days). */
   const scheduleContingencyDays = useMemo(() => {
     if (!displayContext) return null;
+    if (
+      Number.isFinite(displayContext.scheduleContingency_workingDays) &&
+      displayContext.scheduleContingency_workingDays >= 0
+    ) {
+      return displayContext.scheduleContingency_workingDays;
+    }
     const w = displayContext.scheduleContingency_weeks;
     if (!Number.isFinite(w) || w < 0) return null;
-    return w * 7;
+    return w * displayContext.workingDaysPerWeek;
   }, [displayContext]);
 
   const costBaseline: SimulationSectionBaseline | null = useMemo(() => {
@@ -2032,10 +2037,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     return m.kind === "required" ? `${m.formatted} required` : `${m.formatted} buffer`;
   }, [projectPositionScheduleGapModel]);
 
-  /**
-   * Target completion from project settings, shifted by the same net slip as schedule gap:
-   * (risk delay days at target P) − schedule contingency days.
-   */
+  /** Target completion date shifted by net forecast delay in project working days. */
   const forecastCompletionDateDisplay = useMemo(() => {
     const raw = displayContext?.targetCompletionDate?.trim();
     if (!raw) return "—";
@@ -2049,9 +2051,16 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     ) {
       return "—";
     }
-    const deltaDays = Math.round(scheduleSimulationRiskDelayAtTargetP - scheduleContingencyDays);
-    return formatForecastCompletionDate(addCalendarDaysLocal(plannedEnd, deltaDays));
-  }, [displayContext?.targetCompletionDate, scheduleSimulationRiskDelayAtTargetP, scheduleContingencyDays]);
+    const netDelayWorkingDays = Math.max(0, scheduleSimulationRiskDelayAtTargetP - scheduleContingencyDays);
+    return formatForecastCompletionDate(
+      addWorkingDaysLocal(plannedEnd, netDelayWorkingDays, displayContext?.workingDaysPerWeek ?? 5)
+    );
+  }, [
+    displayContext?.targetCompletionDate,
+    displayContext?.workingDaysPerWeek,
+    scheduleSimulationRiskDelayAtTargetP,
+    scheduleContingencyDays,
+  ]);
 
   /**
    * Same P-at-reference logic as SimulationSection `currentPValue`; exposes per-dimension line status
