@@ -9,7 +9,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortfolioMembersSection } from "@/components/portfolio/PortfolioMembersSection";
 import { SettingsPermissionNotice } from "@/components/settings/SettingsPermissionNotice";
-import { settingsStandaloneSectionTitleClass } from "@/components/settings/settingsFieldClasses";
 import {
   projectSettingsFieldWidthClass,
   projectSettingsInputClass,
@@ -328,27 +327,31 @@ export default function PortfolioSettingsContent({
       {activeTab === "members" && <PortfolioMembersSection portfolioId={portfolioId} />}
 
       {activeTab === "details" && (
-      <section className="mb-10">
-        <h2 className={settingsStandaloneSectionTitleClass}>Details</h2>
-        <dl className="ds-document-tile-panel p-4 space-y-2 text-sm">
-          <div>
-            <dt className="text-[var(--ds-text-muted)]">Portfolio ID</dt>
-            <dd className={portfolioDetailsValueClass}>{portfolioId}</dd>
-          </div>
-          <div>
-            <dt className="text-[var(--ds-text-muted)]">Owner username</dt>
-            <dd className={portfolioDetailsValueClass}>{initial.owner_username}</dd>
-          </div>
-          <div>
-            <dt className="text-[var(--ds-text-muted)]">Owner Company</dt>
-            <dd className={portfolioDetailsValueClass}>{initial.owner_company}</dd>
-          </div>
-          <div>
-            <dt className="text-[var(--ds-text-muted)]">Created</dt>
-            <dd className={portfolioDetailsValueClass}>{formatDate(initial.created_at)}</dd>
-          </div>
-        </dl>
-      </section>
+        <Card className="mb-4">
+          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Details</h2>
+          </CardHeader>
+          <CardBody className="!px-4 !py-3">
+            <dl className="space-y-2 text-sm">
+              <div>
+                <dt className="text-[var(--ds-text-muted)]">Portfolio ID</dt>
+                <dd className={portfolioDetailsValueClass}>{portfolioId}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--ds-text-muted)]">Owner username</dt>
+                <dd className={portfolioDetailsValueClass}>{initial.owner_username}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--ds-text-muted)]">Owner Company</dt>
+                <dd className={portfolioDetailsValueClass}>{initial.owner_company}</dd>
+              </div>
+              <div>
+                <dt className="text-[var(--ds-text-muted)]">Created</dt>
+                <dd className={portfolioDetailsValueClass}>{formatDate(initial.created_at)}</dd>
+              </div>
+            </dl>
+          </CardBody>
+        </Card>
       )}
     </main>
   );

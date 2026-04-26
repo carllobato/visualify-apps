@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  createVisualifyPortfolioInvitationAndInvite,
+  InviteToPortfolioError,
+} from "@/lib/auth/portfolioInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
 import {
   authEmailMapFromRpcRows,
@@ -33,6 +37,28 @@ function portfolioInviteTraceResponse(body: unknown, status: number) {
     console.warn("[portfolio-invite] final response", { status, body });
   }
   return NextResponse.json(body, { status });
+}
+
+function isMissingServiceRoleMessage(raw: string): boolean {
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes("supabase_service_role_key") ||
+    lower.includes("admin operations") ||
+    lower.includes("missing required environment variable")
+  );
+}
+
+function splitInviteNameFromEmail(email: string): { firstName: string; surname: string } {
+  const localPart = email.split("@")[0]?.trim() ?? "";
+  const cleaned = localPart.replace(/[._+\-]+/g, " ").trim();
+  const segments = cleaned.split(/\s+/).filter(Boolean);
+  const toTitle = (v: string) => (v ? `${v[0].toUpperCase()}${v.slice(1).toLowerCase()}` : "");
+  const first = toTitle(segments[0] ?? "");
+  const rest = segments.slice(1).map(toTitle).join(" ").trim();
+  return {
+    firstName: first || "Invited",
+    surname: rest || "User",
+  };
 }
 
 export async function GET(
@@ -197,13 +223,11 @@ export async function POST(
     return portfolioInviteTraceResponse({ error: "Permission denied" }, 403);
   }
 
-  let body: { email?: unknown; role?: unknown; first_name?: unknown; surname?: unknown };
+  let body: { email?: unknown; role?: unknown };
   try {
     body = (await request.json()) as {
       email?: unknown;
       role?: unknown;
-      first_name?: unknown;
-      surname?: unknown;
     };
   } catch {
     return portfolioInviteTraceResponse({ error: "Invalid JSON" }, 400);
@@ -212,11 +236,6 @@ export async function POST(
   const email = typeof body.email === "string" ? body.email.trim() : "";
   if (!email) {
     return portfolioInviteTraceResponse({ error: "Email is required" }, 400);
-  }
-  const firstName = typeof body.first_name === "string" ? body.first_name.trim() : "";
-  const surname = typeof body.surname === "string" ? body.surname.trim() : "";
-  if (!firstName || !surname) {
-    return portfolioInviteTraceResponse({ error: "First name and surname are required" }, 400);
   }
   if (!isRole(body.role)) {
     return portfolioInviteTraceResponse({ error: "Invalid role" }, 400);
@@ -270,27 +289,69 @@ export async function POST(
   }
 
   if (!match || rpcUserIdRaw == null) {
+    const derivedName = splitInviteNameFromEmail(email);
+    try {
+      await createVisualifyPortfolioInvitationAndInvite({
+        portfolioId,
+        email,
+        firstName: derivedName.firstName,
+        surname: derivedName.surname,
+        role,
+        invitedByUserId: user.id,
+      });
+    } catch (e) {
+      if (e instanceof InviteToPortfolioError) {
+        if (e.code === "SERVICE_ROLE_UNAVAILABLE") {
+          return portfolioInviteTraceResponse(
+            {
+              error: "INVITE_NOT_CONFIGURED",
+              message:
+                "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
+            },
+            503
+          );
+        }
+        if (e.code === "INVITATION_DB_FAILED") {
+          return portfolioInviteTraceResponse(
+            {
+              error: "INVITATION_DB_FAILED",
+              message: "Could not save the invitation. Try again or contact support.",
+            },
+            500
+          );
+        }
+      }
+
+      const raw = e instanceof Error ? e.message : String(e);
+      if (isMissingServiceRoleMessage(raw)) {
+        return portfolioInviteTraceResponse(
+          {
+            error: "INVITE_NOT_CONFIGURED",
+            message:
+              "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
+          },
+          503
+        );
+      }
+      return portfolioInviteTraceResponse(
+        {
+          error: "INVITE_FAILED",
+          message: "Could not send the invitation. Try again or contact support.",
+        },
+        500
+      );
+    }
+
     return portfolioInviteTraceResponse(
       {
-        error: "USER_NOT_FOUND",
-        message: "User not found. They need to sign up first.",
+        invitation_sent: true,
+        message: "Invitation sent. They will be added to the portfolio after signup.",
       },
-      404
+      200
     );
   }
 
   const newUserId = typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
-
-  const norm = (v: unknown) => (v == null || v === "" ? "" : String(v).trim().toLowerCase());
-  if (norm(firstName) !== norm(match.first_name) || norm(surname) !== norm(match.surname)) {
-    return portfolioInviteTraceResponse(
-      {
-        error: "NAME_MISMATCH",
-        message: "Name does not match the profile for this email.",
-      },
-      400
-    );
-  }
 
   const profileRow = {
     id: newUserId,

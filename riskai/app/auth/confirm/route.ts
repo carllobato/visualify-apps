@@ -71,20 +71,11 @@ export async function GET(request: NextRequest) {
   });
 
   if (code?.trim()) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error) {
-      return authErrorRedirect(request, error.message);
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      await ensureRiskAiDemoWorkspaceSeeded(user.id, user.email ?? null);
-    }
-
-    const next = safeNextPath(url.searchParams.get("next"), DASHBOARD_PATH);
-    return NextResponse.redirect(resolveDestination(request, inviteToken, next));
+    const clientConfirmUrl = new URL("/auth/confirm/client", destinationBase(request));
+    url.searchParams.forEach((value, key) => {
+      clientConfirmUrl.searchParams.set(key, value);
+    });
+    return NextResponse.redirect(clientConfirmUrl);
   }
 
   if (!tokenHash?.trim() || !type?.trim()) {
