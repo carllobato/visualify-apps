@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getLoginPathForHost } from "@/lib/host";
 import { env } from "@/lib/env";
 import { DASHBOARD_PATH } from "@/lib/routes";
+import { ensureRiskAiDemoWorkspaceSeeded } from "@/server/riskaiDemoSeed";
 
 function authErrorRedirect(request: NextRequest, message: string): NextResponse {
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "";
@@ -75,6 +76,13 @@ export async function GET(request: NextRequest) {
       return authErrorRedirect(request, error.message);
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await ensureRiskAiDemoWorkspaceSeeded(user.id, user.email ?? null);
+    }
+
     const next = safeNextPath(url.searchParams.get("next"), DASHBOARD_PATH);
     return NextResponse.redirect(resolveDestination(request, inviteToken, next));
   }
@@ -94,6 +102,13 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return authErrorRedirect(request, error.message);
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    await ensureRiskAiDemoWorkspaceSeeded(user.id, user.email ?? null);
   }
 
   return NextResponse.redirect(resolveDestination(request, inviteToken));
