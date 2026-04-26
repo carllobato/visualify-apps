@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ACCOUNT_PROFILE_UPDATED_EVENT } from "@/lib/onboarding/types";
 import { saveUserProfileThroughApi } from "@/lib/profiles/profileDb";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { Callout } from "@visualify/design-system";
 import { OnboardingStepLabel } from "./OnboardingStepLabel";
 import { OnboardingStepActions } from "./OnboardingStepActions";
@@ -29,6 +30,7 @@ export function ProfileSetupModal({
   const [company, setCompany] = useState(initialCompany);
   const [role, setRole] = useState(initialRole);
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,6 +39,7 @@ export function ProfileSetupModal({
     setLastName(initialLastName ?? "");
     setCompany(initialCompany ?? "");
     setRole(initialRole ?? "");
+    setSigningOut(false);
     setError(null);
   }, [open, initialFirstName, initialLastName, initialCompany, initialRole]);
 
@@ -78,6 +81,18 @@ export function ProfileSetupModal({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSignOut() {
+    setError(null);
+    setSigningOut(true);
+    const { error: signOutError } = await supabaseBrowserClient().auth.signOut();
+    if (signOutError) {
+      setSigningOut(false);
+      setError(signOutError.message);
+      return;
+    }
+    window.location.href = "/";
   }
 
   return (
@@ -162,12 +177,22 @@ export function ProfileSetupModal({
             </Callout>
           )}
           <OnboardingStepActions
-            busy={saving}
-            forwardPrimaryClassName="ds-onboarding-modal-primary"
+            busy={saving || signingOut}
+            forwardPrimaryClassName=""
             forwardSlot={
-              <button type="submit" disabled={saving}>
-                {saving ? "Saving…" : "Continue"}
-              </button>
+              <div className="flex flex-col items-center gap-3">
+                <button type="submit" className="ds-onboarding-modal-primary" disabled={saving || signingOut}>
+                  {saving ? "Saving…" : "Continue"}
+                </button>
+                <button
+                  type="button"
+                  className="ds-onboarding-modal-signout"
+                  onClick={() => void handleSignOut()}
+                  disabled={saving || signingOut}
+                >
+                  {signingOut ? "Signing out…" : "Not ready? Sign out"}
+                </button>
+              </div>
             }
           />
         </form>
