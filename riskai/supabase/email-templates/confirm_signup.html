@@ -4,7 +4,7 @@
   Dashboard: Authentication → Email Templates → Confirm signup
   Subject (suggested): Confirm your Visualify | Risk AI account
 
-  Link uses YOUR domain (Authentication → URL Configuration → Site URL), then this app calls Supabase `verifyOtp`.
+  Link uses the `emailRedirectTo` URL sent by the app, then this app calls Supabase `verifyOtp`.
 
   Allow in “Redirect URLs”:
   - https://<app-host>/auth/confirm**
@@ -77,7 +77,7 @@
                         <tr>
                           <td align="center" bgcolor="#3b82f6" style="border-radius:10px;background-color:#3b82f6;">
                             <!--[if mso]>
-                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}" style="height:42px;v-text-anchor:middle;width:220px;" arcsize="14%" stroke="f" fillcolor="#3b82f6">
+                            <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}" style="height:42px;v-text-anchor:middle;width:220px;" arcsize="14%" stroke="f" fillcolor="#3b82f6">
                               <w:anchorlock/>
                               <center style="color:#ffffff;font-family:Inter,ui-sans-serif,sans-serif;font-size:14px;font-weight:600;">
                                 Confirm email
@@ -86,7 +86,7 @@
                             <![endif]-->
                             <!--[if !mso]><!-- -->
                             <a
-                              href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}"
+                              href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}"
                               style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;"
                             >
                               Confirm email
@@ -114,10 +114,10 @@
                               If the button does not work, use this link:
                             </div>
                             <a
-                              href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}"
+                              href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}"
                               style="font-size:13px;line-height:18px;color:#3b82f6;word-break:break-all;text-decoration:underline;"
                             >
-                              {{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}
+                              {{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=signup{{ if .Data }}{{ with index .Data "riskai_invite_token" }}&invite_token={{ . }}{{ end }}{{ end }}
                             </a>
                           </td>
                         </tr>

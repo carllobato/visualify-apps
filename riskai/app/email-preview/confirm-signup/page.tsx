@@ -1,3 +1,5 @@
+import { APP_ORIGIN } from "@/lib/host";
+
 type SearchParams = Record<string, string | string[] | undefined>;
 
 /** Aligns with `packages/design-system/src/styles/globals.css` :root tokens (inline for email). */
@@ -33,11 +35,11 @@ export default async function ConfirmSignupEmailPreviewPage({
 }) {
   const params = await searchParams;
   const email = getParam(params, "email").trim() || "you@example.com";
-  const siteUrl = getParam(params, "site_url").trim() || "https://app.riskai.com.au";
+  const redirectTo = getParam(params, "redirect_to").trim() || new URL("/auth/confirm", APP_ORIGIN).toString();
   const inviteToken = getParam(params, "invite_token").trim();
   const confirmationUrl =
     getParam(params, "confirmation_url").trim() ||
-    `${siteUrl.replace(/\/+$/, "")}/auth/confirm?token_hash=demo-token&type=signup${
+    `${redirectTo}?token_hash=demo-token&type=signup${
       inviteToken ? `&invite_token=${encodeURIComponent(inviteToken)}` : ""
     }`;
 

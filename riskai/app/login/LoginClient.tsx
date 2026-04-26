@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { DASHBOARD_PATH } from "@/lib/routes";
+import { APP_ORIGIN } from "@/lib/host";
 
 type LoginTabId = "signin" | "signup";
 
@@ -18,6 +19,10 @@ const tabCollapseGridClass = `grid overflow-hidden transition-[grid-template-row
 
 /** Toggle to show the Google / Microsoft row again. */
 const SHOW_SOCIAL_LOGIN = false;
+
+function authConfirmUrl(): string {
+  return new URL("/auth/confirm", APP_ORIGIN).toString();
+}
 
 function formatAuthError(err: unknown): string {
   if (err instanceof Error && err.message.trim()) {
@@ -238,9 +243,8 @@ export function LoginClient() {
     setSignUpAwaitingEmail(false);
     setLoading(true);
     try {
-      const origin = window.location.origin;
       /** Allowlisted URL for Supabase (must match dashboard redirect allow list). */
-      const emailRedirectTo = `${origin}/auth/confirm`;
+      const emailRedirectTo = authConfirmUrl();
 
       const { data, error: err } = await supabaseBrowserClient().auth.signUp({
         email,
