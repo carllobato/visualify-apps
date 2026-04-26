@@ -1649,7 +1649,7 @@ ul[role="listbox"] button:focus-visible {
 .ds-onboarding-modal-select {
   box-sizing: border-box;
   width: 100%;
-  min-height: 2.5rem;
+  min-height: 2.6875rem;
   appearance: none;
   -webkit-appearance: none;
   border-radius: var(--ds-radius-md);
@@ -1682,6 +1682,162 @@ ul[role="listbox"] button:focus-visible {
 .ds-onboarding-modal-input::placeholder {
   color: var(--ds-text-muted);
   opacity: 1;
+}
+
+.ds-onboarding-modal-input-with-unit {
+  position: relative;
+}
+
+.ds-onboarding-modal-input--has-unit {
+  padding-right: 8.25rem;
+}
+
+.ds-onboarding-modal-input--has-unit::-webkit-outer-spin-button,
+.ds-onboarding-modal-input--has-unit::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ds-onboarding-modal-input--has-unit[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.ds-onboarding-modal-input-unit {
+  position: absolute;
+  left: calc(0.75rem + 2ch);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--ds-text-sm);
+  color: var(--ds-text-primary);
+  font-weight: 400;
+  pointer-events: none;
+}
+
+.ds-onboarding-modal-date-picker {
+  position: relative;
+}
+
+.ds-onboarding-modal-date-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.ds-onboarding-modal-date-trigger-icon {
+  flex: 0 0 1rem;
+  width: 1rem;
+  height: 1rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Crect x='3.25' y='4.25' width='13.5' height='12.5' rx='2.25' stroke='%230F172A' stroke-width='1.5'/%3E%3Cpath d='M6.5 2.75V5.75M13.5 2.75V5.75M3.25 8.25H16.75' stroke='%230F172A' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+}
+
+.ds-onboarding-modal-calendar-popover {
+  position: fixed;
+  z-index: 180;
+  width: min(17rem, calc(100vw - 2rem));
+  overflow: hidden;
+  border-radius: var(--ds-radius-app-frame);
+  background: var(--ds-app-document-bg);
+  box-shadow: var(--ds-elevation-app-frame);
+  padding: 0;
+}
+
+.ds-onboarding-modal-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ds-space-2) var(--ds-space-3) var(--ds-space-1);
+}
+
+.ds-onboarding-modal-calendar-month {
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+  color: var(--ds-text-primary);
+}
+
+.ds-onboarding-modal-calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--ds-space-1);
+}
+
+.ds-onboarding-modal-calendar-nav button {
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-subtle);
+  width: 1.5rem;
+  height: 1.5rem;
+  cursor: pointer;
+  color: var(--ds-text-primary);
+}
+
+.ds-onboarding-modal-calendar-nav button:hover {
+  background: var(--ds-surface-default);
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ds-onboarding-modal-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--ds-space-1);
+  padding: 0 var(--ds-space-3) var(--ds-space-2);
+}
+
+.ds-onboarding-modal-calendar-weekday {
+  text-align: center;
+  font-size: var(--ds-text-xs);
+  font-weight: 600;
+  color: var(--ds-text-secondary);
+  padding-bottom: 0.125rem;
+}
+
+.ds-onboarding-modal-calendar-day {
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  min-height: 1.75rem;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-primary);
+  cursor: pointer;
+}
+
+.ds-onboarding-modal-calendar-day:hover {
+  background: var(--ds-menu-item-hover-bg);
+}
+
+.ds-onboarding-modal-calendar-day.is-muted {
+  color: var(--ds-text-muted);
+}
+
+.ds-onboarding-modal-calendar-day.is-today {
+  background: color-mix(in srgb, var(--ds-primary) 14%, transparent);
+  color: var(--ds-text-primary);
+  font-weight: 600;
+}
+
+.ds-onboarding-modal-calendar-day.is-selected {
+  background: var(--ds-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.ds-onboarding-modal-calendar-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--ds-space-1) var(--ds-space-3) var(--ds-space-2);
+}
+
+.ds-onboarding-modal-calendar-footer button {
+  border: none;
+  background: transparent;
+  padding: 0.25rem;
+  color: var(--ds-primary);
+  font-size: var(--ds-text-sm);
+  font-weight: 500;
+  cursor: pointer;
 }
 
 .ds-onboarding-modal-input:focus,

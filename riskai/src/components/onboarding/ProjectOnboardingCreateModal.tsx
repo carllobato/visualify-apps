@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
 import type { FinancialUnit, ProjectCurrency, RiskAppetite } from "@/lib/projectContext";
 import type { WorkingDaysPerWeek } from "@/lib/workingDays";
@@ -22,6 +23,41 @@ type Props = {
 
 type CreateStep = 1 | 2 | 3 | 4 | 5;
 
+const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
+
+function parseIsoDate(value: string): Date | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+  return parsed;
+}
+
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(value: string): string {
+  const parsed = parseIsoDate(value);
+  if (!parsed) return "dd/mm/yyyy";
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const year = parsed.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 export function ProjectOnboardingCreateModal({
   open,
   portfolioId,
@@ -29,6 +65,40 @@ export function ProjectOnboardingCreateModal({
   onCreated,
   onDismiss,
 }: Props) {
+  function sanitizeNumericInput(value: string): string {
+    let sanitized = "";
+    let seenDecimalPoint = false;
+    for (const char of value) {
+      if (char >= "0" && char <= "9") {
+        sanitized += char;
+        continue;
+      }
+      if (char === "." && !seenDecimalPoint) {
+        sanitized += char;
+        seenDecimalPoint = true;
+      }
+    }
+    return sanitized;
+  }
+
+  function formatNumericInput(value: string): string {
+    const sanitized = sanitizeNumericInput(value);
+    if (!sanitized) return "";
+    const hasTrailingDot = sanitized.endsWith(".");
+    const [rawWhole, rawDecimal = ""] = sanitized.split(".");
+    const whole = rawWhole.replace(/^0+(?=\d)/, "") || "0";
+    const groupedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    if (hasTrailingDot) return `${groupedWhole}.`;
+    if (rawDecimal.length > 0) return `${groupedWhole}.${rawDecimal}`;
+    return groupedWhole;
+  }
+
+  function parseFormattedNumber(value: string): number {
+    const sanitized = sanitizeNumericInput(value);
+    if (!sanitized) return Number.NaN;
+    return Number(sanitized);
+  }
+
   const [step, setStep] = useState<CreateStep>(1);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
@@ -38,11 +108,19 @@ export function ProjectOnboardingCreateModal({
   const [contingencyValueInput, setContingencyValueInput] = useState("");
   const [plannedDurationMonths, setPlannedDurationMonths] = useState("");
   const [targetCompletionDate, setTargetCompletionDate] = useState("");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+  const [calendarPosition, setCalendarPosition] = useState({ top: 0, left: 0 });
   const [workingDaysPerWeek, setWorkingDaysPerWeek] = useState<WorkingDaysPerWeek>(5);
   const [scheduleContingencyWorkingDays, setScheduleContingencyWorkingDays] = useState("");
   const [riskAppetite, setRiskAppetite] = useState<RiskAppetite>("P80");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorCallout, setShowErrorCallout] = useState(false);
+  const skipNextErrorAutoClearRef = useRef(false);
+  const calendarRef = useRef<HTMLDivElement | null>(null);
+  const calendarPopoverRef = useRef<HTMLDivElement | null>(null);
+  const calendarTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -55,11 +133,82 @@ export function ProjectOnboardingCreateModal({
     setContingencyValueInput("");
     setPlannedDurationMonths("");
     setTargetCompletionDate("");
+    setCalendarOpen(false);
+    setCalendarMonth(new Date());
     setWorkingDaysPerWeek(5);
     setScheduleContingencyWorkingDays("");
     setRiskAppetite("P80");
     setError(null);
+    setShowErrorCallout(false);
   }, [open, portfolioId, initialStep]);
+
+  useEffect(() => {
+    if (!showErrorCallout) return;
+    if (skipNextErrorAutoClearRef.current) {
+      skipNextErrorAutoClearRef.current = false;
+      return;
+    }
+    setError(null);
+    setShowErrorCallout(false);
+  }, [
+    name,
+    location,
+    currency,
+    financialUnit,
+    projectValueInput,
+    contingencyValueInput,
+    plannedDurationMonths,
+    targetCompletionDate,
+    workingDaysPerWeek,
+    scheduleContingencyWorkingDays,
+    riskAppetite,
+  ]);
+
+  useEffect(() => {
+    setError(null);
+    setShowErrorCallout(false);
+  }, [step]);
+
+  useEffect(() => {
+    if (!calendarOpen) return;
+
+    function updateCalendarPosition() {
+      const trigger = calendarTriggerRef.current;
+      if (!trigger) return;
+      const rect = trigger.getBoundingClientRect();
+      const desiredWidth = Math.min(320, rect.width);
+      const nextLeft = Math.max(16, Math.min(rect.left, window.innerWidth - desiredWidth - 16));
+      const nextTop = rect.bottom + 6;
+      setCalendarPosition({ top: nextTop, left: nextLeft });
+    }
+
+    updateCalendarPosition();
+
+    function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
+      const clickedTrigger = calendarRef.current?.contains(target);
+      const clickedPopover = calendarPopoverRef.current?.contains(target);
+      if (!clickedTrigger && !clickedPopover) {
+        setCalendarOpen(false);
+      }
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setCalendarOpen(false);
+    }
+    function handleViewportChange() {
+      updateCalendarPosition();
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [calendarOpen]);
 
   if (!open) return null;
 
@@ -84,12 +233,12 @@ export function ProjectOnboardingCreateModal({
       return false;
     }
     if (current === 4) {
-      const projectValue = Number(projectValueInput);
+      const projectValue = parseFormattedNumber(projectValueInput);
       if (!Number.isFinite(projectValue) || projectValue <= 0) {
         setError("Project value is required.");
         return false;
       }
-      const contingencyValue = Number(contingencyValueInput);
+      const contingencyValue = parseFormattedNumber(contingencyValueInput);
       if (!Number.isFinite(contingencyValue) || contingencyValue < 0) {
         setError("Contingency value is required.");
         return false;
@@ -105,7 +254,8 @@ export function ProjectOnboardingCreateModal({
         setError("Target completion date is required.");
         return false;
       }
-      const scheduleContingency = Number(scheduleContingencyWorkingDays);
+      const scheduleContingencyRaw = scheduleContingencyWorkingDays.trim();
+      const scheduleContingency = scheduleContingencyRaw ? Number(scheduleContingencyRaw) : Number.NaN;
       if (!Number.isInteger(scheduleContingency) || scheduleContingency < 0) {
         setError("Schedule contingency is required.");
         return false;
@@ -115,19 +265,30 @@ export function ProjectOnboardingCreateModal({
   }
 
   function handleStepContinue() {
+    skipNextErrorAutoClearRef.current = true;
+    setShowErrorCallout(true);
     setError(null);
-    if (!validateStep(step)) return;
+    if (!validateStep(step)) {
+      skipNextErrorAutoClearRef.current = false;
+      return;
+    }
+    setShowErrorCallout(false);
     setStep((prev) => Math.min(5, prev + 1) as CreateStep);
   }
 
   async function handleFinalSubmit(e: React.FormEvent) {
     e.preventDefault();
+    skipNextErrorAutoClearRef.current = true;
+    setShowErrorCallout(true);
     setError(null);
-    if (!validateStep(5)) return;
+    if (!validateStep(5)) {
+      skipNextErrorAutoClearRef.current = false;
+      return;
+    }
     const trimmed = name.trim();
     const trimmedLocation = location.trim();
-    const projectValue = Number(projectValueInput);
-    const contingencyValue = Number(contingencyValueInput);
+    const projectValue = parseFormattedNumber(projectValueInput);
+    const contingencyValue = parseFormattedNumber(contingencyValueInput);
     const plannedDuration = Number(plannedDurationMonths);
     const scheduleContingency = Number(scheduleContingencyWorkingDays);
     const scheduleContingencyWeeks = scheduleContingency / workingDaysPerWeek;
@@ -138,6 +299,7 @@ export function ProjectOnboardingCreateModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
+        credentials: "include",
         body: JSON.stringify({ name: trimmed, ...(portfolioId ? { portfolioId } : {}) }),
       });
       const json = (await res.json().catch(() => ({}))) as {
@@ -145,7 +307,21 @@ export function ProjectOnboardingCreateModal({
         error?: string;
       };
       if (!res.ok || !json.project?.id) {
-        setError(json.error?.trim() || "Could not create project.");
+        if (res.status === 401) {
+          skipNextErrorAutoClearRef.current = false;
+          setError("Your session expired. Please refresh this page and sign in again.");
+          if (typeof window !== "undefined") {
+            window.setTimeout(() => {
+              window.location.assign("/login");
+            }, 300);
+          }
+          return;
+        }
+        skipNextErrorAutoClearRef.current = false;
+        setError(
+          json.error?.trim() ||
+            "Could not create project."
+        );
         return;
       }
       const settingsRes = await fetch(`/api/projects/${json.project.id}/settings`, {
@@ -170,14 +346,57 @@ export function ProjectOnboardingCreateModal({
       });
       const settingsJson = (await settingsRes.json().catch(() => ({}))) as { error?: string };
       if (!settingsRes.ok) {
-        setError(settingsJson.error?.trim() || "Project was created but settings could not be saved.");
+        if (settingsRes.status === 401) {
+          skipNextErrorAutoClearRef.current = false;
+          setError(
+            "Project was created, but your session expired before settings were saved. Please refresh and sign in again."
+          );
+          if (typeof window !== "undefined") {
+            window.setTimeout(() => {
+              window.location.assign("/login");
+            }, 300);
+          }
+          return;
+        }
+        skipNextErrorAutoClearRef.current = false;
+        setError(
+          settingsJson.error?.trim() ||
+            "Project was created but settings could not be saved."
+        );
         return;
       }
       await onCreated({ id: json.project.id, name: json.project.name });
+    } catch {
+      skipNextErrorAutoClearRef.current = false;
+      setError("Something went wrong while creating the project. Please try again.");
     } finally {
       setCreating(false);
     }
   }
+
+  const today = new Date();
+  const visibleMonthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+  const visibleMonthLabel = visibleMonthStart.toLocaleString("en-AU", {
+    month: "long",
+    year: "numeric",
+  });
+  const selectedDate = parseIsoDate(targetCompletionDate);
+  const monthStartWeekday = (visibleMonthStart.getDay() + 6) % 7;
+  const gridStartDate = new Date(
+    visibleMonthStart.getFullYear(),
+    visibleMonthStart.getMonth(),
+    1 - monthStartWeekday
+  );
+  const calendarDays = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStartDate.getFullYear(), gridStartDate.getMonth(), gridStartDate.getDate() + index);
+    return {
+      date,
+      iso: formatIsoDate(date),
+      inMonth: date.getMonth() === visibleMonthStart.getMonth(),
+      isToday: formatIsoDate(date) === formatIsoDate(today),
+      isSelected: selectedDate ? formatIsoDate(date) === formatIsoDate(selectedDate) : false,
+    };
+  });
 
   return (
     <div
@@ -199,7 +418,7 @@ export function ProjectOnboardingCreateModal({
               {step === 1 && "Name and location"}
               {step === 2 && "Units"}
               {step === 3 && "Risk appetite"}
-              {step === 4 && "$"}
+              {step === 4 && "Commercials"}
               {step === 5 && "Time"}
             </h2>
           </div>
@@ -325,13 +544,13 @@ export function ProjectOnboardingCreateModal({
                 </label>
                 <input
                   id="project-onboarding-project-value"
-                  type="number"
-                  min={0}
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={projectValueInput}
-                  onChange={(e) => setProjectValueInput(e.target.value)}
+                  onChange={(e) => setProjectValueInput(formatNumericInput(e.target.value))}
                   className="ds-onboarding-modal-input"
-                  placeholder="e.g. 217"
+                  placeholder="e.g. $187,000,000"
+                  autoComplete="off"
                   disabled={creating}
                 />
               </div>
@@ -341,13 +560,13 @@ export function ProjectOnboardingCreateModal({
                 </label>
                 <input
                   id="project-onboarding-contingency-value"
-                  type="number"
-                  min={0}
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={contingencyValueInput}
-                  onChange={(e) => setContingencyValueInput(e.target.value)}
+                  onChange={(e) => setContingencyValueInput(formatNumericInput(e.target.value))}
                   className="ds-onboarding-modal-input"
-                  placeholder="e.g. 22"
+                  placeholder="e.g. $9,500,000"
+                  autoComplete="off"
                   disabled={creating}
                 />
               </div>
@@ -357,32 +576,145 @@ export function ProjectOnboardingCreateModal({
             <>
               <div>
                 <label htmlFor="project-onboarding-planned-duration" className="ds-onboarding-modal-label">
-                  Planned duration (months) <span className="text-[var(--ds-status-danger)]">*</span>
+                  End to End Duration (months) <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
-                <input
-                  id="project-onboarding-planned-duration"
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={plannedDurationMonths}
-                  onChange={(e) => setPlannedDurationMonths(e.target.value)}
-                  className="ds-onboarding-modal-input"
-                  placeholder="e.g. 24"
-                  disabled={creating}
-                />
+                <div className="ds-onboarding-modal-input-with-unit">
+                  <input
+                    id="project-onboarding-planned-duration"
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={plannedDurationMonths}
+                    onChange={(e) => setPlannedDurationMonths(e.target.value)}
+                    className="ds-onboarding-modal-input ds-onboarding-modal-input--has-unit"
+                    placeholder="e.g. 24"
+                    disabled={creating}
+                  />
+                  {plannedDurationMonths.trim() ? (
+                    <span
+                      className="ds-onboarding-modal-input-unit"
+                      style={{
+                        left: `calc(0.75rem + ${Math.max(plannedDurationMonths.length, 1)}ch + 0.25ch)`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      months
+                    </span>
+                  ) : null}
+                </div>
               </div>
               <div>
                 <label htmlFor="project-onboarding-target-date" className="ds-onboarding-modal-label">
                   Target completion date <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
-                <input
-                  id="project-onboarding-target-date"
-                  type="date"
-                  value={targetCompletionDate}
-                  onChange={(e) => setTargetCompletionDate(e.target.value)}
-                  className="ds-onboarding-modal-input"
-                  disabled={creating}
-                />
+                <div className="ds-onboarding-modal-date-picker" ref={calendarRef}>
+                  <button
+                    id="project-onboarding-target-date"
+                    ref={calendarTriggerRef}
+                    type="button"
+                    aria-haspopup="dialog"
+                    aria-expanded={calendarOpen}
+                    aria-controls="project-onboarding-date-calendar"
+                    className="ds-onboarding-modal-input ds-onboarding-modal-date-trigger"
+                    onClick={() => {
+                      if (creating) return;
+                      const parsed = parseIsoDate(targetCompletionDate);
+                      setCalendarMonth(parsed ?? new Date());
+                      setCalendarOpen((prev) => !prev);
+                    }}
+                    disabled={creating}
+                  >
+                    <span>{formatDisplayDate(targetCompletionDate)}</span>
+                    <span className="ds-onboarding-modal-date-trigger-icon" aria-hidden="true" />
+                  </button>
+                  {calendarOpen &&
+                    createPortal(
+                      <div
+                        id="project-onboarding-date-calendar"
+                        role="dialog"
+                        ref={calendarPopoverRef}
+                        className="ds-onboarding-modal-calendar-popover"
+                        style={{ top: `${calendarPosition.top}px`, left: `${calendarPosition.left}px` }}
+                      >
+                      <div className="ds-onboarding-modal-calendar-header">
+                        <span className="ds-onboarding-modal-calendar-month">{visibleMonthLabel}</span>
+                        <div className="ds-onboarding-modal-calendar-nav">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCalendarMonth(
+                                (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                              )
+                            }
+                            aria-label="Previous month"
+                          >
+                            &#8592;
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCalendarMonth(
+                                (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+                              )
+                            }
+                            aria-label="Next month"
+                          >
+                            &#8594;
+                          </button>
+                        </div>
+                      </div>
+                      <div className="ds-onboarding-modal-calendar-grid">
+                        {WEEKDAY_LABELS.map((label, index) => (
+                          <div key={`${label}-${index}`} className="ds-onboarding-modal-calendar-weekday">
+                            {label}
+                          </div>
+                        ))}
+                        {calendarDays.map((day) => (
+                          <button
+                            key={day.iso}
+                            type="button"
+                            className={[
+                              "ds-onboarding-modal-calendar-day",
+                              day.inMonth ? "" : "is-muted",
+                              day.isToday ? "is-today" : "",
+                              day.isSelected ? "is-selected" : "",
+                            ]
+                              .join(" ")
+                              .trim()}
+                            onClick={() => {
+                              setTargetCompletionDate(day.iso);
+                              setCalendarOpen(false);
+                            }}
+                          >
+                            {day.date.getDate()}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ds-onboarding-modal-calendar-footer">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetCompletionDate("");
+                            setCalendarOpen(false);
+                          }}
+                        >
+                          Clear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetCompletionDate(formatIsoDate(today));
+                            setCalendarMonth(today);
+                            setCalendarOpen(false);
+                          }}
+                        >
+                          Today
+                        </button>
+                      </div>
+                      </div>,
+                      document.body
+                    )}
+                </div>
               </div>
               <div>
                 <label htmlFor="project-onboarding-working-calendar" className="ds-onboarding-modal-label">
@@ -404,21 +736,34 @@ export function ProjectOnboardingCreateModal({
                 <label htmlFor="project-onboarding-schedule-contingency" className="ds-onboarding-modal-label">
                   Schedule contingency (working days) <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
-                <input
-                  id="project-onboarding-schedule-contingency"
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={scheduleContingencyWorkingDays}
-                  onChange={(e) => setScheduleContingencyWorkingDays(e.target.value)}
-                  className="ds-onboarding-modal-input"
-                  placeholder="e.g. 20"
-                  disabled={creating}
-                />
+                <div className="ds-onboarding-modal-input-with-unit">
+                  <input
+                    id="project-onboarding-schedule-contingency"
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={scheduleContingencyWorkingDays}
+                    onChange={(e) => setScheduleContingencyWorkingDays(e.target.value)}
+                    className="ds-onboarding-modal-input ds-onboarding-modal-input--has-unit"
+                    placeholder="e.g. 20"
+                    disabled={creating}
+                  />
+                  {scheduleContingencyWorkingDays.trim() ? (
+                    <span
+                      className="ds-onboarding-modal-input-unit"
+                      style={{
+                        left: `calc(0.75rem + ${Math.max(scheduleContingencyWorkingDays.length, 1)}ch + 0.25ch)`,
+                      }}
+                      aria-hidden="true"
+                    >
+                      days
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </>
           )}
-          {error && (
+          {error && showErrorCallout && (
             <Callout status="danger" role="alert" className="ds-onboarding-modal-callout">
               {error}
             </Callout>
