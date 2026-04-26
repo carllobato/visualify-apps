@@ -24,7 +24,7 @@ export function Button({
     "disabled:cursor-not-allowed disabled:opacity-[0.38]";
   const sizes: Record<NonNullable<ButtonProps["size"]>, string> = {
     sm: "h-8 px-3 text-[length:var(--ds-text-sm)]",
-    md: "h-9 px-4 text-[length:var(--ds-text-sm)]",
+    md: "h-10 px-4 text-[length:var(--ds-text-sm)]",
     lg: "h-10 px-5 text-[length:var(--ds-text-base)]",
   };
   const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
