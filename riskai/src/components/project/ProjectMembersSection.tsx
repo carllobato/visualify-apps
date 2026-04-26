@@ -220,13 +220,14 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role: addRole, first_name: fn, surname: sn }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        already_member?: boolean;
+        invitation_sent?: boolean;
+        error?: string;
+        message?: string;
+      };
 
-      if (res.status === 409 && data?.error === "USER_ALREADY_EXISTS") {
-        setAddError(data.message ?? "An account already exists for this email. Use Add member.");
-        setInviteOptionAvailable(false);
-        return;
-      }
       if (res.status === 503 && data?.error === "INVITE_NOT_CONFIGURED") {
         setAddError(data.message ?? "Invitations are not configured on the server.");
         return;
@@ -235,17 +236,19 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         setAddError(data.message ?? "Permission denied.");
         return;
       }
+      if (res.ok) {
+        setAddFirstName("");
+        setAddSurname("");
+        setAddEmail("");
+        setAddRole("");
+        setInviteOptionAvailable(false);
+        await load();
+        return;
+      }
       if (!res.ok) {
         setAddError(data?.message ?? data?.error ?? "Could not send invitation.");
         return;
       }
-
-      setAddFirstName("");
-      setAddSurname("");
-      setAddEmail("");
-      setAddRole("");
-      setInviteOptionAvailable(false);
-      await load();
     } finally {
       setPendingId(null);
     }
@@ -278,7 +281,13 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role: addRole, first_name: fn, surname: sn }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        already_member?: boolean;
+        invitation_sent?: boolean;
+        error?: string;
+        message?: string;
+      };
 
       if (res.status === 400 && data?.error === "NAME_MISMATCH") {
         setAddError(data.message ?? "Name does not match the profile for this email.");
@@ -292,24 +301,22 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         setInviteOptionAvailable(true);
         return;
       }
-      if (res.status === 409 && data?.error === "DUPLICATE_MEMBER") {
-        setAddError(data.message ?? "This user is already a member.");
-        return;
-      }
       if (res.status === 403 && data?.error === "PERMISSION_DENIED") {
         setAddError(data.message ?? "Permission denied.");
+        return;
+      }
+      if (res.ok) {
+        setAddFirstName("");
+        setAddSurname("");
+        setAddEmail("");
+        setAddRole("");
+        await load();
         return;
       }
       if (!res.ok) {
         setAddError(data?.message ?? data?.error ?? "Could not add member.");
         return;
       }
-
-      setAddFirstName("");
-      setAddSurname("");
-      setAddEmail("");
-      setAddRole("");
-      await load();
     } finally {
       setPendingId(null);
     }

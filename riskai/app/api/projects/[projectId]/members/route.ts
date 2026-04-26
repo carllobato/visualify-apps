@@ -15,6 +15,12 @@ import type {
 } from "@/types/projectMembers";
 import { coerceProfileFromUnknown } from "@/lib/profileDisplayCoerce";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
+import {
+  createVisualifyProjectInvitationAndInvite,
+  ensureVisualifyProfileForAuthUser,
+  InviteToProjectError,
+} from "@/lib/auth/projectInviteByEmail";
+import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +29,28 @@ const ROLES: ProjectMemberRole[] = ["owner", "editor", "viewer"];
 
 function isRole(v: unknown): v is ProjectMemberRole {
   return typeof v === "string" && (ROLES as string[]).includes(v);
+}
+
+function splitInviteNameFromEmail(email: string): { firstName: string; surname: string } {
+  const localPart = email.split("@")[0]?.trim() ?? "";
+  const cleaned = localPart.replace(/[._+\-]+/g, " ").trim();
+  const segments = cleaned.split(/\s+/).filter(Boolean);
+  const toTitle = (v: string) => (v ? `${v[0].toUpperCase()}${v.slice(1).toLowerCase()}` : "");
+  const first = toTitle(segments[0] ?? "");
+  const rest = segments.slice(1).map(toTitle).join(" ").trim();
+  return {
+    firstName: first || "Invited",
+    surname: rest || "User",
+  };
+}
+
+function isMissingServiceRoleMessage(raw: string): boolean {
+  const lower = raw.toLowerCase();
+  return (
+    lower.includes("supabase_service_role_key") ||
+    lower.includes("admin operations") ||
+    lower.includes("missing required environment variable")
+  );
 }
 
 /**
@@ -152,7 +180,7 @@ export async function GET(
 }
 
 /**
- * POST /api/projects/[projectId]/members — Add member by email (existing profile only).
+ * POST /api/projects/[projectId]/members — Invite by email (pending invitation; accept adds membership).
  */
 export async function POST(
   request: Request,
@@ -224,72 +252,96 @@ export async function POST(
 
   const match = firstRpcTableRow(found);
   const rpcUserIdRaw = match?.user_id ?? match?.id;
+
+  if (match && rpcUserIdRaw != null && match.already_member === true) {
+    return NextResponse.json({ ok: true, already_member: true }, { status: 200 });
+  }
+
+  if (match && rpcUserIdRaw != null) {
+    const existingAuthUserId =
+      typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
+    try {
+      const admin = supabaseAdminClient();
+      await ensureVisualifyProfileForAuthUser(admin, {
+        userId: existingAuthUserId,
+        email,
+      });
+    } catch {
+      // Best-effort: invitation row + email must still succeed; accept flow also ensures a profile.
+    }
+  }
+
+  const derivedName = splitInviteNameFromEmail(email);
+
+  try {
+    await createVisualifyProjectInvitationAndInvite({
+      projectId,
+      email,
+      firstName: derivedName.firstName,
+      surname: derivedName.surname,
+      role,
+      invitedByUserId: user.id,
+    });
+  } catch (e) {
+    if (e instanceof InviteToProjectError) {
+      if (e.code === "SERVICE_ROLE_UNAVAILABLE") {
+        return NextResponse.json(
+          {
+            error: "INVITE_NOT_CONFIGURED",
+            message:
+              "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
+          },
+          { status: 503 }
+        );
+      }
+      if (e.code === "INVITATION_DB_FAILED") {
+        return NextResponse.json(
+          {
+            error: "INVITATION_DB_FAILED",
+            message: "Could not save the invitation. Try again or contact support.",
+          },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error: "INVITE_FAILED",
+          message: "Could not send the invitation. Try again or contact support.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const raw = e instanceof Error ? e.message : String(e);
+    if (isMissingServiceRoleMessage(raw)) {
+      return NextResponse.json(
+        {
+          error: "INVITE_NOT_CONFIGURED",
+          message:
+            "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
+        },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      {
+        error: "INVITE_FAILED",
+        message: "Could not send the invitation. Try again or contact support.",
+      },
+      { status: 500 }
+    );
+  }
+
   if (!match || rpcUserIdRaw == null) {
     return NextResponse.json(
       {
-        error: "USER_NOT_FOUND",
-        message:
-          "No account found for this email. Send an invitation so they can sign up and join this project, or ask them to register first.",
+        ok: true,
+        invitation_sent: true,
+        message: "Invitation sent. They will be added to the project after signup.",
       },
-      { status: 404 }
+      { status: 200 }
     );
   }
 
-  const newUserId = typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
-
-  const norm = (v: unknown) => (v == null || v === "" ? "" : String(v).trim().toLowerCase());
-  if (norm(firstName) !== norm(match.first_name) || norm(surname) !== norm(match.surname)) {
-    return NextResponse.json(
-      {
-        error: "NAME_MISMATCH",
-        message: "Name does not match the profile for this email.",
-      },
-      { status: 400 }
-    );
-  }
-
-  const profileRow = {
-    id: newUserId,
-    already_member: match.already_member === true,
-  };
-  if (profileRow.already_member === true) {
-    return NextResponse.json(
-      {
-        error: "DUPLICATE_MEMBER",
-        message: "This user is already a member of the project.",
-      },
-      { status: 409 }
-    );
-  }
-
-  const { data: inserted, error: insErr } = await supabase
-    .from("visualify_project_members")
-    .insert({
-      project_id: projectId,
-      user_id: newUserId,
-      role,
-    })
-    .select("id, project_id, user_id, role, created_at, updated_at")
-    .single();
-
-  if (insErr) {
-    if (insErr.code === "23505") {
-      return NextResponse.json(
-        {
-          error: "DUPLICATE_MEMBER",
-          message: "This user is already a member of the project.",
-        },
-        { status: 409 }
-      );
-    }
-    if (insErr.code === "42501" || insErr.message?.toLowerCase().includes("policy")) {
-      return NextResponse.json(
-        { error: "PERMISSION_DENIED", message: "Permission denied" },
-        { status: 403 }
-      );
-    }
-    return NextResponse.json({ error: insErr.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ member: inserted });
+  return NextResponse.json({ ok: true, invitation_sent: true }, { status: 200 });
 }

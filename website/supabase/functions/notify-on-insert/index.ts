@@ -6,7 +6,75 @@
  * See supabase/NOTIFY_SETUP.md.
  */
 
+import { createClient, type User } from "https://esm.sh/@supabase/supabase-js@2.104.1";
+
 const NOTIFY_TO_DEFAULT = "help@visualify.com.au";
+
+/**
+ * Injects `filter` on GET /auth/v1/admin/users. `@supabase/supabase-js` listUsers
+ * only sends `page` / `per_page`; GoTrue also supports `filter` for the same route.
+ */
+function withAdminListFilter(
+  normalizedEmail: string,
+  inner: typeof fetch
+): typeof fetch {
+  return (input: string | URL | Request, init?: RequestInit) => {
+    const href =
+      typeof input === "string" ? input
+      : input instanceof URL ? input.toString()
+      : (input as Request).url;
+    const url = new URL(href);
+    if (/\/auth\/v1\/admin\/users$/.test(url.pathname) && !url.searchParams.has("filter")) {
+      url.searchParams.set("filter", normalizedEmail);
+    }
+    return inner(url, init);
+  };
+}
+
+/**
+ * `true` if a row in `auth.users` matches the normalized email. On missing env, API
+ * error, or exception, returns `false` (use new-user copy).
+ */
+async function isAuthUserByEmail(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  normalizedEmail: string
+): Promise<boolean> {
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    global: { fetch: withAdminListFilter(normalizedEmail, globalThis.fetch) },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
+  try {
+    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 2 });
+    if (error) {
+      console.warn("[notify-on-insert] admin listUsers error", error.message);
+      return false;
+    }
+    const users = (data as { users?: User[] } | null)?.users ?? [];
+    return users.some(
+      (u) => u.email != null && u.email.trim().toLowerCase() === normalizedEmail
+    );
+  } catch (e) {
+    console.warn("[notify-on-insert] isAuthUserByEmail failed", e);
+    return false;
+  }
+}
+
+async function getIsExistingUserForInvite(normalizedEmail: string): Promise<boolean> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
+  if (!supabaseUrl || !serviceRole) {
+    console.warn(
+      "[notify-on-insert] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing; using new-user email copy"
+    );
+    return false;
+  }
+  return isAuthUserByEmail(supabaseUrl, serviceRole, normalizedEmail);
+}
 
 function escapeHtml(s: string): string {
   return s
@@ -89,8 +157,14 @@ function buildInvitationEmail(params: {
   projectName: string;
   inviterDisplayName: string;
   inviteLink: string;
+  isExistingUser: boolean;
 }): { text: string; html: string } {
   const greetingName = params.firstName || "there";
+  const secondLine = params.isExistingUser
+    ? "Log in to your account to accept this invitation."
+    : "Create your account to accept this invitation.";
+  const cta = params.isExistingUser ? "Accept invitation" : "Create account & join";
+  const msoBtnW = params.isExistingUser ? "190px" : "240px";
   const text = [
     "Visualify | Risk AI",
     "",
@@ -98,9 +172,10 @@ function buildInvitationEmail(params: {
     "",
     `Hi ${greetingName},`,
     "",
-    `${params.inviterDisplayName} has invited you to join ${params.projectName} in Visualify | Risk AI.`,
+    `${params.inviterDisplayName} has invited you to join ${params.projectName}.`,
+    secondLine,
     "",
-    "Accept invitation:",
+    `${cta}:`,
     params.inviteLink,
     "",
     "If the button does not work, copy and paste this link into your browser:",
@@ -149,8 +224,8 @@ function buildInvitationEmail(params: {
                     <tr>
                       <td style="font-size:16px;line-height:24px;color:#5f6368;padding:0 0 20px 0;">
                         ${escapeHtml(params.inviterDisplayName)} has invited you to join
-                        <span style="font-weight:700;color:#111111;">${escapeHtml(params.projectName)}</span>
-                        in Visualify | Risk AI.
+                        <span style="font-weight:700;color:#111111;">${escapeHtml(params.projectName)}</span>.<br /><br />
+                        ${escapeHtml(secondLine)}
                       </td>
                     </tr>
                     <tr>
@@ -159,10 +234,10 @@ function buildInvitationEmail(params: {
                           <tr>
                             <td align="center" bgcolor="#3b82f6" style="border-radius:10px;background-color:#3b82f6;">
                               <!--[if mso]>
-                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(params.inviteLink)}" style="height:42px;v-text-anchor:middle;width:190px;" arcsize="14%" stroke="f" fillcolor="#3b82f6">
+                              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" href="${escapeHtml(params.inviteLink)}" style="height:42px;v-text-anchor:middle;width:${msoBtnW};" arcsize="14%" stroke="f" fillcolor="#3b82f6">
                                 <w:anchorlock/>
                                 <center style="color:#ffffff;font-family:Inter,ui-sans-serif,sans-serif;font-size:14px;font-weight:600;">
-                                  Accept invitation
+                                  ${escapeHtml(cta)}
                                 </center>
                               </v:roundrect>
                               <![endif]-->
@@ -171,7 +246,7 @@ function buildInvitationEmail(params: {
                                 href="${escapeHtml(params.inviteLink)}"
                                 style="display:inline-block;padding:11px 18px;font-size:14px;line-height:20px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;"
                               >
-                                Accept invitation
+                                ${escapeHtml(cta)}
                               </a>
                               <!--<![endif]-->
                             </td>
@@ -227,11 +302,13 @@ Deno.serve(async (req) => {
       const inviterDisplayName = url.searchParams.get("inviter_display_name")?.trim() || "a team member";
       const inviteLink =
         url.searchParams.get("invite_link")?.trim() || "https://app.riskai.com.au/invite?invite_token=demo-token";
+      const isExistingUser = url.searchParams.get("existing") === "1";
       const preview = buildInvitationEmail({
         firstName,
         projectName,
         inviterDisplayName,
         inviteLink,
+        isExistingUser,
       });
       return new Response(preview.html, {
         status: 200,
@@ -376,12 +453,16 @@ Deno.serve(async (req) => {
     const inviteLink = inviteUrl.toString();
     to = email;
     replyTo = invitationReplyTo;
-    subject = `You're invited to join ${projectName}`;
+    const isExistingUser = await getIsExistingUserForInvite(normalizedInvitedEmail);
+    subject = isExistingUser
+      ? `You're invited to join ${projectName} — log in to accept`
+      : `Create your account to join ${projectName}`;
     const invitationEmail = buildInvitationEmail({
       firstName,
       projectName,
       inviterDisplayName,
       inviteLink,
+      isExistingUser,
     });
     text = invitationEmail.text;
     html = invitationEmail.html;

@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchPublicProfile } from "@/lib/profiles/profileDb";
+import { fetchPublicProfile, USER_PROFILE_TABLE } from "@/lib/profiles/profileDb";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 
@@ -68,6 +68,40 @@ function isPostgresUniqueViolation(err: unknown): boolean {
 
 export function normalizeVisualifyInviteEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+/**
+ * Ensures `public.visualify_profiles` has a row for the auth user (`id` = `auth.users.id`).
+ * Inserts a minimal `{ id, email }` row only when missing; existing profiles are left unchanged.
+ * Caller must pass a service-role `SupabaseClient` so the insert is not blocked by RLS.
+ */
+export async function ensureVisualifyProfileForAuthUser(
+  admin: SupabaseClient,
+  params: { userId: string; email: string }
+): Promise<void> {
+  const emailNormalized = normalizeVisualifyInviteEmail(params.email);
+
+  const { data: existing, error: selErr } = await admin
+    .from(USER_PROFILE_TABLE)
+    .select("id")
+    .eq("id", params.userId)
+    .maybeSingle();
+
+  if (selErr) {
+    throw selErr;
+  }
+  if (existing?.id) {
+    return;
+  }
+
+  const { error: insErr } = await admin.from(USER_PROFILE_TABLE).insert({
+    id: params.userId,
+    email: emailNormalized.length > 0 ? emailNormalized : null,
+  });
+
+  if (insErr && !isPostgresUniqueViolation(insErr)) {
+    throw insErr;
+  }
 }
 
 /**

@@ -76,9 +76,20 @@ export function PortfolioOnboardingInviteModal({
         }),
       });
       const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        already_member?: boolean;
+        invitation_sent?: boolean;
         error?: string;
         message?: string;
       };
+      if (json.ok === true && json.already_member === true) {
+        await onFinished();
+        return;
+      }
+      if (json.ok === true && json.invitation_sent === true) {
+        await onFinished();
+        return;
+      }
       if (!res.ok) {
         setError(
           json.message?.trim() ||

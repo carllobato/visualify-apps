@@ -288,42 +288,23 @@ export async function POST(
     });
   }
 
-  if (!match || rpcUserIdRaw == null) {
-    const derivedName = splitInviteNameFromEmail(email);
-    try {
-      await createVisualifyPortfolioInvitationAndInvite({
-        portfolioId,
-        email,
-        firstName: derivedName.firstName,
-        surname: derivedName.surname,
-        role,
-        invitedByUserId: user.id,
-      });
-    } catch (e) {
-      if (e instanceof InviteToPortfolioError) {
-        if (e.code === "SERVICE_ROLE_UNAVAILABLE") {
-          return portfolioInviteTraceResponse(
-            {
-              error: "INVITE_NOT_CONFIGURED",
-              message:
-                "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
-            },
-            503
-          );
-        }
-        if (e.code === "INVITATION_DB_FAILED") {
-          return portfolioInviteTraceResponse(
-            {
-              error: "INVITATION_DB_FAILED",
-              message: "Could not save the invitation. Try again or contact support.",
-            },
-            500
-          );
-        }
-      }
+  if (match && rpcUserIdRaw != null && match.already_member === true) {
+    return portfolioInviteTraceResponse({ ok: true, already_member: true }, 200);
+  }
 
-      const raw = e instanceof Error ? e.message : String(e);
-      if (isMissingServiceRoleMessage(raw)) {
+  const derivedName = splitInviteNameFromEmail(email);
+  try {
+    await createVisualifyPortfolioInvitationAndInvite({
+      portfolioId,
+      email,
+      firstName: derivedName.firstName,
+      surname: derivedName.surname,
+      role,
+      invitedByUserId: user.id,
+    });
+  } catch (e) {
+    if (e instanceof InviteToPortfolioError) {
+      if (e.code === "SERVICE_ROLE_UNAVAILABLE") {
         return portfolioInviteTraceResponse(
           {
             error: "INVITE_NOT_CONFIGURED",
@@ -333,17 +314,41 @@ export async function POST(
           503
         );
       }
-      return portfolioInviteTraceResponse(
-        {
-          error: "INVITE_FAILED",
-          message: "Could not send the invitation. Try again or contact support.",
-        },
-        500
-      );
+      if (e.code === "INVITATION_DB_FAILED") {
+        return portfolioInviteTraceResponse(
+          {
+            error: "INVITATION_DB_FAILED",
+            message: "Could not save the invitation. Try again or contact support.",
+          },
+          500
+        );
+      }
     }
 
+    const raw = e instanceof Error ? e.message : String(e);
+    if (isMissingServiceRoleMessage(raw)) {
+      return portfolioInviteTraceResponse(
+        {
+          error: "INVITE_NOT_CONFIGURED",
+          message:
+            "Sending invitations is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
+        },
+        503
+      );
+    }
     return portfolioInviteTraceResponse(
       {
+        error: "INVITE_FAILED",
+        message: "Could not send the invitation. Try again or contact support.",
+      },
+      500
+    );
+  }
+
+  if (!match || rpcUserIdRaw == null) {
+    return portfolioInviteTraceResponse(
+      {
+        ok: true,
         invitation_sent: true,
         message: "Invitation sent. They will be added to the portfolio after signup.",
       },
@@ -351,71 +356,5 @@ export async function POST(
     );
   }
 
-  const newUserId = typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
-
-  const profileRow = {
-    id: newUserId,
-    already_member: match.already_member === true,
-  };
-  if (profileRow.already_member === true) {
-    return portfolioInviteTraceResponse(
-      {
-        error: "DUPLICATE_MEMBER",
-        message: "This user is already a member of the portfolio.",
-      },
-      409
-    );
-  }
-
-  const insertPayload = {
-    portfolio_id: portfolioId,
-    user_id: profileRow.id,
-    role,
-  };
-
-  if (portfolioInviteDebugEnabled()) {
-    console.warn("[portfolio-invite] insert payload", insertPayload);
-  }
-
-  const { data: inserted, error: insErr } = await supabase
-    .from("visualify_portfolio_members")
-    .insert(insertPayload)
-    .select("id, portfolio_id, user_id, role, created_at")
-    .single();
-
-  if (portfolioInviteDebugEnabled()) {
-    console.warn("[portfolio-invite] insert result", {
-      insertPayload,
-      inserted,
-      insertError: insErr
-        ? {
-            code: insErr.code,
-            message: insErr.message,
-            details: insErr.details,
-            hint: insErr.hint,
-          }
-        : null,
-    });
-  }
-
-  if (insErr) {
-    if (insErr.code === "23505") {
-      return portfolioInviteTraceResponse(
-        {
-          error: "DUPLICATE_MEMBER",
-          message: "This user is already a member of the portfolio.",
-        },
-        409
-      );
-    }
-    if (insErr.code === "42501" || insErr.message?.toLowerCase().includes("policy")) {
-      return portfolioInviteTraceResponse(
-        { error: "PERMISSION_DENIED", message: "Permission denied" },
-        403
-      );
-    }
-    return portfolioInviteTraceResponse({ error: insErr.message }, 500);
-  }
-
-  return portfolioInviteTraceResponse({ member: inserted }, 200);
+  return portfolioInviteTraceResponse({ ok: true, invitation_sent: true }, 200);
 }

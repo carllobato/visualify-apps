@@ -236,7 +236,13 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, role: addRole }),
       });
-      const data = (await res.json().catch(() => null)) as { error?: string; message?: string };
+      const data = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        already_member?: boolean;
+        invitation_sent?: boolean;
+        error?: string;
+        message?: string;
+      };
 
       if (res.status === 404 && data?.error === "USER_NOT_FOUND") {
         setAddError(
@@ -244,24 +250,22 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         );
         return;
       }
-      if (res.status === 409 && data?.error === "DUPLICATE_MEMBER") {
-        setAddError(data.message ?? "This user is already a member.");
-        return;
-      }
       if (res.status === 403 && data?.error === "PERMISSION_DENIED") {
         setAddError(data.message ?? "Permission denied.");
+        return;
+      }
+      if (res.ok) {
+        setAddEmail("");
+        setAddRole("");
+        setAddAttempted(false);
+        setIsAddMemberModalOpen(false);
+        await load();
         return;
       }
       if (!res.ok) {
         setAddError(data?.message ?? data?.error ?? "Could not add member.");
         return;
       }
-
-      setAddEmail("");
-      setAddRole("");
-      setAddAttempted(false);
-      setIsAddMemberModalOpen(false);
-      await load();
     } finally {
       setPendingId(null);
     }

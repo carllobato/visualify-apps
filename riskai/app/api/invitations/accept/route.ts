@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { normalizeVisualifyInviteEmail } from "@/lib/auth/projectInviteByEmail";
+import {
+  ensureVisualifyProfileForAuthUser,
+  normalizeVisualifyInviteEmail,
+} from "@/lib/auth/projectInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -117,6 +120,22 @@ async function handleAccept(request: Request) {
       { error: "EMAIL_MISMATCH", message: "This invitation was sent to a different email address." },
       { status: 403 }
     );
+  }
+
+  const invitedEmail =
+    typeof row.email === "string" && row.email.trim() ? row.email : user.email ?? "";
+  try {
+    await ensureVisualifyProfileForAuthUser(admin, {
+      userId: user.id,
+      email: invitedEmail,
+    });
+  } catch (err) {
+    console.error("[invitations/accept] ensureVisualifyProfileForAuthUser failed", {
+      userId: user.id,
+      invitationEmail: invitedEmail,
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json({ error: "Could not prepare account profile." }, { status: 500 });
   }
 
   const nowIso = new Date().toISOString();

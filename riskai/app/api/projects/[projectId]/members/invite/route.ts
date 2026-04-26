@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   createVisualifyProjectInvitationAndInvite,
+  ensureVisualifyProfileForAuthUser,
   InviteToProjectError,
 } from "@/lib/auth/projectInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
@@ -8,6 +9,7 @@ import { getProjectIfAccessible } from "@/lib/db/projectAccess";
 import { getProjectMembersViewerContext } from "@/lib/db/projectMemberAccess";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
+import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -135,6 +137,24 @@ export async function POST(
       },
       { status: 409 }
     );
+  }
+
+  if (match && rpcUserIdRaw != null && !alreadyMember) {
+    const existingAuthUserId =
+      typeof rpcUserIdRaw === "string" ? rpcUserIdRaw : String(rpcUserIdRaw);
+    try {
+      const admin = supabaseAdminClient();
+      await ensureVisualifyProfileForAuthUser(admin, {
+        userId: existingAuthUserId,
+        email,
+      });
+    } catch {
+      // Best-effort: invitation row + email must still succeed; accept flow also ensures a profile.
+      logProjectInviteDiagnostic({
+        projectId,
+        code: "ENSURE_PROFILE_DEFERRED",
+      });
+    }
   }
 
   try {
