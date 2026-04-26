@@ -25,17 +25,22 @@ async function isAuthUserByEmail(
     return false;
   }
   const base = supabaseUrl.replace(/\/+$/, "");
-  const u = new URL(`${base}/auth/v1/admin/users`);
-  u.searchParams.set("filter", `email.eq.${normalizedEmail}`);
-  u.searchParams.set("page", "1");
-  u.searchParams.set("per_page", "1");
+  const u = new URL(
+    `${base}/auth/v1/admin/users?email=${encodeURIComponent(normalizedEmail)}`
+  );
   try {
+    console.log("[notify-on-insert] invite user lookup", {
+      lookupPath: `${u.pathname}${u.search}`,
+    });
     const res = await fetch(u.toString(), {
       method: "GET",
       headers: {
         Authorization: `Bearer ${serviceRoleKey}`,
         apikey: serviceRoleKey,
       },
+    });
+    console.log("[notify-on-insert] invite user lookup response", {
+      status: res.status,
     });
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
@@ -44,6 +49,9 @@ async function isAuthUserByEmail(
         res.status,
         detail.slice(0, 200)
       );
+      console.log("[notify-on-insert] invite user lookup matched count", {
+        matchedUserCount: 0,
+      });
       return false;
     }
     let body: AdminListUsersResponse;
@@ -51,12 +59,19 @@ async function isAuthUserByEmail(
       body = (await res.json()) as AdminListUsersResponse;
     } catch (e) {
       console.warn("[notify-on-insert] isAuthUserByEmail: JSON parse failed", e);
+      console.log("[notify-on-insert] invite user lookup matched count", {
+        matchedUserCount: 0,
+      });
       return false;
     }
     const users = body.users ?? [];
-    return users.some(
+    const matchedUserCount = users.filter(
       (user) => user.email != null && user.email.trim().toLowerCase() === normalizedEmail
-    );
+    ).length;
+    console.log("[notify-on-insert] invite user lookup matched count", {
+      matchedUserCount,
+    });
+    return matchedUserCount > 0;
   } catch (e) {
     console.warn("[notify-on-insert] isAuthUserByEmail: fetch failed", e);
     return false;
@@ -446,7 +461,13 @@ Deno.serve(async (req) => {
     }
 
     const normalizedInvitedEmail = email.trim().toLowerCase();
+    console.log("[notify-on-insert] invite routing email", {
+      normalizedInvitedEmail,
+    });
     const isExistingUser = await getIsExistingUserForInvite(normalizedInvitedEmail);
+    console.log("[notify-on-insert] invite routing result", {
+      isExistingUser,
+    });
     const inviteUrl = new URL(`${riskaiOrigin.replace(/\/+$/, "")}/invite`);
     inviteUrl.searchParams.set("invite_token", inviteToken);
     inviteUrl.searchParams.set("invited_email", normalizedInvitedEmail);
@@ -456,6 +477,9 @@ Deno.serve(async (req) => {
       inviteUrl.searchParams.set("mode", "signup");
     }
     const inviteLink = inviteUrl.toString();
+    console.log("[notify-on-insert] invite routing link", {
+      inviteLink,
+    });
     to = email;
     replyTo = invitationReplyTo;
     subject = isExistingUser
