@@ -2,9 +2,14 @@
 @import "../../packages/design-system/src/styles/globals.css";
 @source "../../packages/design-system/src";
 
-/* Reserve space for the vertical scrollbar so width animations (e.g. sidebar) don’t shift the layout. */
+/* Keep the browser gutter visible on short pages so the app frame has a consistent right edge. */
 html {
   scrollbar-gutter: stable;
+  overflow-y: scroll;
+}
+
+body {
+  min-height: calc(100dvh + 1px);
 }
 
 /* Class-based dark mode for manual toggle; .dark / .light set by ThemeProvider + inline script */
