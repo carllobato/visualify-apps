@@ -25,7 +25,6 @@ import {
   TableRow,
 } from "@visualify/design-system";
 import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
-import { ProjectMemberPermissionHints } from "@/components/project/ProjectMemberPermissionHints";
 import {
   ADD_MEMBER_ROLE_PLACEHOLDER_LABEL,
   ADD_MEMBER_ROLE_VALIDATION_ERROR,
@@ -484,14 +483,6 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
             <div className="border-t border-[var(--ds-border-subtle)] px-4 py-3">
               <HelperText className="!mt-0">No members yet.</HelperText>
             </div>
-          ) : null}
-
-          {viewer ? (
-            <ProjectMemberPermissionHints
-              resource="project"
-              canInviteMembers={viewer.canInviteMembers}
-              canChangeMemberRoles={viewer.canChangeMemberRoles}
-            />
           ) : null}
 
           {canInvite ? (

@@ -30,6 +30,7 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: true,
       canEditContent: true,
       canManageMembers: true,
+      canDeleteProject: false,
       accessMode: "owner",
     };
   }
@@ -39,6 +40,7 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: true,
       canEditContent: true,
       canManageMembers: true,
+      canDeleteProject: false,
       accessMode: "owner",
     };
   }
@@ -48,6 +50,7 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: true,
       canEditContent: true,
       canManageMembers: false,
+      canDeleteProject: false,
       accessMode: "editor",
     };
   }
@@ -57,6 +60,7 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: false,
       canEditContent: false,
       canManageMembers: false,
+      canDeleteProject: false,
       accessMode: "viewer",
     };
   }

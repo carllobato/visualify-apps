@@ -42,7 +42,6 @@ import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import {
   Button,
   Card,
-  CardBody,
   CardContent,
   Callout,
   FieldError,
@@ -197,6 +196,7 @@ export type RiskRegisterContentProps = { projectId?: string | null };
 
 /** Tighter top padding under the shell page header; avoids stacking with a large margin below an empty in-page header row. */
 const RISK_REGISTER_MAIN_CLASS = "min-w-0 px-6 pb-6 pt-3 text-[var(--ds-text-primary)]";
+const RISK_REGISTER_EMPTY_MAIN_CLASS = "min-w-0 px-6 py-6 text-[var(--ds-text-primary)]";
 
 /** Stable JSON for “persisted vs local” comparison (sorted risk ids, sorted keys, drop volatile fields). */
 function risksToPersistSnapshot(risks: Risk[]): string {
@@ -242,8 +242,10 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const searchParams = useSearchParams();
   const focusRiskId = searchParams.get("focusRiskId");
   const openRiskIdParam = searchParams.get("openRiskId");
+  const openAddRiskParam = searchParams.get("addRisk");
   const highlightTimeoutRef = useRef<number | null>(null);
   const processedOpenRiskIdFromUrlRef = useRef<string | null>(null);
+  const processedOpenAddRiskFromUrlRef = useRef(false);
   const hasHydratedFromDbRef = useRef(false);
   const projectIdForHydrateRef = useRef<string | null>(null);
 
@@ -655,6 +657,22 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     router.replace(basePath, { scroll: false });
   }, [openRiskIdParam, risksLoading, risks, router, urlProjectId]);
 
+  /** Deep-link from simulation empty state: `/projects/:id/risks?addRisk=1` opens the add risk choice modal, then strips the query. */
+  useEffect(() => {
+    if (openAddRiskParam !== "1") {
+      processedOpenAddRiskFromUrlRef.current = false;
+      return;
+    }
+    if (processedOpenAddRiskFromUrlRef.current) return;
+
+    const basePath = urlProjectId ? riskaiPath(`/projects/${urlProjectId}/risks`) : riskaiPath("/risk-register");
+    processedOpenAddRiskFromUrlRef.current = true;
+    if (!contentReadOnly) {
+      setShowAddNewRiskChoiceModal(true);
+    }
+    router.replace(basePath, { scroll: false });
+  }, [openAddRiskParam, contentReadOnly, router, urlProjectId]);
+
   const handleRetryLoad = useCallback(() => {
     setRisksLoadError(null);
     setLoadRetryKey((k) => k + 1);
@@ -668,14 +686,13 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         <Button
           type="button"
           variant="primary"
-          size="sm"
           onClick={handleSaveToServer}
           disabled={saveDisabled}
           title={saveDisabled && !saveToServerLoading ? "No changes to save" : undefined}
         >
           {saveToServerLoading ? "Saving…" : "Save"}
         </Button>
-        <Button type="button" variant="secondary" size="sm" onClick={() => setShowAddNewRiskChoiceModal(true)}>
+        <Button type="button" variant="secondary" onClick={() => setShowAddNewRiskChoiceModal(true)}>
           Generate AI Risk
         </Button>
       </div>
@@ -770,7 +787,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
     >
     <>
-    <main className={RISK_REGISTER_MAIN_CLASS}>
+    <main className={risks.length === 0 ? RISK_REGISTER_EMPTY_MAIN_CLASS : RISK_REGISTER_MAIN_CLASS}>
       <div className={registerHeaderBlockClass}>
         <RiskRegisterHeader
           projectContext={projectContext}
@@ -786,10 +803,10 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
         )}
       </div>
       {risks.length === 0 ? (
-        <Card variant="inset" className="text-center">
-          <CardBody className="py-8">
-            <p className="m-0 font-medium text-[var(--ds-text-primary)]">No risks in this project</p>
-            <p className="m-0 mt-1 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
+        <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
+          <CardContent className="py-[var(--ds-space-6)]">
+            <p className="ds-dashboard-empty-title">No risks in this project</p>
+            <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
               {contentReadOnly
                 ? "You have view-only access to this project."
                 : "Add a risk manually, from file, or with AI to get started."}
@@ -797,14 +814,14 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
             {!contentReadOnly && (
               <Button
                 type="button"
-                variant="secondary"
-                className="mt-4"
+                variant="primary"
+                className="mt-5"
                 onClick={() => setShowAddNewRiskChoiceModal(true)}
               >
                 Add risk
               </Button>
             )}
-          </CardBody>
+          </CardContent>
         </Card>
       ) : (
         <>

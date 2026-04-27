@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   applyStaleReportingLockRag,
   computeRag,
+  loadPortfolioProjectTilePayloads,
   loadPortfolioTopRiskConcentrationRows,
   REPORTING_LOCK_STALE_MS,
 } from "@/lib/dashboard/projectTileServerData";
@@ -254,6 +255,52 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
     assert.strictEqual(result.needsAttentionHealthRun.registerGapCount, 1);
     assert.strictEqual(result.needsAttentionHealthRun.staleSimulationProjectCount, 1);
     assert.strictEqual(result.needsAttentionHealthRun.projectsWithActiveRisksCount, 1);
+  });
+});
+
+describe("loadPortfolioProjectTilePayloads", () => {
+  it("can include portfolio projects without locked reporting snapshots", async () => {
+    const supabase = new FakeSupabase({
+      visualify_projects: [
+        {
+          id: "project-with-lock",
+          name: "Alpha",
+          portfolio_id: "portfolio-1",
+          created_at: "2026-01-01T00:00:00.000Z",
+        },
+        {
+          id: "project-without-lock",
+          name: "Beta",
+          portfolio_id: "portfolio-1",
+          created_at: "2026-01-02T00:00:00.000Z",
+        },
+      ],
+      visualify_project_settings: [
+        { project_id: "project-with-lock", currency: "AUD" },
+        { project_id: "project-without-lock", currency: "AUD" },
+      ],
+      riskai_risks: [],
+      riskai_simulation_snapshots: [
+        {
+          project_id: "project-with-lock",
+          locked_for_reporting: true,
+          locked_at: "2026-01-03T00:00:00.000Z",
+          created_at: "2026-01-03T00:00:00.000Z",
+        },
+      ],
+    }) as unknown as SupabaseClient;
+
+    const defaultResult = await loadPortfolioProjectTilePayloads(supabase, "portfolio-1");
+    assert.deepStrictEqual(defaultResult.projectTilePayloads.map((p) => p.id), ["project-with-lock"]);
+
+    const allProjectsResult = await loadPortfolioProjectTilePayloads(supabase, "portfolio-1", {
+      onlyProjectsWithLockedReporting: false,
+    });
+    assert.deepStrictEqual(allProjectsResult.projectTilePayloads.map((p) => p.id), [
+      "project-with-lock",
+      "project-without-lock",
+    ]);
+    assert.strictEqual(allProjectsResult.totalProjectsInPortfolio, 2);
   });
 });
 

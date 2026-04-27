@@ -20,7 +20,6 @@ import {
   clearProjectContext,
   parseProjectContext,
   parseProjectContextFromVisualifyProjectSettingsRow,
-  getContingencyPercent,
 } from "@/lib/projectContext";
 import { ProjectExcelUploadSection } from "@/components/project/ProjectExcelUploadSection";
 import { ProjectMembersSection } from "@/components/project/ProjectMembersSection";
@@ -232,7 +231,7 @@ function projectSettingsPersistFingerprint(form: ProjectContext, raw: RawNumeric
 }
 
 export type ProjectInformationPageProps = { projectId?: string | null };
-type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive";
+type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive" | "danger";
 
 export default function ProjectInformationPage({ projectId }: ProjectInformationPageProps = {}) {
   const projectPermissions = useProjectPermissions();
@@ -243,6 +242,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const riskUiReadOnly =
     Boolean(projectId) &&
     (projectPermissions == null || !projectPermissions.canEditContent);
+  const canDeleteProject = Boolean(projectId && projectPermissions?.canDeleteProject);
 
   const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<ProjectContext>(defaultContext());
@@ -253,6 +253,9 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showArchivedReviewModal, setShowArchivedReviewModal] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("overview");
   const [validation, setValidation] = useState<Record<string, string>>({});
   const router = useRouter();
@@ -525,7 +528,35 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     setValidation({});
   }, [projectId, settingsReadOnly]);
 
-  const contingencyPct = getContingencyPercent(form);
+  const confirmDeleteProject = useCallback(async () => {
+    if (!projectId || !canDeleteProject) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        portfolioId?: string | null;
+      };
+      if (!res.ok) {
+        setDeleteError(data.error ?? "Could not delete project.");
+        setDeleting(false);
+        return;
+      }
+      if (data.portfolioId) {
+        router.replace(riskaiPath(`/portfolios/${data.portfolioId}/projects`));
+      } else {
+        router.replace(riskaiPath("/portfolios"));
+      }
+      router.refresh();
+    } catch {
+      setDeleteError("Something went wrong. Try again.");
+      setDeleting(false);
+    }
+  }, [canDeleteProject, projectId, router]);
 
   const currentSettingsFingerprint = useMemo(
     () => projectSettingsPersistFingerprint(form, rawNumericFields),
@@ -598,6 +629,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           <Tab active={activeTab === "archive"} onClick={() => setActiveTab("archive")}>
             Archive
           </Tab>
+          {canDeleteProject && (
+            <Tab active={activeTab === "danger"} onClick={() => setActiveTab("danger")}>
+              Danger Zone
+            </Tab>
+          )}
         </Tabs>
       </div>
 
@@ -955,6 +991,31 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         </Card>
       )}
 
+      {activeTab === "danger" && canDeleteProject && (
+        <Card className="ds-project-settings-section-card">
+          <CardHeader className="ds-project-settings-card-header">
+            <h2 className="ds-project-settings-card-title text-[var(--ds-status-danger-fg)]">Danger Zone</h2>
+          </CardHeader>
+          <CardBody className="ds-project-settings-card-body">
+            <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
+              Permanently delete this project. This removes project risks, simulation runs, settings,
+              team membership, and pending invitations.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteOpen(true);
+              }}
+              className="border-[var(--ds-status-danger-border)] text-[var(--ds-status-danger-fg)] hover:border-[var(--ds-status-danger-border)] hover:bg-[var(--ds-status-danger-bg)]"
+            >
+              Delete project
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
       {saveError && (
         <Callout
           status="danger"
@@ -1021,6 +1082,58 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           </Card>
         </div>
       )}
+
+      {deleteOpen && canDeleteProject ? (
+        <div
+          className="ds-modal-backdrop z-[120]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-project-title"
+          aria-describedby="delete-project-desc"
+          onClick={() => !deleting && setDeleteOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="delete-project-title"
+              className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
+            >
+              Delete project?
+            </h3>
+            <p id="delete-project-desc" className="mt-2 text-sm text-[var(--ds-text-secondary)]">
+              Are you sure? This can&apos;t be undone. The project
+              {form.projectName.trim() ? ` "${form.projectName.trim()}"` : ""} will be deleted,
+              including its risks, simulation runs, settings, team membership, and pending invitations.
+            </p>
+            {deleteError && (
+              <Callout status="danger" role="alert" className="mt-3 text-[length:var(--ds-text-sm)] leading-relaxed">
+                {deleteError}
+              </Callout>
+            )}
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={deleting}
+                onClick={() => void confirmDeleteProject()}
+                className="bg-[var(--ds-status-danger-strong-bg)] text-[var(--ds-status-danger-strong-fg)] shadow-none hover:bg-[var(--ds-status-danger-strong-bg)] hover:opacity-90"
+              >
+                {deleting ? "Deleting…" : "Yes, delete this project"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {projectId && (
         <RiskRegisterLookupProviders

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Card, CardBody } from "@visualify/design-system";
 import {
   COST_COVERAGE_COMBINED_TILE_TITLE,
   DocumentKpiModal,
@@ -77,6 +79,12 @@ const PORTFOLIO_BREAKDOWN_MODAL_TITLES: Record<PortfolioBreakdownModalId, string
   topCostOpportunity: "Top 5 Cost Opportunities",
   topScheduleOpportunity: "Top 5 Schedule Opportunities",
 };
+
+const primaryLinkButtonClass =
+  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] bg-[var(--ds-primary)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] transition-all duration-150 ease-out hover:bg-[var(--ds-primary-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
+
+const secondaryLinkButtonClass =
+  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-button-secondary)] transition-all duration-150 ease-out hover:bg-[var(--ds-surface-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
 /** Fixed order for portfolio overview cards 6–13 — same order as {@link DocumentKpiModal} Previous / Next. */
 const PORTFOLIO_BREAKDOWN_MODAL_CYCLE: PortfolioBreakdownModalId[] = [
@@ -527,6 +535,47 @@ export function PortfolioOverviewContent({
     reportingVsPriorMonthTrends?.activeRisks ?? null,
     reportingVsPriorMonthTrends?.needsAttention ?? null,
   ];
+
+  const hasReportableData = projectTilePayloads.length > 0;
+
+  if (!hasReportableData) {
+    return (
+      <main className="ds-document-page">
+        <section aria-labelledby="portfolio-overview-empty-heading">
+          <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
+            <CardBody className="py-[var(--ds-space-6)]">
+              <p id="portfolio-overview-empty-heading" className="ds-dashboard-empty-title">
+                Portfolio overview will appear once reporting data is available
+              </p>
+              <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                Run and lock monthly reporting for at least one project to populate portfolio risk
+                rating, exposure, health, drivers, and breakdowns.
+              </p>
+              <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Link
+                  href={riskaiPath(`/portfolios/${portfolioId}/projects`)}
+                  className={primaryLinkButtonClass}
+                >
+                  Go to Projects
+                </Link>
+                <Link
+                  href={riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`)}
+                  className={secondaryLinkButtonClass}
+                >
+                  Portfolio Settings
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        </section>
+        <FirstProjectPromptModal
+          open={showFirstProjectPrompt}
+          onStartProjectOnboarding={onStartFirstProjectOnboarding}
+          onDismiss={onDismissFirstProjectPrompt}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className="ds-document-page">

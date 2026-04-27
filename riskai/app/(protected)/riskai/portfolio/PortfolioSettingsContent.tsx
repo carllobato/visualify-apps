@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PortfolioMembersSection } from "@/components/portfolio/PortfolioMembersSection";
 import { SettingsPermissionNotice } from "@/components/settings/SettingsPermissionNotice";
+import { riskaiPath } from "@/lib/routes";
 import {
   projectSettingsFieldWidthClass,
   projectSettingsInputClass,
@@ -55,7 +56,7 @@ const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
 const portfolioDetailsValueClass =
   "font-mono text-xs text-[var(--ds-text-primary)] break-all";
 
-type PortfolioSettingsTab = "general" | "members" | "details";
+type PortfolioSettingsTab = "general" | "members" | "details" | "danger";
 
 export type PortfolioSettingsContentProps = {
   portfolioId: string;
@@ -91,6 +92,9 @@ export default function PortfolioSettingsContent({
   const [validation, setValidation] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<PortfolioSettingsTab>("general");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   /** Match PATCH payload normalization so “dirty” matches what would actually be saved. */
   const normalizeDescriptionForCompare = useCallback((raw: string | null | undefined) => {
@@ -202,6 +206,32 @@ export default function PortfolioSettingsContent({
 
   const readOnlyChrome = !canEditPortfolioDetails ? ` ${projectSettingsReadOnlyFieldClass}` : "";
 
+  const confirmDeletePortfolio = useCallback(async () => {
+    if (!canEditPortfolioDetails) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/portfolios/${portfolioId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        code?: string;
+      };
+      if (!res.ok) {
+        setDeleteError(data.error ?? "Could not delete portfolio.");
+        setDeleting(false);
+        return;
+      }
+      router.replace(riskaiPath("/portfolios"));
+      router.refresh();
+    } catch {
+      setDeleteError("Something went wrong. Try again.");
+      setDeleting(false);
+    }
+  }, [canEditPortfolioDetails, portfolioId, router]);
+
   return (
     <main className="w-full px-4 py-6 sm:px-6">
       {permissionNotice && (
@@ -219,6 +249,11 @@ export default function PortfolioSettingsContent({
           <Tab active={activeTab === "details"} onClick={() => setActiveTab("details")}>
             Details
           </Tab>
+          {canEditPortfolioDetails && (
+            <Tab active={activeTab === "danger"} onClick={() => setActiveTab("danger")}>
+              Danger Zone
+            </Tab>
+          )}
         </Tabs>
       </div>
 
@@ -353,6 +388,80 @@ export default function PortfolioSettingsContent({
           </CardBody>
         </Card>
       )}
+
+      {activeTab === "danger" && canEditPortfolioDetails && (
+        <Card>
+          <CardHeader className="!px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-status-danger-fg)]">Danger Zone</h2>
+          </CardHeader>
+          <CardBody className="!px-4 !py-3">
+            <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
+              Permanently delete this portfolio and all projects under it. This also removes project risks,
+              simulation runs, settings, team membership, and pending invitations.
+            </p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteOpen(true);
+              }}
+              className="border-[var(--ds-status-danger-border)] text-[var(--ds-status-danger-fg)] hover:border-[var(--ds-status-danger-border)] hover:bg-[var(--ds-status-danger-bg)]"
+            >
+              Delete portfolio
+            </Button>
+          </CardBody>
+        </Card>
+      )}
+
+      {deleteOpen ? (
+        <div
+          className="ds-modal-backdrop z-[120]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-portfolio-title"
+          aria-describedby="delete-portfolio-desc"
+          onClick={() => !deleting && setDeleteOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="delete-portfolio-title"
+              className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
+            >
+              Delete portfolio?
+            </h3>
+            <p id="delete-portfolio-desc" className="mt-2 text-sm text-[var(--ds-text-secondary)]">
+              Are you sure? This can&apos;t be undone. The portfolio and every project under it will be
+              deleted, including their risks, simulation runs, settings, team membership, and pending
+              invitations.
+            </p>
+            {deleteError && (
+              <Callout status="danger" role="alert" className="mt-3 text-[length:var(--ds-text-sm)] leading-relaxed">
+                {deleteError}
+              </Callout>
+            )}
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+              <Button
+                variant="secondary"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                disabled={deleting}
+                onClick={() => void confirmDeletePortfolio()}
+                className="bg-[var(--ds-status-danger-strong-bg)] text-[var(--ds-status-danger-strong-fg)] shadow-none hover:bg-[var(--ds-status-danger-strong-bg)] hover:opacity-90"
+              >
+                {deleting ? "Deleting…" : "Yes, delete this portfolio"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -30,7 +30,7 @@ export function Button({
   const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
     primary:
       "bg-[var(--ds-primary)] text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] " +
-      "hover:bg-[var(--ds-primary-hover)] active:brightness-[0.97] disabled:shadow-none " +
+      "hover:bg-[var(--ds-primary-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] active:brightness-[0.97] disabled:shadow-none " +
       "disabled:hover:bg-[var(--ds-primary)] disabled:hover:brightness-100 disabled:active:brightness-100",
     secondary:
       "border-0 bg-[var(--ds-surface)] text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-button-secondary)] " +

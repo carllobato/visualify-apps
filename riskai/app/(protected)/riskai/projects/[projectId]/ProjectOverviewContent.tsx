@@ -6,6 +6,7 @@ import { useCallback, useMemo, useEffect, useState } from "react";
 import {
   Button,
   Card,
+  CardBody,
   Table,
   TableBody,
   TableCell,
@@ -109,6 +110,12 @@ const EXPOSURE_CHART_MARGIN = { top: 8, right: 8, left: 4, bottom: 4 };
 
 /** Same chrome as `SummaryTile` / portfolio KPI tiles (document tile tokens + hover). */
 const overviewDocumentTileClass = "ds-document-tile-panel ds-document-tile-panel--interactive";
+
+const primaryLinkButtonClass =
+  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] bg-[var(--ds-primary)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-primary-text)] shadow-[var(--ds-shadow-sm)] transition-all duration-150 ease-out hover:bg-[var(--ds-primary-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] active:brightness-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
+
+const secondaryLinkButtonClass =
+  "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-button-secondary)] transition-all duration-150 ease-out hover:bg-[var(--ds-surface-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
 /** Tile section label: aligned with `SummaryTile` title typography. */
 const overviewTileTitleClass = "text-sm font-medium text-[var(--ds-text-secondary)] m-0 mb-1";
@@ -1647,25 +1654,37 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
   }, [overviewHeaderEnd, setExtras]);
 
   const simulationHref = projectId ? riskaiPath(`/projects/${projectId}/simulation`) : DASHBOARD_PATH;
+  const riskRegisterHref = projectId ? riskaiPath(`/projects/${projectId}/risks`) : DASHBOARD_PATH;
+  const projectSettingsHref = projectId ? riskaiPath(`/projects/${projectId}/settings`) : DASHBOARD_PATH;
 
   if (!reportingRunRiskCountSnapshotRow) {
     return (
       <main className="ds-document-page pb-[var(--ds-space-3)]">
-        <div className={`${overviewDocumentTileClass} max-w-lg mx-auto p-8 text-center`}>
-          <p className="text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)] m-0">
-            {unpublishedMode ? "No unlocked simulation data" : "No reporting run locked"}
-          </p>
-          <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] m-0 mt-2 max-w-md mx-auto">
-            {unpublishedMode
-              ? "Run a simulation to see unpublished results here, or choose a reporting month above."
-              : "Lock a simulation for reporting to populate this overview. Reporting uses only the latest locked run—not draft or unlocked simulations."}
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            <Link href={simulationHref} className="no-underline">
-              <Button>Go to Simulation</Button>
-            </Link>
-          </div>
-        </div>
+        <section aria-labelledby="project-overview-empty-heading">
+          <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
+            <CardBody className="py-[var(--ds-space-6)]">
+              <p id="project-overview-empty-heading" className="ds-dashboard-empty-title">
+                {unpublishedMode ? "No unlocked simulation data" : "No reporting run locked"}
+              </p>
+              <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                {unpublishedMode
+                  ? "Run a simulation to see unpublished results here, or choose a reporting month above."
+                  : "Lock a simulation for reporting to populate this overview. Reporting uses only the latest locked run—not draft or unlocked simulations."}
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <Link href={simulationHref} className={primaryLinkButtonClass}>
+                  Go to Simulation
+                </Link>
+                <Link href={riskRegisterHref} className={secondaryLinkButtonClass}>
+                  Project Risk Register
+                </Link>
+                <Link href={projectSettingsHref} className={secondaryLinkButtonClass}>
+                  Project Settings
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        </section>
       </main>
     );
   }

@@ -7,10 +7,6 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
 import { Card, CardBody } from "@visualify/design-system";
 
-/** Same shell rhythm as portfolio overview + project overview document column. */
-const portfolioProjectsMainClass =
-  "min-h-full w-full bg-transparent text-[var(--ds-text-primary)] px-4 sm:px-6 py-8";
-
 /** Portfolio and project list access are enforced by Supabase RLS (owner or portfolio_members). */
 export default async function PortfolioProjectsPage({
   params,
@@ -30,46 +26,47 @@ export default async function PortfolioProjectsPage({
     redirect(riskaiPath("/not-found"));
   }
 
-  const { projectTilePayloads: projectTiles, totalProjectsInPortfolio } =
-    await loadPortfolioProjectTilePayloads(supabase, portfolioId);
+  const { projectTilePayloads: projectTiles } = await loadPortfolioProjectTilePayloads(supabase, portfolioId, {
+    onlyProjectsWithLockedReporting: false,
+  });
+
+  if (projectTiles.length === 0) {
+    return (
+      <main className="ds-document-page">
+        <section aria-labelledby="portfolio-projects-empty-heading">
+          <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
+            <CardBody className="py-[var(--ds-space-6)]">
+              <p id="portfolio-projects-empty-heading" className="ds-dashboard-empty-title">
+                No projects in this portfolio yet
+              </p>
+              <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
+                Create project
+              </OpenProjectOnboardingLink>
+              <div className="mt-5">
+                <Link
+                  href={riskaiPath("/projects")}
+                  className="ds-text-link-muted text-[length:var(--ds-text-sm)]"
+                >
+                  View all your projects
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        </section>
+      </main>
+    );
+  }
 
   return (
-    <main className={portfolioProjectsMainClass}>
-      <p className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-        Open a project for its overview, risk register, and simulation. Create a new project to add it to
-        this portfolio.
-      </p>
-
-      {projectTiles.length === 0 ? (
-        <Card variant="inset" className="mx-auto max-w-lg text-center">
-          <CardBody className="py-[var(--ds-space-6)]">
-            {totalProjectsInPortfolio === 0 ? (
-              <>
-                <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
-                <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
-                  Create project
-                </OpenProjectOnboardingLink>
-              </>
-            ) : (
-              <>
-                <p className="ds-dashboard-empty-title">No locked reporting snapshots yet</p>
-                <p className="m-0 mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-                  Open a project, run simulation, and save a monthly reporting version. Only projects with a saved
-                  reporting run appear in this portfolio list.
-                </p>
-              </>
-            )}
-            <div className="mt-5">
-              <Link
-                href={riskaiPath("/projects")}
-                className="ds-text-link-muted text-[length:var(--ds-text-sm)]"
-              >
-                View all your projects
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
-      ) : (
+    <main className="ds-document-page">
+      <section aria-labelledby="portfolio-projects-heading">
+        <p
+          id="portfolio-projects-heading"
+          className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]"
+        >
+          Open a project for its overview, risk register, and simulation. Create a new project to add it to
+          this portfolio.
+        </p>
         <div className="flex flex-col gap-[var(--ds-space-4)]">
           <div className="ds-dashboard-project-grid">
             {projectTiles.map((payload) => (
@@ -86,7 +83,7 @@ export default async function PortfolioProjectsPage({
             </span>
           </OpenProjectOnboardingLink>
         </div>
-      )}
+      </section>
     </main>
   );
 }

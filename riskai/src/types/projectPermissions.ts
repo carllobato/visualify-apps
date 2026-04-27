@@ -11,5 +11,7 @@ export type ProjectPermissions = {
   canEditContent: boolean;
   /** project_members CRUD */
   canManageMembers: boolean;
+  /** Destructive project deletion; requires owner access on both the project and its portfolio. */
+  canDeleteProject: boolean;
   accessMode: ProjectAccessMode;
 };

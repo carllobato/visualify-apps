@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import {
   Button,
   Callout,
+  Card,
+  CardContent,
   DashboardTileKpi,
   Label,
   Table,
@@ -95,7 +97,8 @@ const DISTRIBUTION_BIN_COUNT = 100;
 
 /** Match project/portfolio overview main padding. */
 const simulationPageMainClass =
-  "min-h-full w-full bg-transparent text-[var(--ds-text-primary)] px-4 sm:px-6 py-8";
+  "min-w-0 px-6 pb-6 pt-3 text-[var(--ds-text-primary)]";
+const simulationEmptyPageMainClass = "min-w-0 px-6 py-6 text-[var(--ds-text-primary)]";
 
 /** Same chrome as `SummaryTile` (document tile + hover). */
 const simulationDocumentTileClass = "ds-document-tile-panel ds-document-tile-panel--interactive";
@@ -1859,6 +1862,13 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   /** Entry card: no auto-loaded results; user must run a sim or load the reporting snapshot manually. */
   const showDefaultSimulationActions =
     !initializingProjectRun && !showResults && !loadingSnapshot;
+  const showNoRisksEmptyState = showDefaultSimulationActions && risks.length === 0;
+  const addRiskPath = useMemo(() => {
+    const projectId = effectiveProjectId?.trim();
+    return projectId
+      ? riskaiPath(`/projects/${projectId}/risks?addRisk=1`)
+      : riskaiPath("/risk-register?addRisk=1");
+  }, [effectiveProjectId]);
   const isReportingVersion =
     currentSimulationId != null &&
     lockedSnapshotRow != null &&
@@ -2571,7 +2581,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   }, [urlProjectId, setPageHeaderExtras, simulationHeaderActions]);
 
   return (
-    <main className={simulationPageMainClass}>
+    <main className={showNoRisksEmptyState ? simulationEmptyPageMainClass : simulationPageMainClass}>
       {hasDraftRisks && (
         <Callout status="warning" className="mt-2 text-right" role="status">
           Review and save all draft risks in the Risk Register before running simulation.
@@ -2602,7 +2612,30 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
         <NeutralRiskaiLoading variant="content" srLabel="Loading simulation data" />
       )}
 
-      {showDefaultSimulationActions && (
+      {showNoRisksEmptyState && (
+        <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
+          <CardContent className="py-[var(--ds-space-6)]">
+            <p className="ds-dashboard-empty-title">No risks in this project</p>
+            <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+              {simulationReadOnly
+                ? "You have view-only access to this project."
+                : "Add a risk manually, from file, or with AI to get started."}
+            </p>
+            {!simulationReadOnly && (
+              <Button
+                type="button"
+                variant="primary"
+                className="mt-5"
+                onClick={() => router.push(addRiskPath)}
+              >
+                Add risk
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {showDefaultSimulationActions && !showNoRisksEmptyState && (
         <div className={`${simulationDocumentTileClass} mt-0 p-6 text-center`}>
           <p className="m-0 font-medium text-[var(--ds-text-primary)]">
             {lockedSnapshotRow

@@ -166,7 +166,7 @@ export type LoadPortfolioProjectTilePayloadsResult = GetProjectTilePayloadsResul
 export type GetProjectTilePayloadsOptions = {
   /**
    * When true, only include projects that have at least one locked-for-reporting snapshot.
-   * Used for portfolio dashboards (projects without a saved monthly run are omitted).
+   * Used for portfolio reporting dashboards (projects without a saved monthly run are omitted).
    */
   onlyProjectsWithLockedReporting?: boolean;
   /** Override clock for stale-lock checks (tests). */
@@ -454,7 +454,8 @@ export function sortProjectTilesAlphabetically(tiles: ProjectTilePayload[]): Pro
 }
 
 /**
- * Projects in a portfolio with RAG payloads — same data and ordering as the portfolio projects page (`/portfolios/:id/projects`).
+ * Projects in a portfolio with RAG payloads. Reporting dashboards can scope this to projects with
+ * locked snapshots; the portfolio projects page requests all accessible projects.
  */
 /** Per-project register-aligned severity counts (active risks only — Open / Monitoring / Mitigating). */
 export type PortfolioProjectRiskSeverityRow = {
@@ -1421,7 +1422,10 @@ export async function loadPortfolioTopRiskConcentrationRows(
 export async function loadPortfolioProjectTilePayloads(
   supabase: SupabaseClient,
   portfolioId: string,
-  loadOptions?: { reportingMonthYear?: string | null }
+  loadOptions?: {
+    reportingMonthYear?: string | null;
+    onlyProjectsWithLockedReporting?: boolean;
+  }
 ): Promise<LoadPortfolioProjectTilePayloadsResult> {
   const { data: projects, error } = await supabase
     .from("visualify_projects")
@@ -1440,11 +1444,12 @@ export async function loadPortfolioProjectTilePayloads(
   }));
 
   const reportingMonthYear = loadOptions?.reportingMonthYear?.trim();
+  const onlyProjectsWithLockedReporting = loadOptions?.onlyProjectsWithLockedReporting ?? true;
   const { projectTilePayloads, portfolioReportingFooter } = await getProjectTilePayloads(
     supabase,
     asAccessible,
     {
-      onlyProjectsWithLockedReporting: true,
+      onlyProjectsWithLockedReporting,
       ...(reportingMonthYear ? { reportingMonthYear } : {}),
     }
   );

@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { supabaseServerClient } from "@/lib/supabase/server";
+import { resolvePortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAccess";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import type { ProjectPermissions } from "@/types/projectPermissions";
 import { resolveProjectPermissions } from "@/lib/db/projectPermissions.logic";
@@ -65,13 +66,37 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
 
   if (!permissions) return null;
 
+  let canEditPortfolioDetails = false;
+  if (permissions.accessMode === "owner" && data.portfolio_id) {
+    const { data: portfolio } = await supabase
+      .from("visualify_portfolios")
+      .select("owner_user_id")
+      .eq("id", data.portfolio_id)
+      .maybeSingle();
+
+    const { data: portfolioMemberRow } = await supabase
+      .from("visualify_portfolio_members")
+      .select("role")
+      .eq("portfolio_id", data.portfolio_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    canEditPortfolioDetails = resolvePortfolioMemberCapabilityFlags(
+      portfolio?.owner_user_id === userId,
+      portfolioMemberRow?.role as string | undefined
+    ).canEditPortfolioDetails;
+  }
+
   return {
     project: {
       id: data.id,
       name: data.name,
       created_at: data.created_at ?? null,
     },
-    permissions,
+    permissions: {
+      ...permissions,
+      canDeleteProject: permissions.accessMode === "owner" && canEditPortfolioDetails,
+    },
     ownerUserId: data.owner_user_id as string,
     portfolioId: data.portfolio_id ?? null,
   };

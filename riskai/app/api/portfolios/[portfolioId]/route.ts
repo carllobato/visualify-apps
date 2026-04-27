@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
+import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -153,4 +154,119 @@ export async function PATCH(
       reporting_currency !== undefined ? reporting_currency : result.portfolio.reporting_currency,
     reporting_unit: reporting_unit !== undefined ? reporting_unit : result.portfolio.reporting_unit,
   });
+}
+
+/**
+ * DELETE /api/portfolios/[portfolioId] — Delete the portfolio container. Owner-level only.
+ *
+ * Projects under the portfolio are deleted too. Child tables are removed explicitly so the behaviour
+ * does not depend on mixed historical FK cascade definitions.
+ */
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ portfolioId: string }> }
+) {
+  const user = await requireUser();
+  if (user instanceof NextResponse) return user;
+
+  const { portfolioId } = await context.params;
+  if (!portfolioId) {
+    return NextResponse.json({ error: "Portfolio ID required" }, { status: 400 });
+  }
+
+  const supabase = await supabaseServerClient();
+  const result = await assertPortfolioAdminAccess(portfolioId, supabase, user.id);
+
+  if ("error" in result) {
+    if (result.error === "not_found") {
+      return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (!result.canEditPortfolioDetails) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  let admin;
+  try {
+    admin = supabaseAdminClient();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const serviceRoleMissing = message.includes("SUPABASE_SERVICE_ROLE_KEY");
+    return NextResponse.json(
+      {
+        error: serviceRoleMissing
+          ? "Portfolio deletion is not configured: add SUPABASE_SERVICE_ROLE_KEY to the server environment."
+          : "Portfolio deletion is not configured.",
+        code: serviceRoleMissing ? "SERVICE_ROLE_MISSING" : "CONFIGURATION_ERROR",
+      },
+      { status: 503 }
+    );
+  }
+
+  const { data: projectRows, error: projectsLoadError } = await admin
+    .from("visualify_projects")
+    .select("id")
+    .eq("portfolio_id", portfolioId);
+
+  if (projectsLoadError) {
+    return NextResponse.json({ error: projectsLoadError.message }, { status: 500 });
+  }
+
+  const projectIds = (projectRows ?? [])
+    .map((row) => (typeof row.id === "string" ? row.id : null))
+    .filter((id): id is string => Boolean(id));
+
+  if (projectIds.length > 0) {
+    const projectDeleteSteps = [
+      admin
+        .from("visualify_invitations")
+        .delete()
+        .eq("resource_type", "project")
+        .in("resource_id", projectIds),
+      admin.from("riskai_simulation_snapshots").delete().in("project_id", projectIds),
+      admin.from("riskai_risks").delete().in("project_id", projectIds),
+      admin.from("riskai_project_owners").delete().in("project_id", projectIds),
+      admin.from("visualify_project_members").delete().in("project_id", projectIds),
+      admin.from("visualify_project_settings").delete().in("project_id", projectIds),
+    ];
+
+    for (const step of projectDeleteSteps) {
+      const { error } = await step;
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+
+    const { error: projectsDeleteError } = await admin
+      .from("visualify_projects")
+      .delete()
+      .in("id", projectIds);
+
+    if (projectsDeleteError) {
+      return NextResponse.json({ error: projectsDeleteError.message }, { status: 500 });
+    }
+  }
+
+  const { error: invitationsError } = await admin
+    .from("visualify_invitations")
+    .delete()
+    .eq("resource_type", "portfolio")
+    .eq("resource_id", portfolioId);
+
+  if (invitationsError) {
+    return NextResponse.json({ error: invitationsError.message }, { status: 500 });
+  }
+
+  const { error: deleteError } = await admin
+    .from("visualify_portfolios")
+    .delete()
+    .eq("id", portfolioId);
+
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
