@@ -15,7 +15,7 @@ export type ProjectAccessBundle = {
 
 /**
  * Returns the project if the current session can read it.
- * RLS allows: table owner, project_members (any role), or portfolio access.
+ * App access allows: table owner or direct project_members (any role).
  */
 export async function getProjectIfAccessible(
   projectId: string
@@ -33,7 +33,7 @@ export async function getProjectIfAccessible(
 
 /**
  * Project row + permission flags for the given user (must match session for RLS).
- * Used by API routes and assertProjectAccess; keeps checks aligned with project_members + RLS.
+ * Used by API routes and assertProjectAccess; keeps checks aligned with project_members.
  * Request-cached per (projectId, userId) so nested routes can reuse the layout’s fetch without another round trip.
  */
 export const getProjectAccessForUser = cache(async function getProjectAccessForUser(
@@ -62,6 +62,8 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     currentUserId: userId,
     memberRole,
   });
+
+  if (!permissions) return null;
 
   return {
     project: {

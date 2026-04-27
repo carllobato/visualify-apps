@@ -4,7 +4,6 @@
  * - project_members.owner → same as table owner for app checks.
  * - project_members.editor → edit project row + risks/snapshots; may invite members (not change roles / remove).
  * - project_members.viewer → read-only project + risks.
- * - No member row but portfolio access → edit risks/snapshots only (not project row).
  */
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import type { ProjectPermissions } from "@/types/projectPermissions";
@@ -12,18 +11,18 @@ import type { ProjectPermissions } from "@/types/projectPermissions";
 type ResolveArgs = {
   tableOwnerUserId: string;
   currentUserId: string;
-  /** Null when the user has no project_members row (e.g. portfolio-only access). */
+  /** Null when the user has no project_members row. */
   memberRole: ProjectMemberRole | null;
 };
 
 /**
- * Pure helper: same rules as RLS-backed behaviour (see supabase/migrations/20250328_project_members.sql).
+ * Pure helper: project access requires table ownership or a direct project_members row.
  */
 export function resolveProjectPermissions({
   tableOwnerUserId,
   currentUserId,
   memberRole,
-}: ResolveArgs): ProjectPermissions {
+}: ResolveArgs): ProjectPermissions | null {
   const isTableOwner = tableOwnerUserId === currentUserId;
 
   if (isTableOwner) {
@@ -62,11 +61,5 @@ export function resolveProjectPermissions({
     };
   }
 
-  // Portfolio (or legacy) path: can mutate risks/snapshots per RLS, not the projects row.
-  return {
-    canEditProjectMetadata: false,
-    canEditContent: true,
-    canManageMembers: false,
-    accessMode: "portfolio",
-  };
+  return null;
 }

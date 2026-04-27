@@ -1,8 +1,8 @@
 /**
- * Effective project capabilities for the current user (table owner, project_members role, or portfolio access).
- * Aligns with RLS: viewers cannot mutate risks/snapshots; portfolio-only users cannot PATCH the project row.
+ * Effective project capabilities for the current user (table owner or direct project_members role).
+ * Viewers cannot mutate risks/snapshots.
  */
-export type ProjectAccessMode = "owner" | "editor" | "viewer" | "portfolio";
+export type ProjectAccessMode = "owner" | "editor" | "viewer";
 
 export type ProjectPermissions = {
   /** PATCH project (name, etc.); project settings form */

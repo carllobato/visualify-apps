@@ -157,13 +157,13 @@ export type GetAccessibleProjectsResult =
   | { ok: false; error: string };
 
 /**
- * Server-only: projects the user may see — table owner, `project_members`, or projects in a portfolio
- * they can access. Uses explicit queries so behaviour matches getAccessiblePortfolios; RLS still applies.
+ * Server-only: projects the user may see — table owner or direct `project_members`.
+ * Portfolio membership does not grant project access.
  */
 export async function getAccessibleProjects(
   supabase: SupabaseClient,
   userId: string,
-  accessiblePortfolioIds: string[]
+  _accessiblePortfolioIds: string[]
 ): Promise<GetAccessibleProjectsResult> {
   const [ownedResult, membersIndexResult] = await Promise.all([
     supabase
@@ -203,20 +203,6 @@ export async function getAccessibleProjects(
     memberProjects = data ?? [];
   }
 
-  let sharedProjects: { id: string; name: string | null; created_at: string | null }[] = [];
-  if (accessiblePortfolioIds.length > 0) {
-    const { data, error: sharedError } = await supabase
-      .from("visualify_projects")
-      .select("id, name, created_at")
-      .in("portfolio_id", accessiblePortfolioIds)
-      .order("created_at", { ascending: true });
-
-    if (sharedError) {
-      return { ok: false, error: sharedError.message };
-    }
-    sharedProjects = data ?? [];
-  }
-
   const rowToAccessible = (p: { id: string; name: string | null; created_at: string | null }): AccessibleProject => ({
     id: p.id,
     name: p.name ?? "",
@@ -245,12 +231,6 @@ export async function getAccessibleProjects(
     const prev = byId.get(p.id);
     byId.set(p.id, prev ? mergeRows(prev, next) : next);
   }
-  for (const p of sharedProjects) {
-    const next = rowToAccessible(p);
-    const prev = byId.get(p.id);
-    byId.set(p.id, prev ? mergeRows(prev, next) : next);
-  }
-
   const merged = Array.from(byId.values()).sort((a, b) => {
     const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
     const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
