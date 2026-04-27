@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { canonicalUserId, coerceProfileFromUnknown } from "@/lib/profileDisplayCoerce";
 import type {
   ProjectMemberRole,
@@ -33,11 +34,6 @@ import {
   MEMBERS_ROLE_COLUMN_WIDTH,
   membersActionsSlotInnerClass,
   membersActionsSlotOuterClass,
-  membersAddMemberCardCellClass,
-  membersAddMemberCardCellClassEmail,
-  membersAddMemberCardCellClassRole,
-  membersAddMemberCardGridClass,
-  membersAddMemberRoleSelectClass,
   membersTableCurrentUserRowClass,
   projectSettingsInputClass,
   projectSettingsSelectClass,
@@ -130,9 +126,10 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const [addEmail, setAddEmail] = useState("");
   const [addRole, setAddRole] = useState<ProjectMemberRole | "">("");
   const [addError, setAddError] = useState<string | null>(null);
-  const [inviteOptionAvailable, setInviteOptionAvailable] = useState(false);
+  const [addAttempted, setAddAttempted] = useState(false);
   const [rowActionError, setRowActionError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -192,18 +189,35 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
     return ROLE_OPTIONS.map(({ value }) => `${value[0].toUpperCase()}${value.slice(1)}: ${semantics[value]}`).join("\n");
   }, [roleSemantics]);
 
-  const clearInviteOption = () => setInviteOptionAvailable(false);
+  const closeAddMemberModal = useCallback(() => {
+    setIsAddMemberModalOpen(false);
+    setAddError(null);
+    setAddAttempted(false);
+  }, []);
 
-  const onSendInvite = async () => {
+  useEffect(() => {
+    if (!isAddMemberModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeAddMemberModal();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [closeAddMemberModal, isAddMemberModalOpen]);
+
+  const onInvite = async () => {
+    setAddAttempted(true);
     setAddError(null);
     setRowActionError(null);
     const fn = addFirstName.trim();
     const sn = addSurname.trim();
     const email = addEmail.trim();
-    if (!fn || !sn) {
-      setAddError("Enter first name and surname.");
-      return;
-    }
     if (!email) {
       setAddError("Enter an email address.");
       return;
@@ -228,6 +242,16 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         message?: string;
       };
 
+      if (res.ok && data?.ok === true && (data.invitation_sent === true || data.already_member === true)) {
+        setAddFirstName("");
+        setAddSurname("");
+        setAddEmail("");
+        setAddRole("");
+        setAddAttempted(false);
+        setIsAddMemberModalOpen(false);
+        await load();
+        return;
+      }
       if (res.status === 503 && data?.error === "INVITE_NOT_CONFIGURED") {
         setAddError(data.message ?? "Invitations are not configured on the server.");
         return;
@@ -236,87 +260,11 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
         setAddError(data.message ?? "Permission denied.");
         return;
       }
-      if (res.ok) {
-        setAddFirstName("");
-        setAddSurname("");
-        setAddEmail("");
-        setAddRole("");
-        setInviteOptionAvailable(false);
-        await load();
-        return;
-      }
       if (!res.ok) {
         setAddError(data?.message ?? data?.error ?? "Could not send invitation.");
         return;
       }
-    } finally {
-      setPendingId(null);
-    }
-  };
-
-  const onAdd = async () => {
-    setAddError(null);
-    setInviteOptionAvailable(false);
-    setRowActionError(null);
-    const fn = addFirstName.trim();
-    const sn = addSurname.trim();
-    const email = addEmail.trim();
-    if (!fn || !sn) {
-      setAddError("Enter first name and surname.");
-      return;
-    }
-    if (!email) {
-      setAddError("Enter an email address.");
-      return;
-    }
-    if (addRole === "") {
-      setAddError(ADD_MEMBER_ROLE_VALIDATION_ERROR);
-      return;
-    }
-    setPendingId("__add__");
-    try {
-      const res = await fetch(`/api/projects/${projectId}/members`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: addRole, first_name: fn, surname: sn }),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        ok?: boolean;
-        already_member?: boolean;
-        invitation_sent?: boolean;
-        error?: string;
-        message?: string;
-      };
-
-      if (res.status === 400 && data?.error === "NAME_MISMATCH") {
-        setAddError(data.message ?? "Name does not match the profile for this email.");
-        return;
-      }
-      if (res.status === 404 && data?.error === "USER_NOT_FOUND") {
-        setAddError(
-          data.message ??
-            "No account found for this email. Send an invitation so they can sign up and join this project, or ask them to register first."
-        );
-        setInviteOptionAvailable(true);
-        return;
-      }
-      if (res.status === 403 && data?.error === "PERMISSION_DENIED") {
-        setAddError(data.message ?? "Permission denied.");
-        return;
-      }
-      if (res.ok) {
-        setAddFirstName("");
-        setAddSurname("");
-        setAddEmail("");
-        setAddRole("");
-        await load();
-        return;
-      }
-      if (!res.ok) {
-        setAddError(data?.message ?? data?.error ?? "Could not add member.");
-        return;
-      }
+      setAddError(data?.message ?? data?.error ?? "Could not send invitation.");
     } finally {
       setPendingId(null);
     }
@@ -417,8 +365,9 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
               <LoadingPlaceholderCompact label="Loading members" />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table className="table-fixed w-full [&_tbody_td]:py-[10px] [&_thead_th]:py-1.5 [&_thead_th]:text-[11px] [&_thead_th]:text-[var(--ds-text-muted)]">
+            <div className="px-4 py-3">
+              <div className="overflow-x-auto rounded-[var(--ds-radius-sm)] border border-[var(--ds-border-subtle)]">
+                <Table className="table-fixed w-full [&_tbody_td]:py-[10px] [&_thead_th]:py-1.5 [&_thead_th]:text-[11px] [&_thead_th]:text-[var(--ds-text-muted)]">
                 <colgroup>
                   <col style={{ width: MEMBERS_NAME_COLUMN_WIDTH }} />
                   <col />
@@ -526,7 +475,8 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                     );
                   })}
                 </TableBody>
-              </Table>
+                </Table>
+              </div>
             </div>
           )}
 
@@ -543,125 +493,134 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
               canChangeMemberRoles={viewer.canChangeMemberRoles}
             />
           ) : null}
+
+          {canInvite ? (
+            <div className="px-4 pb-3">
+              <button
+                type="button"
+                className="ds-dashboard-inline-create"
+                onClick={() => setIsAddMemberModalOpen(true)}
+              >
+                <span className="ds-dashboard-inline-create-label">Invite User</span>
+                <span className="ds-dashboard-inline-create-plus" aria-hidden>
+                  +
+                </span>
+              </button>
+            </div>
+          ) : null}
         </CardBody>
       </Card>
-
-      {canInvite && (
-        <Card className="mb-4">
-          <CardHeader className="border-b border-[var(--ds-border-subtle)] !px-4 !py-2.5">
-            <h3 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Add member</h3>
-          </CardHeader>
-          <CardBody className="!px-4 !py-3 space-y-3">
-            <div className={membersAddMemberCardGridClass}>
-              <div className={membersAddMemberCardCellClass}>
-                <div className="flex w-full flex-row gap-2 items-end">
-                  <div className="min-w-0 flex-1">
-                    <input
-                      id="project-member-first-name"
-                      type="text"
-                      autoComplete="off"
-                      aria-label="First name"
-                      className={projectSettingsInputClass(false)}
-                      value={addFirstName}
-                      onChange={(e) => {
-                        setAddFirstName(e.target.value);
-                        clearInviteOption();
-                      }}
-                      placeholder="First name"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <input
-                      id="project-member-surname"
-                      type="text"
-                      autoComplete="off"
-                      aria-label="Surname"
-                      className={projectSettingsInputClass(false)}
-                      value={addSurname}
-                      onChange={(e) => {
-                        setAddSurname(e.target.value);
-                        clearInviteOption();
-                      }}
-                      placeholder="Surname"
-                    />
+      {canInvite && isAddMemberModalOpen
+        ? createPortal(
+            <div
+              className="ds-modal-backdrop z-[110]"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="project-add-member-title"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) closeAddMemberModal();
+              }}
+            >
+              <div
+                className="ds-modal-panel ds-modal-panel--fit-content w-full !max-w-md !min-h-0"
+                style={{ maxWidth: "28rem" }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="ds-modal-panel-header">
+                  <h2 id="project-add-member-title" className="ds-modal-panel-title">
+                    Invite member
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={closeAddMemberModal}
+                    className="ds-onboarding-modal-close"
+                    aria-label="Close"
+                  >
+                    <span aria-hidden className="ds-modal-panel-close-icon">
+                      ×
+                    </span>
+                  </button>
+                </div>
+                <div className="ds-modal-panel-body">
+                  <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+                    <div>
+                      <input
+                        id="project-member-first-name"
+                        type="text"
+                        autoComplete="given-name"
+                        aria-label="First name"
+                        className={projectSettingsInputClass(false)}
+                        value={addFirstName}
+                        onChange={(e) => setAddFirstName(e.target.value)}
+                        placeholder="First name"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        id="project-member-surname"
+                        type="text"
+                        autoComplete="family-name"
+                        aria-label="Surname"
+                        className={projectSettingsInputClass(false)}
+                        value={addSurname}
+                        onChange={(e) => setAddSurname(e.target.value)}
+                        placeholder="Surname"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        id="project-member-email"
+                        type="email"
+                        autoComplete="off"
+                        aria-label="Email"
+                        className={projectSettingsInputClass(false)}
+                        value={addEmail}
+                        onChange={(e) => setAddEmail(e.target.value)}
+                        placeholder="name@company.com"
+                      />
+                    </div>
+                    <div>
+                      <select
+                        id="project-member-role"
+                        className={`${projectSettingsSelectClass(addAttempted && addRole === "", "md")} ${
+                          addRole === "" ? "!text-[var(--ds-text-muted)]" : "!text-[var(--ds-text-primary)]"
+                        }`}
+                        aria-label="Role"
+                        value={addRole}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setAddRole(v === "" ? "" : (v as ProjectMemberRole));
+                        }}
+                      >
+                        <option value="" disabled>
+                          {ADD_MEMBER_ROLE_PLACEHOLDER_LABEL}
+                        </option>
+                        {ROLE_OPTIONS.map(({ value, label }) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => void onInvite()}
+                        disabled={pendingId === "__invite__"}
+                      >
+                        Invite
+                      </Button>
+                    </div>
+                    {addError ? <FieldError className="!mt-0">{addError}</FieldError> : null}
                   </div>
                 </div>
               </div>
-              <div className={membersAddMemberCardCellClassEmail}>
-                <input
-                  id="project-member-email"
-                  type="email"
-                  autoComplete="off"
-                  aria-label="Email"
-                  className={projectSettingsInputClass(false)}
-                  value={addEmail}
-                  onChange={(e) => {
-                    setAddEmail(e.target.value);
-                    clearInviteOption();
-                  }}
-                  placeholder="name@company.com"
-                />
-              </div>
-              <div className={membersAddMemberCardCellClassRole}>
-                <select
-                  id="project-member-role"
-                  className={membersAddMemberRoleSelectClass(addRole !== "")}
-                  aria-label="Role"
-                  value={addRole}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAddRole(v === "" ? "" : (v as ProjectMemberRole));
-                    clearInviteOption();
-                  }}
-                >
-                  <option value="" disabled>
-                    {ADD_MEMBER_ROLE_PLACEHOLDER_LABEL}
-                  </option>
-                  {ROLE_OPTIONS.map(({ value, label }) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className={membersAddMemberCardCellClass}>
-                <div className={membersActionsSlotOuterClass}>
-                  <div className={membersActionsSlotInnerClass}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="ds-action-success"
-                      onClick={() => void onAdd()}
-                      disabled={pendingId === "__add__" || pendingId === "__invite__"}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {addError ? <FieldError className="!mt-0">{addError}</FieldError> : null}
-            {inviteOptionAvailable && addError ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void onSendInvite()}
-                  disabled={pendingId === "__invite__" || pendingId === "__add__"}
-                >
-                  Send invitation
-                </Button>
-                <HelperText className="!mt-0 sm:flex-1 sm:min-w-[12rem]">
-                  Sends a sign-up email with a link to join. They are added to this project with the role you
-                  selected as soon as the invitation is sent.
-                </HelperText>
-              </div>
-            ) : null}
-          </CardBody>
-        </Card>
-      )}
+            </div>,
+            document.body
+          )
+        : null}
     </>
   );
 }

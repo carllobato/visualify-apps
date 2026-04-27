@@ -101,9 +101,16 @@ export default async function InvitePage({
     (res.status === 403 && data.error === "EMAIL_MISMATCH") ||
     (res.status === 409 && data.error === "CONFLICT")
   ) {
-    redirect(
-      `/login?mode=signup&invite_token=${encodeURIComponent(inviteToken)}&invite_conflict=1`
-    );
+    const sp = new URLSearchParams();
+    sp.set("mode", "signup");
+    sp.set("invite_token", inviteToken);
+    sp.set("invite_conflict", "1");
+
+    if (invitedEmail) {
+      sp.set("invited_email", invitedEmail);
+    }
+
+    redirect(`/login?${sp.toString()}`);
   }
 
   redirect(DASHBOARD_PATH);

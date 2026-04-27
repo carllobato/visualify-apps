@@ -122,6 +122,8 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
     null
   );
   const [listError, setListError] = useState<string | null>(null);
+  const [addFirstName, setAddFirstName] = useState("");
+  const [addSurname, setAddSurname] = useState("");
   const [addEmail, setAddEmail] = useState("");
   const [addRole, setAddRole] = useState<PortfolioMemberRole | "">("");
   const [addError, setAddError] = useState<string | null>(null);
@@ -234,7 +236,12 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: addRole }),
+        body: JSON.stringify({
+          email,
+          first_name: addFirstName.trim(),
+          surname: addSurname.trim(),
+          role: addRole,
+        }),
       });
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
@@ -255,6 +262,8 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
         return;
       }
       if (res.ok) {
+        setAddFirstName("");
+        setAddSurname("");
         setAddEmail("");
         setAddRole("");
         setAddAttempted(false);
@@ -544,6 +553,30 @@ export function PortfolioMembersSection({ portfolioId }: { portfolioId: string }
                 </div>
                 <div className="ds-modal-panel-body">
                   <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+                    <div>
+                      <input
+                        id="portfolio-member-first-name"
+                        type="text"
+                        autoComplete="given-name"
+                        aria-label="First name"
+                        className={projectSettingsInputClass(false)}
+                        value={addFirstName}
+                        onChange={(e) => setAddFirstName(e.target.value)}
+                        placeholder="First name"
+                      />
+                    </div>
+                    <div>
+                      <input
+                        id="portfolio-member-surname"
+                        type="text"
+                        autoComplete="family-name"
+                        aria-label="Surname"
+                        className={projectSettingsInputClass(false)}
+                        value={addSurname}
+                        onChange={(e) => setAddSurname(e.target.value)}
+                        placeholder="Surname"
+                      />
+                    </div>
                     <div>
                       <input
                         id="portfolio-member-email"

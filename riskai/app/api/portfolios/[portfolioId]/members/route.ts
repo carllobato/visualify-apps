@@ -223,10 +223,12 @@ export async function POST(
     return portfolioInviteTraceResponse({ error: "Permission denied" }, 403);
   }
 
-  let body: { email?: unknown; role?: unknown };
+  let body: { email?: unknown; first_name?: unknown; surname?: unknown; role?: unknown };
   try {
     body = (await request.json()) as {
       email?: unknown;
+      first_name?: unknown;
+      surname?: unknown;
       role?: unknown;
     };
   } catch {
@@ -241,6 +243,8 @@ export async function POST(
     return portfolioInviteTraceResponse({ error: "Invalid role" }, 400);
   }
   const role = body.role;
+  const requestedFirstName = typeof body.first_name === "string" ? body.first_name.trim() : "";
+  const requestedSurname = typeof body.surname === "string" ? body.surname.trim() : "";
 
   const { data: found, error: rpcErr } = await supabase.rpc(
     "riskai_find_profile_by_email_for_portfolio",
@@ -293,12 +297,14 @@ export async function POST(
   }
 
   const derivedName = splitInviteNameFromEmail(email);
+  const firstName = requestedFirstName || derivedName.firstName;
+  const surname = requestedSurname || derivedName.surname;
   try {
     await createVisualifyPortfolioInvitationAndInvite({
       portfolioId,
       email,
-      firstName: derivedName.firstName,
-      surname: derivedName.surname,
+      firstName,
+      surname,
       role,
       invitedByUserId: user.id,
     });
