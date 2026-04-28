@@ -2,6 +2,7 @@ import type { RiskRow } from "@/types/risk";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { buildRating } from "@/domain/risk/risk.logic";
 import { costToConsequenceScale, timeDaysToConsequenceScale } from "@/domain/risk/risk.logic";
+import { resolveCanonicalLookupLabel } from "@/domain/risk/riskFieldSemantics";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -102,6 +103,72 @@ export type RiskInsertRow = {
   updated_at: string;
 };
 
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : String(value ?? "");
+}
+
+function asNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function asNullableNumber(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function withCanonicalRiskStatus<T extends { status: string }>(row: T, statusNames: string[]): T {
+  if (statusNames.length === 0) return row;
+  return { ...row, status: resolveCanonicalLookupLabel(row.status, statusNames) };
+}
+
+export function normalizeRiskRow(raw: unknown, projectId: string): RiskInsertRow | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const id = asString(row.id).trim();
+  const title = asString(row.title).trim();
+  if (!id || !title) return null;
+  const createdAt = asString(row.created_at).trim();
+  const updatedAt = asString(row.updated_at).trim();
+  if (!createdAt || !updatedAt) return null;
+
+  return {
+    id,
+    project_id: projectId,
+    risk_number: asNullableNumber(row.risk_number),
+    title,
+    description:
+      typeof row.description === "string" && row.description.length > 0 ? row.description : null,
+    category: asString(row.category),
+    owner: typeof row.owner === "string" && row.owner.length > 0 ? row.owner : null,
+    applies_to:
+      typeof row.applies_to === "string" && row.applies_to.length > 0 ? row.applies_to : null,
+    status: asString(row.status),
+    pre_probability: asNumber(row.pre_probability),
+    pre_cost_min: asNullableNumber(row.pre_cost_min),
+    pre_cost_ml: asNumber(row.pre_cost_ml),
+    pre_cost_max: asNullableNumber(row.pre_cost_max),
+    pre_time_min: asNullableNumber(row.pre_time_min),
+    pre_time_ml: asNumber(row.pre_time_ml),
+    pre_time_max: asNullableNumber(row.pre_time_max),
+    mitigation_description:
+      typeof row.mitigation_description === "string" && row.mitigation_description.length > 0
+        ? row.mitigation_description
+        : null,
+    mitigation_cost: asNumber(row.mitigation_cost),
+    post_probability: asNumber(row.post_probability),
+    post_cost_min: asNullableNumber(row.post_cost_min),
+    post_cost_ml: asNumber(row.post_cost_ml),
+    post_cost_max: asNullableNumber(row.post_cost_max),
+    post_time_min: asNullableNumber(row.post_time_min),
+    post_time_ml: asNumber(row.post_time_ml),
+    post_time_max: asNullableNumber(row.post_time_max),
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
 /**
  * Map domain Risk to DB insert row. Only columns that exist on `public.risks`.
  */
@@ -189,4 +256,59 @@ export async function replaceRisks(risks: Risk[], projectId?: string): Promise<R
   }
   const savedRows = (json.risks ?? []) as RiskRow[];
   return savedRows.map(rowToRisk);
+}
+
+/**
+ * Update a single existing risk row for the active project.
+ * @param projectId - Project UUID (required).
+ */
+export async function updateRiskRow(risk: Risk, projectId?: string): Promise<Risk> {
+  const pid = requireRiskProjectId(projectId);
+  const row = riskToRow(risk, pid);
+
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(pid)}/risks/${encodeURIComponent(risk.id)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+      body: JSON.stringify({ risk: row }),
+    }
+  );
+  const json = (await res.json().catch(() => ({}))) as { risk?: RiskRow; error?: string };
+  if (!res.ok) {
+    const message = json.error?.trim() || `Failed to save risk (${res.status})`;
+    console.error("[risks] updateRiskRow failed", message);
+    throw new Error(message);
+  }
+  if (!json.risk) {
+    const message = "Failed to save risk: missing saved row";
+    console.error("[risks] updateRiskRow failed", message);
+    throw new Error(message);
+  }
+  const saved = rowToRisk(json.risk);
+  return saved;
+}
+
+/** Mark a single existing risk as reviewed for freshness tracking. Does not return or mutate risk content. */
+export async function markRiskReviewed(riskId: string, projectId?: string): Promise<void> {
+  const pid = requireRiskProjectId(projectId);
+  const rid = riskId.trim();
+  if (!rid) {
+    throw new Error("riskId is required for risk review tracking");
+  }
+
+  const res = await fetch(
+    `/api/projects/${encodeURIComponent(pid)}/risks/${encodeURIComponent(rid)}/review`,
+    {
+      method: "PATCH",
+      cache: "no-store",
+    }
+  );
+  const json = (await res.json().catch(() => ({}))) as { error?: string };
+  if (!res.ok) {
+    const message = json.error?.trim() || `Failed to mark risk reviewed (${res.status})`;
+    console.error("[risks] markRiskReviewed", message);
+    throw new Error(message);
+  }
 }

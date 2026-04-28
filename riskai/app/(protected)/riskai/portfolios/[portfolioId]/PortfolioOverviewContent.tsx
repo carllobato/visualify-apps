@@ -8,7 +8,6 @@ import {
   COST_COVERAGE_COMBINED_TILE_TITLE,
   DocumentKpiModal,
   PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE,
-  PORTFOLIO_HEALTH_KPI_TITLE,
   SCHEDULE_COVERAGE_COMBINED_TILE_TITLE,
   type DocumentKpiTileItem,
 } from "@/components/dashboard/DocumentKpiModal";
@@ -31,7 +30,7 @@ import {
   PortfolioRiskOwnerCountsTable,
 } from "@/components/dashboard/PortfolioRiskOwnerCountsTable";
 import type {
-  PortfolioNeedsAttentionHealthRun,
+  PortfolioControlScore,
   PortfolioProjectCostExposureSlice,
   PortfolioProjectCoverageRow,
   PortfolioProjectRiskSeverityRow,
@@ -47,7 +46,6 @@ import type {
   RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
 import type { ReportingUnitOption } from "@/lib/portfolio/reportingPreferences";
-import type { NeedsAttentionStaleCopyMode } from "@/lib/dashboard/needsAttentionHealthRun";
 import type { PortfolioOverviewReportingTrendSet } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import { riskaiPath } from "@/lib/routes";
 
@@ -235,10 +233,7 @@ type PortfolioOverviewContentProps = {
   scheduleCoverageRatioPrimaryValue: string;
   scheduleCoverageRatioPrimaryRagDot?: RagStatus;
   scheduleCoverageRatioSemanticClassName?: string;
-  needsAttentionPrimaryValue: string;
-  needsAttentionSubtext: string;
-  needsAttentionPrimaryValueClassName?: string;
-  needsAttentionPrimaryRagDot: RagStatus;
+  control: PortfolioControlScore;
   /** Formatted coverage ratio (contingency ÷ forward cost exposure). */
   coveragePrimaryValue: string;
   coveragePrimaryRagDot?: RagStatus;
@@ -276,8 +271,6 @@ type PortfolioOverviewContentProps = {
   riskStatusCounts: PortfolioRiskStatusCount[];
   /** Active risks by owner text — risks-by-owner bars. */
   riskOwnerCounts: PortfolioRiskOwnerCount[];
-  /** Composite health run (tile figure + modal score card). */
-  needsAttentionHealthRun: PortfolioNeedsAttentionHealthRun;
   /** Month-over-month vs calendar prior reporting month; `null` when no comparable prior snapshot. */
   reportingVsPriorMonthTrends: PortfolioOverviewReportingTrendSet | null;
 };
@@ -297,10 +290,7 @@ export function PortfolioOverviewContent({
   scheduleCoverageRatioPrimaryValue,
   scheduleCoverageRatioPrimaryRagDot,
   scheduleCoverageRatioSemanticClassName,
-  needsAttentionPrimaryValue,
-  needsAttentionSubtext,
-  needsAttentionPrimaryValueClassName,
-  needsAttentionPrimaryRagDot,
+  control,
   coveragePrimaryValue,
   coveragePrimaryRagDot,
   coverageRatioSemanticClassName,
@@ -320,7 +310,6 @@ export function PortfolioOverviewContent({
   riskCategoryCounts,
   riskStatusCounts,
   riskOwnerCounts,
-  needsAttentionHealthRun,
   reportingVsPriorMonthTrends,
 }: PortfolioOverviewContentProps) {
   const router = useRouter();
@@ -334,9 +323,6 @@ export function PortfolioOverviewContent({
   const toggleCategoryOwnerBreakdown = useCallback(() => {
     setCategoryOwnerBreakdownOpen((o) => !o);
   }, []);
-
-  const needsAttentionStaleCopyMode: NeedsAttentionStaleCopyMode =
-    reportingMonthLabel != null ? "reportingMonthLock" : "utcMonthSnapshot";
 
   const kpiTiles = useMemo((): DocumentKpiTileItem[] => {
     const projectsSubtext =
@@ -369,11 +355,12 @@ export function PortfolioOverviewContent({
         subtext: risksSubtext,
       },
       {
-        title: PORTFOLIO_HEALTH_KPI_TITLE,
-        primaryValue: needsAttentionPrimaryValue,
-        primaryValueClassName: needsAttentionPrimaryValueClassName,
-        primaryRagDot: needsAttentionPrimaryRagDot,
-        subtext: needsAttentionSubtext,
+        title: "Control",
+        primaryValue: `${Math.round(control.score)} / 100`,
+        primaryRagDot: control.rag,
+        subtext: `Average of ${control.projectCount} project Control score${
+          control.projectCount === 1 ? "" : "s"
+        }`,
       },
       {
         title: COST_COVERAGE_COMBINED_TILE_TITLE,
@@ -394,15 +381,13 @@ export function PortfolioOverviewContent({
     portfolioRag,
     portfolioReportingFooter,
     reportingMonthLabel,
-    projectTilePayloads.length,
     contingencyPrimaryValue,
     costExposurePrimaryValue,
     scheduleExposurePrimaryValue,
     scheduleExposureSubtext,
-    needsAttentionPrimaryValue,
-    needsAttentionSubtext,
-    needsAttentionPrimaryValueClassName,
-    needsAttentionPrimaryRagDot,
+    control.score,
+    control.rag,
+    control.projectCount,
     coveragePrimaryValue,
     coverageRatioSemanticClassName,
   ]);
@@ -533,7 +518,7 @@ export function PortfolioOverviewContent({
     reportingVsPriorMonthTrends?.portfolioRiskRating ?? null,
     reportingVsPriorMonthTrends?.activeProjects ?? null,
     reportingVsPriorMonthTrends?.activeRisks ?? null,
-    reportingVsPriorMonthTrends?.needsAttention ?? null,
+    null,
   ];
 
   const hasReportableData = projectTilePayloads.length > 0;
@@ -810,8 +795,6 @@ export function PortfolioOverviewContent({
         activeRiskStatusSummaryRows={activeRiskStatusSummaryRows}
         coverageRatioRows={coverageRatioRows}
         scheduleCoverageRows={scheduleCoverageRows}
-        needsAttentionHealthRun={needsAttentionHealthRun}
-        needsAttentionStaleCopyMode={needsAttentionStaleCopyMode}
         renderSlideBodyByIndex={renderPortfolioOverviewSlideBody}
       />
     </main>

@@ -30,6 +30,10 @@ function ragWord(status: RagStatus): string {
 type SummaryTileProps = {
   title: string;
   primaryValue: string;
+  tooltip?: {
+    title: string;
+    body: string;
+  };
   /** Optional class for the primary value (e.g. semantic RAG colour). */
   primaryValueClassName?: string;
   /** Optional RAG dot before the primary value (same pattern as KPI modal `OverallRagCell`). */
@@ -60,12 +64,41 @@ const trendExtraClass = "min-w-0 line-clamp-2 break-words";
 const interactiveFocusClass =
   "outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-border)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ds-app-document-bg)]";
 
+function TileTitle({ title, tooltip }: { title: string; tooltip?: SummaryTileProps["tooltip"] }) {
+  if (tooltip == null) {
+    return <span className={titleClass}>{title}</span>;
+  }
+
+  const tooltipText = `${tooltip.title}\n\n${tooltip.body}`;
+  return (
+    <span className={`${titleClass} inline-flex items-center gap-1.5`}>
+      <span>{title}</span>
+      <span className="group relative inline-flex" title={tooltipText}>
+        <span
+          className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-[var(--ds-border-subtle)] text-[10px] leading-none text-[var(--ds-text-muted)]"
+          aria-label={tooltipText}
+        >
+          i
+        </span>
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute left-1/2 top-full z-20 mt-1 hidden w-64 -translate-x-1/2 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[11px] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block"
+        >
+          <span className="block font-semibold text-[var(--ds-text-primary)]">{tooltip.title}</span>
+          <span className="mt-1 block leading-snug">{tooltip.body}</span>
+        </span>
+      </span>
+    </span>
+  );
+}
+
 /**
  * KPI summary tile: title, large primary value, optional contextual subtext.
  */
 export function SummaryTile({
   title,
   primaryValue,
+  tooltip,
   primaryValueClassName,
   primaryRagDot,
   trend,
@@ -106,7 +139,7 @@ export function SummaryTile({
         } w-full text-left cursor-pointer border-0 bg-[var(--ds-document-tile-bg)] font-inherit ${interactiveFocusClass}`}
         aria-label={`View ${title} details`}
       >
-        <span className={titleClass}>{title}</span>
+        <TileTitle title={title} tooltip={tooltip} />
         {primaryRow}
         {trend != null && trend.text !== "" ? (
           <span className={`${trend.className} ${trendExtraClass}`}>{trend.text}</span>
@@ -123,7 +156,7 @@ export function SummaryTile({
         className={`${tileClass} block no-underline text-inherit ${interactiveFocusClass}`}
         aria-label={`View ${title}`}
       >
-        <span className={titleClass}>{title}</span>
+        <TileTitle title={title} tooltip={tooltip} />
         {primaryRow}
         {trend != null && trend.text !== "" ? (
           <span className={`${trend.className} ${trendExtraClass}`}>{trend.text}</span>
@@ -135,7 +168,7 @@ export function SummaryTile({
 
   return (
     <div className={tileClass}>
-      <p className={titleClass}>{title}</p>
+      <TileTitle title={title} tooltip={tooltip} />
       {primaryRow}
       {trend != null && trend.text !== "" ? (
         <span className={`${trend.className} ${trendExtraClass}`}>{trend.text}</span>

@@ -56,6 +56,7 @@ import {
   simulationTimestampInCurrentUtcMonth,
   type PortfolioNeedsAttentionHealthRun,
 } from "@/lib/dashboard/needsAttentionHealthRun";
+import { computeRiskControlScore } from "@/lib/dashboard/riskControlScore";
 
 export type { PortfolioReportingFooterRow };
 export type { PortfolioNeedsAttentionHealthRun } from "@/lib/dashboard/needsAttentionHealthRun";
@@ -96,6 +97,11 @@ type RiskAggRow = {
   post_cost_ml: number;
   post_time_ml: number;
   mitigation_description: string | null;
+};
+
+type RiskControlScoreRow = RiskRow & {
+  last_reviewed_at?: string | null;
+  last_review_month?: string | null;
 };
 
 /** Reporting discipline: locked monthly snapshot older than this is flagged (amber) unless already red. */
@@ -161,6 +167,13 @@ export type GetProjectTilePayloadsResult = {
 export type LoadPortfolioProjectTilePayloadsResult = GetProjectTilePayloadsResult & {
   /** All projects in the portfolio (including those without a locked reporting snapshot). */
   totalProjectsInPortfolio: number;
+};
+
+export type PortfolioControlScore = {
+  score: number;
+  rag: RagStatus;
+  /** Projects included in the average (locked reporting snapshot present for the selected scope). */
+  projectCount: number;
 };
 
 export type GetProjectTilePayloadsOptions = {
@@ -1458,4 +1471,85 @@ export async function loadPortfolioProjectTilePayloads(
     portfolioReportingFooter,
     totalProjectsInPortfolio: projects.length,
   };
+}
+
+export async function loadPortfolioControlScore({
+  supabase,
+  projectIds,
+  reportingMonth,
+}: {
+  supabase: SupabaseClient;
+  projectIds: string[];
+  reportingMonth?: string | null;
+}): Promise<PortfolioControlScore> {
+  const empty: PortfolioControlScore = { score: 0, rag: "red", projectCount: 0 };
+  const scopedProjectIds = Array.from(
+    new Set(projectIds.map((id) => id.trim()).filter((id) => id.length > 0))
+  );
+  if (scopedProjectIds.length === 0) return empty;
+
+  const reportingMonthYear = reportingMonth?.trim();
+  let lockedSnapshotsQuery = supabase
+    .from("riskai_simulation_snapshots")
+    .select("*")
+    .in("project_id", scopedProjectIds)
+    .eq("locked_for_reporting", true);
+
+  if (reportingMonthYear) {
+    lockedSnapshotsQuery = lockedSnapshotsQuery.eq("report_month", `${reportingMonthYear}-01`);
+  }
+
+  const [risksRes, lockedRes] = await Promise.all([
+    supabase
+      .from("riskai_risks")
+      .select(`${RISK_DB_SELECT_COLUMNS},last_reviewed_at,last_review_month`)
+      .in("project_id", scopedProjectIds),
+    lockedSnapshotsQuery,
+  ]);
+
+  if (risksRes.error || lockedRes.error) return empty;
+
+  const latestLockedByProject = new Map<string, NonNullable<SimulationSnapshotRow>>();
+  const lockedRows = ((lockedRes.data ?? []) as SimulationSnapshotRow[]).filter(
+    (row): row is NonNullable<SimulationSnapshotRow> => row != null
+  );
+  const sortedLocked = [...lockedRows].sort((a, b) => {
+    const ta = new Date(a.locked_at ?? a.created_at ?? 0).getTime();
+    const tb = new Date(b.locked_at ?? b.created_at ?? 0).getTime();
+    return tb - ta;
+  });
+  for (const row of sortedLocked) {
+    const pid = typeof row.project_id === "string" ? row.project_id : "";
+    if (!pid || latestLockedByProject.has(pid)) continue;
+    latestLockedByProject.set(pid, row);
+  }
+
+  const risksByProject = new Map<string, RiskControlScoreRow[]>();
+  for (const id of scopedProjectIds) {
+    risksByProject.set(id, []);
+  }
+  for (const risk of (risksRes.data ?? []) as RiskControlScoreRow[]) {
+    const bucket = risksByProject.get(risk.project_id);
+    if (bucket) bucket.push(risk);
+  }
+
+  let scoreTotal = 0;
+  let projectCount = 0;
+  for (const projectId of scopedProjectIds) {
+    const latestSnapshot = latestLockedByProject.get(projectId);
+    if (latestSnapshot == null) continue;
+
+    const control = computeRiskControlScore({
+      risks: risksByProject.get(projectId) ?? [],
+      latestSnapshot,
+    });
+    scoreTotal += control.score;
+    projectCount += 1;
+  }
+
+  if (projectCount === 0) return empty;
+
+  const score = scoreTotal / projectCount;
+  const rag: RagStatus = score >= 80 ? "green" : score >= 55 ? "amber" : "red";
+  return { score, rag, projectCount };
 }

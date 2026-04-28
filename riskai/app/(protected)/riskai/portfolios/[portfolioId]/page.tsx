@@ -1,5 +1,6 @@
 import {
   aggregatePortfolioRag,
+  loadPortfolioControlScore,
   loadPortfolioProjectContingencyTable,
   loadPortfolioProjectTilePayloads,
   loadPortfolioTopRiskConcentrationRows,
@@ -28,7 +29,6 @@ import {
   coverageRatioSemanticClassName,
   coverageRatioTileCopy,
   formatPortfolioCurrency,
-  needsAttentionTileCopy,
   scheduleContingencyHeldDisplayValue,
   scheduleCoverageRatioDisplayValue,
   scheduleCoverageRatioRagStatus,
@@ -93,6 +93,11 @@ export default async function PortfolioOverviewPage({
     portfolioId,
     { reportingMonthYear }
   );
+  const portfolioControlScore = await loadPortfolioControlScore({
+    supabase,
+    projectIds,
+    reportingMonth: reportingMonthYear,
+  });
   /** Shown on the Projects KPI — matches tiles (excludes projects with no locked reporting snapshot). */
   const dashboardProjectCount = projectTilePayloads.length;
   const portfolioRag = aggregatePortfolioRag(projectTilePayloads);
@@ -201,10 +206,6 @@ export default async function PortfolioOverviewPage({
     scheduleCoverageRatio,
     reportingMonthKpiCopy?.schedule
   );
-  const needsAttentionTile = needsAttentionTileCopy(needsAttentionHealthRun, {
-    staleCopyMode:
-      reportingMonthYear != null ? "reportingMonthLock" : "utcMonthSnapshot",
-  });
   const reportingMonthLabel =
     reportingMonthYear != null ? formatReportMonthLabel(`${reportingMonthYear}-01`) : null;
 
@@ -341,10 +342,7 @@ export default async function PortfolioOverviewPage({
         scheduleCoverageRatioPrimaryValue={scheduleCoverageRatioDisplayValue(scheduleCoverageRatio)}
         scheduleCoverageRatioPrimaryRagDot={scheduleCoverageRatioRagStatus(scheduleCoverageRatio)}
         scheduleCoverageRatioSemanticClassName={scheduleCoverageRatioSemanticClassName(scheduleCoverageRatio)}
-        needsAttentionPrimaryValue={needsAttentionTile.primaryValue}
-        needsAttentionSubtext={needsAttentionTile.subtext}
-        needsAttentionPrimaryValueClassName={needsAttentionTile.primaryValueClassName}
-        needsAttentionPrimaryRagDot={needsAttentionTile.primaryRagDot}
+        control={portfolioControlScore}
         portfolioRag={portfolioRag}
         coveragePrimaryValue={coverageTile.primaryValue}
         coveragePrimaryRagDot={coverageRatioRagStatus(coverageRatioByCurrency)}
@@ -364,7 +362,6 @@ export default async function PortfolioOverviewPage({
         riskCategoryCounts={riskCategoryCounts}
         riskStatusCounts={riskStatusCounts}
         riskOwnerCounts={riskOwnerCounts}
-        needsAttentionHealthRun={needsAttentionHealthRun}
         reportingVsPriorMonthTrends={reportingVsPriorMonthTrends}
       />
     </>

@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
-import { RISK_STATUS_ARCHIVED_LOOKUP, resolveCanonicalLookupLabel } from "@/domain/risk/riskFieldSemantics";
-import { RISK_DB_SELECT_COLUMNS, type RiskInsertRow } from "@/lib/db/risks";
+import { RISK_STATUS_ARCHIVED_LOOKUP } from "@/domain/risk/riskFieldSemantics";
+import {
+  RISK_DB_SELECT_COLUMNS,
+  normalizeRiskRow,
+  withCanonicalRiskStatus,
+  type RiskInsertRow,
+} from "@/lib/db/risks";
 import type { RiskRow } from "@/types/risk";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -20,72 +25,6 @@ async function fetchActiveRiskStatusNames(supabase: ServerSupabase): Promise<str
     return [];
   }
   return ((data ?? []) as { name: string }[]).map((r) => r.name).filter(Boolean);
-}
-
-function withCanonicalRiskStatus<T extends { status: string }>(row: T, statusNames: string[]): T {
-  if (statusNames.length === 0) return row;
-  return { ...row, status: resolveCanonicalLookupLabel(row.status, statusNames) };
-}
-
-function asString(value: unknown): string {
-  return typeof value === "string" ? value : String(value ?? "");
-}
-
-function asNumber(value: unknown): number {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function asNullableNumber(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function normalizeRiskRow(raw: unknown, projectId: string): RiskInsertRow | null {
-  if (!raw || typeof raw !== "object") return null;
-  const row = raw as Record<string, unknown>;
-  const id = asString(row.id).trim();
-  const title = asString(row.title).trim();
-  if (!id || !title) return null;
-  const createdAt = asString(row.created_at).trim();
-  const updatedAt = asString(row.updated_at).trim();
-  if (!createdAt || !updatedAt) return null;
-
-  return {
-    id,
-    project_id: projectId,
-    risk_number: asNullableNumber(row.risk_number),
-    title,
-    description:
-      typeof row.description === "string" && row.description.length > 0 ? row.description : null,
-    category: asString(row.category),
-    owner: typeof row.owner === "string" && row.owner.length > 0 ? row.owner : null,
-    applies_to:
-      typeof row.applies_to === "string" && row.applies_to.length > 0 ? row.applies_to : null,
-    status: asString(row.status),
-    pre_probability: asNumber(row.pre_probability),
-    pre_cost_min: asNullableNumber(row.pre_cost_min),
-    pre_cost_ml: asNumber(row.pre_cost_ml),
-    pre_cost_max: asNullableNumber(row.pre_cost_max),
-    pre_time_min: asNullableNumber(row.pre_time_min),
-    pre_time_ml: asNumber(row.pre_time_ml),
-    pre_time_max: asNullableNumber(row.pre_time_max),
-    mitigation_description:
-      typeof row.mitigation_description === "string" && row.mitigation_description.length > 0
-        ? row.mitigation_description
-        : null,
-    mitigation_cost: asNumber(row.mitigation_cost),
-    post_probability: asNumber(row.post_probability),
-    post_cost_min: asNullableNumber(row.post_cost_min),
-    post_cost_ml: asNumber(row.post_cost_ml),
-    post_cost_max: asNullableNumber(row.post_cost_max),
-    post_time_min: asNullableNumber(row.post_time_min),
-    post_time_ml: asNumber(row.post_time_ml),
-    post_time_max: asNullableNumber(row.post_time_max),
-    created_at: createdAt,
-    updated_at: updatedAt,
-  };
 }
 
 export async function GET(

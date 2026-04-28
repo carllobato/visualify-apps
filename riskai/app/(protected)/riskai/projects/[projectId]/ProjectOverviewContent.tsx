@@ -45,7 +45,6 @@ import { PortfolioRiskStatusCountsTable } from "@/components/dashboard/Portfolio
 import {
   DocumentKpiModal,
   KPI_MODAL_REGISTER_TABLE_CLASS,
-  PROJECT_HEALTH_KPI_TITLE,
   PROJECT_RISK_RATING_KPI_TITLE,
   type DocumentKpiTileItem,
 } from "@/components/dashboard/DocumentKpiModal";
@@ -65,6 +64,7 @@ import {
   type RagStatus,
 } from "@/lib/dashboard/projectTileServerData";
 import { computeNeedsAttentionHealthRun } from "@/lib/dashboard/needsAttentionHealthRun";
+import { computeRiskControlScore } from "@/lib/dashboard/riskControlScore";
 import { monitoringCostOpportunityExpected, monitoringScheduleOpportunityExpected } from "@/lib/opportunityMetrics";
 import {
   tryReportingBreakdownFromLockedRowAndSettings,
@@ -116,6 +116,32 @@ const primaryLinkButtonClass =
 
 const secondaryLinkButtonClass =
   "inline-flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)] shadow-[var(--ds-elevation-button-secondary)] transition-all duration-150 ease-out hover:bg-[var(--ds-surface-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
+
+const CONTROL_TILE_TOOLTIP = {
+  title: "Control",
+  body: "Measures how well project risks are actively managed, including review activity, mitigation of high risks, and overall quality of the risk register.",
+};
+
+const CONTROL_BREAKDOWN_SECTIONS = [
+  {
+    key: "dataFreshness",
+    label: "Data Freshness",
+    description: "Are risks being reviewed and reporting kept up to date?",
+    max: 30,
+  },
+  {
+    key: "highRiskHandling",
+    label: "High Risk Handling",
+    description: "Are high and extreme risks actively mitigated?",
+    max: 40,
+  },
+  {
+    key: "credibility",
+    label: "Risk Credibility",
+    description: "Are risks well described, actionable, and sufficiently covered?",
+    max: 30,
+  },
+] as const;
 
 /** Tile section label: aligned with `SummaryTile` title typography. */
 const overviewTileTitleClass = "text-sm font-medium text-[var(--ds-text-secondary)] m-0 mb-1";
@@ -475,6 +501,20 @@ function projectRiskRatingTileCopy(
         primaryRagDot: status,
       };
   }
+}
+
+function controlBreakdownToneClass(value: number, max: number): string {
+  const ratio = max > 0 ? value / max : 0;
+  if (ratio >= 0.8) return "text-[var(--ds-status-success-fg)]";
+  if (ratio >= 0.55) return "text-[var(--ds-status-warning-fg)]";
+  return "text-[var(--ds-status-danger-fg)]";
+}
+
+function controlBreakdownDotClass(value: number, max: number): string {
+  const ratio = max > 0 ? value / max : 0;
+  if (ratio >= 0.8) return "bg-[var(--ds-status-success)]";
+  if (ratio >= 0.55) return "bg-[var(--ds-status-warning)]";
+  return "bg-[var(--ds-status-danger)]";
 }
 
 const overviewSkeletonBar = "rounded bg-[var(--ds-surface-muted)]";
@@ -1262,32 +1302,12 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     return applyStaleReportingLockRag(base, staleAndPositionLockedRow ?? undefined, Date.now());
   }, [reportingRunRiskCountSnapshotRow, staleAndPositionLockedRow, risks]);
 
-  const effectiveRagForHealth = useMemo((): RagStatus => {
-    if (ragStatus === "green" && ((dollarGapSigned ?? 0) > 0 || (timeGapSigned ?? 0) > 0)) {
-      return "amber";
-    }
-    return ragStatus;
-  }, [ragStatus, dollarGapSigned, timeGapSigned]);
-
-  const hasGapComparison = useMemo(
-    () =>
-      meanCostFromSnapshot != null &&
-      costAtAppetiteLine != null &&
-      meanTimeFromSnapshot != null &&
-      timeAtAppetiteLine != null,
-    [meanCostFromSnapshot, costAtAppetiteLine, meanTimeFromSnapshot, timeAtAppetiteLine]
-  );
-
-  const projectHealthSubtext = useMemo(() => {
-    if (!hasGapComparison) return "Reporting snapshot";
-    if ((dollarGapSigned ?? 0) > 0 || (timeGapSigned ?? 0) > 0) return "Above target P";
-    return "Within target P";
-  }, [hasGapComparison, dollarGapSigned, timeGapSigned]);
-
-  const healthTile = useMemo(
-    () => projectRiskRatingTileCopy(effectiveRagForHealth),
-    [effectiveRagForHealth]
-  );
+  const latestSnapshot = reportingRunRiskCountSnapshotRow;
+  const control = computeRiskControlScore({
+    risks,
+    latestSnapshot,
+  });
+  const controlTile = projectRiskRatingTileCopy(control.rag);
 
   const projectNeedsAttentionHealthRun = useMemo((): PortfolioNeedsAttentionHealthRun => {
     if (!reportingRunRiskCountSnapshotRow) {
@@ -1365,16 +1385,6 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     risks,
   ]);
 
-  const projectHealthKpiTile = useMemo((): DocumentKpiTileItem => {
-    return {
-      title: PROJECT_HEALTH_KPI_TITLE,
-      primaryValue: healthTile.primary,
-      primaryValueClassName: healthTile.primaryValueClassName,
-      primaryRagDot: healthTile.primaryRagDot,
-      subtext: projectHealthSubtext,
-    };
-  }, [healthTile, projectHealthSubtext]);
-
   /** Mean minus appetite line: ≤0 (at/under target) reads favorable. */
   const gapValueClass = (meanMinusAppetite: number | null) => {
     if (meanMinusAppetite == null || !Number.isFinite(meanMinusAppetite)) {
@@ -1432,7 +1442,12 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
         primaryRagDot: rr.primaryRagDot,
         subtext: riskRatingSubtext,
       },
-      projectHealthKpiTile,
+      {
+        title: "Control",
+        primaryValue: `${control.score} / 100`,
+        primaryValueClassName: controlTile.primaryValueClassName,
+        primaryRagDot: control.rag,
+      },
       {
         title: "Cost Gap to Target",
         primaryValue: dollarGapLabel,
@@ -1452,9 +1467,10 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     reportingRunRiskCountSnapshotRow,
     ragStatus,
     risks,
-    projectHealthKpiTile,
+    control.score,
+    control.rag,
+    controlTile.primaryValueClassName,
     dollarGapLabel,
-    dollarGapSigned,
     costGapTileSubtext,
     timeGapTileSubtext,
     timeGapWorkingDaysLabel,
@@ -1476,6 +1492,53 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
   const renderProjectOverviewSlideBody = useCallback(
     (slideIndex: number) => {
+      if (slideIndex === 1) {
+        return (
+          <Card className="overflow-hidden border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] p-0 shadow-[var(--ds-elevation-tile)]">
+            <div className="border-b border-[var(--ds-border-subtle)] px-5 py-5 sm:px-6">
+              <p className="m-0 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                {CONTROL_TILE_TOOLTIP.body}
+              </p>
+            </div>
+            <div className="px-5 py-5 sm:px-6" role="list">
+              {CONTROL_BREAKDOWN_SECTIONS.map((section) => {
+                const value = control.breakdown[section.key];
+                return (
+                  <div
+                    key={section.key}
+                    role="listitem"
+                    className="border-b border-[var(--ds-border-subtle)] py-4 first:pt-0 last:border-b-0 last:pb-0"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+                          {section.label}
+                        </h3>
+                        <p className="mt-1.5 m-0 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                          {section.description}
+                        </p>
+                      </div>
+                      <div className="shrink-0 sm:pt-0.5">
+                        <span className="inline-flex items-center gap-2">
+                          <span
+                            className={`size-[0.6875rem] shrink-0 rounded-full ${controlBreakdownDotClass(value, section.max)}`}
+                            aria-hidden
+                          />
+                          <span
+                            className={`tabular-nums text-[length:var(--ds-text-sm)] font-semibold ${controlBreakdownToneClass(value, section.max)}`}
+                          >
+                            {value} / {section.max}
+                          </span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        );
+      }
       if (!reportingRunRiskCountSnapshotRow || slideIndex < 4) return null;
       switch (slideIndex) {
         case 4:
@@ -1616,6 +1679,7 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
       scheduleExposureContingencySubline,
       targetAppetite,
       loadingRisks,
+      control.breakdown,
       topTenCostDriverModalRows,
       topTenScheduleDriverModalRows,
       topTenOpportunityModalRows,
@@ -1728,16 +1792,17 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
 
           {showProjectStatusSkeleton ? (
             <div className={`${overviewDocumentTileClass} flex flex-col p-4 min-h-32`}>
-              <p className={`${overviewTileTitleClass} mb-2`}>Project Health</p>
+              <p className={`${overviewTileTitleClass} mb-2`}>Control</p>
               <OverviewProjectStatusSkeleton />
             </div>
           ) : (
             <SummaryTile
-              title="Project Health"
-              primaryValue={healthTile.primary}
-              primaryValueClassName={healthTile.primaryValueClassName}
-              primaryRagDot={healthTile.primaryRagDot}
-              subtext={projectHealthSubtext}
+              title="Control"
+              primaryValue={`${control.score} / 100`}
+              tooltip={CONTROL_TILE_TOOLTIP}
+              primaryValueClassName={controlTile.primaryValueClassName}
+              primaryRagDot={control.rag}
+              subtext="Risk management discipline"
               onActivate={() => openOverviewAt(1)}
               selected={overviewModalOpen && overviewModalIndex === 1}
             />

@@ -187,6 +187,7 @@ export function RiskDetailModal({
   onAddNewWithFile,
   onAddNewWithAI,
   onRestoreRisk,
+  onReviewOpen,
 }: {
   open: boolean;
   risks: Risk[];
@@ -194,7 +195,7 @@ export function RiskDetailModal({
   /** View-only: block edits and hide save/archive/generate actions. */
   readOnly?: boolean;
   onClose: () => void;
-  onSave: (risk: Risk) => void;
+  onSave: (risk: Risk) => Risk | void | Promise<Risk | void>;
   onAddNew?: () => void;
   /** Open flow: Create Risk with AI File Uploader */
   onAddNewWithFile?: () => void;
@@ -202,6 +203,8 @@ export function RiskDetailModal({
   onAddNewWithAI?: () => void;
   /** Restore archived risk to Open. */
   onRestoreRisk?: (riskId: string) => void;
+  /** Mark the visible existing risk as reviewed for freshness tracking. */
+  onReviewOpen?: (riskId: string) => void | Promise<void>;
 }) {
   const getInitialIndex = useCallback((): number => {
     if (initialRiskId === ADD_NEW_RISK_ID) return risks.length;
@@ -244,7 +247,6 @@ export function RiskDetailModal({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const validationBlockRef = useRef<HTMLDivElement>(null);
   const pendingScrollValidationRef = useRef(false);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { statuses: riskStatusOptions } = useRiskStatusOptions();
   const modalRef = useRef<HTMLDivElement>(null);
   /** After a successful Save, store a snapshot so we treat the form as not dirty until the user edits or switches risk. */
@@ -254,8 +256,10 @@ export function RiskDetailModal({
   const lastSyncedRiskIdRef = useRef<string | null>(null);
   /** Baseline snapshot captured when we synced; compare form output to this so we're not sensitive to currentRisk reference or recomputation. */
   const lastSyncedBaselineRef = useRef<string | null>(null);
+  const reviewedRiskIdsThisOpenRef = useRef<Set<string>>(new Set());
 
   const currentRisk = risks[currentIndex] ?? null;
+  const currentRiskId = currentRisk?.id;
   const isAddNewSlot = currentIndex === risks.length;
   const hasMultipleOrAddNew = risks.length >= 1 || isAddNewSlot;
   const hasAddNewSlot = !!(onAddNew ?? onAddNewWithFile ?? onAddNewWithAI);
@@ -428,6 +432,17 @@ export function RiskDetailModal({
     prevRiskIdRef.current = currentRisk.id;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on id only; currentRisk read from closure when effect runs
   }, [currentRisk?.id]);
+
+  useEffect(() => {
+    if (!open) {
+      reviewedRiskIdsThisOpenRef.current.clear();
+      return;
+    }
+    if (!currentRiskId || isAddNewSlot || !onReviewOpen) return;
+    if (reviewedRiskIdsThisOpenRef.current.has(currentRiskId)) return;
+    reviewedRiskIdsThisOpenRef.current.add(currentRiskId);
+    void onReviewOpen(currentRiskId);
+  }, [open, currentRiskId, isAddNewSlot, onReviewOpen]);
 
   // Clear validation errors when switching risk or when modal opens
   useEffect(() => {
@@ -664,17 +679,6 @@ export function RiskDetailModal({
 
   const isDirty = isDirtyState;
 
-  const clearAutoSaveTimer = useCallback(() => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) clearAutoSaveTimer();
-  }, [open, clearAutoSaveTimer]);
-
   useEffect(() => {
     if (!pendingScrollValidationRef.current || validationErrors.length === 0) return;
     pendingScrollValidationRef.current = false;
@@ -734,13 +738,13 @@ export function RiskDetailModal({
       appliesTo: updated.appliesTo,
       owner: updated.owner,
     });
-    onSave(updated);
+    const saved = (await onSave(updated)) ?? updated;
     // Mark form as "just saved" so isDirty is false until user edits or switches risk; sync form and update baseline
     if (currentRisk) {
-      const snapshot = toComparableSnapshot(updated as Record<string, unknown>);
+      const snapshot = toComparableSnapshot(saved as Record<string, unknown>);
       lastSavedSnapshotRef.current = { id: currentRisk.id, snapshot };
       lastSyncedBaselineRef.current = snapshot;
-      syncFormFromRisk(updated);
+      syncFormFromRisk(saved);
     }
     return true;
   }, [
@@ -775,43 +779,21 @@ export function RiskDetailModal({
     createProjectOwner,
   ]);
 
-  /** Persist pending edits immediately (clears debounced auto-save timer). Used before Prev/Next/Close. */
+  /** Persist pending edits before Prev/Next/Close so navigation does not discard form-only changes. */
   const flushPendingSave = useCallback(async (): Promise<boolean> => {
-    clearAutoSaveTimer();
     if (readOnly || !currentRisk || currentIndex === risks.length) return true;
     if (lastSyncedBaselineRef.current == null) return true;
     const updated = buildUpdatedRisk();
     if (!updated) return true;
     const snap = toComparableSnapshot(updated as Record<string, unknown>);
     if (snap === lastSyncedBaselineRef.current) return true;
-    return handleSave();
-  }, [readOnly, currentRisk, currentIndex, risks.length, buildUpdatedRisk, handleSave, clearAutoSaveTimer]);
-
-  /** Debounced persist while editing (buildUpdatedRisk in deps resets the timer on each change). */
-  useEffect(() => {
-    if (!open || readOnly || !currentRisk || currentIndex === risks.length || !isDirty) {
-      clearAutoSaveTimer();
-      return;
+    try {
+      return await handleSave();
+    } catch (err) {
+      console.error("[risk save] detail modal failed", err);
+      return false;
     }
-    clearAutoSaveTimer();
-    autoSaveTimerRef.current = setTimeout(() => {
-      autoSaveTimerRef.current = null;
-      void handleSave();
-    }, 450);
-    return () => {
-      clearAutoSaveTimer();
-    };
-  }, [
-    open,
-    readOnly,
-    currentRisk?.id,
-    currentIndex,
-    risks.length,
-    isDirty,
-    buildUpdatedRisk,
-    handleSave,
-    clearAutoSaveTimer,
-  ]);
+  }, [readOnly, currentRisk, currentIndex, risks.length, buildUpdatedRisk, handleSave]);
 
   const handleRestoreRiskAction = useCallback(() => {
     if (!currentRisk || isAddNewSlot || !isRiskStatusArchived(currentRisk.status)) return;
@@ -830,14 +812,15 @@ export function RiskDetailModal({
 
   const [explicitSavePending, setExplicitSavePending] = useState(false);
   const handleExplicitSave = useCallback(async () => {
-    clearAutoSaveTimer();
     setExplicitSavePending(true);
     try {
       await handleSave();
+    } catch (err) {
+      console.error("[risk save] detail modal failed", err);
     } finally {
       setExplicitSavePending(false);
     }
-  }, [handleSave, clearAutoSaveTimer]);
+  }, [handleSave]);
 
   useEffect(() => {
     if (!open) return;
