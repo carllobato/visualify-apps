@@ -24,13 +24,23 @@ function toInt(v: unknown): number {
   return Number.isFinite(n) ? Math.floor(n) : NaN;
 }
 
-function isValidProbScale(n: number): boolean {
-  return Number.isInteger(n) && n >= 1 && n <= 5;
+/** Primary: probability must be a finite number in 0–100 (percent). */
+function isValidProbabilityPct(n: unknown): boolean {
+  const v = toNum(n);
+  return Number.isFinite(v) && v >= 0 && v <= 100;
+}
+
+/** Legacy fallback: valid 1–5 integer scale (used when no pct field is present). */
+function isValidProbScale(n: unknown): boolean {
+  const v = toNum(n);
+  return Number.isInteger(v) && v >= 1 && v <= 5;
 }
 
 /**
  * Returns a list of validation error messages for the risk.
- * Pre-mitigation: title, probability scale 1–5 (from `pre_probability` / inherent rating), cost min/ml/max, time min/ml/max.
+ * Pre-mitigation: title, probability 0–100% (from `preMitigationProbabilityPct`; falls back to
+ * legacy 1–5 inherent rating for rows that pre-date the percentage migration), cost min/ml/max,
+ * time min/ml/max.
  * Post-mitigation: required only when risk.mitigation is present (non-empty string); same rules.
  * Draft risks are not validated (return no errors).
  */
@@ -47,9 +57,12 @@ export function getRiskValidationErrors(risk: Risk): string[] {
     errors.push("Owner is required");
   }
 
-  const preProbScale = risk.inherentRating?.probability;
-  if (!isValidProbScale(preProbScale)) {
-    errors.push("Pre-mitigation probability must be valid (1–5 scale)");
+  const preValid =
+    risk.preMitigationProbabilityPct !== undefined
+      ? isValidProbabilityPct(risk.preMitigationProbabilityPct)
+      : isValidProbScale(risk.inherentRating?.probability);
+  if (!preValid) {
+    errors.push("Pre-mitigation probability is required (0–100%)");
   }
 
   const preCostMin = toNum(risk.preMitigationCostMin);
@@ -86,9 +99,12 @@ export function getRiskValidationErrors(risk: Risk): string[] {
 
   const hasMitigation = Boolean(risk.mitigation?.trim());
   if (hasMitigation) {
-    const postProbScale = risk.residualRating?.probability;
-    if (!isValidProbScale(postProbScale)) {
-      errors.push("Post-mitigation probability must be valid (1–5 scale) when mitigation is set");
+    const postValid =
+      risk.postMitigationProbabilityPct !== undefined
+        ? isValidProbabilityPct(risk.postMitigationProbabilityPct)
+        : isValidProbScale(risk.residualRating?.probability);
+    if (!postValid) {
+      errors.push("Post-mitigation probability is required (0–100%) when mitigation is set");
     }
 
     const postCostMin = toNum(risk.postMitigationCostMin);

@@ -12,6 +12,7 @@ export type RiskRow = {
   applies_to: string | null;
   status: string;
   pre_probability: number;
+  pre_probability_pct: number | null;
   pre_cost_min: number | null;
   pre_cost_ml: number;
   pre_cost_max: number | null;
@@ -21,6 +22,7 @@ export type RiskRow = {
   mitigation_description: string | null;
   mitigation_cost: number;
   post_probability: number;
+  post_probability_pct: number | null;
   post_cost_min: number | null;
   post_cost_ml: number;
   post_cost_max: number | null;

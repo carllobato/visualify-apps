@@ -85,9 +85,16 @@ export function getEffectiveRiskInputs(risk: Risk): EffectiveRiskInputs | null {
   // Replaces prior rule: Boolean(risk.mitigation?.trim()) && post cost ML && post time ML (field presence only).
   const usePost = mitigationMode === "active" && hasValidPostValues;
 
-  const fromScalePre = probability01FromScale(risk.inherentRating.probability);
-  const fromScalePost = probability01FromScale(risk.residualRating.probability);
-  const probability = simulationProbability01(risk, usePost, fromScalePre, fromScalePost);
+  // Prefer explicit pct columns (direct percentage / 100) over the lossy 1–5 scale conversion.
+  const fromPre =
+    typeof risk.preMitigationProbabilityPct === "number"
+      ? risk.preMitigationProbabilityPct / 100
+      : probability01FromScale(risk.inherentRating.probability);
+  const fromPost =
+    typeof risk.postMitigationProbabilityPct === "number"
+      ? risk.postMitigationProbabilityPct / 100
+      : probability01FromScale(risk.residualRating.probability);
+  const probability = simulationProbability01(risk, usePost, fromPre, fromPost);
 
   const costRaw = getCostMLForSimulation(risk, usePost);
   const timeRaw = getTimeMLForSimulation(risk, usePost);

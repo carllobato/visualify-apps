@@ -1,6 +1,6 @@
 import type { RiskRow } from "@/types/risk";
 import type { Risk } from "@/domain/risk/risk.schema";
-import { buildRating } from "@/domain/risk/risk.logic";
+import { buildRating, probabilityPctToScale } from "@/domain/risk/risk.logic";
 import { costToConsequenceScale, timeDaysToConsequenceScale } from "@/domain/risk/risk.logic";
 import { resolveCanonicalLookupLabel } from "@/domain/risk/riskFieldSemantics";
 
@@ -16,7 +16,7 @@ export function requireRiskProjectId(projectId?: string): string {
 
 /** Supabase `public.risks` column list — keep in sync with DB (no `*`). */
 export const RISK_DB_SELECT_COLUMNS =
-  "id,project_id,risk_number,title,description,category,owner,applies_to,status,pre_probability,pre_cost_min,pre_cost_ml,pre_cost_max,pre_time_min,pre_time_ml,pre_time_max,mitigation_description,mitigation_cost,post_probability,post_cost_min,post_cost_ml,post_cost_max,post_time_min,post_time_ml,post_time_max,created_at,updated_at";
+  "id,project_id,risk_number,title,description,category,owner,applies_to,status,pre_probability,pre_probability_pct,pre_cost_min,pre_cost_ml,pre_cost_max,pre_time_min,pre_time_ml,pre_time_max,mitigation_description,mitigation_cost,post_probability,post_probability_pct,post_cost_min,post_cost_ml,post_cost_max,post_time_min,post_time_ml,post_time_max,created_at,updated_at";
 
 function isUuid(s: string): boolean {
   return UUID_REGEX.test(s);
@@ -37,6 +37,13 @@ function rowToRisk(row: RiskRow): Risk {
   const appliesRaw = row.applies_to?.trim();
   const appliesTo = appliesRaw && appliesRaw.length > 0 ? appliesRaw : undefined;
   const hasMitigation = Boolean(row.mitigation_description?.trim());
+  // Prefer pct-derived scale when the column is populated; fall back to legacy 1–5 value.
+  const preProb = row.pre_probability_pct != null
+    ? probabilityPctToScale(row.pre_probability_pct)
+    : row.pre_probability;
+  const postProb = row.post_probability_pct != null
+    ? probabilityPctToScale(row.post_probability_pct)
+    : row.post_probability;
   return {
     id: row.id,
     riskNumber: row.risk_number ?? undefined,
@@ -46,8 +53,10 @@ function rowToRisk(row: RiskRow): Risk {
     status: row.status as Risk["status"],
     owner: row.owner ?? undefined,
     mitigation: row.mitigation_description ?? undefined,
-    inherentRating: buildRating(row.pre_probability, preConsequence),
-    residualRating: buildRating(row.post_probability, postConsequence),
+    inherentRating: buildRating(preProb, preConsequence),
+    residualRating: buildRating(postProb, postConsequence),
+    preMitigationProbabilityPct: row.pre_probability_pct ?? undefined,
+    postMitigationProbabilityPct: hasMitigation ? (row.post_probability_pct ?? undefined) : undefined,
     appliesTo,
     preMitigationCostMin: row.pre_cost_min ?? undefined,
     preMitigationCostML: row.pre_cost_ml,
@@ -84,6 +93,7 @@ export type RiskInsertRow = {
   applies_to: string | null;
   status: string;
   pre_probability: number;
+  pre_probability_pct: number | null;
   pre_cost_min: number | null;
   pre_cost_ml: number;
   pre_cost_max: number | null;
@@ -93,6 +103,7 @@ export type RiskInsertRow = {
   mitigation_description: string | null;
   mitigation_cost: number;
   post_probability: number;
+  post_probability_pct: number | null;
   post_cost_min: number | null;
   post_cost_ml: number;
   post_cost_max: number | null;
@@ -146,6 +157,7 @@ export function normalizeRiskRow(raw: unknown, projectId: string): RiskInsertRow
       typeof row.applies_to === "string" && row.applies_to.length > 0 ? row.applies_to : null,
     status: asString(row.status),
     pre_probability: asNumber(row.pre_probability),
+    pre_probability_pct: asNullableNumber(row.pre_probability_pct),
     pre_cost_min: asNullableNumber(row.pre_cost_min),
     pre_cost_ml: asNumber(row.pre_cost_ml),
     pre_cost_max: asNullableNumber(row.pre_cost_max),
@@ -158,6 +170,7 @@ export function normalizeRiskRow(raw: unknown, projectId: string): RiskInsertRow
         : null,
     mitigation_cost: asNumber(row.mitigation_cost),
     post_probability: asNumber(row.post_probability),
+    post_probability_pct: asNullableNumber(row.post_probability_pct),
     post_cost_min: asNullableNumber(row.post_cost_min),
     post_cost_ml: asNumber(row.post_cost_ml),
     post_cost_max: asNullableNumber(row.post_cost_max),
@@ -190,6 +203,7 @@ function riskToRow(risk: Risk, projectId: string): RiskInsertRow {
     applies_to: risk.appliesTo ?? null,
     status: risk.status,
     pre_probability: Number(risk.inherentRating.probability),
+    pre_probability_pct: risk.preMitigationProbabilityPct ?? null,
     pre_cost_min: risk.preMitigationCostMin ?? null,
     pre_cost_ml: Number(preCostMl ?? 0),
     pre_cost_max: risk.preMitigationCostMax ?? null,
@@ -199,6 +213,7 @@ function riskToRow(risk: Risk, projectId: string): RiskInsertRow {
     mitigation_description: risk.mitigation ?? null,
     mitigation_cost: Number(mitigationCost ?? 0),
     post_probability: Number(risk.residualRating.probability),
+    post_probability_pct: risk.postMitigationProbabilityPct ?? null,
     post_cost_min: risk.postMitigationCostMin ?? null,
     post_cost_ml: Number(postCostMl ?? 0),
     post_cost_max: risk.postMitigationCostMax ?? null,

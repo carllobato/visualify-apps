@@ -115,6 +115,18 @@ export const RiskSchema = z.object({
   postMitigationTimeML: z.number().int().min(0).optional(),
   postMitigationTimeMax: z.number().int().min(0).optional(),
 
+  /**
+   * Pre-mitigation trigger probability as a percentage (0–100).
+   * Set by the mapper from form input; written to `pre_probability_pct` in the DB.
+   * Preferred over the 1–5 inherentRating scale for simulation and validation.
+   */
+  preMitigationProbabilityPct: z.number().min(0).max(100).optional(),
+  /**
+   * Post-mitigation trigger probability as a percentage (0–100).
+   * Set by the mapper when mitigation is present; written to `post_probability_pct` in the DB.
+   */
+  postMitigationProbabilityPct: z.number().min(0).max(100).optional(),
+
   /** Forward exposure / scenario: trigger probability 0..1 (computed in app, not a DB column). */
   probability: z.number().min(0).max(1).optional(),
   /** Forward exposure: how much escalation persists over time (0..1). */

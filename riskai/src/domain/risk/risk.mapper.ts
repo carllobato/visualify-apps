@@ -147,6 +147,8 @@ export function intelligentDraftToRisk(
     postMitigationTimeML: draft.postTimeMostLikely,
     postMitigationTimeMax: draft.postTimeMax,
 
+    preMitigationProbabilityPct: prePct,
+    postMitigationProbabilityPct: hasPost ? postPct : undefined,
     probability: hasPost ? postProb01 : preProb01,
     createdAt,
     updatedAt: createdAt,
@@ -213,6 +215,8 @@ export function mergeDraftToRisk(
     postMitigationTimeMax: draft.postMitigationTimeMax,
     mergedFromRiskIds: options.mergedFromRiskIds,
     aiMergeClusterId: options.aiMergeClusterId,
+    preMitigationProbabilityPct: prePct,
+    postMitigationProbabilityPct: postPct,
     probability: postPct / 100,
     createdAt,
     updatedAt: createdAt,

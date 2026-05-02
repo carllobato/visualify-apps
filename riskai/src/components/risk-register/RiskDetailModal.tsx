@@ -281,7 +281,7 @@ export function RiskDetailModal({
     const hasMitigation = mode !== "none";
     setMitigation(risk.mitigation ?? "");
     setMitigationCost(risk.mitigationCost?.toString() ?? "");
-    const prePct = probabilityScaleToDisplayPct(risk.inherentRating.probability);
+    const prePct = risk.preMitigationProbabilityPct ?? probabilityScaleToDisplayPct(risk.inherentRating.probability);
     const preCostML = risk.preMitigationCostML ?? 0;
     const preTimeML = risk.preMitigationTimeML ?? 0;
     setPreMitigationProbabilityPct(String(prePct));
@@ -301,7 +301,7 @@ export function RiskDetailModal({
     );
     // Post-Mitigation: only set form state when mitigation mode is not none, so dirty check (buildUpdatedRisk) matches. When none, leave post fields empty so we don't get false positives.
     if (hasMitigation) {
-      const postPct = probabilityScaleToDisplayPct(risk.residualRating.probability);
+      const postPct = risk.postMitigationProbabilityPct ?? probabilityScaleToDisplayPct(risk.residualRating.probability);
       const postCostML = risk.postMitigationCostML ?? preCostML;
       const postTimeML = risk.postMitigationTimeML ?? preTimeML;
       setPostMitigationProbabilityPct(String(postPct));
@@ -340,10 +340,12 @@ export function RiskDetailModal({
     };
     const mode = mitigationModeFromRisk(risk);
     const hasMitigation = mode !== "none";
-    const prePct = probabilityScaleToDisplayPct(risk.inherentRating.probability);
+    const prePct = risk.preMitigationProbabilityPct ?? probabilityScaleToDisplayPct(risk.inherentRating.probability);
     const preCostML = risk.preMitigationCostML ?? 0;
     const preTimeML = risk.preMitigationTimeML ?? 0;
-    const postPct = hasMitigation ? probabilityScaleToDisplayPct(risk.residualRating.probability) : undefined;
+    const postPct = hasMitigation
+      ? (risk.postMitigationProbabilityPct ?? probabilityScaleToDisplayPct(risk.residualRating.probability))
+      : undefined;
     const postCostML = hasMitigation ? (risk.postMitigationCostML ?? preCostML) : undefined;
     const postTimeML = hasMitigation ? (risk.postMitigationTimeML ?? preTimeML) : undefined;
     const applies = risk.appliesTo ?? "both";
@@ -600,6 +602,8 @@ export function RiskDetailModal({
       postMitigationTimeMax: postTimeMax,
       inherentRating,
       residualRating,
+      preMitigationProbabilityPct: prePct,
+      postMitigationProbabilityPct: persistMitigationFields ? postPct : undefined,
       probability: (persistMitigationFields ? postPct : prePct) / 100,
       mitigationProfile: mergeMitigationProfileForMode(currentRisk, mitigationMode),
       updatedAt: nowIso(),
