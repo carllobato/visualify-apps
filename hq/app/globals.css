@@ -1,0 +1,14 @@
+@import "../../packages/design-system/src/styles/globals.css";
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.container {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+}
