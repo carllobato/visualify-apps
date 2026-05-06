@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Card, CardContent } from "@visualify/design-system";
+import { Card, CardContent, CardHeader, CardTitle } from "@visualify/design-system";
 import { supabaseServerClient } from "@/lib/supabase/server";
+import { DashboardAccountMenu } from "./dashboard-account-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +14,16 @@ const primaryCtaClass =
   "transition-all duration-150 ease-out hover:bg-[var(--ds-primary-hover)] hover:shadow-[var(--ds-elevation-button-secondary-hover)] active:brightness-[0.97] " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
-export default async function HomePage() {
+const RISKAI_DASHBOARD_URL = "https://app.visualify.com.au/riskai/dashboard";
+
+export default async function DashboardPage() {
   const supabase = await supabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-    redirect("/dashboard");
+  if (!user) {
+    redirect("/login");
   }
 
   return (
@@ -35,33 +38,42 @@ export default async function HomePage() {
               Visualify
             </Link>
           </div>
+          <div className="flex shrink-0 items-center gap-[var(--ds-space-2)]">
+            <DashboardAccountMenu />
+          </div>
         </header>
       </div>
 
       <div className="relative z-10 flex min-h-dvh flex-col items-center justify-center px-4 pb-8 pt-16">
-        <main className="w-full max-w-md shrink-0">
+        <main className="w-full max-w-md shrink-0 space-y-8">
+          <div className="space-y-3">
+            <h1 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
+              Visualify HQ
+            </h1>
+            <p className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+              Manage your apps, workspaces and access.
+            </p>
+          </div>
+
           <Card
             variant="default"
             className="w-full [border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
           >
-            <CardContent className="space-y-8 px-6 py-8">
-              <div className="space-y-3">
-                <h1 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
-                  Welcome to Visualify HQ
-                </h1>
-                <p className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-                  Manage your Visualify apps, users, workspaces and access from one place.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <Link href="/login" className={primaryCtaClass}>
-                  Sign in
-                </Link>
-                <p className="text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
-                  RiskAI access will continue to run separately during the transition.
-                </p>
-              </div>
+            <CardHeader>
+              <CardTitle className="text-[var(--ds-text-primary)]">RiskAI</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <p className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                Risk management, simulations and reporting.
+              </p>
+              <a
+                href={RISKAI_DASHBOARD_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={primaryCtaClass}
+              >
+                Open RiskAI
+              </a>
             </CardContent>
           </Card>
         </main>
