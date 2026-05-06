@@ -1,4 +1,5 @@
 packages:
   - "riskai"
   - "website"
+  - "hq"
   - "packages/*"
