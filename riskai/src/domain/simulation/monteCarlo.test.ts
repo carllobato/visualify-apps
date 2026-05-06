@@ -407,6 +407,170 @@ describe("runMonteCarloSimulation", () => {
     }
   });
 
+  // ── scheduleContingencyWorkingDays ──────────────────────────────────────────
+
+  describe("scheduleContingencyWorkingDays — delay-cost absorption", () => {
+    /**
+     * Scenario A: gross risk delay (25 days) is fully inside the schedule contingency (40 days).
+     * Net delay = max(0, 25 − 40) = 0.
+     * Expected: every delayDerivedCostSample is 0; costSamples equal directRiskCostSamples.
+     * timeSamples must still record the gross 25-day delay unchanged.
+     */
+    it("Scenario A — gross delay fully within contingency: delayDerivedCostSamples all zero", () => {
+      const risks: Risk[] = [
+        makeRisk({
+          id: "a1",
+          // preMitigationProbabilityPct drives a fromScalePre of 1.0, ensuring 100% trigger probability
+          // (using probability:1 alone is ambiguous when baseRating scale=3 gives fromScalePre=0.5).
+          preMitigationProbabilityPct: 100,
+          preMitigationCostML: 0,
+          preMitigationTimeMin: 25,
+          preMitigationTimeML: 25,
+          preMitigationTimeMax: 25,
+        }),
+      ];
+      const result = runMonteCarloSimulation({
+        risks,
+        iterations: 100,
+        seed: 1,
+        scheduleContingencyWorkingDays: 40,
+        delayCostPerWorkingDay: 100_000,
+      });
+
+      for (const t of result.timeSamples) {
+        assert.strictEqual(t, 25, `timeSample should be gross 25, got ${t}`);
+      }
+      for (const c of result.delayDerivedCostSamples) {
+        assert.strictEqual(c, 0, `delayDerivedCost should be 0 (fully absorbed), got ${c}`);
+      }
+      for (let i = 0; i < result.costSamples.length; i++) {
+        assert.strictEqual(
+          result.costSamples[i],
+          result.directRiskCostSamples[i],
+          "total cost should equal direct risk cost when delay is within contingency"
+        );
+      }
+    });
+
+    /**
+     * Scenario B: two risks, each contributing 25 working days (constant), give a gross
+     * delay of 50 days. Contingency absorbs 40 days → net = 10 days.
+     * delayCostPerWorkingDay = 100_000 → delay-derived cost = 10 × 100_000 = 1_000_000.
+     *
+     * Note: the engine caps individual risk time impacts at 30 working days, so a single
+     * risk cannot produce 50 days of gross delay; two risks of 25 days each are used instead.
+     */
+    it("Scenario B — gross delay exceeds contingency: delay cost charged only on excess days", () => {
+      const risks: Risk[] = [
+        makeRisk({
+          id: "b1",
+          preMitigationProbabilityPct: 100,
+          preMitigationCostML: 0,
+          preMitigationTimeMin: 25,
+          preMitigationTimeML: 25,
+          preMitigationTimeMax: 25,
+        }),
+        makeRisk({
+          id: "b2",
+          preMitigationProbabilityPct: 100,
+          preMitigationCostML: 0,
+          preMitigationTimeMin: 25,
+          preMitigationTimeML: 25,
+          preMitigationTimeMax: 25,
+        }),
+      ];
+      const rate = 100_000;
+      const contingency = 40;
+      const expectedNet = 50 - contingency; // 10 days
+      const result = runMonteCarloSimulation({
+        risks,
+        iterations: 100,
+        seed: 1,
+        scheduleContingencyWorkingDays: contingency,
+        delayCostPerWorkingDay: rate,
+      });
+
+      for (const t of result.timeSamples) {
+        assert.strictEqual(t, 50, `gross timeSample should be 50, got ${t}`);
+      }
+      for (const c of result.delayDerivedCostSamples) {
+        assert.strictEqual(
+          c,
+          expectedNet * rate,
+          `delay cost should be ${expectedNet} × ${rate} = ${expectedNet * rate}, got ${c}`
+        );
+      }
+      for (let i = 0; i < result.costSamples.length; i++) {
+        assert.strictEqual(
+          result.costSamples[i],
+          result.directRiskCostSamples[i] + result.delayDerivedCostSamples[i],
+          "total cost must equal direct + delay-derived"
+        );
+      }
+    });
+
+    /**
+     * timeSamples must be identical regardless of the scheduleContingencyWorkingDays setting.
+     * Contingency must never affect the gross delay recorded in the time distribution.
+     */
+    it("timeSamples are unaffected by scheduleContingencyWorkingDays", () => {
+      const risks: Risk[] = [
+        makeRisk({
+          id: "t1",
+          preMitigationProbabilityPct: 100,
+          preMitigationCostML: 50_000,
+          preMitigationTimeMin: 10,
+          preMitigationTimeML: 20,
+          preMitigationTimeMax: 30,
+        }),
+      ];
+      const seed = 77;
+      const noContingency = runMonteCarloSimulation({ risks, iterations: 200, seed });
+      const withContingency = runMonteCarloSimulation({
+        risks,
+        iterations: 200,
+        seed,
+        scheduleContingencyWorkingDays: 40,
+        delayCostPerWorkingDay: 100_000,
+      });
+      assert.deepStrictEqual(
+        noContingency.timeSamples,
+        withContingency.timeSamples,
+        "timeSamples must be identical regardless of contingency"
+      );
+    });
+
+    /**
+     * Backward-compatibility: omitting scheduleContingencyWorkingDays must continue to charge
+     * delay cost on the full gross delay (no implicit contingency absorbed).
+     */
+    it("backward-compat: omitting scheduleContingencyWorkingDays charges delay cost on gross delay", () => {
+      const risks: Risk[] = [
+        makeRisk({
+          id: "bc1",
+          preMitigationProbabilityPct: 100,
+          preMitigationCostML: 0,
+          preMitigationTimeMin: 10,
+          preMitigationTimeML: 10,
+          preMitigationTimeMax: 10,
+        }),
+      ];
+      const rate = 1_000;
+      const result = runMonteCarloSimulation({
+        risks,
+        iterations: 50,
+        seed: 5,
+        delayCostPerWorkingDay: rate,
+        // scheduleContingencyWorkingDays intentionally omitted
+      });
+      for (const c of result.delayDerivedCostSamples) {
+        assert.strictEqual(c, 10 * rate, `backward-compat: expected ${10 * rate}, got ${c}`);
+      }
+    });
+  });
+
+  // ── stress / guard ───────────────────────────────────────────────────────────
+
   it("100 risks does not crash and returns valid summary", () => {
     const risks: Risk[] = [];
     for (let i = 1; i <= 100; i++) {

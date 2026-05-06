@@ -8,6 +8,7 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 export type SimulationScheduleSettings = {
   delayCostPerWorkingDay?: number;
   workingDaysPerWeek: WorkingDaysPerWeek;
+  scheduleContingencyWorkingDays?: number;
 };
 
 const DEFAULT_WORKING_DAYS_PER_WEEK: WorkingDaysPerWeek = 5;
@@ -47,9 +48,11 @@ export async function resolveScheduleSettingsForSimulation(
         workingDaysPerWeek = parsed.workingDaysPerWeek;
         hasDbWorkingDaysPerWeek = true;
         const delayCostPerWorkingDay = positiveFiniteNumber(parsed.delay_cost_per_working_day);
+        const scheduleContingencyWorkingDays = positiveFiniteNumber(parsed.scheduleContingency_workingDays);
         if (delayCostPerWorkingDay !== undefined) {
-          return { delayCostPerWorkingDay, workingDaysPerWeek };
+          return { delayCostPerWorkingDay, workingDaysPerWeek, scheduleContingencyWorkingDays };
         }
+        return { workingDaysPerWeek, scheduleContingencyWorkingDays };
       }
     }
   } catch {
@@ -65,6 +68,7 @@ export async function resolveScheduleSettingsForSimulation(
       workingDaysPerWeek: hasDbWorkingDaysPerWeek
         ? workingDaysPerWeek
         : delayCtx.workingDaysPerWeek,
+      scheduleContingencyWorkingDays: positiveFiniteNumber(delayCtx.scheduleContingency_workingDays),
     };
   }
 

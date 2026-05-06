@@ -384,15 +384,22 @@ export type RunMonteCarloOptions = {
   iterations?: number;
   seed?: number;
   /**
-   * Project setting: indirect cost (same currency as risk cost ML) per working day of schedule delay.
-   * Simulation time samples are total delay in working days; when this is set and > 0,
-   * each iteration adds `totalWorkingDays * delayCostPerWorkingDay` to the cost sample (on top of direct risk cost).
-   * Omit, null, or ≤0 leaves cost samples unchanged from direct risk cost only.
+   * Project setting: indirect cost (same currency as risk cost ML) per working day of net schedule delay.
+   * Net delay = max(0, gross_simulated_delay − scheduleContingencyWorkingDays).
+   * When this is set and > 0, each iteration adds `netWorkingDays * delayCostPerWorkingDay` to the
+   * cost sample (on top of direct risk cost). Omit, null, or ≤0 leaves cost samples unchanged.
    */
   delayCostPerWorkingDay?: number | null;
   /** @deprecated Use delayCostPerWorkingDay. Kept as a compatibility fallback for legacy callers. */
   delayCostPerDay?: number | null;
   workingDaysPerWeek?: number | null;
+  /**
+   * Project setting: schedule contingency in working days.
+   * Absorbed before computing delay-derived cost so that indirect costs are only charged on
+   * delay that exceeds the contingency buffer. Does not affect timeSamples or the time CDF.
+   * Omit, null, or ≤0 means no contingency absorption (existing behaviour).
+   */
+  scheduleContingencyWorkingDays?: number | null;
 };
 
 /**
@@ -411,6 +418,7 @@ export function runMonteCarloSimulation(
     delayCostPerWorkingDay: delayCostPerWorkingDayRaw,
     delayCostPerDay: legacyDelayCostPerDayRaw,
     workingDaysPerWeek: workingDaysPerWeekRaw,
+    scheduleContingencyWorkingDays: scheduleContingencyWorkingDaysRaw,
   } = options;
   const effective = risks.map((r) => getEffectiveRiskInputs(r)).filter((x): x is EffectiveRiskInputs => x != null);
   const n = Math.max(0, Math.floor(iterations));
@@ -427,6 +435,12 @@ export function runMonteCarloSimulation(
     workingDaysPerWeekRaw != null && Number.isFinite(workingDaysPerWeekRaw) && workingDaysPerWeekRaw > 0
       ? workingDaysPerWeekRaw
       : undefined;
+  const scheduleContingencyAbsorbed =
+    scheduleContingencyWorkingDaysRaw != null &&
+    Number.isFinite(scheduleContingencyWorkingDaysRaw) &&
+    scheduleContingencyWorkingDaysRaw > 0
+      ? scheduleContingencyWorkingDaysRaw
+      : 0;
 
   const costSamples: number[] = [];
   const directRiskCostSamples: number[] = [];
@@ -444,10 +458,11 @@ export function runMonteCarloSimulation(
         totalWorkingDays += sampleTriangular(random, inp.timeMin, inp.timeML, inp.timeMax);
       }
     }
-    // totalWorkingDays is aggregate delay in working days (not weeks/months); indirect cost from project settings.
+    // Net delay after absorbing schedule contingency; timeSamples still records gross delay unchanged.
+    const netWorkingDays = Math.max(0, totalWorkingDays - scheduleContingencyAbsorbed);
     const derivedDelayCost =
-      delayCostPerWorkingDay != null && totalWorkingDays > 0
-        ? totalWorkingDays * delayCostPerWorkingDay
+      delayCostPerWorkingDay != null && netWorkingDays > 0
+        ? netWorkingDays * delayCostPerWorkingDay
         : 0;
     const totalCost = directCost + derivedDelayCost;
     directRiskCostSamples.push(directCost);

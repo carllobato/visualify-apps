@@ -6,7 +6,8 @@
  */
 
 import type { Risk } from "./risk.schema";
-import { isRiskStatusDraft } from "./riskFieldSemantics";
+import { mitigationModeFromRisk } from "./mitigationMode";
+import { appliesToAffectsCost, appliesToAffectsTime, isRiskStatusDraft } from "./riskFieldSemantics";
 
 /** Coerce to number for validation (handles string numbers from JSON/form). */
 function toNum(v: unknown): number {
@@ -42,6 +43,11 @@ function isValidProbScale(n: unknown): boolean {
  * legacy 1–5 inherent rating for rows that pre-date the percentage migration), cost min/ml/max,
  * time min/ml/max.
  * Post-mitigation: required only when risk.mitigation is present (non-empty string); same rules.
+ * Cost fields are only validated when `appliesTo` affects cost ("Cost" or "Cost & Time").
+ * Time fields are only validated when `appliesTo` affects time ("Time" or "Cost & Time").
+ * Post-mitigation fields are validated using the same `mitigationModeFromRisk` signal as the modal,
+ * so that an explicit "none" profile (written on save when mode is none) suppresses post-mit
+ * validation even if stale post-mit values remain in the database.
  * Draft risks are not validated (return no errors).
  */
 export function getRiskValidationErrors(risk: Risk): string[] {
@@ -65,39 +71,43 @@ export function getRiskValidationErrors(risk: Risk): string[] {
     errors.push("Pre-mitigation probability is required (0–100%)");
   }
 
-  const preCostMin = toNum(risk.preMitigationCostMin);
-  const preCostML = toNum(risk.preMitigationCostML);
-  const preCostMax = toNum(risk.preMitigationCostMax);
-  if (
-    !Number.isFinite(preCostMin) ||
-    !Number.isFinite(preCostML) ||
-    !Number.isFinite(preCostMax) ||
-    preCostMin < 0 ||
-    preCostML < 0 ||
-    preCostMax < 0 ||
-    preCostMin > preCostML ||
-    preCostML > preCostMax
-  ) {
-    errors.push("Pre-mitigation cost: min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+  if (appliesToAffectsCost(risk.appliesTo)) {
+    const preCostMin = toNum(risk.preMitigationCostMin);
+    const preCostML = toNum(risk.preMitigationCostML);
+    const preCostMax = toNum(risk.preMitigationCostMax);
+    if (
+      !Number.isFinite(preCostMin) ||
+      !Number.isFinite(preCostML) ||
+      !Number.isFinite(preCostMax) ||
+      preCostMin < 0 ||
+      preCostML < 0 ||
+      preCostMax < 0 ||
+      preCostMin > preCostML ||
+      preCostML > preCostMax
+    ) {
+      errors.push("Pre-mitigation cost: min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+    }
   }
 
-  const preTimeMin = toInt(risk.preMitigationTimeMin);
-  const preTimeML = toInt(risk.preMitigationTimeML);
-  const preTimeMax = toInt(risk.preMitigationTimeMax);
-  if (
-    !Number.isFinite(preTimeMin) ||
-    !Number.isFinite(preTimeML) ||
-    !Number.isFinite(preTimeMax) ||
-    preTimeMin < 0 ||
-    preTimeML < 0 ||
-    preTimeMax < 0 ||
-    preTimeMin > preTimeML ||
-    preTimeML > preTimeMax
-  ) {
-    errors.push("Pre-mitigation time (working days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+  if (appliesToAffectsTime(risk.appliesTo)) {
+    const preTimeMin = toInt(risk.preMitigationTimeMin);
+    const preTimeML = toInt(risk.preMitigationTimeML);
+    const preTimeMax = toInt(risk.preMitigationTimeMax);
+    if (
+      !Number.isFinite(preTimeMin) ||
+      !Number.isFinite(preTimeML) ||
+      !Number.isFinite(preTimeMax) ||
+      preTimeMin < 0 ||
+      preTimeML < 0 ||
+      preTimeMax < 0 ||
+      preTimeMin > preTimeML ||
+      preTimeML > preTimeMax
+    ) {
+      errors.push("Pre-mitigation time (working days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+    }
   }
 
-  const hasMitigation = Boolean(risk.mitigation?.trim());
+  const hasMitigation = mitigationModeFromRisk(risk) !== "none";
   if (hasMitigation) {
     const postValid =
       risk.postMitigationProbabilityPct !== undefined
@@ -107,36 +117,40 @@ export function getRiskValidationErrors(risk: Risk): string[] {
       errors.push("Post-mitigation probability is required (0–100%) when mitigation is set");
     }
 
-    const postCostMin = toNum(risk.postMitigationCostMin);
-    const postCostML = toNum(risk.postMitigationCostML);
-    const postCostMax = toNum(risk.postMitigationCostMax);
-    if (
-      !Number.isFinite(postCostMin) ||
-      !Number.isFinite(postCostML) ||
-      !Number.isFinite(postCostMax) ||
-      postCostMin < 0 ||
-      postCostML < 0 ||
-      postCostMax < 0 ||
-      postCostMin > postCostML ||
-      postCostML > postCostMax
-    ) {
-      errors.push("Post-mitigation cost: min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+    if (appliesToAffectsCost(risk.appliesTo)) {
+      const postCostMin = toNum(risk.postMitigationCostMin);
+      const postCostML = toNum(risk.postMitigationCostML);
+      const postCostMax = toNum(risk.postMitigationCostMax);
+      if (
+        !Number.isFinite(postCostMin) ||
+        !Number.isFinite(postCostML) ||
+        !Number.isFinite(postCostMax) ||
+        postCostMin < 0 ||
+        postCostML < 0 ||
+        postCostMax < 0 ||
+        postCostMin > postCostML ||
+        postCostML > postCostMax
+      ) {
+        errors.push("Post-mitigation cost: min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+      }
     }
 
-    const postTimeMin = toInt(risk.postMitigationTimeMin);
-    const postTimeML = toInt(risk.postMitigationTimeML);
-    const postTimeMax = toInt(risk.postMitigationTimeMax);
-    if (
-      !Number.isFinite(postTimeMin) ||
-      !Number.isFinite(postTimeML) ||
-      !Number.isFinite(postTimeMax) ||
-      postTimeMin < 0 ||
-      postTimeML < 0 ||
-      postTimeMax < 0 ||
-      postTimeMin > postTimeML ||
-      postTimeML > postTimeMax
-    ) {
-      errors.push("Post-mitigation time (working days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+    if (appliesToAffectsTime(risk.appliesTo)) {
+      const postTimeMin = toInt(risk.postMitigationTimeMin);
+      const postTimeML = toInt(risk.postMitigationTimeML);
+      const postTimeMax = toInt(risk.postMitigationTimeMax);
+      if (
+        !Number.isFinite(postTimeMin) ||
+        !Number.isFinite(postTimeML) ||
+        !Number.isFinite(postTimeMax) ||
+        postTimeMin < 0 ||
+        postTimeML < 0 ||
+        postTimeMax < 0 ||
+        postTimeMin > postTimeML ||
+        postTimeML > postTimeMax
+      ) {
+        errors.push("Post-mitigation time (working days): min, most likely, and max required (≥0, min ≤ ML ≤ max)");
+      }
     }
   }
 

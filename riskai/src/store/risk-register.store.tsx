@@ -838,7 +838,7 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
         }
 
         return resolveScheduleSettingsForSimulation(snapshotProjectIdForDelay).then(
-          async ({ delayCostPerWorkingDay, workingDaysPerWeek }): Promise<RunSimulationResult> => {
+          async ({ delayCostPerWorkingDay, workingDaysPerWeek, scheduleContingencyWorkingDays }): Promise<RunSimulationResult> => {
           const runStartMs = typeof performance !== "undefined" ? performance.now() : Date.now();
 
           const mcResult = runMonteCarloSimulation({
@@ -847,6 +847,7 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
             seed,
             delayCostPerWorkingDay,
             workingDaysPerWeek,
+            scheduleContingencyWorkingDays,
           });
           const snapshotFields = buildSimulationSnapshotFromResult(
             mcResult,
