@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -72,8 +73,20 @@ export function DashboardAccountMenu() {
 
   const handleSignOut = async () => {
     setMenuOpen(false);
-    await supabaseBrowserClient().auth.signOut();
-    window.location.href = "/login";
+    setUser(null);
+    try {
+      const res = await fetch("/auth/sign-out", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (!res.ok) {
+        await supabaseBrowserClient().auth.signOut({ scope: "global" });
+      }
+    } catch {
+      await supabaseBrowserClient().auth.signOut({ scope: "global" });
+    } finally {
+      window.location.assign("/login");
+    }
   };
 
   if (user === "loading") {
@@ -88,6 +101,13 @@ export function DashboardAccountMenu() {
   if (!user) {
     return null;
   }
+
+  const emailRaw = user.email?.trim();
+  const emailFromMetadata =
+    typeof user.user_metadata?.email === "string"
+      ? user.user_metadata.email.trim()
+      : "";
+  const signedInEmail = emailRaw || emailFromMetadata || null;
 
   return (
     <div className="relative flex items-center" ref={menuRef}>
@@ -112,6 +132,30 @@ export function DashboardAccountMenu() {
           role="menu"
           className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
         >
+          <div
+            className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
+            role="presentation"
+          >
+            <div className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+              Signed in as
+            </div>
+            <div
+              className={`mt-[var(--ds-space-1)] truncate text-[length:var(--ds-text-sm)] leading-snug ${
+                signedInEmail ? "text-[var(--ds-text-primary)]" : "text-[var(--ds-text-secondary)]"
+              }`}
+              title={signedInEmail ?? undefined}
+            >
+              {signedInEmail ?? "No email available"}
+            </div>
+          </div>
+          <Link
+            href="/account"
+            role="menuitem"
+            className="ds-app-menu-dropdown__item block text-left no-underline"
+            onClick={() => setMenuOpen(false)}
+          >
+            Account settings
+          </Link>
           <button
             type="button"
             role="menuitem"
