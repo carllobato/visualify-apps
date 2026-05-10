@@ -2,6 +2,12 @@
   "name": "visualify-hq",
   "version": "0.1.0",
   "description": "Visualify HQ — workspace admin and app launcher.",
+  "keywords": [
+    "visualify",
+    "hq",
+    "admin",
+    "nextjs"
+  ],
   "private": true,
   "type": "module",
   "scripts": {
