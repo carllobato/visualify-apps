@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button, Card, CardContent, Input, Label, Tab, Tabs } from "@visualify/design-system";
-import { type LoginFormState, loginAction } from "./actions";
 
-export function LoginForm() {
-  const [state, formAction, isPending] = useActionState(loginAction, null as LoginFormState);
+function SubmitRow() {
+  const { pending } = useFormStatus();
+  return (
+    <div className="flex justify-center pt-1">
+      <Button type="submit" variant="primary" disabled={pending} className="max-w-full min-w-0 whitespace-normal text-center">
+        {pending ? "Signing in…" : "Sign in"}
+      </Button>
+    </div>
+  );
+}
 
+export function LoginForm({ serverError }: { serverError?: string }) {
   return (
     <Card
       variant="default"
@@ -32,7 +40,7 @@ export function LoginForm() {
           <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
         </div>
 
-        <form className="space-y-3" action={formAction} autoComplete="on">
+        <form className="space-y-3" action="/api/auth/login" method="POST" autoComplete="on">
           <div>
             <Label htmlFor="hq-login-email">Email</Label>
             <Input
@@ -45,7 +53,6 @@ export function LoginForm() {
               autoCapitalize="off"
               autoCorrect="off"
               required
-              disabled={isPending}
             />
           </div>
 
@@ -60,29 +67,16 @@ export function LoginForm() {
               autoCorrect="off"
               spellCheck={false}
               required
-              disabled={isPending}
             />
           </div>
 
-          {state?.error ? (
-            <p
-              role="alert"
-              className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-danger)]"
-            >
-              {state.error}
+          {serverError ? (
+            <p role="alert" className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-danger)]">
+              {serverError}
             </p>
           ) : null}
 
-          <div className="flex justify-center pt-1">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={isPending}
-              className="max-w-full min-w-0 whitespace-normal text-center"
-            >
-              {isPending ? "Signing in…" : "Sign in"}
-            </Button>
-          </div>
+          <SubmitRow />
 
           <p className="mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
             Secure login | Your data is protected

@@ -23,7 +23,7 @@ export function AccountSettingsTabs({
       <div className="mb-4 border-b border-[var(--ds-border)]">
         <Tabs>
           <Tab active={activeTab === "profile"} onClick={() => setActiveTab("profile")}>
-            Profile
+            Details
           </Tab>
           <Tab active={activeTab === "apps"} onClick={() => setActiveTab("apps")}>
             Apps

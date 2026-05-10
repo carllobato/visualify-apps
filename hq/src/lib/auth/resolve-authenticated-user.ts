@@ -9,7 +9,7 @@ import { authDisabledStubUser, isAuthDisabled } from "./auth-disabled";
  *
  * Uses `getSession()` when `getUser()` returns empty so HQ navigation does not drop users on
  * transient Auth API / JWT validation failures — cookies may still hold a valid session.
- * API routes use {@link requireUser} which calls `getUser()` only (stricter).
+ * {@link requireUser} uses the same fallback so API routes stay consistent with pages.
  */
 export async function resolveAuthenticatedUser(): Promise<User | null> {
   if (isAuthDisabled()) return authDisabledStubUser();
