@@ -47,11 +47,16 @@ const ChevronIcon = () => (
 /** Account pill + dropdown for HQ dashboard (matches RiskAI top-nav account control). */
 export function DashboardAccountMenu({
   variant = "header",
-  railPinned = false,
+  railRowClassName,
+  railLabelClassName,
+  railPageActive = false,
 }: {
   variant?: "header" | "rail";
-  /** When the HQ platform rail is pinned open, drop ring/border chrome on the rail trigger. */
-  railPinned?: boolean;
+  /** Full-row shell + inactive styles from `PlatformRail` so the menu matches nav links. */
+  railRowClassName?: string;
+  railLabelClassName?: string;
+  /** When the route is `/account`, row uses active nav styling (surface + shadow). */
+  railPageActive?: boolean;
 }) {
   const [user, setUser] = useState<User | null | "loading">("loading");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -107,6 +112,8 @@ export function DashboardAccountMenu({
   };
 
   const rail = variant === "rail";
+  const railRow =
+    rail && railRowClassName && railLabelClassName ? { row: railRowClassName, label: railLabelClassName } : null;
 
   if (user === "loading") {
     return (
@@ -130,37 +137,39 @@ export function DashboardAccountMenu({
 
   return (
     <div className="relative flex items-center" ref={menuRef}>
-      <Button
-        type="button"
-        variant="ghost"
-        size="md"
-        className={
-          rail
-            ? [
-                "flex size-10 shrink-0 items-center justify-center rounded-[var(--ds-radius-md)] border-0 !p-0 shadow-none bg-[var(--ds-surface)] text-[var(--ds-text-primary)]",
-                railPinned
-                  ? "ring-0"
-                  : "ring-1 ring-[color-mix(in_oklab,var(--ds-border)_26%,transparent)]",
-                "hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_4%,var(--ds-surface))] hover:text-[var(--ds-text-primary)] focus-visible:!outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)] disabled:hover:bg-[var(--ds-surface)]",
-              ].join(" ")
-            : "ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
-        }
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-        aria-label="Account menu"
-        onClick={() => setMenuOpen((o) => !o)}
-      >
-        {rail ? (
-          <PersonIcon />
-        ) : (
-          <>
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
-              <PersonIcon />
-            </span>
-            <ChevronIcon />
-          </>
-        )}
-      </Button>
+      {railRow ? (
+        <button
+          type="button"
+          className={railRow.row}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label="Account menu"
+          aria-current={railPageActive ? "page" : undefined}
+          title="Account"
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <span className="flex size-10 shrink-0 items-center justify-center">
+            <PersonIcon />
+          </span>
+          <span className={railRow.label}>Account</span>
+        </button>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="md"
+          className="ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label="Account menu"
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
+            <PersonIcon />
+          </span>
+          <ChevronIcon />
+        </Button>
+      )}
 
       {menuOpen ? (
         <div

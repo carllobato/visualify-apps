@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
-import { HqSignedInShell } from "../hq-signed-in-shell";
-
 export const dynamic = "force-dynamic";
 
 export default async function BillingPage() {
@@ -12,13 +10,11 @@ export default async function BillingPage() {
   }
 
   return (
-    <HqSignedInShell>
       <main className="w-full max-w-2xl shrink-0">
         <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Billing</h1>
         <p className="text-sm leading-relaxed text-[var(--ds-text-secondary)]">
           Subscription and invoice management will appear here.
         </p>
       </main>
-    </HqSignedInShell>
   );
 }

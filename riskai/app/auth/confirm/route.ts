@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getLoginPathForHost } from "@/lib/host";
 import { env } from "@/lib/env";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 import { ensureRiskAiDemoWorkspaceSeeded } from "@/server/riskaiDemoSeed";
 
 function authErrorRedirect(request: NextRequest, message: string): NextResponse {
@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
 
   const cookieStore = await cookies();
   const supabase = createServerClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
+    ...supabaseSsrCookieProps(),
     cookies: {
       getAll() {
         return cookieStore.getAll();

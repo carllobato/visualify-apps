@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
-import { HqSignedInShell } from "../hq-signed-in-shell";
 import { AccountSettingsClient } from "./account-settings-client";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +19,6 @@ export default async function AccountSettingsPage() {
   const role = typeof meta?.role === "string" ? meta.role.trim() || null : null;
 
   return (
-    <HqSignedInShell>
       <main className="w-full max-w-2xl shrink-0 px-0 pb-4">
         <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Account settings</h1>
         <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">Your account details.</p>
@@ -42,6 +40,5 @@ export default async function AccountSettingsPage() {
           ← Back to HQ
         </Link>
       </main>
-    </HqSignedInShell>
   );
 }

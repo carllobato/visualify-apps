@@ -5,8 +5,6 @@ import {
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import { VISUALIFY_APP_CATALOG } from "@/lib/visualify-apps";
-import { HqSignedInShell } from "../hq-signed-in-shell";
-
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
@@ -17,7 +15,6 @@ export default async function DashboardPage() {
   }
 
   return (
-    <HqSignedInShell>
       <div className="flex min-h-full flex-col items-start justify-start px-0 pb-10 pt-6">
         <main className="w-full max-w-none shrink-0 space-y-10">
           <div className="space-y-2.5">
@@ -73,6 +70,5 @@ export default async function DashboardPage() {
           </section>
         </main>
       </div>
-    </HqSignedInShell>
   );
 }

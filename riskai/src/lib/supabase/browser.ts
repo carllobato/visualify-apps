@@ -1,4 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 
 export function supabaseBrowserClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,5 +12,7 @@ export function supabaseBrowserClient() {
     throw new Error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY. Add it to .env.local.");
   }
 
-  return createBrowserClient(url.trim(), anonKey.trim());
+  return createBrowserClient(url.trim(), anonKey.trim(), {
+    ...supabaseSsrCookieProps(),
+  });
 }

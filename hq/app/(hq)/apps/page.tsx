@@ -6,8 +6,6 @@ import {
   type WorkspaceProductAccessRow,
 } from "@/lib/workspace-product-access";
 import { VISUALIFY_APP_CATALOG } from "@/lib/visualify-apps";
-import { HqSignedInShell } from "../hq-signed-in-shell";
-
 export const dynamic = "force-dynamic";
 
 const primaryCtaClass =
@@ -43,7 +41,6 @@ export default async function AppsPage() {
   });
 
   return (
-    <HqSignedInShell>
       <div className="flex min-h-full flex-col items-start justify-start px-0 pb-10 pt-6">
         <main className="w-full max-w-md shrink-0 space-y-7">
           <div className="space-y-2.5">
@@ -131,6 +128,5 @@ export default async function AppsPage() {
           )}
         </main>
       </div>
-    </HqSignedInShell>
   );
 }

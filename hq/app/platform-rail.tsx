@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { DashboardAccountMenu } from "./dashboard/dashboard-account-menu";
+import { DashboardAccountMenu } from "./(hq)/dashboard/dashboard-account-menu";
 
 /** Persist pin preference — each HQ page mounts its own shell, so state must survive remounts. */
 const HQ_PLATFORM_RAIL_PINNED_KEY = "hq-platform-rail-pinned";
@@ -33,6 +33,25 @@ const RAIL_NAV_ROW_INACTIVE_CLASS =
 const RAIL_NAV_ROW_ACTIVE_CLASS =
   "bg-[var(--ds-surface)] text-[var(--ds-text-primary)] shadow-[var(--ds-shadow-sm)] hover:bg-[var(--ds-surface)] hover:text-[var(--ds-text-primary)]";
 
+/** Same matching rules as Next `<Link>` active styles for primary nav items. */
+function railNavHrefActive(pathname: string, href: string): boolean {
+  const pathOnly = href.split("#")[0] ?? href;
+  return (
+    pathname === pathOnly ||
+    (pathOnly.length > 1 && pathname.startsWith(`${pathOnly}/`))
+  );
+}
+
+/** Pin/Collapse (always inactive) and Account menu — `<button>` rows share nav chrome + native button resets. */
+function railFooterControlRowClass(active: boolean): string {
+  // Inactive buttons need `bg-transparent`; active rows use surface from `RAIL_NAV_ROW_ACTIVE_CLASS`.
+  return (
+    `${RAIL_NAV_ROW_SHELL_CLASS}${active ? RAIL_NAV_ROW_ACTIVE_CLASS : RAIL_NAV_ROW_INACTIVE_CLASS}` +
+    " cursor-pointer border-0 text-left no-underline " +
+    (active ? "" : "bg-transparent ")
+  );
+}
+
 function RailNavLink({
   href,
   label,
@@ -44,10 +63,7 @@ function RailNavLink({
   pathname: string;
   children: React.ReactNode;
 }) {
-  const pathOnly = href.split("#")[0] ?? href;
-  const active =
-    pathname === pathOnly ||
-    (pathOnly.length > 1 && pathname.startsWith(`${pathOnly}/`));
+  const active = railNavHrefActive(pathname, href);
 
   return (
     <Link
@@ -185,6 +201,8 @@ export function PlatformRail() {
     ? "w-[min(240px,calc(100vw-16px))]"
     : RAIL_EXPANDED_W_CLASS;
 
+  const accountRailActive = railNavHrefActive(pathname, "/account");
+
   return (
     <aside
       data-pinned={railPinned ? "true" : undefined}
@@ -250,16 +268,7 @@ export function PlatformRail() {
               : "pointer-events-none mb-0 max-h-0 opacity-0 group-hover:pointer-events-auto group-hover:mb-2 group-hover:max-h-20 group-hover:opacity-100")
           }
         >
-          <button
-            type="button"
-            className={
-              "relative flex h-10 w-full min-w-0 cursor-pointer items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent text-left " +
-              "text-[var(--ds-text-secondary)] no-underline " +
-              "transition-[color,background-color,box-shadow,gap] duration-[400ms] ease-out " +
-              "hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_5%,var(--ds-canvas))] hover:text-[var(--ds-text-primary)] " +
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)] " +
-              "group-hover:gap-2 group-data-[pinned=true]:gap-2"
-            }
+          <button type="button" className={railFooterControlRowClass(false)}
             aria-pressed={railPinned}
             title={railPinned ? "Collapse sidebar" : "Pin sidebar open"}
             aria-label={railPinned ? "Collapse sidebar" : "Pin sidebar open"}
@@ -278,12 +287,12 @@ export function PlatformRail() {
           aria-hidden="true"
         />
 
-        <div className={`${RAIL_NAV_ROW_SHELL_CLASS}${RAIL_NAV_ROW_INACTIVE_CLASS}`}>
-          <div className="flex size-10 shrink-0 items-center justify-center">
-            <DashboardAccountMenu variant="rail" railPinned={railPinned} />
-          </div>
-          <span className={`${railLabelClass} text-[var(--ds-text-secondary)]`}>Account</span>
-        </div>
+        <DashboardAccountMenu
+          variant="rail"
+          railRowClassName={railFooterControlRowClass(accountRailActive)}
+          railLabelClassName={railLabelClass}
+          railPageActive={accountRailActive}
+        />
       </div>
     </aside>
   );

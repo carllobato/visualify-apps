@@ -11,6 +11,7 @@ import {
 } from "@/lib/host";
 import { DASHBOARD_PATH } from "@/lib/routes";
 import { env } from "@/lib/env";
+import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -79,6 +80,7 @@ export async function updateSession(request: NextRequest) {
 
   try {
     const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      ...supabaseSsrCookieProps(),
       cookies: {
         getAll() {
           return request.cookies.getAll();
