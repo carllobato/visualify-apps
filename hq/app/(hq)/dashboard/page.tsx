@@ -3,7 +3,12 @@ import {
   dsAppLaunchTilePlaceholderClass,
 } from "@visualify/design-system";
 import { redirect } from "next/navigation";
+import { DashboardWorkspacesSection } from "./dashboard-workspaces-section";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
+import {
+  fetchManageableWorkspacesForRail,
+  resolveSelectedWorkspaceIdForRail,
+} from "@/lib/workspace-settings-data";
 import { VISUALIFY_APP_CATALOG } from "@/lib/visualify-apps";
 export const dynamic = "force-dynamic";
 
@@ -13,6 +18,9 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const workspaces = await fetchManageableWorkspacesForRail(user.id);
+  const selectedWorkspaceId = await resolveSelectedWorkspaceIdForRail(user.id);
 
   return (
       <div className="flex min-h-full flex-col items-start justify-start px-0 pb-10 pt-6">
@@ -25,6 +33,11 @@ export default async function DashboardPage() {
               Use the rail for Organisation, Apps, Billing, and your profile for account settings.
             </p>
           </div>
+
+          <DashboardWorkspacesSection
+            workspaces={workspaces}
+            selectedWorkspaceId={selectedWorkspaceId}
+          />
 
           <section aria-labelledby="dashboard-apps-heading" className="space-y-4">
             <h2
@@ -55,12 +68,18 @@ export default async function DashboardPage() {
                       </span>
                     </a>
                   ) : (
-                    <div className={dsAppLaunchTilePlaceholderClass}>
-                      <span className="text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-primary)]">
+                    <div
+                      className={`${dsAppLaunchTilePlaceholderClass} opacity-[0.88]`}
+                      aria-disabled
+                    >
+                      <span className="text-[length:var(--ds-text-base)] font-semibold text-[var(--ds-text-muted)]">
                         {app.name}
                       </span>
-                      <span className="mt-2 flex-1 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+                      <span className="mt-2 flex-1 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-tertiary)]">
                         {app.description}
+                      </span>
+                      <span className="mt-3 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-muted)]">
+                        Coming soon
                       </span>
                     </div>
                   )}

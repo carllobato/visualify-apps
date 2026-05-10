@@ -1,6 +1,9 @@
 /** RiskAI entry point (same as dashboard). */
 export const RISKAI_DASHBOARD_URL = "https://app.visualify.com.au/riskai/dashboard";
 
+/** Host for app routes shared with RiskAI (legal pages, etc.). */
+export const VISUALIFY_APP_ORIGIN = new URL(RISKAI_DASHBOARD_URL).origin;
+
 export type VisualifyAppDefinition = {
   id: string;
   name: string;
@@ -20,13 +23,19 @@ export const VISUALIFY_APP_CATALOG: VisualifyAppDefinition[] = [
     description: "Risk management, simulations and reporting.",
     href: RISKAI_DASHBOARD_URL,
   },
-  /**
-   * Placeholder row so Account → Apps can show both columns before more products ship.
-   * Remove when the catalog is driven by entitlements only.
-   */
   {
-    id: "more-apps",
-    name: "More Visualify apps",
-    description: "Other products will appear here as they launch and as your access is assigned.",
+    id: "reportai",
+    name: "ReportAI",
+    description: "Reporting, dashboards and portfolio visibility.",
+  },
+  {
+    id: "costai",
+    name: "CostAI",
+    description: "Cost modelling, scenarios and financial intelligence.",
+  },
+  {
+    id: "scheduleai",
+    name: "ScheduleAI",
+    description: "Planning, milestones and schedule intelligence.",
   },
 ];
