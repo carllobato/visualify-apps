@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@visualify/design-system";
+import { authDisabledStubUser, isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
 
@@ -44,12 +45,23 @@ const ChevronIcon = () => (
 );
 
 /** Account pill + dropdown for HQ dashboard (matches RiskAI top-nav account control). */
-export function DashboardAccountMenu() {
+export function DashboardAccountMenu({
+  variant = "header",
+  railPinned = false,
+}: {
+  variant?: "header" | "rail";
+  /** When the HQ platform rail is pinned open, drop ring/border chrome on the rail trigger. */
+  railPinned?: boolean;
+}) {
   const [user, setUser] = useState<User | null | "loading">("loading");
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (isAuthDisabled()) {
+      setUser(authDisabledStubUser());
+      return;
+    }
     const supabase = supabaseBrowserClient();
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       setUser(u ?? null);
@@ -72,6 +84,11 @@ export function DashboardAccountMenu() {
   }, [menuOpen]);
 
   const handleSignOut = async () => {
+    if (isAuthDisabled()) {
+      setMenuOpen(false);
+      window.location.assign("/dashboard");
+      return;
+    }
     setMenuOpen(false);
     setUser(null);
     try {
@@ -89,10 +106,12 @@ export function DashboardAccountMenu() {
     }
   };
 
+  const rail = variant === "rail";
+
   if (user === "loading") {
     return (
       <span
-        className="inline-block h-9 w-9 shrink-0 rounded-full bg-[var(--ds-surface-muted)]"
+        className={`inline-block shrink-0 bg-[var(--ds-surface-muted)] ${rail ? "h-10 w-10 rounded-[var(--ds-radius-md)]" : "h-9 w-9 rounded-full"}`}
         aria-hidden
       />
     );
@@ -115,22 +134,42 @@ export function DashboardAccountMenu() {
         type="button"
         variant="ghost"
         size="md"
-        className="ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
+        className={
+          rail
+            ? [
+                "flex size-10 shrink-0 items-center justify-center rounded-[var(--ds-radius-md)] border-0 !p-0 shadow-none bg-[var(--ds-surface)] text-[var(--ds-text-primary)]",
+                railPinned
+                  ? "ring-0"
+                  : "ring-1 ring-[color-mix(in_oklab,var(--ds-border)_26%,transparent)]",
+                "hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_4%,var(--ds-surface))] hover:text-[var(--ds-text-primary)] focus-visible:!outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)] disabled:hover:bg-[var(--ds-surface)]",
+              ].join(" ")
+            : "ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
+        }
         aria-expanded={menuOpen}
         aria-haspopup="menu"
         aria-label="Account menu"
         onClick={() => setMenuOpen((o) => !o)}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
+        {rail ? (
           <PersonIcon />
-        </span>
-        <ChevronIcon />
+        ) : (
+          <>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
+              <PersonIcon />
+            </span>
+            <ChevronIcon />
+          </>
+        )}
       </Button>
 
       {menuOpen ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
+          className={
+            rail
+              ? "absolute bottom-0 left-full z-[100] ml-[var(--ds-space-2)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
+              : "absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
+          }
         >
           <div
             className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
@@ -154,7 +193,7 @@ export function DashboardAccountMenu() {
             className="ds-app-menu-dropdown__item block text-left no-underline"
             onClick={() => setMenuOpen(false)}
           >
-            Account settings
+            User Settings
           </Link>
           <button
             type="button"

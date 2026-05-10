@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
+import { isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,13 @@ export const dynamic = "force-dynamic";
  * Requires SUPABASE_SERVICE_ROLE_KEY on the server.
  */
 export async function DELETE() {
+  if (isAuthDisabled()) {
+    return NextResponse.json(
+      { error: "Account deletion is disabled while HQ_AUTH_DISABLED / NEXT_PUBLIC_HQ_AUTH_DISABLED is set." },
+      { status: 403 }
+    );
+  }
+
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 

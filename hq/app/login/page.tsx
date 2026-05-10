@@ -1,7 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
+  if (isAuthDisabled()) {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="relative flex min-h-dvh flex-col bg-[var(--ds-background)] text-[var(--ds-text-primary)]">
       <div className="fixed inset-x-0 top-0 z-20">

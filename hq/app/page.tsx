@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, CardContent } from "@visualify/design-system";
+import { isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +15,10 @@ const primaryCtaClass =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-primary)]";
 
 export default async function HomePage() {
+  if (isAuthDisabled()) {
+    redirect("/dashboard");
+  }
+
   const supabase = await supabaseServerClient();
   const {
     data: { user },
