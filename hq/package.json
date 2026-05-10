@@ -8,6 +8,11 @@
     "admin",
     "nextjs"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/carllobato/visualify-apps.git",
+    "directory": "hq"
+  },
   "private": true,
   "type": "module",
   "scripts": {
