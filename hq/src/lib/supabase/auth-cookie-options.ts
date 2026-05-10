@@ -1,15 +1,32 @@
 import type { CookieOptionsWithName } from "@supabase/ssr";
 
 /**
- * Optional domain scope for Supabase auth cookies.
+ * Supabase auth cookies default to **host-only** (e.g. `hq.visualify.com.au`), which is the
+ * reliable setup for a single HQ deployment.
  *
- * When `NEXT_PUBLIC_SUPABASE_COOKIE_DOMAIN` is set (e.g. `.visualify.com.au` in production),
- * sessions are shared across Visualify subdomains. When unset (local dev), cookies stay
- * host-only so localhost behaviour is unchanged.
+ * Setting `Domain=.visualify.com.au` via env caused fragile behaviour (overlapping cookies,
+ * browsers dropping sessions between navigations). Sharing sessions across subdomains is **opt-in**
+ * so production keeps working even if `NEXT_PUBLIC_SUPABASE_COOKIE_DOMAIN` is still set in Vercel.
+ *
+ * To experiment with cross-subdomain cookies later, set **both**:
+ * - `NEXT_PUBLIC_SUPABASE_COOKIE_DOMAIN=.visualify.com.au`
+ * - `NEXT_PUBLIC_HQ_SHARE_AUTH_COOKIE_DOMAIN=1`
  */
 export function getSupabaseAuthCookieOptions(): CookieOptionsWithName | undefined {
-  const domain = process.env.NEXT_PUBLIC_SUPABASE_COOKIE_DOMAIN?.trim();
+  if (process.env.NEXT_PUBLIC_HQ_SHARE_AUTH_COOKIE_DOMAIN !== "1") {
+    return undefined;
+  }
+
+  const raw = process.env.NEXT_PUBLIC_SUPABASE_COOKIE_DOMAIN?.trim();
+  if (!raw) return undefined;
+
+  const domain = raw.replace(/^["']|["']$/g, "").trim();
   if (!domain) return undefined;
+
+  if (process.env.NODE_ENV === "production") {
+    return { domain, secure: true };
+  }
+
   return { domain };
 }
 

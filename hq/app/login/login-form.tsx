@@ -1,39 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useActionState } from "react";
 import { Button, Card, CardContent, Input, Label, Tab, Tabs } from "@visualify/design-system";
-import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { type LoginFormState, loginAction } from "./actions";
 
 export function LoginForm() {
-  const router = useRouter();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setErrorMessage(null);
-    setLoading(true);
-
-    const form = event.currentTarget;
-    const formData = new FormData(form);
-    const email = String(formData.get("email") ?? "").trim();
-    const password = String(formData.get("password") ?? "");
-
-    const supabase = supabaseBrowserClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    setLoading(false);
-
-    if (error) {
-      setErrorMessage(error.message);
-      return;
-    }
-
-    router.push("/dashboard");
-    router.refresh();
-  }
+  const [state, formAction, isPending] = useActionState(loginAction, null as LoginFormState);
 
   return (
     <Card
@@ -59,7 +32,7 @@ export function LoginForm() {
           <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
         </div>
 
-        <form className="space-y-3" autoComplete="on" onSubmit={handleSubmit}>
+        <form className="space-y-3" action={formAction} autoComplete="on">
           <div>
             <Label htmlFor="hq-login-email">Email</Label>
             <Input
@@ -72,7 +45,7 @@ export function LoginForm() {
               autoCapitalize="off"
               autoCorrect="off"
               required
-              disabled={loading}
+              disabled={isPending}
             />
           </div>
 
@@ -87,16 +60,16 @@ export function LoginForm() {
               autoCorrect="off"
               spellCheck={false}
               required
-              disabled={loading}
+              disabled={isPending}
             />
           </div>
 
-          {errorMessage ? (
+          {state?.error ? (
             <p
               role="alert"
               className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-danger)]"
             >
-              {errorMessage}
+              {state.error}
             </p>
           ) : null}
 
@@ -104,10 +77,10 @@ export function LoginForm() {
             <Button
               type="submit"
               variant="primary"
-              disabled={loading}
+              disabled={isPending}
               className="max-w-full min-w-0 whitespace-normal text-center"
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {isPending ? "Signing in…" : "Sign in"}
             </Button>
           </div>
 
