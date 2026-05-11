@@ -46,6 +46,20 @@ const themeScriptFull = `
 
 const themeScript = THEME_LIGHT_ONLY_MVP ? themeScriptLightOnly : themeScriptFull;
 
+/**
+ * Single-session enforcement (`SingleSessionGuard`) is **off by default** for MVP platform auth.
+ *
+ * Visualify now shares one Supabase session across HQ (`hq.*`) and apps (`app.*`) via domain-scoped
+ * auth cookies. `SingleSessionGuard` stores the JWT in `visualify_user_sessions` and signs the user
+ * out when that value does not match the current `access_token`. HQ login rotates tokens without
+ * updating that row, so the guard treated legitimate shared-auth flows as “session replaced”.
+ *
+ * Re-enable only after a reclaim / cross-product session coordination design. Set
+ * `NEXT_PUBLIC_RISKAI_ENABLE_SINGLE_SESSION_GUARD=1` in the environment (see `.env.example`).
+ */
+const singleSessionGuardEnabled =
+  process.env.NEXT_PUBLIC_RISKAI_ENABLE_SINGLE_SESSION_GUARD === "1";
+
 /** Mirror sidebar localStorage → cookie before the request pipeline so protected SSR can match rail width (see Sidebar + protected layout). */
 const sideNavPinnedCookieScript = `
 (function() {
@@ -76,7 +90,7 @@ export default function RootLayout({
               <LegalDocumentProvider>
                 {children}
                 <InactivityGuard />
-                <SingleSessionGuard />
+                {singleSessionGuardEnabled ? <SingleSessionGuard /> : null}
               </LegalDocumentProvider>
             </RiskRegisterProvider>
           </ProjectionScenarioProvider>

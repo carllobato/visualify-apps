@@ -71,6 +71,10 @@ async function resolveRiskAIProductId(
 /**
  * Enforces single-session-per-user for RiskAI.
  *
+ * **Mounting:** Root layout (`app/layout.tsx`) renders this only when
+ * `NEXT_PUBLIC_RISKAI_ENABLE_SINGLE_SESSION_GUARD=1`. Default is unmounted so MVP shared HQ ↔ RiskAI
+ * login is not broken by JWT mismatch vs `visualify_user_sessions`; see layout comment block.
+ *
  * Event flow (v2.99 auth-js):
  *
  *   INITIAL_SESSION  – fires first on every page load with the stored session.
