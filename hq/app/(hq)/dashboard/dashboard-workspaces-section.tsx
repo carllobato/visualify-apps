@@ -30,7 +30,7 @@ export function DashboardWorkspacesSection({
     const result = await setVisualifyActiveWorkspaceIdAction(id);
     setBusyId(null);
     if (result.ok) {
-      router.push("/workspace-settings");
+      router.push(`/hq/workspaces/${id}`);
       router.refresh();
     }
   }

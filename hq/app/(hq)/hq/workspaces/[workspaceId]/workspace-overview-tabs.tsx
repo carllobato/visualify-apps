@@ -1,0 +1,469 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  Input,
+  Label,
+  Tab,
+  Tabs,
+} from "@visualify/design-system";
+import type { WorkspacePendingInvitationRow } from "@/types/workspace-invitations";
+import { RISKAI_DASHBOARD_URL } from "@/lib/visualify-apps";
+
+export type WorkspaceOverviewProductRow = {
+  productKey: string;
+  productName: string;
+  subscriptionStatus: string;
+  plan: string | null;
+};
+
+export type WorkspaceOverviewUserRow = {
+  userId: string;
+  displayName: string | null;
+  email: string | null;
+  role: string | null;
+  status: string | null;
+};
+
+type WorkspaceOverviewTab = "apps" | "workspace_users" | "billing" | "settings";
+
+type RoleBadgeKey = "owner" | "admin" | "member" | "other";
+type StatusBadgeKey = "active" | "invited" | "inactive";
+
+function workspaceRoleBadgeKey(raw: string | null | undefined): RoleBadgeKey {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (s === "owner" || s === "admin" || s === "member") return s;
+  return "other";
+}
+
+function workspaceRoleLabel(raw: string | null | undefined): string {
+  const key = workspaceRoleBadgeKey(raw);
+  if (key !== "other") return key;
+  const t = raw?.trim();
+  return t && t.length > 0 ? t : "member";
+}
+
+function workspaceMembershipStatusKey(raw: string | null | undefined): StatusBadgeKey {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (!s || s === "active") return "active";
+  if (s === "invited" || s === "pending" || s.includes("invit")) return "invited";
+  if (s === "inactive" || s === "suspended" || s === "disabled") return "inactive";
+  return "active";
+}
+
+function workspaceMembershipStatusLabel(raw: string | null | undefined): string {
+  return workspaceMembershipStatusKey(raw);
+}
+
+function roleBadgeStatus(key: RoleBadgeKey): "neutral" | "info" | "warning" {
+  if (key === "owner") return "warning";
+  if (key === "admin") return "info";
+  return "neutral";
+}
+
+function statusBadgeStatus(key: StatusBadgeKey): "success" | "warning" | "neutral" {
+  if (key === "active") return "success";
+  if (key === "invited") return "warning";
+  return "neutral";
+}
+
+const cardClass =
+  "[border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
+
+const summaryCardClass =
+  "[border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
+
+const secondaryLinkClass =
+  "inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]";
+
+function isRiskAiProductKey(key: string): boolean {
+  return key.trim().toLowerCase() === "riskai";
+}
+
+export function WorkspaceOverviewTabs({
+  workspaceId,
+  activeAppsCount,
+  memberCount,
+  billingStatusLabel,
+  attachedProducts,
+  workspaceUsers,
+  pendingWorkspaceInvitations,
+}: {
+  workspaceId: string;
+  activeAppsCount: number;
+  memberCount: number;
+  billingStatusLabel: string;
+  attachedProducts: WorkspaceOverviewProductRow[];
+  workspaceUsers: WorkspaceOverviewUserRow[];
+  pendingWorkspaceInvitations: WorkspacePendingInvitationRow[];
+}) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<WorkspaceOverviewTab>("apps");
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccessMessage, setInviteSuccessMessage] = useState<string | null>(null);
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!inviteModalOpen) {
+      setInviteError(null);
+      setInviteSuccessMessage(null);
+      setInviteSubmitting(false);
+    }
+  }, [inviteModalOpen]);
+
+  const openInviteModal = () => {
+    setInviteEmail("");
+    setInviteRole("member");
+    setInviteError(null);
+    setInviteSuccessMessage(null);
+    setInviteModalOpen(true);
+  };
+
+  const submitWorkspaceInvite = async (e: FormEvent) => {
+    e.preventDefault();
+    setInviteError(null);
+    setInviteSuccessMessage(null);
+    setInviteSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/workspaces/${encodeURIComponent(workspaceId)}/invitations`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+        },
+      );
+      const data = (await res.json()) as {
+        ok?: boolean;
+        message?: string;
+        error?: string;
+      };
+      if (res.ok && data?.ok === true) {
+        setInviteSuccessMessage(data.message ?? "Invitation created");
+        setInviteEmail("");
+        router.refresh();
+        return;
+      }
+      setInviteError(
+        typeof data?.message === "string" && data.message.trim()
+          ? data.message
+          : typeof data?.error === "string" && data.error.trim()
+            ? data.error
+            : "Could not create invitation.",
+      );
+    } catch {
+      setInviteError("Could not create invitation.");
+    } finally {
+      setInviteSubmitting(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card variant="default" className={summaryCardClass}>
+          <CardContent className="!px-4 !py-3">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
+              Active Apps
+            </p>
+            <p className="mt-1 m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums text-[var(--ds-text-primary)]">
+              {activeAppsCount}
+            </p>
+          </CardContent>
+        </Card>
+        <Card variant="default" className={summaryCardClass}>
+          <CardContent className="!px-4 !py-3">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
+              Workspace users
+            </p>
+            <p className="mt-1 m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums text-[var(--ds-text-primary)]">
+              {memberCount}
+            </p>
+          </CardContent>
+        </Card>
+        <Card variant="default" className={summaryCardClass}>
+          <CardContent className="!px-4 !py-3">
+            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
+              Billing Status
+            </p>
+            <p className="mt-1 m-0 text-[length:var(--ds-text-sm)] font-semibold leading-snug text-[var(--ds-text-primary)]">
+              {billingStatusLabel}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-4 border-b border-[var(--ds-border)]">
+        <Tabs>
+          <Tab active={activeTab === "apps"} onClick={() => setActiveTab("apps")}>
+            Apps
+          </Tab>
+          <Tab active={activeTab === "workspace_users"} onClick={() => setActiveTab("workspace_users")}>
+            Workspace Users
+          </Tab>
+          <Tab active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>
+            Billing
+          </Tab>
+          <Tab active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
+            Settings
+          </Tab>
+        </Tabs>
+      </div>
+
+      {activeTab === "apps" ? (
+        <Card variant="default" className={cardClass}>
+          <CardHeader className="!px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Product entitlements</h2>
+          </CardHeader>
+          <CardContent className="!px-4 !py-3">
+            {attachedProducts.length === 0 ? (
+              <p className="m-0 text-sm text-[var(--ds-text-secondary)]">
+                No product entitlements are attached to this workspace yet.
+              </p>
+            ) : (
+              <ul className="m-0 list-none space-y-0 divide-y divide-[var(--ds-border)] p-0">
+                {attachedProducts.map((row) => (
+                  <li key={row.productKey} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="m-0 text-sm font-medium text-[var(--ds-text-primary)]">{row.productName}</p>
+                      <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+                        {row.subscriptionStatus || "—"}
+                        {row.plan ? ` · ${row.plan}` : ""}
+                      </p>
+                    </div>
+                    {isRiskAiProductKey(row.productKey) ? (
+                      <a
+                        href={RISKAI_DASHBOARD_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={secondaryLinkClass + " shrink-0 self-start sm:self-center"}
+                      >
+                        Open RiskAI
+                      </a>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {activeTab === "workspace_users" ? (
+        <Card variant="default" className={cardClass}>
+          <CardHeader className="flex flex-col gap-3 !px-4 !py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Workspace Users</h2>
+            <Button type="button" size="sm" variant="secondary" onClick={openInviteModal}>
+              Invite User
+            </Button>
+          </CardHeader>
+          <CardContent className="!px-4 !py-3">
+            <p className="mb-4 text-sm text-[var(--ds-text-secondary)]">
+              People who belong to this workspace. Roles and status come from workspace membership only.
+            </p>
+            {workspaceUsers.length === 0 ? (
+              <p className="m-0 rounded-[var(--ds-radius-sm)] border border-dashed border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-8 text-center text-sm text-[var(--ds-text-secondary)]">
+                No workspace users yet. When people are added to this workspace, they will appear here.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]">
+                <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
+                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Name</th>
+                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Email</th>
+                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Role</th>
+                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workspaceUsers.map((row) => {
+                      const rk = workspaceRoleBadgeKey(row.role);
+                      const sk = workspaceMembershipStatusKey(row.status);
+                      return (
+                        <tr key={row.userId} className="border-b border-[var(--ds-border)] last:border-b-0">
+                          <td className="px-3 py-2.5 font-medium text-[var(--ds-text-primary)]">
+                            {row.displayName?.trim() || "—"}
+                          </td>
+                          <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{row.email?.trim() || "—"}</td>
+                          <td className="px-3 py-2.5">
+                            <Badge variant="subtle" status={roleBadgeStatus(rk)}>
+                              {workspaceRoleLabel(row.role)}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <Badge variant="subtle" status={statusBadgeStatus(sk)}>
+                              {workspaceMembershipStatusLabel(row.status)}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="mt-8 border-t border-[var(--ds-border)] pt-6">
+              <h3 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Pending Invitations</h3>
+              <p className="mt-1 mb-3 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+                Invitations that have not been accepted yet. No email is sent at this stage.
+              </p>
+              {pendingWorkspaceInvitations.length === 0 ? (
+                <p className="m-0 text-sm text-[var(--ds-text-secondary)]">No pending invitations.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]">
+                  <table className="w-full min-w-[480px] border-collapse text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
+                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Email</th>
+                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Role</th>
+                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Created</th>
+                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingWorkspaceInvitations.map((inv) => {
+                        const created =
+                          inv.createdAt && !Number.isNaN(Date.parse(inv.createdAt))
+                            ? new Date(inv.createdAt).toLocaleString(undefined, {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })
+                            : "—";
+                        return (
+                          <tr key={inv.id} className="border-b border-[var(--ds-border)] last:border-b-0">
+                            <td className="px-3 py-2.5 text-[var(--ds-text-primary)]">{inv.email || "—"}</td>
+                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{inv.role || "—"}</td>
+                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{created}</td>
+                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{inv.status || "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {inviteModalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
+          role="presentation"
+          onClick={() => setInviteModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workspace-invite-modal-title"
+            className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] p-5 shadow-[var(--ds-shadow-md)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3
+              id="workspace-invite-modal-title"
+              className="m-0 text-base font-semibold text-[var(--ds-text-primary)]"
+            >
+              Invite user
+            </h3>
+            <p className="mt-1 mb-4 text-sm text-[var(--ds-text-secondary)]">
+              Creates a pending workspace invitation (database only; acceptance and email are not enabled yet).
+            </p>
+            <form className="space-y-4" onSubmit={(e) => void submitWorkspaceInvite(e)}>
+              <div className="space-y-1.5">
+                <Label htmlFor="workspace-invite-email">Email</Label>
+                <Input
+                  id="workspace-invite-email"
+                  type="email"
+                  autoComplete="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  required
+                  disabled={inviteSubmitting}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="workspace-invite-role">Role</Label>
+                <select
+                  id="workspace-invite-role"
+                  className="w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm text-[var(--ds-text-primary)]"
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value === "admin" ? "admin" : "member")}
+                  disabled={inviteSubmitting}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              {inviteError ? (
+                <p className="m-0 text-sm text-[var(--ds-color-danger-fg,#b42318)]" role="alert">
+                  {inviteError}
+                </p>
+              ) : null}
+              {inviteSuccessMessage ? (
+                <p className="m-0 text-sm text-[var(--ds-text-secondary)]" role="status">
+                  {inviteSuccessMessage}
+                </p>
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={inviteSubmitting}
+                  onClick={() => setInviteModalOpen(false)}
+                >
+                  Close
+                </Button>
+                <Button type="submit" disabled={inviteSubmitting}>
+                  {inviteSubmitting ? "Creating…" : "Create invitation"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "billing" ? (
+        <Card variant="default" className={cardClass}>
+          <CardHeader className="!px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Billing</h2>
+          </CardHeader>
+          <CardContent className="!px-4 !py-3">
+            <p className="mb-4 text-sm text-[var(--ds-text-secondary)]">
+              Review subscriptions, payment method, and invoices for this workspace.
+            </p>
+            <Link href="/billing" className={secondaryLinkClass}>
+              Go to Billing
+            </Link>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {activeTab === "settings" ? (
+        <Card variant="default" className={cardClass}>
+          <CardHeader className="!px-4 !py-2.5">
+            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Settings</h2>
+          </CardHeader>
+          <CardContent className="!px-4 !py-3">
+            <p className="text-sm text-[var(--ds-text-secondary)]">
+              Workspace preferences and controls are not available yet.
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
+    </>
+  );
+}

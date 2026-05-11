@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import {
   AUTH_DISABLED_DEV_EMAIL,
@@ -5,6 +6,31 @@ import {
   isAuthDisabled,
 } from "@/lib/auth/auth-disabled";
 import { supabaseServerClient } from "@/lib/supabase/server";
+
+/**
+ * Resolve the signed-in user from a Supabase server client (session cookies).
+ * Used by {@link requireUser} and Route Handlers that build the client from `NextRequest`.
+ */
+export async function authenticateRouteSupabase(
+  supabase: SupabaseClient,
+): Promise<{ id: string; email?: string } | null> {
+  if (isAuthDisabled()) {
+    return { id: AUTH_DISABLED_DEV_USER_ID, email: AUTH_DISABLED_DEV_EMAIL };
+  }
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const {
+    data: { user: verifiedUser },
+  } = await supabase.auth.getUser();
+
+  const user = verifiedUser ?? session?.user ?? null;
+  if (!user) return null;
+
+  return { id: user.id, email: user.email ?? undefined };
+}
 
 /**
  * Require an authenticated Supabase user for API routes.
@@ -17,25 +43,10 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 export async function requireUser(): Promise<
   { id: string; email?: string } | NextResponse
 > {
-  if (isAuthDisabled()) {
-    return { id: AUTH_DISABLED_DEV_USER_ID, email: AUTH_DISABLED_DEV_EMAIL };
-  }
-
   const supabase = await supabaseServerClient();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const {
-    data: { user: verifiedUser },
-  } = await supabase.auth.getUser();
-
-  const user = verifiedUser ?? session?.user ?? null;
-
+  const user = await authenticateRouteSupabase(supabase);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  return { id: user.id, email: user.email ?? undefined };
+  return user;
 }

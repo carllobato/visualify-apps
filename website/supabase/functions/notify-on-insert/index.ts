@@ -441,6 +441,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    const resourceType = String(record.resource_type ?? "").trim().toLowerCase();
+    if (resourceType !== "project" && resourceType !== "portfolio") {
+      console.warn(
+        "[notify-on-insert] skip invitation email: unsupported resource_type",
+        resourceType || "(empty)"
+      );
+      return new Response(JSON.stringify({ ok: true, skipped: "unsupported_invitation_resource_type" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const email = String(record.email ?? "").trim().toLowerCase();
     const firstName = String(record.first_name ?? "").trim();
     const projectName = String(record.project_name ?? "").trim() || "your project";

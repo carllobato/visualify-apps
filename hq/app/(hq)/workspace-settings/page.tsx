@@ -5,7 +5,6 @@ import {
   fetchManageableWorkspaceById,
   readVisualifyActiveWorkspaceIdFromCookie,
 } from "@/lib/workspace-settings-data";
-import { WorkspaceOverviewTabs } from "./workspace-overview-tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +16,9 @@ export default async function WorkspaceSettingsPage() {
   if (!cookieId) {
     return (
       <main className="w-full min-w-0 px-0 pb-4">
-        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace Overview</h1>
+        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace</h1>
         <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-          Select a workspace from the rail to view its overview and admin links.
+          Select a workspace from the rail to open its admin hub.
         </p>
       </main>
     );
@@ -29,7 +28,7 @@ export default async function WorkspaceSettingsPage() {
   if (!manageable) {
     return (
       <main className="w-full min-w-0 px-0 pb-4">
-        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace Overview</h1>
+        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace</h1>
         <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
           This workspace is not available for administration. Choose another workspace from the rail.
         </p>
@@ -43,15 +42,5 @@ export default async function WorkspaceSettingsPage() {
     );
   }
 
-  return (
-    <main className="w-full min-w-0 px-0 pb-4">
-      <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace Overview</h1>
-      <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-        Admin hub for <span className="font-medium text-[var(--ds-text-primary)]">{manageable.name}</span>.
-        Open apps, people, or billing for this workspace.
-      </p>
-
-      <WorkspaceOverviewTabs />
-    </main>
-  );
+  redirect(`/hq/workspaces/${manageable.id}`);
 }

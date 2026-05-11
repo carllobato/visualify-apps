@@ -16,7 +16,7 @@ import {
  * workspace-admin routes — on Dashboard / Account they match inactive primary links (secondary text, no surface fill).
  */
 function pathnameShowsWorkspaceRowActiveChrome(pathname: string): boolean {
-  const prefixes = ["/workspace-settings", "/apps", "/billing", "/users"] as const;
+  const prefixes = ["/hq/workspaces", "/workspace-settings", "/apps", "/billing", "/users"] as const;
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
@@ -126,7 +126,7 @@ export function WorkspaceRailList({
     const result = await setVisualifyActiveWorkspaceIdAction(id);
     setBusyId(null);
     if (result.ok) {
-      router.push("/workspace-settings");
+      router.push(`/hq/workspaces/${id}`);
       router.refresh();
     }
   }

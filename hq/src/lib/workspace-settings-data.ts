@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -77,7 +78,8 @@ export type WorkspaceRailEntry = {
 };
 
 async function fetchManageableWorkspacesInternal(
-  userId: string
+  userId: string,
+  supabaseClient?: SupabaseClient,
 ): Promise<
   Array<
     ManageableWorkspaceSummary & {
@@ -85,7 +87,7 @@ async function fetchManageableWorkspacesInternal(
     }
   >
 > {
-  const supabase = await supabaseServerClient();
+  const supabase = supabaseClient ?? (await supabaseServerClient());
 
   const { data: memberRows, error: memberErr } = await supabase
     .from("visualify_workspace_members")
@@ -172,6 +174,18 @@ export async function readVisualifyActiveWorkspaceIdFromCookie(): Promise<string
   return raw && raw.length > 0 ? raw : null;
 }
 
+export async function writeVisualifyActiveWorkspaceIdCookie(workspaceId: string): Promise<void> {
+  const id = workspaceId.trim();
+  if (!id) return;
+  const store = await cookies();
+  store.set(VISUALIFY_ACTIVE_WORKSPACE_COOKIE, id, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+  });
+}
+
 export async function resolveSelectedWorkspaceIdForRail(userId: string): Promise<string | null> {
   const cookieId = await readVisualifyActiveWorkspaceIdFromCookie();
   if (!cookieId) return null;
@@ -182,9 +196,10 @@ export async function resolveSelectedWorkspaceIdForRail(userId: string): Promise
 
 export async function fetchManageableWorkspaceById(
   userId: string,
-  workspaceId: string
+  workspaceId: string,
+  supabaseClient?: SupabaseClient,
 ): Promise<ManageableWorkspaceSummary | null> {
-  const rows = await fetchManageableWorkspacesInternal(userId);
+  const rows = await fetchManageableWorkspacesInternal(userId, supabaseClient);
   const hit = rows.find((w) => w.id === workspaceId);
   if (!hit) return null;
   return {
@@ -196,4 +211,144 @@ export async function fetchManageableWorkspaceById(
     memberRole: hit.memberRole,
     membershipStatus: hit.membershipStatus,
   };
+}
+
+/**
+ * Resolve a manageable workspace from a URL segment (canonical id or workspace slug).
+ */
+export async function fetchManageableWorkspaceByRouteParam(
+  userId: string,
+  workspaceIdOrSlug: string
+): Promise<ManageableWorkspaceSummary | null> {
+  const param = workspaceIdOrSlug.trim();
+  if (!param) return null;
+  const rows = await fetchManageableWorkspacesInternal(userId);
+  const byId = rows.find((w) => w.id === param);
+  if (byId) {
+    return {
+      id: byId.id,
+      name: byId.name,
+      slug: byId.slug,
+      workspace_type: byId.workspace_type,
+      workspaceStatus: byId.workspaceStatus,
+      memberRole: byId.memberRole,
+      membershipStatus: byId.membershipStatus,
+    };
+  }
+  const bySlug = rows.find((w) => (w.slug ?? "").trim() === param);
+  if (!bySlug) return null;
+  return {
+    id: bySlug.id,
+    name: bySlug.name,
+    slug: bySlug.slug,
+    workspace_type: bySlug.workspace_type,
+    workspaceStatus: bySlug.workspaceStatus,
+    memberRole: bySlug.memberRole,
+    membershipStatus: bySlug.membershipStatus,
+  };
+}
+
+export async function fetchWorkspaceMemberCount(workspaceId: string): Promise<number> {
+  const supabase = await supabaseServerClient();
+  const { count, error } = await supabase
+    .from("visualify_workspace_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
+
+  if (error) {
+    console.error("fetchWorkspaceMemberCount:", error.message);
+    return 0;
+  }
+  return count ?? 0;
+}
+
+type WorkspaceProfileRow = {
+  id: string;
+  first_name: string | null;
+  surname: string | null;
+  email: string | null;
+};
+
+function displayNameFromWorkspaceProfile(p: WorkspaceProfileRow | null): string | null {
+  if (!p) return null;
+  const a = p.first_name?.trim() ?? "";
+  const b = p.surname?.trim() ?? "";
+  const full = `${a} ${b}`.trim();
+  return full.length > 0 ? full : null;
+}
+
+const WORKSPACE_MEMBER_ROLE_ORDER: Record<string, number> = {
+  owner: 0,
+  admin: 1,
+  member: 2,
+};
+
+/**
+ * Workspace directory for HQ admin (visualify_workspace_members + visualify_profiles only).
+ * Profiles are loaded in a second query because PostgREST may not expose an embed from members → profiles.
+ */
+export async function fetchWorkspaceMembersForAdmin(
+  workspaceId: string,
+): Promise<
+  Array<{
+    userId: string;
+    displayName: string | null;
+    email: string | null;
+    role: string | null;
+    status: string | null;
+  }>
+> {
+  const supabase = await supabaseServerClient();
+  const { data, error } = await supabase
+    .from("visualify_workspace_members")
+    .select("user_id, role, status")
+    .eq("workspace_id", workspaceId);
+
+  if (error) {
+    console.error("fetchWorkspaceMembersForAdmin:", error.message);
+    return [];
+  }
+
+  const rows = (data ?? []) as { user_id: string; role: string | null; status: string | null }[];
+  const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
+
+  const profileByUserId = new Map<string, WorkspaceProfileRow>();
+  if (userIds.length > 0) {
+    const { data: profRows, error: profErr } = await supabase
+      .from("visualify_profiles")
+      .select("id, first_name, surname, email")
+      .in("id", userIds);
+
+    if (profErr) {
+      console.error("fetchWorkspaceMembersForAdmin profiles:", profErr.message);
+    } else {
+      for (const p of (profRows ?? []) as WorkspaceProfileRow[]) {
+        profileByUserId.set(p.id, p);
+      }
+    }
+  }
+
+  const mapped = rows.map((r) => {
+    const prof = profileByUserId.get(r.user_id) ?? null;
+    return {
+      userId: r.user_id,
+      displayName: displayNameFromWorkspaceProfile(prof),
+      email: prof?.email?.trim() || null,
+      role: r.role,
+      status: r.status,
+    };
+  });
+
+  mapped.sort((a, b) => {
+    const ar = (a.role ?? "").trim().toLowerCase();
+    const br = (b.role ?? "").trim().toLowerCase();
+    const ra = WORKSPACE_MEMBER_ROLE_ORDER[ar] ?? 99;
+    const rb = WORKSPACE_MEMBER_ROLE_ORDER[br] ?? 99;
+    if (ra !== rb) return ra - rb;
+    const an = (a.displayName ?? a.email ?? a.userId).toLowerCase();
+    const bn = (b.displayName ?? b.email ?? b.userId).toLowerCase();
+    return an.localeCompare(bn);
+  });
+
+  return mapped;
 }

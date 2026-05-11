@@ -94,6 +94,10 @@ async function handleAccept(request: Request) {
     return NextResponse.json({ error: "INVALID_INVITATION" }, { status: 404 });
   }
 
+  if (row.resource_type !== "project" && row.resource_type !== "portfolio") {
+    return NextResponse.json({ error: "UNSUPPORTED_INVITATION_TYPE" }, { status: 400 });
+  }
+
   if (row.status === "accepted") {
     if (row.auth_user_id === user.id) {
       if (row.resource_type === "portfolio") {
