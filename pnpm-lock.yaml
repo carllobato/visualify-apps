@@ -16,6 +16,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.98.0
         version: 2.105.3
+      '@visualify/app-shell':
+        specifier: workspace:^
+        version: link:../packages/app-shell
       '@visualify/design-system':
         specifier: workspace:^
         version: link:../packages/design-system
@@ -50,9 +53,24 @@ importers:
       eslint-config-next:
         specifier: 16.2.1
         version: 16.2.1(@typescript-eslint/parser@8.59.2(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.4(jiti@2.7.0))(typescript@5.9.3)
+      nanoid:
+        specifier: 3.3.12
+        version: 3.3.12
       tailwindcss:
         specifier: ^4
         version: 4.2.4
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/app-shell:
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.14
+      react:
+        specifier: ^19.2.4
+        version: 19.2.4
       typescript:
         specifier: ^5
         version: 5.9.3

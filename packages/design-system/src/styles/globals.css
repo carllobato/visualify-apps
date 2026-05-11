@@ -193,12 +193,12 @@
   --ds-risk-neutral-fg: color-mix(in oklab, var(--ds-text-primary) 86%, var(--ds-risk-neutral));
   --ds-risk-neutral-border: color-mix(in oklab, var(--ds-risk-neutral) 34%, var(--ds-border));
 
-  /* Radius scale (3 tiers): sm = dense controls (inputs, buttons); md = cards, tiles, rows; lg = app frame, modal panels & sidebar shell */
+  /* Radius scale (3 tiers): sm = dense controls (inputs, buttons); md = cards, tiles, rows & app frame; lg = modal panels & sidebar shell */
   --ds-radius-sm: 10px;
-  --ds-radius-md: 24px;
+  --ds-radius-md: 14px;
   --ds-radius-lg: 24px;
   /* Radius roles — aliases only */
-  --ds-radius-app-frame: var(--ds-radius-lg);
+  --ds-radius-app-frame: var(--ds-radius-md);
   --ds-radius-card: var(--ds-radius-md);
   --ds-radius-inner: var(--ds-radius-sm);
 
@@ -1437,7 +1437,7 @@ ul[role="listbox"] button:focus-visible {
 /*
  * Generic centered modal panels — dialog shell + choice grids (e.g. Add new risk).
  * Pair with `.ds-modal-backdrop` + a z-index utility on the backdrop.
- * Radius matches app-frame sheet (`--ds-radius-lg` / 24px).
+ * Large panel radius (`--ds-radius-lg`). App shell frame uses `--ds-radius-app-frame` (md tier).
  */
 .ds-modal-panel {
   display: flex;

@@ -1,4 +1,12 @@
 import Link from "next/link";
+import {
+  AppShellFrameGutter,
+  AppShellFramedSurface,
+  AppShellMainColumn,
+  AppShellOuterCanvas,
+  AppShellScrollBodyCentered,
+  AppShellScrollRegion,
+} from "@visualify/app-shell";
 
 /**
  * Signed-out HQ chrome: same outer canvas and framed workspace as {@link HqSignedInShell},
@@ -6,7 +14,7 @@ import Link from "next/link";
  */
 export function HqPublicShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh bg-[color-mix(in_oklab,var(--ds-surface-muted)_24%,var(--ds-canvas))] text-[var(--ds-text-primary)]">
+    <AppShellOuterCanvas>
       <aside
         className="relative z-30 flex w-[68px] shrink-0 flex-col self-stretch overflow-visible rounded-br-[var(--ds-radius-lg)] rounded-tr-[var(--ds-radius-lg)] bg-transparent"
         aria-label="Visualify platform"
@@ -35,20 +43,15 @@ export function HqPublicShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
-        <div className="box-border flex min-h-0 flex-1 flex-col p-2 sm:p-2.5">
-          <div
-            className={
-              "flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[var(--ds-radius-app-frame)] " +
-              "bg-[var(--ds-surface)] shadow-[var(--ds-elevation-app-frame)]"
-            }
-          >
-            <div className="box-border flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-[var(--ds-surface)] px-2.5 py-3 sm:px-4 sm:py-4">
-              <div className="flex min-h-full flex-col items-center justify-center">{children}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <AppShellMainColumn>
+        <AppShellFrameGutter>
+          <AppShellFramedSurface>
+            <AppShellScrollRegion>
+              <AppShellScrollBodyCentered>{children}</AppShellScrollBodyCentered>
+            </AppShellScrollRegion>
+          </AppShellFramedSurface>
+        </AppShellFrameGutter>
+      </AppShellMainColumn>
+    </AppShellOuterCanvas>
   );
 }

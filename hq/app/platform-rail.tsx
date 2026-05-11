@@ -12,7 +12,7 @@ import {
   RAIL_NAV_ROW_INACTIVE_CLASS,
   RAIL_NAV_ROW_SHELL_CLASS,
   railLabelClass,
-} from "./rail-nav-row-classes";
+} from "@visualify/app-shell";
 
 /** Persist pin preference — each HQ page mounts its own shell, so state must survive remounts. */
 const HQ_PLATFORM_RAIL_PINNED_KEY = "hq-platform-rail-pinned";
@@ -38,8 +38,16 @@ function railNavHrefActive(pathname: string, href: string): boolean {
   );
 }
 
-/** Pin/Collapse and Account menu — `<button>` rows share nav chrome + native button resets. */
+/** Pin/Collapse and Account — same class recipe as workspace rows in `entity-rail-list.tsx`. */
 function railFooterControlRowClass(active: boolean): string {
+  return (
+    `${RAIL_NAV_ROW_SHELL_CLASS}${active ? RAIL_NAV_ROW_ACTIVE_CLASS : RAIL_NAV_ROW_INACTIVE_CLASS}` +
+    " cursor-pointer border-0 text-left no-underline " +
+    (active ? "" : "bg-transparent ")
+  );
+}
+
+function railFooterAccountRowClass(active: boolean): string {
   return (
     `${RAIL_NAV_ROW_SHELL_CLASS}${active ? RAIL_NAV_ROW_ACTIVE_CLASS : RAIL_NAV_ROW_INACTIVE_CLASS}` +
     " cursor-pointer border-0 text-left no-underline " +
@@ -384,7 +392,7 @@ export function PlatformRail({
           <WorkspaceRailList workspaces={workspaces} selectedWorkspaceId={selectedWorkspaceId} />
         </div>
 
-        <div className="mt-auto flex min-h-0 w-full flex-col pt-5 pb-5 sm:pb-[26px]">
+        <div className="mt-auto flex min-h-0 w-full flex-col pt-5 pb-2 sm:pb-2.5">
           <div
             className={
               "overflow-hidden transition-[max-height,opacity,margin-bottom] duration-[400ms] ease-out " +
@@ -409,17 +417,20 @@ export function PlatformRail({
           </div>
 
           <div
-            className="my-2.5 h-px w-full max-w-10 shrink-0 bg-[var(--ds-border-subtle)] transition-[max-width] duration-[400ms] ease-out group-hover:max-w-none group-data-[pinned=true]:max-w-none"
-            role="separator"
-            aria-hidden="true"
-          />
-
-          <DashboardAccountMenu
-            variant="rail"
-            railRowClassName={railFooterControlRowClass(accountRailActive)}
-            railLabelClassName={railLabelClass}
-            railPageActive={accountRailActive}
-          />
+            className={
+              "vf-app-shell-rail-footer-account-outer mt-2 w-full max-w-10 shrink-0 " +
+              "transition-[max-width] duration-[400ms] ease-out group-hover:max-w-none group-data-[pinned=true]:max-w-none"
+            }
+          >
+            <div className="vf-app-shell-rail-footer-account-strip">
+              <DashboardAccountMenu
+                variant="rail"
+                railRowClassName={railFooterAccountRowClass(accountRailActive)}
+                railLabelClassName={railLabelClass}
+                railPageActive={accountRailActive}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </aside>

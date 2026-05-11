@@ -136,7 +136,7 @@ export function DashboardAccountMenu({
   const signedInEmail = emailRaw || emailFromMetadata || null;
 
   return (
-    <div className="relative flex items-center" ref={menuRef}>
+    <div className={rail ? "relative flex w-full items-center" : "relative flex items-center"} ref={menuRef}>
       {railRow ? (
         <button
           type="button"

@@ -23,7 +23,7 @@ export default async function DashboardPage() {
   const selectedWorkspaceId = await resolveSelectedWorkspaceIdForRail(user.id);
 
   return (
-      <div className="flex min-h-full flex-col items-start justify-start px-0 pb-10 pt-6">
+      <div className="flex min-h-full flex-col items-start justify-start px-0 pb-10 pt-0">
         <main className="w-full max-w-none shrink-0 space-y-10">
           <div className="space-y-2.5">
             <h1 className="text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">

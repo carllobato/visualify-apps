@@ -40,7 +40,7 @@ export default async function AppsPage() {
 
   if (!cookieWorkspaceId) {
     return (
-      <main className="w-full min-w-0 px-0 pb-10 pt-6">
+      <main className="w-full min-w-0 px-0 pb-10 pt-0">
         <div className="space-y-2.5">
           <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Apps</h1>
           <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
@@ -64,7 +64,7 @@ export default async function AppsPage() {
   const manageable = await fetchManageableWorkspaceById(user.id, cookieWorkspaceId);
   if (!manageable) {
     return (
-      <main className="w-full min-w-0 px-0 pb-10 pt-6">
+      <main className="w-full min-w-0 px-0 pb-10 pt-0">
         <div className="space-y-2.5">
           <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Apps</h1>
           <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
@@ -107,7 +107,7 @@ export default async function AppsPage() {
   );
 
   return (
-    <main className="w-full min-w-0 px-0 pb-10 pt-6">
+    <main className="w-full min-w-0 px-0 pb-10 pt-0">
       <div className="space-y-2.5">
         <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Apps</h1>
         <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">

@@ -1,4 +1,7 @@
-/** Shared nav row chrome for `PlatformRail` and workspace rail rows. */
+/**
+ * Shared nav row chrome for collapsible platform rails and entity lists.
+ * Extracted from HQ `rail-nav-row-classes.ts` (same class strings; no behaviour).
+ */
 
 export const railLabelClass =
   "min-w-0 shrink truncate text-left text-[length:var(--ds-text-sm)] font-medium leading-none " +

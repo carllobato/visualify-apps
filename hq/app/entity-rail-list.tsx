@@ -9,7 +9,7 @@ import {
   RAIL_NAV_ROW_INACTIVE_CLASS,
   RAIL_NAV_ROW_SHELL_CLASS,
   railLabelClass,
-} from "./rail-nav-row-classes";
+} from "@visualify/app-shell";
 
 /**
  * Workspace rows share nav chrome with primary links but should only show the filled “active” treatment on

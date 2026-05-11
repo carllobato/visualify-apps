@@ -1,0 +1,52 @@
+/**
+ * Legal footer layout — plain CSS so HQ/RiskAI Tailwind content paths need not scan this package.
+ */
+
+.vf-app-shell-legal-footer {
+  flex-shrink: 0;
+  background-color: transparent;
+}
+
+.vf-app-shell-legal-footer-bar {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--ds-border-subtle);
+  /* ~2× prior ~24px row: more vertical padding + minimum tap/read band */
+  padding-block: 0.5rem;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.vf-app-shell-legal-footer-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+  line-height: 1.25;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-text-tertiary);
+}
+
+.vf-app-shell-legal-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.75rem;
+  row-gap: 0.125rem;
+}
+
+.vf-app-shell-legal-footer-link {
+  color: var(--ds-text-tertiary);
+  text-decoration: none;
+  transition: color 150ms ease-out;
+}
+
+.vf-app-shell-legal-footer-link:hover {
+  color: var(--ds-text-secondary);
+}
+
+.vf-app-shell-legal-footer-sep,
+.vf-app-shell-legal-footer-copy {
+  color: var(--ds-text-tertiary);
+}

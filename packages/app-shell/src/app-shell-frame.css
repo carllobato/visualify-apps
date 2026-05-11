@@ -1,0 +1,128 @@
+/**
+ * Frame chrome for HQ-style shells. Plain CSS so Tailwind content scanning
+ * is not required in consuming apps (arbitrary utilities in this package would otherwise purge).
+ */
+
+.vf-app-shell-outer-canvas {
+  display: flex;
+  min-height: 100dvh;
+  background-color: color-mix(in oklab, var(--ds-surface-muted) 24%, var(--ds-canvas));
+  color: var(--ds-text-primary);
+}
+
+.vf-app-shell-main-column {
+  display: flex;
+  min-height: 100dvh;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+}
+
+.vf-app-shell-frame-gutter {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  padding: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .vf-app-shell-frame-gutter {
+    padding: 0.625rem;
+  }
+}
+
+.vf-app-shell-framed-surface {
+  display: flex;
+  min-height: 0;
+  width: 100%;
+  flex: 1 1 0%;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--ds-radius-app-frame);
+  background-color: var(--ds-surface);
+  box-shadow: var(--ds-elevation-app-frame);
+}
+
+.vf-app-shell-scroll-region {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--ds-surface);
+  /* Match platform rail: inner column uses pt-5 + px-[14px] (see HQ PlatformRail). */
+  padding-top: 1.25rem;
+  /* No bottom padding — avoids a visible strip below the legal footer inside the frame. */
+  padding-bottom: 0;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+/* Content-sized main column; footer slot grows to fill the rest of the scroll region (short pages). */
+.vf-app-shell-scroll-main-slot {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.vf-app-shell-scroll-footer-slot {
+  flex: 1 0 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Legal footer fills the slot below short page content; bar stays at the bottom of the scroll pane. */
+.vf-app-shell-scroll-footer-slot > .vf-app-shell-legal-footer {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 0;
+  background-color: var(--ds-surface);
+}
+
+.vf-app-shell-scroll-inner-centered {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/*
+ * Outer slot matches `.vf-app-shell-legal-footer-bar` height (48px); inner strip stays `h-10` (40px)
+ * for parity with workspace rail rows, vertically centred in the slot.
+ */
+.vf-app-shell-rail-footer-account-outer {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  height: 48px;
+  min-height: 48px;
+  max-height: 48px;
+  flex-shrink: 0;
+  width: 100%;
+  border-top: 1px solid var(--ds-border-subtle);
+  padding: 0;
+  /* Visible so `DashboardAccountMenu` rail dropdown (`left-full`) is not clipped. */
+  overflow: visible;
+}
+
+/* Inner row: 40px — same as workspace / nav rail buttons; border lives on `.vf-app-shell-rail-footer-account-outer`. */
+.vf-app-shell-rail-footer-account-strip {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  height: 2.5rem;
+  min-height: 2.5rem;
+  max-height: 2.5rem;
+  flex-shrink: 0;
+  width: 100%;
+  overflow: visible;
+}
