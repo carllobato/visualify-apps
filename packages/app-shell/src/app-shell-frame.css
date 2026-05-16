@@ -1,5 +1,5 @@
 /**
- * Frame chrome for HQ-style shells. Plain CSS so Tailwind content scanning
+ * Frame chrome for product app shells. Plain CSS so Tailwind content scanning
  * is not required in consuming apps (arbitrary utilities in this package would otherwise purge).
  */
 
@@ -55,7 +55,7 @@
   overscroll-behavior: contain;
   background-color: var(--ds-surface);
   /*
-   * Top inset: gutter padding + this value = rail `pt-5` (1.25rem) for brand/title alignment (HQ PlatformRail).
+   * Top inset: gutter padding + this value = rail `pt-5` (1.25rem) for brand/title alignment.
    * Gutter top is 0.5rem (0.625rem from sm) — subtract so content does not sit lower than the rail.
    */
   padding-top: 0.75rem;
@@ -119,11 +119,11 @@
   width: 100%;
   border-top: 1px solid var(--ds-border-subtle);
   padding: 0;
-  /* Visible so `DashboardAccountMenu` rail dropdown (`left-full`) is not clipped. */
+  /* Visible so rail footer popovers anchored `left-full` are not clipped. */
   overflow: visible;
 }
 
-/* Inner row: 40px — same as workspace / nav rail buttons; border lives on `.vf-app-shell-rail-footer-account-outer`. */
+/* Inner row: 40px — same height as rail control rows; border lives on `.vf-app-shell-rail-footer-account-outer`. */
 .vf-app-shell-rail-footer-account-strip {
   box-sizing: border-box;
   display: flex;

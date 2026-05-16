@@ -1,8 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import {
+  AppShellFrameGutter,
+  AppShellFramedSurface,
+  AppShellMainColumn,
+  AppShellOuterCanvas,
+  AppShellScrollRegion,
+} from "@visualify/app-shell";
 import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
 import { SiteLegalFooter } from "@/components/legal/SiteLegalFooter";
+import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
+import { RiskAiAppShellRail } from "@/components/layout/RiskAiAppShellRail";
 import { TopNav } from "./TopNav";
 import { PageTransition } from "./PageTransition";
 import { Sidebar } from "./Sidebar";
@@ -18,6 +27,26 @@ export function ProtectedShell({
   initialSideNavPinned = true,
 }: ProtectedShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  if (RISKAI_ENABLE_APP_SHELL) {
+    return (
+      <>
+        <OnboardingHost />
+        <AppShellOuterCanvas>
+          <RiskAiAppShellRail />
+          <AppShellMainColumn>
+            <AppShellFrameGutter>
+              <AppShellFramedSurface>
+                <AppShellScrollRegion footer={<SiteLegalFooter />}>
+                  <PageTransition>{children}</PageTransition>
+                </AppShellScrollRegion>
+              </AppShellFramedSurface>
+            </AppShellFrameGutter>
+          </AppShellMainColumn>
+        </AppShellOuterCanvas>
+      </>
+    );
+  }
 
   return (
     <div className="ds-app-shell flex min-h-screen flex-col">

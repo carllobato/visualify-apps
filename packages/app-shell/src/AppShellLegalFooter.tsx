@@ -4,6 +4,12 @@ import "./app-shell-legal-footer.css";
 export type AppShellLegalFooterProps = {
   privacyHref: string;
   termsHref: string;
+  /** Link label for `privacyHref`. */
+  privacyLabel?: string;
+  /** Link label for `termsHref`. */
+  termsLabel?: string;
+  /** Entity name in the copyright line (`© {year} {copyrightHolder}. …`). */
+  copyrightHolder?: string;
   /** Copyright year; defaults to current calendar year. */
   year?: number;
   /** Extra classes on the root `footer` element. */
@@ -14,12 +20,14 @@ export type AppShellLegalFooterProps = {
 
 /**
  * Presentational privacy/terms + copyright row.
- * Callers supply absolute or app-relative `href`s (no origin logic in this package).
- * Structure matches HQ `SiteLegalFooter`; RiskAI may pass different `className` for padding.
+ * Callers supply `href`s and optional labels; no routing or product navigation in this package.
  */
 export function AppShellLegalFooter({
   privacyHref,
   termsHref,
+  privacyLabel = "Privacy Policy",
+  termsLabel = "Terms & Conditions",
+  copyrightHolder = "Visualify",
   year = new Date().getFullYear(),
   className,
   trailing,
@@ -32,19 +40,21 @@ export function AppShellLegalFooter({
         <div className="vf-app-shell-legal-footer-content">
           <nav aria-label="Footer" className="vf-app-shell-legal-footer-nav">
             <a href={privacyHref} className="vf-app-shell-legal-footer-link">
-              Privacy Policy
+              {privacyLabel}
             </a>
             <span className="vf-app-shell-legal-footer-sep" aria-hidden>
               |
             </span>
             <a href={termsHref} className="vf-app-shell-legal-footer-link">
-              Terms & Conditions
+              {termsLabel}
             </a>
           </nav>
           <span className="vf-app-shell-legal-footer-sep" aria-hidden>
             |
           </span>
-          <span className="vf-app-shell-legal-footer-copy">© {year} Visualify. All rights reserved.</span>
+          <span className="vf-app-shell-legal-footer-copy">
+            © {year} {copyrightHolder}. All rights reserved.
+          </span>
           {trailing != null ? trailing : null}
         </div>
       </div>

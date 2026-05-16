@@ -1,5 +1,5 @@
 /**
- * Legal footer layout — plain CSS so HQ/RiskAI Tailwind content paths need not scan this package.
+ * Legal footer layout — plain CSS so consuming apps' Tailwind content paths need not scan this package.
  */
 
 .vf-app-shell-legal-footer {

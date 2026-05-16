@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "../../packages/design-system/src/styles/globals.css";
+
+/* Workspace packages */
 @source "../../packages/design-system/src";
+@source "../../packages/app-shell/src";
 
 /* Keep the browser gutter visible on short pages so the app frame has a consistent right edge. */
 html {

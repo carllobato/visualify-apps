@@ -57,7 +57,7 @@ export type AppShellScrollRegionProps = {
   children: ReactNode;
   /**
    * When set, children render in the main scroll slot and the footer stays at the bottom of this
-   * region (signed-in HQ pattern). Omit for a single scroll child (e.g. centered signed-out body).
+   * region. Omit for a single scroll child (e.g. centered signed-out body).
    */
   footer?: ReactNode;
   className?: string;
@@ -87,10 +87,7 @@ export type AppShellScrollBodyCenteredProps = {
   className?: string;
 };
 
-/**
- * Centered content in the scroll region (signed-out / marketing-style shell).
- * Matches HQ `HqPublicShell` inner structure.
- */
+/** Centered content in the scroll region (signed-out / marketing-style shell). */
 export function AppShellScrollBodyCentered({ children, className }: AppShellScrollBodyCenteredProps) {
   return <div className={mergeClass(appShellScrollInnerCenteredClassName, className)}>{children}</div>;
 }

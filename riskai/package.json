@@ -11,6 +11,7 @@
     "test": "node --test --import=./test-register.mjs --experimental-strip-types src/domain/simulation/monteCarlo.test.ts"
   },
   "dependencies": {
+    "@visualify/app-shell": "workspace:^",
     "@visualify/workspace-product-access": "workspace:^",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",

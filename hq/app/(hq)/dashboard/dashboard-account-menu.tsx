@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import {
+  AppShellRailAccountTrigger,
+  appShellRailAccountMenuClassName,
+  appShellRailFooterAccountRowClass,
+} from "@visualify/app-shell";
 import { Button } from "@visualify/design-system";
 import { authDisabledStubUser, isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -34,7 +39,7 @@ const ChevronIcon = () => (
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
+    strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
     className="pointer-events-none"
@@ -47,14 +52,9 @@ const ChevronIcon = () => (
 /** Account pill + dropdown for HQ dashboard (matches RiskAI top-nav account control). */
 export function DashboardAccountMenu({
   variant = "header",
-  railRowClassName,
-  railLabelClassName,
   railPageActive = false,
 }: {
   variant?: "header" | "rail";
-  /** Full-row shell + inactive styles from `PlatformRail` so the menu matches nav links. */
-  railRowClassName?: string;
-  railLabelClassName?: string;
   /** When the route is `/account`, row uses active nav styling (surface + shadow). */
   railPageActive?: boolean;
 }) {
@@ -112,8 +112,6 @@ export function DashboardAccountMenu({
   };
 
   const rail = variant === "rail";
-  const railRow =
-    rail && railRowClassName && railLabelClassName ? { row: railRowClassName, label: railLabelClassName } : null;
 
   if (user === "loading") {
     return (
@@ -135,85 +133,75 @@ export function DashboardAccountMenu({
       : "";
   const signedInEmail = emailRaw || emailFromMetadata || null;
 
-  return (
-    <div className={rail ? "relative flex w-full items-center" : "relative flex items-center"} ref={menuRef}>
-      {railRow ? (
-        <button
-          type="button"
-          className={railRow.row}
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label="Account menu"
-          aria-current={railPageActive ? "page" : undefined}
-          title="Account"
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <span className="flex size-10 shrink-0 items-center justify-center">
-            <PersonIcon />
-          </span>
-          <span className={railRow.label}>Account</span>
-        </button>
-      ) : (
-        <Button
-          type="button"
-          variant="ghost"
-          size="md"
-          className="ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-label="Account menu"
-          onClick={() => setMenuOpen((o) => !o)}
-        >
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
-            <PersonIcon />
-          </span>
-          <ChevronIcon />
-        </Button>
-      )}
-
-      {menuOpen ? (
-        <div
-          role="menu"
-          className={
-            rail
-              ? "absolute inset-x-0 bottom-full z-[100] mb-[var(--ds-space-1)] w-full min-w-0 ds-app-menu-dropdown"
-              : "absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
-          }
-        >
-          <div
-            className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
-            role="presentation"
-          >
-            <div className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
-              Signed in as
-            </div>
-            <div
-              className={`mt-[var(--ds-space-1)] truncate text-[length:var(--ds-text-sm)] leading-snug ${
-                signedInEmail ? "text-[var(--ds-text-primary)]" : "text-[var(--ds-text-secondary)]"
-              }`}
-              title={signedInEmail ?? undefined}
-            >
-              {signedInEmail ?? "No email available"}
-            </div>
-          </div>
-          <Link
-            href="/account"
-            role="menuitem"
-            className="ds-app-menu-dropdown__item block text-left no-underline"
-            onClick={() => setMenuOpen(false)}
-          >
-            User Settings
-          </Link>
-          <button
-            type="button"
-            role="menuitem"
-            className="ds-app-menu-dropdown__item"
-            onClick={handleSignOut}
-          >
-            Sign out
-          </button>
+  const accountMenuPanel = menuOpen ? (
+    <div role="menu" className={rail ? appShellRailAccountMenuClassName : "absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"}>
+      <div
+        className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
+        role="presentation"
+      >
+        <div className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+          Signed in as
         </div>
-      ) : null}
+        <div
+          className={`mt-[var(--ds-space-1)] truncate text-[length:var(--ds-text-sm)] leading-snug ${
+            signedInEmail ? "text-[var(--ds-text-primary)]" : "text-[var(--ds-text-secondary)]"
+          }`}
+          title={signedInEmail ?? undefined}
+        >
+          {signedInEmail ?? "No email available"}
+        </div>
+      </div>
+      <Link
+        href="/account"
+        role="menuitem"
+        className="ds-app-menu-dropdown__item block text-left no-underline"
+        onClick={() => setMenuOpen(false)}
+      >
+        User Settings
+      </Link>
+      <button
+        type="button"
+        role="menuitem"
+        className="ds-app-menu-dropdown__item"
+        onClick={handleSignOut}
+      >
+        Sign out
+      </button>
+    </div>
+  ) : null;
+
+  if (rail) {
+    return (
+      <AppShellRailAccountTrigger
+        menuOpen={menuOpen}
+        onToggle={() => setMenuOpen((o) => !o)}
+        rowClassName={appShellRailFooterAccountRowClass(railPageActive)}
+        pageActive={railPageActive}
+        icon={<PersonIcon />}
+        menu={accountMenuPanel}
+        menuRef={menuRef}
+      />
+    );
+  }
+
+  return (
+    <div className="relative flex items-center" ref={menuRef}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="md"
+        className="ds-app-menu-trigger ds-app-menu-trigger--leading-slot"
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        aria-label="Account menu"
+        onClick={() => setMenuOpen((o) => !o)}
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ds-surface)] text-[var(--ds-text-primary)]">
+          <PersonIcon />
+        </span>
+        <ChevronIcon />
+      </Button>
+      {accountMenuPanel}
     </div>
   );
 }
