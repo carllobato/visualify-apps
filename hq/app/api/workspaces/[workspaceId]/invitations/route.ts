@@ -5,16 +5,13 @@ import {
   fetchPendingWorkspaceInvitations,
   normalizeWorkspaceInviteEmail,
 } from "@/lib/workspace-invitations";
-import type { WorkspaceInviteRole } from "@/types/workspace-invitations";
+import { canAssignWorkspaceInviteRole } from "@/lib/workspace-member-roles";
+import { isWorkspaceInviteRole } from "@/types/workspace-invitations";
 import { fetchManageableWorkspaceById } from "@/lib/workspace-settings-data";
 import { awaitSupabaseCookieSync } from "@/lib/supabase/await-supabase-cookie-sync";
 import { createRouteRequestSupabase } from "@/lib/supabase/route-handler-client";
 
 export const dynamic = "force-dynamic";
-
-function isWorkspaceInviteRole(v: unknown): v is WorkspaceInviteRole {
-  return v === "admin" || v === "member";
-}
 
 async function jsonWithRouteSupabaseCookies(
   applySupabaseAuthCookies: (response: NextResponse) => void,
@@ -82,8 +79,18 @@ export async function POST(
   if (!email) {
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Email is required" }, { status: 400 });
   }
-  if (!isWorkspaceInviteRole(body.role)) {
+  if (typeof body.role !== "string" || !isWorkspaceInviteRole(body.role)) {
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Invalid role" }, { status: 400 });
+  }
+  if (!canAssignWorkspaceInviteRole(manageable.memberRole, body.role)) {
+    return jsonWithRouteSupabaseCookies(
+      applySupabaseAuthCookies,
+      {
+        error: "ROLE_NOT_ALLOWED",
+        message: "You cannot invite someone with a role above your own.",
+      },
+      { status: 403 },
+    );
   }
 
   const result = await createPendingWorkspaceInvitation({

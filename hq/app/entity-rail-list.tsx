@@ -85,38 +85,6 @@ const CREATE_WORKSPACE_ROW_ACTIVE_CLASS =
 const createWorkspaceLabelClass =
   railLabelClass.replace("font-medium", "font-normal");
 
-/** Mirrors RiskAI `Sidebar.tsx` `sectionHeader` — rule when collapsed, label when hover/pinned (`group` on `PlatformRail` aside). */
-function RailSectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className={
-        "ds-sidebar-section-header px-3 pb-1 pt-4 first:pt-1 [&:not(:first-child)]:mt-1"
-      }
-    >
-      <div className="relative">
-        <div
-          className={
-            "pointer-events-none absolute left-0 top-1/2 z-0 h-px w-full max-w-10 shrink-0 -translate-y-1/2 " +
-            "bg-[var(--ds-border-subtle)] transition-[max-width] duration-[400ms] ease-out " +
-            "group-hover:hidden group-data-[pinned=true]:hidden"
-          }
-          aria-hidden
-        />
-        <span
-          className={
-            "ds-sidebar-section-header-label relative z-10 block overflow-hidden whitespace-nowrap " +
-            "transition-[max-width,opacity] duration-[400ms] ease-out " +
-            "max-w-0 opacity-0 " +
-            "group-hover:max-w-[min(12rem,100%)] group-hover:opacity-100 " +
-            "group-data-[pinned=true]:max-w-[min(12rem,100%)] group-data-[pinned=true]:opacity-100"
-          }
-        >
-          {children}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 const RAIL_MINI_LINK_CLASS =
   "text-left text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)] underline underline-offset-2 hover:text-[var(--ds-text-primary)]";
@@ -252,7 +220,7 @@ export function WorkspaceRailList({
     const result = await setVisualifyActiveWorkspaceIdAction(id);
     setBusyId(null);
     if (result.ok) {
-      router.push(`/hq/workspaces/${id}`);
+      router.push(`/hq/workspaces/${id}?tab=apps`);
       router.refresh();
     }
   }
@@ -278,31 +246,25 @@ export function WorkspaceRailList({
 
   if (workspaces.length === 0) {
     return (
-      <div className="flex flex-col gap-2.5">
-        <RailSectionLabel>Workspaces</RailSectionLabel>
-        <p className="px-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-tertiary)]">
+      <section className="flex min-w-0 flex-col gap-2.5 pt-1" aria-label="Workspaces">
+        <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-tertiary)]">
           No workspaces to manage yet.
         </p>
-        <div className="flex flex-col gap-2.5">
-          <CreateWorkspaceRailRow pathname={pathname} />
-          <Link href="/account" className={RAIL_MINI_LINK_CLASS}>
-            Join Workspace
-          </Link>
-        </div>
-      </div>
+        <CreateWorkspaceRailRow pathname={pathname} />
+        <Link href="/account" className={RAIL_MINI_LINK_CLASS}>
+          Join Workspace
+        </Link>
+      </section>
     );
   }
 
   const { label, items } = groupEntitiesForRail(workspaces);
 
   return (
-    <div className="flex flex-col gap-2.5">
-      <RailSectionLabel>{label}</RailSectionLabel>
-      <div className="flex flex-col gap-2.5">
-        {renderRows(items)}
-        <CreateWorkspaceRailRow pathname={pathname} />
-      </div>
-    </div>
+    <section className="flex min-w-0 flex-col gap-2.5 pt-1" aria-label={label}>
+      {renderRows(items)}
+      <CreateWorkspaceRailRow pathname={pathname} />
+    </section>
   );
 }
 

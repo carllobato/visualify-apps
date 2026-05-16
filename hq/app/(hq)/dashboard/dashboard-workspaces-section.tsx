@@ -106,7 +106,7 @@ export function DashboardWorkspacesSection({
     const result = await setVisualifyActiveWorkspaceIdAction(id);
     setBusyId(null);
     if (result.ok) {
-      router.push(`/hq/workspaces/${id}`);
+      router.push(`/hq/workspaces/${id}?tab=apps`);
       router.refresh();
     }
   }

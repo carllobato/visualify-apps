@@ -17,6 +17,7 @@ import {
 } from "@/lib/workspace-apps-data";
 import { ActiveWorkspaceCookieSync } from "./active-workspace-cookie-sync";
 import { WorkspacePageHeader } from "./workspace-page-header";
+import { parseWorkspaceOverviewTab } from "@/lib/workspace-overview-tab";
 import { WorkspaceOverviewTabs } from "./workspace-overview-tabs";
 
 export const dynamic = "force-dynamic";
@@ -57,13 +58,17 @@ function noAccessMain(title: string, body: string) {
 
 export default async function HqWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const user = await resolveAuthenticatedUser();
   if (!user) redirect("/login");
 
   const { workspaceId: routeWorkspaceId } = await params;
+  const { tab: tabParam } = await searchParams;
+  const initialTab = parseWorkspaceOverviewTab(tabParam) ?? "apps";
   const manageable = await fetchManageableWorkspaceByRouteParam(user.id, routeWorkspaceId);
 
   if (!manageable) {
@@ -87,6 +92,7 @@ export default async function HqWorkspacePage({
       <WorkspacePageHeader workspaceName={manageable.name} websiteUrl={websiteUrl || null} />
 
       <WorkspaceOverviewTabs
+        initialTab={initialTab}
         workspaceId={manageable.id}
         workspaceName={manageable.name}
         workspaceType={initialWorkspaceType(manageable.workspace_type)}
@@ -97,6 +103,7 @@ export default async function HqWorkspacePage({
         attachedProducts={deduped}
         workspaceUsers={workspaceUsers}
         pendingWorkspaceInvitations={pendingWorkspaceInvitations}
+        viewerMemberRole={manageable.memberRole}
         viewerIsVisualifyStaff={isVisualifyStaffEmail(user.email)}
       />
     </main>

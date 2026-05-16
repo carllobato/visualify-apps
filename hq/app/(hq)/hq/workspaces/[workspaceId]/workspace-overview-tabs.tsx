@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Button,
@@ -14,10 +14,20 @@ import {
   Label,
   Tab,
   Tabs,
+  dsNativeSelectFieldClassName,
 } from "@visualify/design-system";
-import type { WorkspacePendingInvitationRow } from "@/types/workspace-invitations";
+import {
+  defaultWorkspaceInviteRole,
+  getAssignableWorkspaceInviteRoles,
+} from "@/lib/workspace-member-roles";
+import {
+  type WorkspaceInviteRole,
+  type WorkspacePendingInvitationRow,
+  isWorkspaceInviteRole,
+} from "@/types/workspace-invitations";
 import { RISKAI_DASHBOARD_URL } from "@/lib/visualify-apps";
 import type { WorkspaceCreateType } from "@/types/workspace-create";
+import type { WorkspaceOverviewTab } from "@/lib/workspace-overview-tab";
 import { WorkspaceDetailsForm } from "./workspace-details-form";
 
 export type WorkspaceOverviewProductRow = {
@@ -35,8 +45,6 @@ export type WorkspaceOverviewUserRow = {
   status: string | null;
 };
 
-type WorkspaceOverviewTab = "details" | "apps" | "workspace_users" | "billing" | "settings";
-
 type RoleBadgeKey = "owner" | "admin" | "member" | "other";
 type StatusBadgeKey = "active" | "invited" | "inactive";
 
@@ -48,9 +56,9 @@ function workspaceRoleBadgeKey(raw: string | null | undefined): RoleBadgeKey {
 
 function workspaceRoleLabel(raw: string | null | undefined): string {
   const key = workspaceRoleBadgeKey(raw);
-  if (key !== "other") return key;
+  if (key !== "other") return key.charAt(0).toUpperCase() + key.slice(1);
   const t = raw?.trim();
-  return t && t.length > 0 ? t : "member";
+  return t && t.length > 0 ? t : "Member";
 }
 
 function workspaceMembershipStatusKey(raw: string | null | undefined): StatusBadgeKey {
@@ -62,7 +70,8 @@ function workspaceMembershipStatusKey(raw: string | null | undefined): StatusBad
 }
 
 function workspaceMembershipStatusLabel(raw: string | null | undefined): string {
-  return workspaceMembershipStatusKey(raw);
+  const key = workspaceMembershipStatusKey(raw);
+  return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
 function roleBadgeStatus(key: RoleBadgeKey): "neutral" | "info" | "warning" {
@@ -79,15 +88,15 @@ function statusBadgeStatus(key: StatusBadgeKey): "success" | "warning" | "neutra
 
 function WorkspaceUsersInviteRow({ onInvite }: { onInvite: () => void }) {
   return (
-    <tr className="border-t border-dashed border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-text-primary)_2%,var(--ds-surface-default))]">
+    <tr className="border-t border-dashed border-[var(--ds-border-subtle)] bg-transparent">
       <td colSpan={4} className="p-0">
         <button
           type="button"
           onClick={onInvite}
-          className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium text-[var(--ds-text-secondary)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)]"
+          className="group flex w-full items-center gap-1.5 px-3 py-2 text-left text-[length:var(--ds-text-sm)] font-normal text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-secondary)]"
         >
           <span
-            className="flex size-6 shrink-0 items-center justify-center rounded-[var(--ds-radius-sm)] border border-dashed border-[var(--ds-border)] text-[var(--ds-text-tertiary)]"
+            className="text-[var(--ds-text-tertiary)] transition-colors group-hover:text-[var(--ds-text-secondary)]"
             aria-hidden
           >
             +
@@ -105,8 +114,36 @@ const cardClass =
 const summaryCardClass =
   "[border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
 
-const secondaryLinkClass =
-  "inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]";
+const summaryCardInteractiveClass =
+  summaryCardClass +
+  " transition-colors group-hover:bg-[var(--ds-surface-hover)] group-active:bg-[var(--ds-surface-hover)]";
+
+const summaryCardButtonClass =
+  "group block w-full min-w-0 cursor-pointer rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)] focus-visible:ring-offset-2";
+
+function WorkspaceOverviewSummaryCard({
+  label,
+  value,
+  onSelect,
+}: {
+  label: string;
+  value: ReactNode;
+  onSelect: () => void;
+}) {
+  return (
+    <button type="button" onClick={onSelect} className={summaryCardButtonClass} aria-label={`View ${label}`}>
+      <Card variant="default" className={summaryCardInteractiveClass}>
+        <CardContent className="!px-4 !py-3">
+          <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
+            {label}
+          </p>
+          <div className="mt-1 m-0 text-[var(--ds-text-primary)]">{value}</div>
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
 
 function isRiskAiProductKey(key: string): boolean {
   return key.trim().toLowerCase() === "riskai";
@@ -131,7 +168,9 @@ export function WorkspaceOverviewTabs({
   attachedProducts,
   workspaceUsers,
   pendingWorkspaceInvitations,
+  viewerMemberRole,
   viewerIsVisualifyStaff,
+  initialTab = "apps",
 }: {
   workspaceId: string;
   workspaceName: string;
@@ -143,13 +182,19 @@ export function WorkspaceOverviewTabs({
   attachedProducts: WorkspaceOverviewProductRow[];
   workspaceUsers: WorkspaceOverviewUserRow[];
   pendingWorkspaceInvitations: WorkspacePendingInvitationRow[];
+  viewerMemberRole: string;
   viewerIsVisualifyStaff: boolean;
+  initialTab?: WorkspaceOverviewTab;
 }) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<WorkspaceOverviewTab>("details");
+  const [activeTab, setActiveTab] = useState<WorkspaceOverviewTab>(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"admin" | "member">("member");
+  const [inviteRole, setInviteRole] = useState<WorkspaceInviteRole>("member");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccessMessage, setInviteSuccessMessage] = useState<string | null>(null);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
@@ -166,6 +211,18 @@ export function WorkspaceOverviewTabs({
   const visibleAttachedProducts = attachedProducts.filter(
     (row) => !isHiddenTemplateAppEntitlementRow(row) || viewerIsVisualifyStaff,
   );
+
+  const assignableInviteRoles = useMemo(
+    () => getAssignableWorkspaceInviteRoles(viewerMemberRole),
+    [viewerMemberRole],
+  );
+
+  useEffect(() => {
+    if (assignableInviteRoles.length === 0) return;
+    if (!assignableInviteRoles.includes(inviteRole)) {
+      setInviteRole(defaultWorkspaceInviteRole(viewerMemberRole));
+    }
+  }, [assignableInviteRoles, inviteRole, viewerMemberRole]);
 
   useEffect(() => {
     if (!inviteModalOpen) {
@@ -185,7 +242,7 @@ export function WorkspaceOverviewTabs({
 
   const openInviteModal = () => {
     setInviteEmail("");
-    setInviteRole("member");
+    setInviteRole(defaultWorkspaceInviteRole(viewerMemberRole));
     setInviteError(null);
     setInviteSuccessMessage(null);
     setInviteModalOpen(true);
@@ -210,6 +267,8 @@ export function WorkspaceOverviewTabs({
         message?: string;
         error?: string;
       };
+      const apiMessage =
+        typeof data?.message === "string" && data.message.trim() ? data.message.trim() : null;
       if (res.ok && data?.ok === true) {
         setInviteSuccessMessage(data.message ?? "Invitation created");
         setInviteEmail("");
@@ -217,11 +276,10 @@ export function WorkspaceOverviewTabs({
         return;
       }
       setInviteError(
-        typeof data?.message === "string" && data.message.trim()
-          ? data.message
-          : typeof data?.error === "string" && data.error.trim()
-            ? data.error
-            : "Could not create invitation.",
+        apiMessage ??
+          (typeof data?.error === "string" && data.error.trim()
+            ? data.error.trim()
+            : "Could not create invitation."),
       );
     } catch {
       setInviteError("Could not create invitation.");
@@ -295,45 +353,36 @@ export function WorkspaceOverviewTabs({
   return (
     <>
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card variant="default" className={summaryCardClass}>
-          <CardContent className="!px-4 !py-3">
-            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
-              Active Apps
-            </p>
-            <p className="mt-1 m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums text-[var(--ds-text-primary)]">
-              {activeAppsCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card variant="default" className={summaryCardClass}>
-          <CardContent className="!px-4 !py-3">
-            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
-              Workspace users
-            </p>
-            <p className="mt-1 m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums text-[var(--ds-text-primary)]">
-              {memberCount}
-            </p>
-          </CardContent>
-        </Card>
-        <Card variant="default" className={summaryCardClass}>
-          <CardContent className="!px-4 !py-3">
-            <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
-              Billing Status
-            </p>
-            <p className="mt-1 m-0 text-[length:var(--ds-text-sm)] font-semibold leading-snug text-[var(--ds-text-primary)]">
-              {billingStatusLabel}
-            </p>
-          </CardContent>
-        </Card>
+        <WorkspaceOverviewSummaryCard
+          label="Active Apps"
+          value={
+            <p className="m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums">{activeAppsCount}</p>
+          }
+          onSelect={() => setActiveTab("apps")}
+        />
+        <WorkspaceOverviewSummaryCard
+          label="Workspace users"
+          value={
+            <p className="m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums">{memberCount}</p>
+          }
+          onSelect={() => setActiveTab("workspace_users")}
+        />
+        <WorkspaceOverviewSummaryCard
+          label="Billing Status"
+          value={
+            <p className="m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums">{billingStatusLabel}</p>
+          }
+          onSelect={() => setActiveTab("billing")}
+        />
       </div>
 
       <div className="mb-4 border-b border-[var(--ds-border)]">
         <Tabs>
-          <Tab active={activeTab === "details"} onClick={() => setActiveTab("details")}>
-            Details
-          </Tab>
           <Tab active={activeTab === "apps"} onClick={() => setActiveTab("apps")}>
             Apps
+          </Tab>
+          <Tab active={activeTab === "details"} onClick={() => setActiveTab("details")}>
+            Details
           </Tab>
           <Tab active={activeTab === "workspace_users"} onClick={() => setActiveTab("workspace_users")}>
             Workspace Users
@@ -353,9 +402,6 @@ export function WorkspaceOverviewTabs({
             <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Details</h2>
           </CardHeader>
           <CardContent className="!px-4 !py-3">
-            <p className="mb-4 text-sm text-[var(--ds-text-secondary)]">
-              Update the workspace name, type, and website from initial setup.
-            </p>
             <WorkspaceDetailsForm
               key={`${workspaceName}-${workspaceType}-${websiteUrl}`}
               workspaceId={workspaceId}
@@ -393,7 +439,7 @@ export function WorkspaceOverviewTabs({
                         href={RISKAI_DASHBOARD_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={secondaryLinkClass + " shrink-0 self-start sm:self-center"}
+                        className="ds-outline-btn shrink-0 self-start no-underline sm:self-center"
                       >
                         Open RiskAI
                       </a>
@@ -501,7 +547,9 @@ export function WorkspaceOverviewTabs({
                         return (
                           <tr key={inv.id} className="border-b border-[var(--ds-border)] last:border-b-0">
                             <td className="px-3 py-2.5 text-[var(--ds-text-primary)]">{inv.email || "—"}</td>
-                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{inv.role || "—"}</td>
+                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">
+                              {workspaceRoleLabel(inv.role)}
+                            </td>
                             <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{created}</td>
                             <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{inv.status || "—"}</td>
                             <td className="px-3 py-2.5 text-right">
@@ -565,13 +613,19 @@ export function WorkspaceOverviewTabs({
                 <Label htmlFor="workspace-invite-role">Role</Label>
                 <select
                   id="workspace-invite-role"
-                  className="w-full rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-3 py-2 text-sm text-[var(--ds-text-primary)]"
+                  className={dsNativeSelectFieldClassName(false)}
                   value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value === "admin" ? "admin" : "member")}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (isWorkspaceInviteRole(v)) setInviteRole(v);
+                  }}
                   disabled={inviteSubmitting}
                 >
-                  <option value="member">Member</option>
-                  <option value="admin">Admin</option>
+                  {assignableInviteRoles.map((role) => (
+                    <option key={role} value={role}>
+                      {workspaceRoleLabel(role)}
+                    </option>
+                  ))}
                 </select>
               </div>
               {inviteError ? (
@@ -611,7 +665,7 @@ export function WorkspaceOverviewTabs({
             <p className="mb-4 text-sm text-[var(--ds-text-secondary)]">
               Review subscriptions, payment method, and invoices for this workspace.
             </p>
-            <Link href="/billing" className={secondaryLinkClass}>
+            <Link href="/billing" className="ds-outline-btn no-underline">
               Go to Billing
             </Link>
           </CardContent>

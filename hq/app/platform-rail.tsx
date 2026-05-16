@@ -101,17 +101,17 @@ function IconChevronDownSubtle() {
   );
 }
 
-const VISUALIFY_BRAND_ICON_SRC = "/icon.svg";
+const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
 
-/** Visualify app icon (`app/icon.svg`) — shown in the collapsed rail brand slot. */
+/** Visualify brand mark — shown in the collapsed rail brand slot. */
 function BrandMonogramSymbol() {
   return (
     <img
       src={VISUALIFY_BRAND_ICON_SRC}
       alt=""
-      width={32}
-      height={32}
-      className="size-8 shrink-0 rounded-full object-cover"
+      width={40}
+      height={40}
+      className="size-10 shrink-0 object-contain"
     />
   );
 }
