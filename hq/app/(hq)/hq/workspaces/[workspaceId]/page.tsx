@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
+import { isVisualifyStaffEmail } from "@/lib/auth/visualifyStaff";
 import { fetchPendingWorkspaceInvitations } from "@/lib/workspace-invitations";
 import {
   fetchManageableWorkspaceByRouteParam,
@@ -90,6 +91,7 @@ export default async function HqWorkspacePage({
         attachedProducts={deduped}
         workspaceUsers={workspaceUsers}
         pendingWorkspaceInvitations={pendingWorkspaceInvitations}
+        viewerIsVisualifyStaff={isVisualifyStaffEmail(user.email)}
       />
     </main>
   );

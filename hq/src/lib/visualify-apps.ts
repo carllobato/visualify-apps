@@ -4,6 +4,9 @@ export const RISKAI_DASHBOARD_URL = "https://app.visualify.com.au/riskai/dashboa
 /** Host for app routes shared with RiskAI (legal pages, etc.). */
 export const VISUALIFY_APP_ORIGIN = new URL(RISKAI_DASHBOARD_URL).origin;
 
+/** Template App on the shared app host (HQ dashboard tile for Visualify staff only). */
+export const TEMPLATE_APP_HQ_LAUNCH_URL = `${VISUALIFY_APP_ORIGIN}/template-app`;
+
 export type VisualifyAppDefinition = {
   id: string;
   name: string;
@@ -39,3 +42,11 @@ export const VISUALIFY_APP_CATALOG: VisualifyAppDefinition[] = [
     description: "Planning, milestones and schedule intelligence.",
   },
 ];
+
+/** App launcher tile for HQ dashboard — append only when `isVisualifyStaffEmail` is true. */
+export const VISUALIFY_STAFF_TEMPLATE_APP_DASHBOARD_TILE: VisualifyAppDefinition = {
+  id: "template",
+  name: "Template App",
+  description: "Internal product scaffold and integration reference for Visualify staff.",
+  href: TEMPLATE_APP_HQ_LAUNCH_URL,
+};

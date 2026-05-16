@@ -88,6 +88,14 @@ function isRiskAiProductKey(key: string): boolean {
   return key.trim().toLowerCase() === "riskai";
 }
 
+/** Internal-only product; omit from workspace entitlement list for non-staff HQ viewers. */
+function isHiddenTemplateAppEntitlementRow(row: WorkspaceOverviewProductRow): boolean {
+  return (
+    row.productKey.trim().toLowerCase() === "template" ||
+    row.productName.trim().toLowerCase() === "template app"
+  );
+}
+
 export function WorkspaceOverviewTabs({
   workspaceId,
   activeAppsCount,
@@ -96,6 +104,7 @@ export function WorkspaceOverviewTabs({
   attachedProducts,
   workspaceUsers,
   pendingWorkspaceInvitations,
+  viewerIsVisualifyStaff,
 }: {
   workspaceId: string;
   activeAppsCount: number;
@@ -104,6 +113,7 @@ export function WorkspaceOverviewTabs({
   attachedProducts: WorkspaceOverviewProductRow[];
   workspaceUsers: WorkspaceOverviewUserRow[];
   pendingWorkspaceInvitations: WorkspacePendingInvitationRow[];
+  viewerIsVisualifyStaff: boolean;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<WorkspaceOverviewTab>("apps");
@@ -113,6 +123,10 @@ export function WorkspaceOverviewTabs({
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccessMessage, setInviteSuccessMessage] = useState<string | null>(null);
   const [inviteSubmitting, setInviteSubmitting] = useState(false);
+
+  const visibleAttachedProducts = attachedProducts.filter(
+    (row) => !isHiddenTemplateAppEntitlementRow(row) || viewerIsVisualifyStaff,
+  );
 
   useEffect(() => {
     if (!inviteModalOpen) {
@@ -227,13 +241,13 @@ export function WorkspaceOverviewTabs({
             <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Product entitlements</h2>
           </CardHeader>
           <CardContent className="!px-4 !py-3">
-            {attachedProducts.length === 0 ? (
+            {visibleAttachedProducts.length === 0 ? (
               <p className="m-0 text-sm text-[var(--ds-text-secondary)]">
                 No product entitlements are attached to this workspace yet.
               </p>
             ) : (
               <ul className="m-0 list-none space-y-0 divide-y divide-[var(--ds-border)] p-0">
-                {attachedProducts.map((row) => (
+                {visibleAttachedProducts.map((row) => (
                   <li key={row.productKey} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <p className="m-0 text-sm font-medium text-[var(--ds-text-primary)]">{row.productName}</p>
