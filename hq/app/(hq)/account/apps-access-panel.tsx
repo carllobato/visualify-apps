@@ -6,6 +6,11 @@ import {
 } from "@/lib/visualify-apps";
 import { Card, CardContent, CardHeader } from "@visualify/design-system";
 
+/**
+ * Account → Apps: read-only view of catalog vs workspace-backed entitlements.
+ * Users are identities; billing and product enablement live on workspaces. Open links only when a workspace
+ * grants the product (trial/active) and the catalog lists an `href`.
+ */
 function AppRow({ app, access }: { app: VisualifyAppDefinition; access: "granted" | "denied" }) {
   const canOpen = access === "granted" && Boolean(app.href?.trim());
 
@@ -29,7 +34,7 @@ function AppRow({ app, access }: { app: VisualifyAppDefinition; access: "granted
           </a>
         ) : (
           <span className="inline-flex shrink-0 items-center text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
-            No access
+            {access === "denied" ? "Not enabled on a workspace" : "No launch URL"}
           </span>
         )}
       </div>
@@ -37,10 +42,15 @@ function AppRow({ app, access }: { app: VisualifyAppDefinition; access: "granted
   );
 }
 
-export function AppsAccessPanel({ grantedAppIds }: { grantedAppIds: readonly string[] }) {
-  const grantedSet = new Set(grantedAppIds);
-  const withAccess = VISUALIFY_APP_CATALOG.filter((a) => grantedSet.has(a.id));
-  const withoutAccess = VISUALIFY_APP_CATALOG.filter((a) => !grantedSet.has(a.id));
+export function AppsAccessPanel({
+  workspaceEntitledProductKeys,
+}: {
+  /** `visualify_products.key` values from any workspace where the signed-in user has membership + trial/active subscription. */
+  workspaceEntitledProductKeys: readonly string[];
+}) {
+  const entitledSet = new Set(workspaceEntitledProductKeys);
+  const withAccess = VISUALIFY_APP_CATALOG.filter((a) => entitledSet.has(a.id));
+  const withoutAccess = VISUALIFY_APP_CATALOG.filter((a) => !entitledSet.has(a.id));
 
   const cardClass =
     "[border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
@@ -49,16 +59,18 @@ export function AppsAccessPanel({ grantedAppIds }: { grantedAppIds: readonly str
     <section className="space-y-4">
       <Card variant="default" className={cardClass}>
         <CardHeader className="!px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Apps with access</h2>
+          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Apps from your workspaces</h2>
         </CardHeader>
         <CardContent className="!px-4 !py-3">
           <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
-            Visualify products your account can use. Access may come from your organisation or an invitation.
+            Products appear here when you belong to a workspace that has enabled them with an active or trial
+            subscription. Access always follows workspace membership and that workspace&apos;s billing state—not
+            your user account alone.
           </p>
           {withAccess.length === 0 ? (
             <p className="text-sm text-[var(--ds-text-muted)]">
-              You don&apos;t have access to any listed apps yet. Ask your administrator or check pending
-              invitations.
+              None of the listed apps are enabled for you through a workspace yet. Ask a workspace admin to invite
+              you or enable a product for a workspace you belong to.
             </p>
           ) : (
             <ul className="m-0 list-none space-y-2 p-0">
@@ -72,15 +84,17 @@ export function AppsAccessPanel({ grantedAppIds }: { grantedAppIds: readonly str
 
       <Card variant="default" className={cardClass}>
         <CardHeader className="!px-4 !py-2.5">
-          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Apps without access</h2>
+          <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Catalog apps not enabled yet</h2>
         </CardHeader>
         <CardContent className="!px-4 !py-3">
           <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
-            Products in the Visualify suite that aren&apos;t enabled for your account right now.
+            Other Visualify products in the catalog. They become available when a workspace you belong to enables
+            them (subscriptions are attached to workspaces).
           </p>
           {withoutAccess.length === 0 ? (
             <p className="text-sm text-[var(--ds-text-muted)]">
-              Nothing to show—either every catalog app is enabled for you, or no other apps are listed yet.
+              Every catalog app listed here is enabled for you through at least one workspace, or there are no
+              additional catalog entries.
             </p>
           ) : (
             <ul className="m-0 list-none space-y-2 p-0">

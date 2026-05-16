@@ -24,12 +24,13 @@
   min-height: 0;
   flex: 1 1 0%;
   flex-direction: column;
-  padding: 0.5rem;
+  /* No top padding — scroll region `padding-top` matches rail `pt-5` for brand/title alignment. */
+  padding: 0 0.5rem 0.5rem;
 }
 
 @media (min-width: 640px) {
   .vf-app-shell-frame-gutter {
-    padding: 0.625rem;
+    padding: 0 0.625rem 0.625rem;
   }
 }
 
@@ -54,12 +55,12 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   background-color: var(--ds-surface);
-  /* Match platform rail: inner column uses pt-5 + px-[14px] (see HQ PlatformRail). */
+  /* Symmetric inset inside the frame; top aligns with rail `pt-5` (see HQ PlatformRail). */
   padding-top: 1.25rem;
   /* No bottom padding — avoids a visible strip below the legal footer inside the frame. */
   padding-bottom: 0;
-  padding-left: 14px;
-  padding-right: 14px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
 }
 
 /* Content-sized main column; footer slot grows to fill the rest of the scroll region (short pages). */

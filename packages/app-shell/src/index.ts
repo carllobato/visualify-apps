@@ -1,8 +1,10 @@
 export {
+  railBrandTitleClass,
   railLabelClass,
   RAIL_NAV_ROW_ACTIVE_CLASS,
   RAIL_NAV_ROW_INACTIVE_CLASS,
   RAIL_NAV_ROW_SHELL_CLASS,
+  shellPageHeaderRailRowClassName,
 } from "./rail-nav-row-classes";
 
 export {

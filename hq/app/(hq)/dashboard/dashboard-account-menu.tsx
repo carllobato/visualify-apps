@@ -176,7 +176,7 @@ export function DashboardAccountMenu({
           role="menu"
           className={
             rail
-              ? "absolute bottom-0 left-full z-[100] ml-[var(--ds-space-2)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
+              ? "absolute inset-x-0 bottom-full z-[100] mb-[var(--ds-space-1)] w-full min-w-0 ds-app-menu-dropdown"
               : "absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
           }
         >

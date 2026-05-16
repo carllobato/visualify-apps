@@ -11,6 +11,7 @@ import {
   RAIL_NAV_ROW_ACTIVE_CLASS,
   RAIL_NAV_ROW_INACTIVE_CLASS,
   RAIL_NAV_ROW_SHELL_CLASS,
+  railBrandTitleClass,
   railLabelClass,
 } from "@visualify/app-shell";
 
@@ -22,9 +23,6 @@ const HQ_BRAND_APP_SHORT = "HQ";
 
 /** Collapsed rail is 68px; centered 40px icon column uses symmetric (68−40)/2 = 14px horizontal inset. */
 const RAIL_PAD_X = "px-[14px]";
-/** Matches app header product switcher (`text-lg font-medium …`). */
-const RAIL_BRAND_TEXT_CLASS =
-  "text-[length:var(--ds-text-lg)] font-medium leading-none tracking-tight";
 const RAIL_EXPANDED_W_CLASS = "w-[68px] hover:w-[min(240px,calc(100vw-16px))]";
 /** Rail shell stays transparent so the page canvas shows through (no sidebar fill on hover/pin). */
 const RAIL_HOVER_TIMING = "duration-[400ms] ease-out will-change-[width]";
@@ -103,17 +101,18 @@ function IconChevronDownSubtle() {
   );
 }
 
-/** Bold “V” brand mark — same scale as rail brand label (`RAIL_BRAND_TEXT_CLASS`), weight bold. */
+const VISUALIFY_BRAND_ICON_SRC = "/icon.svg";
+
+/** Visualify app icon (`app/icon.svg`) — shown in the collapsed rail brand slot. */
 function BrandMonogramSymbol() {
   return (
-    <span
-      aria-hidden
-      className={
-        "shrink-0 select-none text-[length:var(--ds-text-lg)] font-bold leading-none tracking-tight text-[var(--ds-text-primary)]"
-      }
-    >
-      V
-    </span>
+    <img
+      src={VISUALIFY_BRAND_ICON_SRC}
+      alt=""
+      width={32}
+      height={32}
+      className="size-8 shrink-0 rounded-full object-cover"
+    />
   );
 }
 
@@ -181,7 +180,7 @@ function RailBrandAppMenu() {
         </span>
         <span
           className={
-            `hidden min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${RAIL_BRAND_TEXT_CLASS} ` +
+            `hidden min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
             "group-hover:flex group-data-[pinned=true]:flex"
           }
         >
@@ -211,60 +210,54 @@ function RailBrandAppMenu() {
       {menuOpen ? (
         <div
           role="menu"
-          className="absolute left-0 top-full z-[100] min-w-[220px] pt-0.5"
+          className="absolute inset-x-0 top-full z-[100] mt-[var(--ds-space-1)] w-full min-w-0 ds-app-menu-dropdown"
           onMouseEnter={cancelScheduledClose}
           onMouseLeave={scheduleClose}
         >
-          <div className="ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav">
-            <div
-              className="border-b border-[color-mix(in_oklab,var(--ds-border)_45%,transparent)] px-[var(--ds-space-4)] pb-2 pt-1.5"
-              role="presentation"
-            >
-              <div className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-tertiary)]">
-                Apps
-              </div>
+          <div
+            className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
+            role="presentation"
+          >
+            <div className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+              Apps
             </div>
             <div
-              role="menuitem"
+              className="mt-[var(--ds-space-1)] truncate text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]"
               aria-current="page"
-              className="ds-app-menu-dropdown__item pointer-events-none cursor-default font-medium text-[var(--ds-text-primary)] hover:!bg-transparent"
             >
               Visualify HQ
-              <span className="mt-0.5 block text-[length:var(--ds-text-xs)] font-normal text-[var(--ds-text-tertiary)]">
-                Current app
-              </span>
             </div>
-            {VISUALIFY_APP_CATALOG.map((app) =>
-              app.href ? (
-                <a
-                  key={app.id}
-                  href={app.href}
-                  role="menuitem"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ds-app-menu-dropdown__item no-underline"
-                  title={app.description}
-                >
-                  <span className="font-medium">{app.name}</span>
-                  <span className="mt-0.5 block text-[length:var(--ds-text-xs)] font-normal text-[var(--ds-text-tertiary)]">
-                    {app.description}
-                  </span>
-                </a>
-              ) : (
-                <div
-                  key={app.id}
-                  role="menuitem"
-                  aria-disabled
-                  className="ds-app-menu-dropdown__item pointer-events-none cursor-default text-[var(--ds-text-muted)] opacity-[0.82] hover:!bg-transparent"
-                >
-                  <span className="block font-normal">{app.name}</span>
-                  <span className="mt-0.5 block text-[length:var(--ds-text-xs)] text-[var(--ds-text-tertiary)]">
-                    Coming soon
-                  </span>
-                </div>
-              ),
-            )}
+            <div className="mt-0.5 text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+              Current app
+            </div>
           </div>
+          {VISUALIFY_APP_CATALOG.map((app) =>
+            app.href ? (
+              <a
+                key={app.id}
+                href={app.href}
+                role="menuitem"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ds-app-menu-dropdown__item block text-left no-underline"
+                title={app.description}
+              >
+                {app.name}
+              </a>
+            ) : (
+              <div
+                key={app.id}
+                role="menuitem"
+                aria-disabled
+                className="ds-app-menu-dropdown__item pointer-events-none cursor-default text-[var(--ds-text-muted)] opacity-[0.82]"
+              >
+                {app.name}
+                <span className="mt-0.5 block text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+                  Coming soon
+                </span>
+              </div>
+            ),
+          )}
         </div>
       ) : null}
     </div>

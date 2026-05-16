@@ -16,8 +16,8 @@ export type VisualifyAppDefinition = {
 };
 
 /**
- * Apps listed under Account → Apps. Split into granted vs not granted using `grantedAppIds`.
- * Replace or augment with API-driven data when app entitlements exist.
+ * Default HQ app catalog tiles. Catalog `id` matches `visualify_products.key` for workspace entitlement checks.
+ * Account → Apps splits this list using workspace-derived product keys (membership + workspace subscriptions).
  */
 export const VISUALIFY_APP_CATALOG: VisualifyAppDefinition[] = [
   {

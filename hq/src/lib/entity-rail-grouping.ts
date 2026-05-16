@@ -2,27 +2,33 @@ export type EntityRailWorkspace = {
   id: string;
   name: string;
   workspace_type: string;
+  website_url: string | null;
 };
 
 function normType(t: string): string {
   return t.trim().toLowerCase();
 }
 
-/**
- * Group workspaces for the rail: split personal vs non-personal when both exist.
- * Visible labels use “Workspace” terminology (no “Organisation” in section headers).
- */
-export function groupEntitiesForRail(workspaces: EntityRailWorkspace[]):
-  | { kind: "single"; label: string; items: EntityRailWorkspace[] }
-  | { kind: "split"; personal: EntityRailWorkspace[]; nonPersonal: EntityRailWorkspace[] } {
-  const personal = workspaces.filter((w) => normType(w.workspace_type) === "personal");
-  const nonPersonal = workspaces.filter((w) => normType(w.workspace_type) !== "personal");
+/** Human-readable workspace type for lists (rail, dashboard tiles). */
+export function workspaceTypeDisplayLabel(workspaceType: string): string {
+  const t = normType(workspaceType);
+  if (t === "personal") return "Personal";
+  if (t === "team" || t === "organization" || t === "organisation") return "Organisation";
+  const trimmed = workspaceType.trim();
+  return trimmed || "Workspace";
+}
 
-  if (personal.length === 0) {
-    return { kind: "single", label: "Workspaces", items: nonPersonal };
-  }
-  if (nonPersonal.length === 0) {
-    return { kind: "single", label: "Workspaces", items: personal };
-  }
-  return { kind: "split", personal, nonPersonal };
+export function isOrganisationWorkspaceType(workspaceType: string): boolean {
+  const t = normType(workspaceType);
+  return t === "team" || t === "organization" || t === "organisation";
+}
+
+/**
+ * Workspaces for the HQ rail — one list; `personal` is a type subtitle only, not a separate section.
+ */
+export function groupEntitiesForRail(workspaces: EntityRailWorkspace[]): {
+  label: string;
+  items: EntityRailWorkspace[];
+} {
+  return { label: "Workspaces", items: workspaces };
 }

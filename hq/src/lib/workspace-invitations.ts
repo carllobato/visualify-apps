@@ -180,3 +180,48 @@ export async function createPendingWorkspaceInvitation(params: {
 
   return { ok: true, alreadyPending: false };
 }
+
+export type CancelWorkspaceInvitationResult =
+  | { ok: true }
+  | { ok: false; code: "NOT_FOUND" | "SERVICE_ROLE_UNAVAILABLE" | "DB_ERROR" };
+
+/**
+ * Marks a pending workspace invitation as cancelled. Caller must verify the actor may administer the workspace.
+ */
+export async function cancelPendingWorkspaceInvitation(params: {
+  workspaceId: string;
+  invitationId: string;
+}): Promise<CancelWorkspaceInvitationResult> {
+  let admin: SupabaseClient;
+  try {
+    admin = supabaseAdminClient();
+  } catch {
+    return { ok: false, code: "SERVICE_ROLE_UNAVAILABLE" };
+  }
+
+  const invitationId = params.invitationId.trim();
+  if (!invitationId) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+
+  const now = new Date().toISOString();
+  const { data, error } = await admin
+    .from("visualify_invitations")
+    .update({ status: "cancelled", cancelled_at: now })
+    .eq("id", invitationId)
+    .eq("resource_type", "workspace")
+    .eq("resource_id", params.workspaceId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("cancelPendingWorkspaceInvitation:", error.message);
+    return { ok: false, code: "DB_ERROR" };
+  }
+  if (!data?.id) {
+    return { ok: false, code: "NOT_FOUND" };
+  }
+
+  return { ok: true };
+}

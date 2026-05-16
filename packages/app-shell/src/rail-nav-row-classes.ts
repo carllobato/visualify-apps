@@ -3,6 +3,13 @@
  * Extracted from HQ `rail-nav-row-classes.ts` (same class strings; no behaviour).
  */
 
+/** Typography for the platform rail brand row (“Visualify | …”) — pair with {@link shellPageHeaderRailRowClassName} on page titles. */
+export const railBrandTitleClass =
+  "text-[length:var(--ds-text-lg)] font-medium leading-none tracking-tight";
+
+/** 40px row height matching rail brand / nav controls for vertical alignment with the aside. */
+export const shellPageHeaderRailRowClassName = "flex h-10 min-h-10 items-center";
+
 export const railLabelClass =
   "min-w-0 shrink truncate text-left text-[length:var(--ds-text-sm)] font-medium leading-none " +
   "w-0 overflow-hidden opacity-0 transition-[width,max-width,opacity] duration-[400ms] ease-out " +

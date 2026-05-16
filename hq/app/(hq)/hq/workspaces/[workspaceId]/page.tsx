@@ -7,13 +7,16 @@ import {
   fetchManageableWorkspaceByRouteParam,
   fetchWorkspaceMemberCount,
   fetchWorkspaceMembersForAdmin,
+  fetchWorkspaceWebsiteUrl,
 } from "@/lib/workspace-settings-data";
+import { isWorkspaceCreateType, type WorkspaceCreateType } from "@/types/workspace-create";
 import {
   type AttachedWorkspaceProduct,
   fetchAttachedWorkspaceProducts,
   partitionWorkspaceProductsForAppsPage,
 } from "@/lib/workspace-apps-data";
 import { ActiveWorkspaceCookieSync } from "./active-workspace-cookie-sync";
+import { WorkspacePageHeader } from "./workspace-page-header";
 import { WorkspaceOverviewTabs } from "./workspace-overview-tabs";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +27,10 @@ function dedupeAttachedProducts(rows: AttachedWorkspaceProduct[]): AttachedWorks
     if (!seen.has(r.productKey)) seen.set(r.productKey, r);
   }
   return [...seen.values()].sort((a, b) => a.productName.localeCompare(b.productName));
+}
+
+function initialWorkspaceType(raw: string): WorkspaceCreateType {
+  return isWorkspaceCreateType(raw) ? raw : "organisation";
 }
 
 function billingStatusSummary(attached: AttachedWorkspaceProduct[]): string {
@@ -72,19 +79,18 @@ export default async function HqWorkspacePage({
   const workspaceUsers = await fetchWorkspaceMembersForAdmin(manageable.id);
   const pendingWorkspaceInvitations = await fetchPendingWorkspaceInvitations(manageable.id);
   const { active } = partitionWorkspaceProductsForAppsPage(attached);
+  const websiteUrl = (await fetchWorkspaceWebsiteUrl(manageable.id)) ?? "";
 
   return (
     <main className="w-full min-w-0 px-0 pb-4">
       <ActiveWorkspaceCookieSync workspaceId={manageable.id} />
-      <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">
-        {manageable.name} Workspace
-      </h1>
-      <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-        Admin hub for this workspace. Use the tabs below for apps, workspace users, billing, and settings.
-      </p>
+      <WorkspacePageHeader workspaceName={manageable.name} websiteUrl={websiteUrl || null} />
 
       <WorkspaceOverviewTabs
         workspaceId={manageable.id}
+        workspaceName={manageable.name}
+        workspaceType={initialWorkspaceType(manageable.workspace_type)}
+        websiteUrl={websiteUrl}
         activeAppsCount={active.length}
         memberCount={memberCount}
         billingStatusLabel={billingStatusSummary(attached)}

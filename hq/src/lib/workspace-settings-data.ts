@@ -14,6 +14,7 @@ export type ManageableWorkspaceSummary = {
   workspaceStatus: string | null;
   memberRole: string;
   membershipStatus: string | null;
+  logo_url: string | null;
 };
 
 function isActiveStatus(value: string | null | undefined): boolean {
@@ -39,6 +40,8 @@ type WorkspaceRow = {
   slug: string;
   workspace_type: string | null;
   status: string | null;
+  logo_url: string | null;
+  website_url: string | null;
   visualify_workspace_products: { id: string }[] | { id: string } | null;
 };
 
@@ -48,13 +51,12 @@ function productCount(ws: WorkspaceRow): number {
   return Array.isArray(raw) ? raw.length : 1;
 }
 
-function normType(t: string | null | undefined): string {
-  return (t ?? "").trim().toLowerCase();
-}
-
 /**
- * Workspaces the signed-in user may administer in HQ (active membership + workspace,
- * owner/admin role, hide unused personal workspaces with no attached products).
+ * Workspaces the signed-in user may administer in HQ: active membership, owner/admin role, active workspace.
+ *
+ * Billing and product enablement are workspace-scoped; users are identities only. All manageable workspaces
+ * must remain visible in the rail (including `personal` with zero products) so a manually created workspace
+ * is never hidden before products attach.
  */
 export async function fetchManageableWorkspaceSummariesForUser(
   userId: string
@@ -68,6 +70,7 @@ export async function fetchManageableWorkspaceSummariesForUser(
     workspaceStatus: w.workspaceStatus,
     memberRole: w.memberRole,
     membershipStatus: w.membershipStatus,
+    logo_url: w.logo_url,
   }));
 }
 
@@ -75,6 +78,13 @@ export type WorkspaceRailEntry = {
   id: string;
   name: string;
   workspace_type: string;
+  website_url: string | null;
+};
+
+export type WorkspaceDashboardEntry = {
+  id: string;
+  name: string;
+  website_url: string | null;
 };
 
 async function fetchManageableWorkspacesInternal(
@@ -84,6 +94,8 @@ async function fetchManageableWorkspacesInternal(
   Array<
     ManageableWorkspaceSummary & {
       productCount: number;
+      logo_url: string | null;
+      website_url: string | null;
     }
   >
 > {
@@ -112,6 +124,8 @@ async function fetchManageableWorkspacesInternal(
       slug,
       workspace_type,
       status,
+      logo_url,
+      website_url,
       visualify_workspace_products ( id )
     `
     )
@@ -127,6 +141,8 @@ async function fetchManageableWorkspacesInternal(
   const out: Array<
     ManageableWorkspaceSummary & {
       productCount: number;
+      logo_url: string | null;
+      website_url: string | null;
     }
   > = [];
 
@@ -138,7 +154,6 @@ async function fetchManageableWorkspacesInternal(
     if (!ws || !isActiveStatus(ws.status)) continue;
 
     const pc = productCount(ws);
-    if (normType(ws.workspace_type) === "personal" && pc === 0) continue;
 
     out.push({
       id: ws.id,
@@ -149,6 +164,9 @@ async function fetchManageableWorkspacesInternal(
       memberRole: m.role ?? "",
       membershipStatus: m.status,
       productCount: pc,
+      logo_url: ws.logo_url ?? null,
+      website_url:
+        typeof ws.website_url === "string" && ws.website_url.trim() ? ws.website_url.trim() : null,
     });
   }
 
@@ -165,6 +183,18 @@ export async function fetchManageableWorkspacesForRail(userId: string): Promise<
     id: r.id,
     name: r.name,
     workspace_type: r.workspace_type,
+    website_url: r.website_url,
+  }));
+}
+
+export async function fetchManageableWorkspacesForDashboard(
+  userId: string,
+): Promise<WorkspaceDashboardEntry[]> {
+  const rows = await fetchManageableWorkspacesInternal(userId);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    website_url: r.website_url,
   }));
 }
 
@@ -184,6 +214,17 @@ export async function writeVisualifyActiveWorkspaceIdCookie(workspaceId: string)
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
   });
+}
+
+/** Clears the active-workspace cookie when it points at the given workspace (e.g. after archive). */
+export async function clearVisualifyActiveWorkspaceIdCookieIfMatches(workspaceId: string): Promise<void> {
+  const id = workspaceId.trim();
+  if (!id) return;
+  const store = await cookies();
+  const current = store.get(VISUALIFY_ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
+  if (current === id) {
+    store.delete(VISUALIFY_ACTIVE_WORKSPACE_COOKIE);
+  }
 }
 
 export async function resolveSelectedWorkspaceIdForRail(userId: string): Promise<string | null> {
@@ -210,6 +251,7 @@ export async function fetchManageableWorkspaceById(
     workspaceStatus: hit.workspaceStatus,
     memberRole: hit.memberRole,
     membershipStatus: hit.membershipStatus,
+    logo_url: hit.logo_url,
   };
 }
 
@@ -233,6 +275,7 @@ export async function fetchManageableWorkspaceByRouteParam(
       workspaceStatus: byId.workspaceStatus,
       memberRole: byId.memberRole,
       membershipStatus: byId.membershipStatus,
+      logo_url: byId.logo_url,
     };
   }
   const bySlug = rows.find((w) => (w.slug ?? "").trim() === param);
@@ -245,7 +288,26 @@ export async function fetchManageableWorkspaceByRouteParam(
     workspaceStatus: bySlug.workspaceStatus,
     memberRole: bySlug.memberRole,
     membershipStatus: bySlug.membershipStatus,
+    logo_url: bySlug.logo_url,
   };
+}
+
+/** Website URL for a workspace the caller may already have resolved as manageable. */
+export async function fetchWorkspaceWebsiteUrl(workspaceId: string): Promise<string | null> {
+  const supabase = await supabaseServerClient();
+  const { data, error } = await supabase
+    .from("visualify_workspaces")
+    .select("website_url")
+    .eq("id", workspaceId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("fetchWorkspaceWebsiteUrl:", error.message);
+    return null;
+  }
+
+  const raw = (data as { website_url?: string | null } | null)?.website_url;
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
 }
 
 export async function fetchWorkspaceMemberCount(workspaceId: string): Promise<number> {

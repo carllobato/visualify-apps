@@ -53,10 +53,10 @@ export function AccountSettingsClient(props: {
   lastName: string | null;
   company: string | null;
   role: string | null;
-  /** App IDs this user may open; replace with entitlement API later. */
-  grantedAppIds: readonly string[];
+  /** Product keys (`visualify_products.key`) the user may open via workspace membership + workspace subscriptions. */
+  workspaceEntitledProductKeys: readonly string[];
 }) {
-  const { email, userId, firstName, lastName, company, role, grantedAppIds } = props;
+  const { email, userId, firstName, lastName, company, role, workspaceEntitledProductKeys } = props;
   const router = useRouter();
 
   const [saved, setSaved] = useState(() => draftFromProps(props));
@@ -244,7 +244,7 @@ export function AccountSettingsClient(props: {
             </Card>
           </section>
         }
-        appsPanel={<AppsAccessPanel grantedAppIds={grantedAppIds} />}
+        appsPanel={<AppsAccessPanel workspaceEntitledProductKeys={workspaceEntitledProductKeys} />}
         authenticationPanel={
           <section className="space-y-4">
             <Card variant="default" className={cardClass}>

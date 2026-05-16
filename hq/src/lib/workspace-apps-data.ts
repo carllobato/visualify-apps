@@ -2,6 +2,10 @@ import "server-only";
 
 import { supabaseServerClient } from "@/lib/supabase/server";
 
+/**
+ * Workspace-scoped product rows for HQ admin. Billing and enablement attach to `visualify_workspace_products`
+ * on a workspace, not to individual user accounts.
+ */
 export type AttachedWorkspaceProduct = {
   productKey: string;
   productName: string;
