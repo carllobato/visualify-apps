@@ -343,7 +343,13 @@ export function AppSidebar() {
             <button
               type="button"
               onClick={async () => {
-                await supabaseBrowserClient().auth.signOut();
+                const res = await fetch("/auth/sign-out", {
+                  method: "POST",
+                  credentials: "same-origin",
+                });
+                if (!res.ok) {
+                  await supabaseBrowserClient().auth.signOut();
+                }
                 window.location.href = "/";
               }}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] text-left"

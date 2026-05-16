@@ -11,6 +11,7 @@ import {
 } from "@/lib/host";
 import { DASHBOARD_PATH } from "@/lib/routes";
 import { env } from "@/lib/env";
+import { awaitSupabaseCookieSync } from "@/lib/supabase/await-supabase-cookie-sync";
 import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
@@ -60,11 +61,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // API routes: no redirect; handlers use requireUser() and return 401 JSON
-  if (pathname.startsWith("/api")) {
-    return NextResponse.next({ request });
-  }
-
   const headers = new Headers(request.headers);
   headers.set("x-pathname", pathname);
   /** Query string including `?`, for client components that avoid `useSearchParams` Suspense on soft navigation. */
@@ -97,6 +93,8 @@ export async function updateSession(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
+
+    await awaitSupabaseCookieSync();
 
     if (isPublicPath(pathname, host)) {
       if (user && pathname === "/login") {

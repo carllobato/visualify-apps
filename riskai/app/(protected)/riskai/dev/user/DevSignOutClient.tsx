@@ -8,7 +8,13 @@ export default function DevSignOutClient() {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await supabaseBrowserClient().auth.signOut();
+    const res = await fetch("/auth/sign-out", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (!res.ok) {
+      await supabaseBrowserClient().auth.signOut();
+    }
     router.refresh();
   };
 

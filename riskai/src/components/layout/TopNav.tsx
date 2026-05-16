@@ -100,7 +100,13 @@ export function TopNav({
 
   const handleSignOut = async () => {
     setMenuOpen(false);
-    await supabaseBrowserClient().auth.signOut();
+    const res = await fetch("/auth/sign-out", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (!res.ok) {
+      await supabaseBrowserClient().auth.signOut();
+    }
     window.location.href = "/";
   };
 

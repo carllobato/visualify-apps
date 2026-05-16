@@ -5,13 +5,11 @@ import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { ProtectedShell } from "@/components/layout/ProtectedShell";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
+import { productConfig } from "@/lib/product-config";
 import {
   parseSideNavPinnedCookie,
   SIDE_NAV_PINNED_COOKIE_NAME,
 } from "@/lib/sideNavPinnedCookie";
-
-const HQ_APPS_URL = "https://hq.visualify.com.au/apps";
-const RISKAI_PRODUCT_KEY = "riskai";
 
 export default async function ProtectedLayout({
   children,
@@ -29,9 +27,9 @@ export default async function ProtectedLayout({
   }
 
   if (user) {
-    const entitled = await hasProductAccess(user.id, RISKAI_PRODUCT_KEY);
+    const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
     if (!entitled) {
-      redirect(HQ_APPS_URL);
+      redirect(productConfig.HQ_APPS_URL);
     }
   }
 

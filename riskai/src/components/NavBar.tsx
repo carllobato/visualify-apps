@@ -255,7 +255,13 @@ export function NavBar() {
                     role="menuitem"
                     onClick={async () => {
                       setUserMenuOpen(false);
-                      await supabaseBrowserClient().auth.signOut();
+                      const res = await fetch("/auth/sign-out", {
+                        method: "POST",
+                        credentials: "same-origin",
+                      });
+                      if (!res.ok) {
+                        await supabaseBrowserClient().auth.signOut();
+                      }
                       window.location.href = "/";
                     }}
                     className="block w-full px-4 py-2 text-left text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)]"
