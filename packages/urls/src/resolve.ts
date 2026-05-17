@@ -24,7 +24,7 @@ export function joinOriginPath(origin: string, path: string): string {
 /**
  * Public origin for a Visualify product (no trailing slash).
  *
- * @example getProductOrigin("riskai") // https://app.visualify.com.au
+ * @example getProductOrigin("riskai") // https://riskai.visualify.com.au
  */
 export function getProductOrigin(productKey: VisualifyProductKey): string {
   const product = getProductDefinition(productKey);
@@ -34,7 +34,7 @@ export function getProductOrigin(productKey: VisualifyProductKey): string {
 /**
  * Canonical dashboard / launcher URL for a product (origin + {@link VisualifyProductDefinition.dashboardPath}).
  *
- * @example getProductDashboardUrl("riskai") // https://app.visualify.com.au/dashboard
+ * @example getProductDashboardUrl("riskai") // https://riskai.visualify.com.au/dashboard
  */
 export function getProductDashboardUrl(productKey: VisualifyProductKey): string {
   const product = getProductDefinition(productKey);

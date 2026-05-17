@@ -42,5 +42,5 @@ export default async function WorkspaceSettingsPage() {
     );
   }
 
-  redirect(`/hq/workspaces/${manageable.id}`);
+  redirect(`/workspaces/${manageable.id}`);
 }

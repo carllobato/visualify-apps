@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { setVisualifyActiveWorkspaceIdAction } from "../../../../workspace-switcher-actions";
+import { setVisualifyActiveWorkspaceIdAction } from "../../../workspace-switcher-actions";
 
 /**
  * Next.js only allows cookie writes from Server Actions or Route Handlers, not during RSC render.
- * Keeps the active-workspace cookie aligned with the URL when opening `/hq/workspaces/...` directly.
+ * Keeps the active-workspace cookie aligned with the URL when opening `/workspaces/...` directly.
  */
 export function ActiveWorkspaceCookieSync({ workspaceId }: { workspaceId: string }) {
   const router = useRouter();
