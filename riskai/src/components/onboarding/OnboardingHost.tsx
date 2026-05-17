@@ -11,6 +11,8 @@ import {
   ONBOARDING_PORTFOLIO_QP,
   OPEN_PROJECT_ONBOARDING_EVENT,
   OPEN_PORTFOLIO_ONBOARDING_EVENT,
+  WORKSPACE_INVITE_ACCEPTED_QP,
+  WORKSPACE_SETUP_PORTFOLIO_QP,
 } from "@/lib/onboarding/types";
 import { ProjectOnboardingCreateModal } from "./ProjectOnboardingCreateModal";
 import { ProjectOnboardingInviteModal } from "./ProjectOnboardingInviteModal";
@@ -147,10 +149,15 @@ export function OnboardingHost() {
         return;
       }
 
-      if (searchParams.get("invite_accepted") === "1") {
+      if (
+        searchParams.get("invite_accepted") === "1" ||
+        searchParams.get(WORKSPACE_INVITE_ACCEPTED_QP) === "1"
+      ) {
         inviteAcceptedSuppressRef.current = true;
         const params = new URLSearchParams(searchParams.toString());
         params.delete("invite_accepted");
+        params.delete(WORKSPACE_INVITE_ACCEPTED_QP);
+        params.delete(WORKSPACE_SETUP_PORTFOLIO_QP);
         const qs = params.toString();
         router.replace(qs ? `${pathname}?${qs}` : pathname);
       }

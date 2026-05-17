@@ -50,5 +50,22 @@ export async function GET(request: NextRequest) {
     return authErrorRedirect(request, error.message);
   }
 
+  let inviteToken = url.searchParams.get("invite_token")?.trim() ?? "";
+  if (!inviteToken) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const metaToken = user?.user_metadata?.hq_invite_token;
+    if (typeof metaToken === "string" && metaToken.trim()) {
+      inviteToken = metaToken.trim();
+    }
+  }
+
+  if (inviteToken) {
+    const inviteUrl = new URL("/invite", request.url);
+    inviteUrl.searchParams.set("invite_token", inviteToken);
+    return NextResponse.redirect(inviteUrl);
+  }
+
   return NextResponse.redirect(new URL("/dashboard", request.url));
 }

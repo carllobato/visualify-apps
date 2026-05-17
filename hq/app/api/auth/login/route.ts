@@ -21,14 +21,26 @@ export async function POST(request: NextRequest) {
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const inviteToken = String(formData.get("invite_token") ?? "").trim();
+  const invitedEmail = String(formData.get("invited_email") ?? "").trim();
+  const inviteMode = String(formData.get("mode") ?? "").trim();
 
   if (!email || !password) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", "Enter your email and password.");
+    if (inviteToken) loginUrl.searchParams.set("invite_token", inviteToken);
+    if (invitedEmail) loginUrl.searchParams.set("invited_email", invitedEmail);
+    if (inviteMode) loginUrl.searchParams.set("mode", inviteMode);
     return NextResponse.redirect(loginUrl, 303);
   }
 
-  const success = NextResponse.redirect(new URL("/dashboard", request.url), 303);
+  const successTarget = new URL(inviteToken ? "/invite" : "/dashboard", request.url);
+  if (inviteToken) {
+    successTarget.searchParams.set("invite_token", inviteToken);
+    if (invitedEmail) successTarget.searchParams.set("invited_email", invitedEmail);
+    if (inviteMode) successTarget.searchParams.set("mode", inviteMode);
+  }
+  const success = NextResponse.redirect(successTarget, 303);
 
   const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
@@ -53,6 +65,9 @@ export async function POST(request: NextRequest) {
   if (error) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("error", error.message);
+    if (inviteToken) loginUrl.searchParams.set("invite_token", inviteToken);
+    if (invitedEmail) loginUrl.searchParams.set("invited_email", invitedEmail);
+    if (inviteMode) loginUrl.searchParams.set("mode", inviteMode);
     return NextResponse.redirect(loginUrl, 303);
   }
 

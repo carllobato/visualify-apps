@@ -19,6 +19,15 @@ export const ACCOUNT_PROFILE_UPDATED_EVENT = "riskai-account-profile-updated";
 /** Query on `/riskai/dashboard` (and `/riskai/onboarding/portfolio` redirect): opens create-portfolio modal. */
 export const ONBOARDING_PORTFOLIO_QP = "onboarding_portfolio";
 
+/** Set after accepting a workspace invitation; shows dashboard welcome + clears onboarding wizard. */
+export const WORKSPACE_INVITE_ACCEPTED_QP = "workspace_invite_accepted";
+
+/**
+ * With {@link WORKSPACE_INVITE_ACCEPTED_QP}: workspace admins may auto-open portfolio setup once
+ * (see `DashboardAccessBanner`).
+ */
+export const WORKSPACE_SETUP_PORTFOLIO_QP = "workspace_setup_portfolio";
+
 /** Dispatched on `window` so in-app links can open the portfolio modal without navigation. */
 export const OPEN_PORTFOLIO_ONBOARDING_EVENT = "riskai-open-portfolio-onboarding";
 /** Dispatched on `window` so links can open project onboarding modal without navigation. */

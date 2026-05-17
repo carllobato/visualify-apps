@@ -1,24 +1,51 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { OpenPortfolioOnboardingLink } from "@/components/onboarding/OpenPortfolioOnboardingLink";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import { GreetingHeader } from "@/components/GreetingHeader";
 import { PROJECT_TILE_LIST_LINK_CLASSES, ProjectTile } from "@/components/dashboard/ProjectTile";
+import { DashboardAccessBanner } from "@/components/dashboard/DashboardAccessBanner";
+import { DashboardSectionEmptyState } from "@/components/dashboard/DashboardSectionEmptyState";
 import {
   getProjectTilePayloads,
   sortProjectTilesAlphabetically,
   type ProjectTilePayload,
 } from "@/lib/dashboard/projectTileServerData";
-import type { AccessiblePortfolio, AccessibleProject } from "@/lib/portfolios-server";
+import {
+  formatWorkspaceList,
+  getDashboardAccessContext,
+} from "@/lib/dashboard/dashboardAccessContext";
 import { isDevAuthBypassEnabled } from "@/lib/dev/devAuthBypass";
-import { getAccessiblePortfolios, getAccessibleProjects } from "@/lib/portfolios-server";
 import { fetchPublicProfile, type PublicProfileRow } from "@/lib/profiles/profileDb";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
-import { Callout, Card, CardBody } from "@visualify/design-system";
+import {
+  WORKSPACE_INVITE_ACCEPTED_QP,
+  WORKSPACE_SETUP_PORTFOLIO_QP,
+} from "@/lib/onboarding/types";
+import { Callout } from "@visualify/design-system";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function getSearchParam(params: SearchParams, key: string): string {
+  const value = params[key];
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const showPostWorkspaceInvite =
+    getSearchParam(resolvedSearchParams, WORKSPACE_INVITE_ACCEPTED_QP) === "1";
+  const suggestPortfolioSetup =
+    getSearchParam(resolvedSearchParams, WORKSPACE_SETUP_PORTFOLIO_QP) === "1";
+
   const supabase = await supabaseServerClient();
   const {
     data: { user },
@@ -26,33 +53,40 @@ export default async function DashboardPage() {
 
   const devBypass = isDevAuthBypassEnabled();
 
-  let portfolios: AccessiblePortfolio[] = [];
-  let projects: AccessibleProject[] = [];
+  let portfolios = [] as Awaited<ReturnType<typeof getDashboardAccessContext>>["portfolios"];
+  let projects = [] as Awaited<ReturnType<typeof getDashboardAccessContext>>["projects"];
   let projectTiles: ProjectTilePayload[] = [];
   let profileRow: PublicProfileRow | null = null;
+  let hasAppAccess = false;
+  let isWorkspaceAdmin = false;
+  let workspaces: Awaited<ReturnType<typeof getDashboardAccessContext>>["workspaces"] = [];
 
   if (user) {
-    const [portfoliosResult, profile] = await Promise.all([
-      getAccessiblePortfolios(supabase, user.id),
+    const [access, profile] = await Promise.all([
+      getDashboardAccessContext(supabase, user.id),
       fetchPublicProfile(supabase, user.id),
     ]);
     profileRow = profile;
-    portfolios = portfoliosResult.ok ? portfoliosResult.portfolios : [];
-    portfolios = [...portfolios].sort((a, b) =>
-      (a.name || a.id).toLocaleLowerCase().localeCompare((b.name || b.id).toLocaleLowerCase())
+    hasAppAccess = access.hasAppAccess;
+    isWorkspaceAdmin = access.isWorkspaceAdmin;
+    workspaces = access.workspaces;
+    portfolios = [...access.portfolios].sort((a, b) =>
+      (a.name || a.id).toLocaleLowerCase().localeCompare((b.name || b.id).toLocaleLowerCase()),
     );
-    const portfolioIds = portfolios.map((p) => p.id);
-    const projectsResult = await getAccessibleProjects(supabase, user.id, portfolioIds);
-    projects = projectsResult.ok ? projectsResult.projects : [];
-    projectTiles = projectsResult.ok
-      ? sortProjectTilesAlphabetically((await getProjectTilePayloads(supabase, projects)).projectTilePayloads)
-      : [];
+    projects = access.projects;
+    projectTiles = sortProjectTilesAlphabetically(
+      (await getProjectTilePayloads(supabase, projects)).projectTilePayloads,
+    );
   }
 
   const meta = user?.user_metadata as Record<string, unknown> | undefined;
   const rawFirst = profileRow?.first_name ?? meta?.first_name;
   const dashboardFirstName =
     typeof rawFirst === "string" && rawFirst.trim() ? rawFirst.trim() : null;
+
+  const workspaceLabel = formatWorkspaceList(workspaces);
+  const showAccessExplainer =
+    hasAppAccess && portfolios.length === 0 && !showPostWorkspaceInvite;
 
   const portfolioLauncherGridClass =
     "ds-dashboard-portfolio-grid" +
@@ -70,6 +104,26 @@ export default async function DashboardPage() {
           Project URLs still need a logged-in user (RLS).
         </Callout>
       ) : null}
+
+      <Suspense fallback={null}>
+        <DashboardAccessBanner
+          workspaceLabel={workspaceLabel}
+          isWorkspaceAdmin={isWorkspaceAdmin}
+          showPostWorkspaceInvite={showPostWorkspaceInvite}
+          suggestPortfolioSetup={suggestPortfolioSetup}
+        />
+      </Suspense>
+
+      {showAccessExplainer ? (
+        <Callout status="info" className="mb-[var(--ds-space-5)] text-[length:var(--ds-text-sm)]">
+          <p className="m-0 leading-relaxed text-[var(--ds-text-secondary)]">
+            <span className="font-medium text-[var(--ds-text-primary)]">App access is active</span> for{" "}
+            {workspaceLabel}. Portfolios and projects listed below are assigned separately—an empty
+            dashboard usually means you still need a portfolio or project invitation.
+          </p>
+        </Callout>
+      ) : null}
+
       <GreetingHeader firstName={dashboardFirstName} />
 
       <section
@@ -82,14 +136,12 @@ export default async function DashboardPage() {
           </h2>
         </div>
         {portfolios.length === 0 ? (
-          <Card variant="inset" className="text-center">
-            <CardBody className="py-[var(--ds-space-6)]">
-              <p className="ds-dashboard-empty-title">No portfolios yet</p>
-              <OpenPortfolioOnboardingLink className="ds-dashboard-empty-primary">
-                Create portfolio
-              </OpenPortfolioOnboardingLink>
-            </CardBody>
-          </Card>
+          <DashboardSectionEmptyState
+            kind="portfolios"
+            hasAppAccess={hasAppAccess}
+            workspaces={workspaces}
+            isWorkspaceAdmin={isWorkspaceAdmin}
+          />
         ) : (
           <div className="flex flex-col gap-[var(--ds-space-4)]">
             <ul className={portfolioLauncherGridClass}>
@@ -119,14 +171,12 @@ export default async function DashboardPage() {
           </h2>
         </div>
         {projects.length === 0 ? (
-          <Card variant="inset" className="!border-0 text-center">
-            <CardBody className="py-[var(--ds-space-6)]">
-              <p className="ds-dashboard-empty-title">No projects yet</p>
-              <OpenProjectOnboardingLink className="ds-dashboard-empty-primary">
-                Create project
-              </OpenProjectOnboardingLink>
-            </CardBody>
-          </Card>
+          <DashboardSectionEmptyState
+            kind="projects"
+            hasAppAccess={hasAppAccess}
+            workspaces={workspaces}
+            isWorkspaceAdmin={isWorkspaceAdmin}
+          />
         ) : (
           <div className="flex flex-col gap-[var(--ds-space-4)]">
             <div className="ds-dashboard-project-grid">

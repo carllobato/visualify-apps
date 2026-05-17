@@ -442,7 +442,8 @@ Deno.serve(async (req) => {
     }
 
     const resourceType = String(record.resource_type ?? "").trim().toLowerCase();
-    if (resourceType !== "project" && resourceType !== "portfolio") {
+    const supportedResourceTypes = new Set(["project", "portfolio", "workspace"]);
+    if (!supportedResourceTypes.has(resourceType)) {
       console.warn(
         "[notify-on-insert] skip invitation email: unsupported resource_type",
         resourceType || "(empty)"
@@ -459,13 +460,28 @@ Deno.serve(async (req) => {
     const inviterDisplayName = String(record.inviter_display_name ?? "").trim() || "a team member";
     const inviteToken = String(record.invite_token ?? "").trim();
     const riskaiOrigin = Deno.env.get("RISKAI_APP_ORIGIN")?.trim();
+    const hqOrigin = Deno.env.get("HQ_APP_ORIGIN")?.trim();
+    const inviteAppOrigin =
+      resourceType === "workspace" ? hqOrigin : riskaiOrigin;
     const invitationReplyTo =
       Deno.env.get("CONTACT_FROM_EMAIL")?.trim() ||
       Deno.env.get("NOTIFY_TO_EMAIL")?.trim() ||
       NOTIFY_TO_DEFAULT;
 
-    if (!email || !inviteToken || !riskaiOrigin) {
-      console.warn("[notify-on-insert] invitation row missing required fields");
+    if (!email || !inviteToken) {
+      console.warn("[notify-on-insert] invitation row missing email or invite_token");
+      return new Response(JSON.stringify({ ok: true, skipped: "incomplete_invitation" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (!inviteAppOrigin) {
+      const missingOrigin =
+        resourceType === "workspace" ? "HQ_APP_ORIGIN" : "RISKAI_APP_ORIGIN";
+      console.warn(
+        `[notify-on-insert] skip invitation email: ${missingOrigin} not set`,
+        { resourceType }
+      );
       return new Response(JSON.stringify({ ok: true, skipped: "incomplete_invitation" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -475,12 +491,14 @@ Deno.serve(async (req) => {
     const normalizedInvitedEmail = email.trim().toLowerCase();
     console.log("[notify-on-insert] invite routing email", {
       normalizedInvitedEmail,
+      resourceType,
     });
     const isExistingUser = await getIsExistingUserForInvite(normalizedInvitedEmail);
     console.log("[notify-on-insert] invite routing result", {
       isExistingUser,
+      resourceType,
     });
-    const inviteUrl = new URL(`${riskaiOrigin.replace(/\/+$/, "")}/invite`);
+    const inviteUrl = new URL(`${inviteAppOrigin.replace(/\/+$/, "")}/invite`);
     inviteUrl.searchParams.set("invite_token", inviteToken);
     inviteUrl.searchParams.set("invited_email", normalizedInvitedEmail);
     if (isExistingUser) {
@@ -491,6 +509,8 @@ Deno.serve(async (req) => {
     const inviteLink = inviteUrl.toString();
     console.log("[notify-on-insert] invite routing link", {
       inviteLink,
+      resourceType,
+      inviteAppOrigin: inviteAppOrigin.replace(/\/+$/, ""),
     });
     to = email;
     replyTo = invitationReplyTo;

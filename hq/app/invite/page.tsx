@@ -1,15 +1,10 @@
 import { redirect } from "next/navigation";
 import {
-  acceptVisualifyInvitation,
+  acceptWorkspaceInvitation,
   inviteErrorQueryValue,
-  type AcceptVisualifyInvitationErrorCode,
-} from "@/lib/auth/acceptVisualifyInvitation";
-import {
-  buildWorkspaceInviteAcceptedPath,
-  shouldSuggestPortfolioSetupAfterWorkspaceInvite,
-} from "@/lib/auth/workspaceInviteRedirect";
-import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
-import { supabaseServerClient } from "@/lib/supabase/server";
+  type AcceptWorkspaceInvitationErrorCode,
+} from "@/lib/auth/acceptWorkspaceInvitation";
+import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -17,13 +12,6 @@ function getParam(searchParams: SearchParams, key: string): string {
   const value = searchParams[key];
   if (Array.isArray(value)) return value[0] ?? "";
   return value ?? "";
-}
-
-/** Appends `invite_accepted=1`, preserving any existing query on `path`. */
-function withInviteAcceptedQuery(path: string): string {
-  const u = new URL(path, "http://localhost");
-  u.searchParams.set("invite_accepted", "1");
-  return `${u.pathname}${u.search}`;
 }
 
 function loginRedirectWithInviteContext(params: {
@@ -43,7 +31,7 @@ function loginRedirectWithInviteContext(params: {
 }
 
 function redirectInviteFailure(
-  code: AcceptVisualifyInvitationErrorCode,
+  code: AcceptWorkspaceInvitationErrorCode,
   inviteToken: string,
   invitedEmail: string,
   mode: string
@@ -70,14 +58,11 @@ export default async function InvitePage({
   const invitedEmail = getParam(params, "invited_email").trim();
   const mode = getParam(params, "mode");
 
-  const supabase = await supabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await resolveAuthenticatedUser();
 
   if (!user) {
     if (!inviteToken) {
-      redirect("/login?mode=signup");
+      redirect("/login?mode=signup&invite_error=invite_token_required");
     }
     loginRedirectWithInviteContext({
       inviteToken,
@@ -87,33 +72,16 @@ export default async function InvitePage({
   }
 
   if (!inviteToken) {
-    redirect(`${DASHBOARD_PATH}?invite_error=invite_token_required`);
+    redirect("/login?invite_error=invite_token_required");
   }
 
-  const result = await acceptVisualifyInvitation({
+  const result = await acceptWorkspaceInvitation({
     inviteToken,
     user: { id: user.id, email: user.email },
   });
 
   if (result.ok) {
-    if (result.resource_type === "workspace") {
-      const openPortfolioSetup = await shouldSuggestPortfolioSetupAfterWorkspaceInvite(
-        supabase,
-        user.id,
-      );
-      redirect(
-        buildWorkspaceInviteAcceptedPath(DASHBOARD_PATH, {
-          openPortfolioSetupForAdmin: openPortfolioSetup,
-        }),
-      );
-    }
-    if (result.resource_type === "portfolio" && result.portfolio_id) {
-      redirect(withInviteAcceptedQuery(riskaiPath(`/portfolios/${result.portfolio_id}`)));
-    }
-    if (result.resource_type === "project" && result.project_id) {
-      redirect(withInviteAcceptedQuery(riskaiPath(`/projects/${result.project_id}`)));
-    }
-    redirect(withInviteAcceptedQuery(DASHBOARD_PATH));
+    redirect("/dashboard?invite_accepted=1");
   }
 
   redirectInviteFailure(result.code, inviteToken, invitedEmail, mode || "signup");

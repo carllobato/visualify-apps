@@ -33,17 +33,27 @@ Add these **manually** (names must match):
 | `NOTIFY_TO_EMAIL` | No | Inbox for notifications. Default: `help@visualify.com.au`. |
 | `SUPABASE_URL` | **Yes** (invitations) | Same as project URL (`https://<ref>.supabase.co`). Used to detect existing users for invite copy. |
 | `SUPABASE_SERVICE_ROLE_KEY` | **Yes** (invitations) | Service role secret (never expose to the browser). |
-| `RISKAI_APP_ORIGIN` | **Yes** (invitations) | RiskAI app origin, no trailing slash — e.g. `https://app.visualify.com.au`. Builds invite links: `{origin}/invite?invite_token=…`. Must match canonical **`NEXT_PUBLIC_RISKAI_ORIGIN`** on the RiskAI Vercel project. |
+| `RISKAI_APP_ORIGIN` | **Yes** (project & portfolio invitations) | RiskAI app origin, no trailing slash — e.g. `https://app.visualify.com.au`. Builds invite links for `resource_type` **project** or **portfolio**: `{origin}/invite?invite_token=…&invited_email=…&mode=…`. Must match canonical **`NEXT_PUBLIC_RISKAI_ORIGIN`** on the RiskAI Vercel project. |
+| `HQ_APP_ORIGIN` | **Yes** (workspace invitations) | HQ app origin, no trailing slash — e.g. `https://hq.visualify.com.au`. Builds invite links for `resource_type` **workspace**: same path/query shape on HQ. Must match canonical **`NEXT_PUBLIC_HQ_ORIGIN`** on the HQ Vercel project. If unset, workspace invitation emails are skipped (logged). |
 
 ### Platform URLs (reference)
 
-| Surface | Canonical env (Next.js) | Production example |
-|---------|-------------------------|-------------------|
-| RiskAI app | `NEXT_PUBLIC_RISKAI_ORIGIN` | `https://app.visualify.com.au` |
-| HQ | `NEXT_PUBLIC_HQ_ORIGIN` | `https://hq.visualify.com.au` |
-| Marketing | `NEXT_PUBLIC_WEBSITE_ORIGIN` | `https://visualify.com.au` |
+| Surface | Canonical env (Next.js) | Edge secret (invite links) | Production example |
+|---------|-------------------------|----------------------------|-------------------|
+| RiskAI app | `NEXT_PUBLIC_RISKAI_ORIGIN` | `RISKAI_APP_ORIGIN` | `https://app.visualify.com.au` |
+| HQ | `NEXT_PUBLIC_HQ_ORIGIN` | `HQ_APP_ORIGIN` | `https://hq.visualify.com.au` |
+| Marketing | `NEXT_PUBLIC_WEBSITE_ORIGIN` | — | `https://visualify.com.au` |
 
-RiskAI routes are **flat** (`/dashboard`, `/invite`, `/auth/confirm` — not `/riskai/dashboard`). Legacy paths redirect in `riskai/next.config.ts`.
+**Invitation link routing** (`visualify_invitations`, `status = pending`):
+
+| `resource_type` | Origin secret | Example link |
+|-----------------|---------------|--------------|
+| `workspace` | `HQ_APP_ORIGIN` | `https://hq.visualify.com.au/invite?invite_token=…&invited_email=…&mode=signup` |
+| `project`, `portfolio` | `RISKAI_APP_ORIGIN` | `https://app.visualify.com.au/invite?invite_token=…&invited_email=…&mode=login` |
+
+`mode` is `login` when the invited email already exists in Supabase Auth, otherwise `signup`.
+
+RiskAI routes are **flat** (`/dashboard`, `/invite`, `/auth/confirm` — not `/riskai/dashboard`). Legacy paths redirect in `riskai/next.config.ts`. HQ `/invite` accept flow is separate work; links are routed to HQ for workspace invites only.
 
 **Resend:** create an API key at [resend.com](https://resend.com). Verify your sending domain (or use Resend’s test sender per their rules).
 
