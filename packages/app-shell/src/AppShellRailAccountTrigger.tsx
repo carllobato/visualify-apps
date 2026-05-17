@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode, RefObject } from "react";
-import { railLabelClass } from "./rail-row-classes";
+import { appShellRailFooterActionWrapClassName } from "./rail-layout-classes";
+import { appShellRailIconWellClassName, railLabelClass } from "./rail-row-classes";
 
 export type AppShellRailAccountTriggerProps = {
   menuOpen: boolean;
@@ -36,7 +37,7 @@ export function AppShellRailAccountTrigger({
   menuRef,
 }: AppShellRailAccountTriggerProps) {
   return (
-    <div className="relative flex w-full items-center" ref={menuRef}>
+    <div className={appShellRailFooterActionWrapClassName} ref={menuRef}>
       <button
         type="button"
         className={rowClassName}
@@ -47,7 +48,7 @@ export function AppShellRailAccountTrigger({
         title="Account"
         onClick={onToggle}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center">{icon}</span>
+        <span className={appShellRailIconWellClassName}>{icon}</span>
         <span className={labelClassName}>{label}</span>
       </button>
       {menu}

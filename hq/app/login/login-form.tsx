@@ -1,46 +1,157 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
-import { Button, Card, CardContent, Input, Label, Tab, Tabs } from "@visualify/design-system";
+import {
+  AppLoginCardHeader,
+  AppLoginCardLegalFooter,
+  appLoginCardLegalLinkClassName,
+  AppLoginFormError,
+  AppLoginPasswordField,
+  appLoginFormClassName,
+  AppLoginSubmitRow,
+  appLoginSubmitLabelsForMode,
+  AppLoginTabsSection,
+  AppLoginTrustLine,
+} from "@visualify/app-shell";
+import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
-function SubmitRow() {
+type LoginTabId = "signin" | "signup";
+
+function HqLoginSubmitRow() {
   const { pending } = useFormStatus();
-  return (
-    <div className="flex justify-center pt-1">
-      <Button type="submit" variant="primary" disabled={pending} className="max-w-full min-w-0 whitespace-normal text-center">
-        {pending ? "Signing in…" : "Sign in"}
-      </Button>
-    </div>
-  );
+  return <AppLoginSubmitRow pending={pending} />;
+}
+
+function authConfirmUrl(): string {
+  return new URL("/auth/confirm", window.location.origin).toString();
+}
+
+function formatAuthError(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  return "Something went wrong. Please try again.";
 }
 
 export function LoginForm({ serverError }: { serverError?: string }) {
+  const searchParams = useSearchParams();
+  const modeRaw = searchParams.get("mode");
+  const initialTab: LoginTabId =
+    typeof modeRaw === "string" && modeRaw.trim().toLowerCase() === "signup" ? "signup" : "signin";
+
+  const [tab, setTab] = useState<LoginTabId>(initialTab);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [signUpAwaitingEmail, setSignUpAwaitingEmail] = useState(false);
+
+  const signInError = tab === "signin" ? serverError : undefined;
+  const signUpError = tab === "signup" ? clientError : null;
+
+  const handleSignUp = async (e: FormEvent) => {
+    e.preventDefault();
+    setClientError(null);
+    setSignUpAwaitingEmail(false);
+    setLoading(true);
+    try {
+      const { data, error: err } = await supabaseBrowserClient().auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo: authConfirmUrl() },
+      });
+      if (err) {
+        setClientError(formatAuthError(err));
+        return;
+      }
+      if (data.session) {
+        window.location.href = "/dashboard";
+        return;
+      }
+      setSignUpAwaitingEmail(true);
+    } catch (err) {
+      setClientError(formatAuthError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <Card
-      variant="default"
-      className="w-full [border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
-    >
-      <CardContent className="px-5 py-5">
-        <h1 className="mb-4 text-center text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
-          Welcome to Visualify
-        </h1>
+    <>
+      <AppLoginCardHeader />
 
-        <div className="mb-4 w-full">
-          <div className="flex justify-center">
-            <Tabs className="max-w-full shrink-0">
-              <Tab type="button" active>
-                Sign in
-              </Tab>
-              <Tab type="button" active={false}>
-                Sign up
-              </Tab>
-            </Tabs>
+      <AppLoginTabsSection>
+        <Tabs className="max-w-full shrink-0">
+          <Tab
+            type="button"
+            active={tab === "signin"}
+            onClick={() => {
+              setClientError(null);
+              setSignUpAwaitingEmail(false);
+              setShowPassword(false);
+              setTab("signin");
+            }}
+          >
+            Sign in
+          </Tab>
+          <Tab
+            type="button"
+            active={tab === "signup"}
+            onClick={() => {
+              setClientError(null);
+              setSignUpAwaitingEmail(false);
+              setShowPassword(false);
+              setTab("signup");
+            }}
+          >
+            Sign up
+          </Tab>
+        </Tabs>
+      </AppLoginTabsSection>
+
+      {tab === "signup" && signUpAwaitingEmail ? (
+        <div className="space-y-4" role="status" aria-live="polite">
+          <Callout status="success" className="text-center text-[length:var(--ds-text-sm)]">
+            <p className="font-medium text-[var(--ds-text-primary)]">Check your email</p>
+            <p className="mt-1.5 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+              We sent a confirmation link to{" "}
+              <span className="break-all font-medium text-[var(--ds-text-primary)]">{email.trim()}</span>. Open it to
+              finish signing up. If you do not see it, check your spam folder.
+            </p>
+          </Callout>
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setSignUpAwaitingEmail(false);
+                setPassword("");
+              }}
+            >
+              Use a different email
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setClientError(null);
+                setSignUpAwaitingEmail(false);
+                setTab("signin");
+              }}
+            >
+              Back to sign in
+            </Button>
           </div>
-          <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
         </div>
-
-        <form className="space-y-3" action="/api/auth/login" method="POST" autoComplete="on">
+      ) : tab === "signin" ? (
+        <form className={appLoginFormClassName} action="/api/auth/login" method="POST" autoComplete="on">
           <div>
             <Label htmlFor="hq-login-email">Email</Label>
             <Input
@@ -48,6 +159,8 @@ export function LoginForm({ serverError }: { serverError?: string }) {
               name="email"
               type="email"
               inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="username"
               autoCapitalize="off"
@@ -56,47 +169,88 @@ export function LoginForm({ serverError }: { serverError?: string }) {
             />
           </div>
 
+          <AppLoginPasswordField
+            id="hq-login-password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            autoComplete="current-password"
+            required
+          />
+
+          <AppLoginFormError message={signInError} />
+
+          <HqLoginSubmitRow />
+
+          <AppLoginTrustLine />
+
+          <AppLoginCardLegalFooter
+            privacyLink={
+              <Link href="#" className={appLoginCardLegalLinkClassName}>
+                Privacy Policy
+              </Link>
+            }
+            termsLink={
+              <Link href="#" className={appLoginCardLegalLinkClassName}>
+                Terms &amp; Conditions
+              </Link>
+            }
+          />
+        </form>
+      ) : (
+        <form className={appLoginFormClassName} onSubmit={handleSignUp} autoComplete="on">
           <div>
-            <Label htmlFor="hq-login-password">Password</Label>
+            <Label htmlFor="hq-signup-email">Email</Label>
             <Input
-              id="hq-login-password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
+              id="hq-signup-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
               autoCapitalize="off"
               autoCorrect="off"
-              spellCheck={false}
               required
+              disabled={loading}
             />
           </div>
 
-          {serverError ? (
-            <p role="alert" className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-danger)]">
-              {serverError}
-            </p>
-          ) : null}
+          <AppLoginPasswordField
+            id="hq-signup-password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            autoComplete="new-password"
+            required
+            minLength={6}
+            disabled={loading}
+          />
 
-          <SubmitRow />
+          <AppLoginFormError message={signUpError} />
 
-          <p className="mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
-            Secure login | Your data is protected
-          </p>
+          <AppLoginSubmitRow pending={loading} {...appLoginSubmitLabelsForMode("signup")} />
+          <AppLoginTrustLine>Secure sign up | Your data is protected</AppLoginTrustLine>
 
-          <footer className="border-t border-[var(--ds-border)] pt-4">
-            <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
-              <Link href="#" className="ds-text-link-muted text-[length:var(--ds-text-xs)]">
+          <AppLoginCardLegalFooter
+            privacyLink={
+              <Link href="#" className={appLoginCardLegalLinkClassName}>
                 Privacy Policy
               </Link>
-              <span className="select-none text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]" aria-hidden>
-                ·
-              </span>
-              <Link href="#" className="ds-text-link-muted text-[length:var(--ds-text-xs)]">
+            }
+            termsLink={
+              <Link href="#" className={appLoginCardLegalLinkClassName}>
                 Terms &amp; Conditions
               </Link>
-            </nav>
-          </footer>
+            }
+          />
         </form>
-      </CardContent>
-    </Card>
+      )}
+    </>
   );
 }

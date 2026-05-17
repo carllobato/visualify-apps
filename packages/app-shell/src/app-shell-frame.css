@@ -3,6 +3,19 @@
  * is not required in consuming apps (arbitrary utilities in this package would otherwise purge).
  */
 
+/*
+ * Stable document scrollbar when the app shell is mounted — consistent frame right edge.
+ * Scoped via :has() so non-shell routes are unaffected; no per-app globals required.
+ */
+html:has(.vf-app-shell-outer-canvas) {
+  scrollbar-gutter: stable;
+  overflow-y: scroll;
+}
+
+html:has(.vf-app-shell-outer-canvas) body {
+  min-height: calc(100dvh + 1px);
+}
+
 .vf-app-shell-outer-canvas {
   display: flex;
   min-height: 100dvh;
@@ -61,13 +74,16 @@
   padding-top: 0.75rem;
   /* No bottom padding — avoids a visible strip below the legal footer inside the frame. */
   padding-bottom: 0;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
+  /* Matches `.ds-document-page` horizontal rhythm (space-4 / sm:space-6). */
+  padding-left: var(--ds-space-4);
+  padding-right: var(--ds-space-4);
 }
 
 @media (min-width: 640px) {
   .vf-app-shell-scroll-region {
     padding-top: 0.625rem;
+    padding-left: var(--ds-space-6);
+    padding-right: var(--ds-space-6);
   }
 }
 

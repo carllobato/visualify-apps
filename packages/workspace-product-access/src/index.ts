@@ -128,3 +128,20 @@ export async function hasProductAccess(
   const rows = await fetchWorkspaceProductAccessForUser(supabase, userId);
   return rows.some((r) => r.productKey === productKey);
 }
+
+/**
+ * Flattens {@link fetchWorkspaceProductAccessForUser} into catalog `id` keys (aligned with
+ * `visualify_products.key` and Account → Apps catalog entries).
+ */
+export async function fetchWorkspaceEntitledProductKeysForUser(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<readonly string[]> {
+  const rows = await fetchWorkspaceProductAccessForUser(supabase, userId);
+  const keys = new Set<string>();
+  for (const r of rows) {
+    const k = r.productKey?.trim();
+    if (k) keys.add(k);
+  }
+  return [...keys].sort((a, b) => a.localeCompare(b));
+}

@@ -1,20 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import {
+  AccountSettingsHeader,
+  AccountSettingsPage,
+  AccountSettingsTabs,
+} from "@visualify/app-shell";
 import { isDevAuthBypassEnabled } from "@/lib/dev/devAuthBypass";
 import { fetchPublicProfile } from "@/lib/profiles/profileDb";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { SignOutButton } from "./SignOutButton";
-import { SignOutEverywhereButton } from "./SignOutEverywhereButton";
-import { AccountProfileForm } from "./AccountProfileForm";
-import { DeleteAccountSection } from "./DeleteAccountSection";
-import { AccountSettingsTabs } from "./AccountSettingsTabs";
-import { LastLoginPanel } from "./LastLoginPanel";
-import { ChangePasswordForm } from "./ChangePasswordForm";
-import { TwoFactorSetup } from "./TwoFactorSetup";
-import { Card, CardBody, CardFooter, CardHeader } from "@visualify/design-system";
+import { AccountSettingsSignedIn } from "./account-settings-signed-in";
 import { riskaiPath } from "@/lib/routes";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { listFactorsIndicatesVerifiedTotp } from "@/lib/auth/mfa";
+import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
+import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 
 /** User settings: authenticated users only (enforced by (protected) layout). */
 export default async function UserSettingsPage() {
@@ -27,35 +26,59 @@ export default async function UserSettingsPage() {
     redirect(await buildLoginRedirectUrl(riskaiPath("/settings")));
   }
 
+  const legacyDocumentPadding = !RISKAI_ENABLE_APP_SHELL;
+
   if (!user) {
     return (
-      <main className="w-full px-4 py-6 sm:px-6">
-        <h1 className="mb-1 text-2xl font-semibold text-[var(--ds-text-primary)]">Account settings</h1>
-        <p className="mb-6 text-sm text-[var(--ds-text-secondary)]">Your account details.</p>
+      <AccountSettingsPage legacyDocumentPadding={legacyDocumentPadding}>
+        <AccountSettingsHeader description="Your account details." />
         <AccountSettingsTabs
-          profilePanel={
-            <>
-              <p className="mb-6 rounded-[var(--ds-radius-md)] border border-[var(--ds-status-warning-border)] bg-[var(--ds-status-warning-subtle-bg)] px-3 py-2 text-sm text-[var(--ds-status-warning-fg)]">
-                <span className="font-medium">Dev preview:</span> sign in to use profile, delete account, and sign
-                out.
-              </p>
-              <section className="mb-10">
-                <div className="space-y-2 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] p-4 text-sm text-[var(--ds-text-muted)]">
-                  <p>Form hidden — no session.</p>
-                </div>
-              </section>
-            </>
-          }
-          authenticationPanel={
-            <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
-              Sign in to manage password, two-factor authentication, and session options.
-            </p>
-          }
-          dangerPanel={
-            <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
-              Sign in to review account deletion options.
-            </p>
-          }
+          tabs={[
+            {
+              id: "profile",
+              label: "Profile",
+              panel: (
+                <>
+                  <p className="mb-6 rounded-[var(--ds-radius-md)] border border-[var(--ds-status-warning-border)] bg-[var(--ds-status-warning-subtle-bg)] px-3 py-2 text-sm text-[var(--ds-status-warning-fg)]">
+                    <span className="font-medium">Dev preview:</span> sign in to use profile, delete account, and
+                    sign out.
+                  </p>
+                  <section className="mb-10">
+                    <div className="space-y-2 rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_50%,transparent)] p-4 text-sm text-[var(--ds-text-muted)]">
+                      <p>Form hidden — no session.</p>
+                    </div>
+                  </section>
+                </>
+              ),
+            },
+            {
+              id: "apps",
+              label: "Apps",
+              panel: (
+                <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
+                  Sign in to see Visualify apps enabled through your workspaces.
+                </p>
+              ),
+            },
+            {
+              id: "authentication",
+              label: "Authentication",
+              panel: (
+                <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
+                  Sign in to manage password, two-factor authentication, and session options.
+                </p>
+              ),
+            },
+            {
+              id: "danger",
+              label: "Danger Zone",
+              panel: (
+                <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
+                  Sign in to review account deletion options.
+                </p>
+              ),
+            },
+          ]}
         />
         <Link
           href={riskaiPath("/portfolios")}
@@ -63,7 +86,7 @@ export default async function UserSettingsPage() {
         >
           ← Back to portfolios
         </Link>
-      </main>
+      </AccountSettingsPage>
     );
   }
 
@@ -81,103 +104,27 @@ export default async function UserSettingsPage() {
   const { data: mfaFactors } = await supabase.auth.mfa.listFactors();
   const totpAlreadyEnabled = listFactorsIndicatesVerifiedTotp(mfaFactors ?? null);
 
+  const firstName = profileRow?.first_name ?? (meta?.first_name as string | undefined) ?? null;
+  const lastName = profileRow?.surname ?? (meta?.last_name as string | undefined) ?? null;
+  const company = profileRow?.company ?? (meta?.company as string | undefined) ?? null;
+  const role = profileRow?.role ?? (meta?.role as string | undefined) ?? null;
+  const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
+
   return (
-    <main className="w-full px-4 py-6 sm:px-6">
-      <h1 className="mb-1 text-2xl font-semibold text-[var(--ds-text-primary)]">Account settings</h1>
-      <p className="mb-6 text-sm text-[var(--ds-text-secondary)]">Your account details.</p>
-
-      <AccountSettingsTabs
-        profilePanel={
-          <section className="space-y-4">
-            <Card>
-              <CardHeader className="!px-4 !py-2.5">
-                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Profile</h2>
-              </CardHeader>
-              <CardBody className="!px-4 !py-3">
-                <AccountProfileForm
-                  initialFirstName={profileRow?.first_name ?? (meta?.first_name as string | undefined)}
-                  initialLastName={profileRow?.surname ?? (meta?.last_name as string | undefined)}
-                  initialCompany={profileRow?.company ?? (meta?.company as string | undefined)}
-                  initialRole={profileRow?.role ?? (meta?.role as string | undefined)}
-                />
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader className="!px-4 !py-2.5">
-                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Account info</h2>
-              </CardHeader>
-              <CardBody className="!px-4 !py-3">
-                <dl className="space-y-2 text-sm">
-                  <div>
-                    <dt className="text-[var(--ds-text-muted)]">Email</dt>
-                    <dd className="m-0">
-                      <span className="font-medium text-[var(--ds-text-primary)]">{user.email ?? "—"}</span>
-                      <p className="mt-1.5 text-sm text-[var(--ds-text-secondary)]">
-                        Email changes are not currently available in-app.
-                      </p>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[var(--ds-text-muted)]">User ID</dt>
-                    <dd className="font-mono text-xs break-all text-[var(--ds-text-primary)]">{user.id}</dd>
-                  </div>
-                </dl>
-              </CardBody>
-            </Card>
-          </section>
-        }
-        authenticationPanel={
-          <section className="space-y-4">
-            <Card>
-              <CardHeader className="!px-4 !py-2.5">
-                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Password</h2>
-              </CardHeader>
-              <CardBody className="!px-4 !py-3">
-                <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
-                  Use a strong password you don&apos;t use elsewhere. You&apos;ll need your current password to
-                  confirm.
-                </p>
-                <ChangePasswordForm />
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader className="!px-4 !py-2.5">
-                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">
-                  Two-Factor Authentication
-                </h2>
-              </CardHeader>
-              <CardBody className="!px-4 !py-3">
-                <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
-                  Add an authenticator app for extra account security.
-                </p>
-                <TwoFactorSetup totpAlreadyEnabled={totpAlreadyEnabled} />
-              </CardBody>
-            </Card>
-
-            <Card>
-              <CardHeader className="!px-4 !py-2.5">
-                <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Session &amp; security</h2>
-              </CardHeader>
-              <CardBody className="!px-4 !py-3">
-                <LastLoginPanel
-                  updatedAt={sessionRow?.updated_at ?? null}
-                  lastSeenAt={sessionRow?.last_seen_at ?? null}
-                  userAgent={sessionRow?.user_agent ?? null}
-                />
-              </CardBody>
-              <CardFooter className="!px-4 !py-3">
-                <div className="flex flex-wrap items-start gap-3">
-                  <SignOutButton />
-                  <SignOutEverywhereButton />
-                </div>
-              </CardFooter>
-            </Card>
-          </section>
-        }
-        dangerPanel={<DeleteAccountSection />}
+    <AccountSettingsPage legacyDocumentPadding={legacyDocumentPadding}>
+      <AccountSettingsSignedIn
+        email={user.email ?? null}
+        userId={user.id}
+        firstName={firstName}
+        lastName={lastName}
+        company={company}
+        role={role}
+        workspaceEntitledProductKeys={workspaceEntitledProductKeys}
+        totpAlreadyEnabled={totpAlreadyEnabled}
+        sessionUpdatedAt={sessionRow?.updated_at ?? null}
+        sessionLastSeenAt={sessionRow?.last_seen_at ?? null}
+        sessionUserAgent={sessionRow?.user_agent ?? null}
       />
-    </main>
+    </AccountSettingsPage>
   );
 }

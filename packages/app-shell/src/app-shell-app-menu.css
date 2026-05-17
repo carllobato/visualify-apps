@@ -1,0 +1,16 @@
+/* App switcher / account menus — modifier for unavailable catalog entries. */
+.ds-app-menu-dropdown__item--coming-soon {
+  color: color-mix(in oklab, var(--ds-text-muted) 88%, transparent);
+  opacity: 0.72;
+  cursor: default;
+  pointer-events: none;
+}
+
+.ds-app-menu-dropdown__item--coming-soon:hover,
+.ds-app-menu-dropdown__item--coming-soon:focus-visible {
+  background-color: transparent !important;
+}
+
+.ds-app-menu-dropdown__item--coming-soon .ds-app-menu-dropdown__coming-soon-label {
+  color: color-mix(in oklab, var(--ds-text-muted) 72%, transparent);
+}

@@ -1,8 +1,10 @@
 "use client";
 
+import "./app-shell-app-menu.css";
+
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { railBrandTitleClass } from "./rail-row-classes";
+import { appShellRailIconWellClassName, railBrandTitleClass } from "./rail-row-classes";
 
 export type AppShellRailAppCatalogEntry = {
   id: string;
@@ -108,7 +110,7 @@ export function AppShellRailBrandAppMenu({
         title="Apps"
         onClick={() => setMenuOpen((o) => !o)}
       >
-        <span className="flex size-10 shrink-0 items-center justify-center">{brandIcon}</span>
+        <span className={appShellRailIconWellClassName}>{brandIcon}</span>
         <span
           className={
             `hidden min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
@@ -172,10 +174,10 @@ export function AppShellRailBrandAppMenu({
                 key={app.id}
                 role="menuitem"
                 aria-disabled
-                className="ds-app-menu-dropdown__item pointer-events-none cursor-default text-[var(--ds-text-muted)] opacity-[0.82]"
+                className="ds-app-menu-dropdown__item ds-app-menu-dropdown__item--coming-soon"
               >
                 {app.name}
-                <span className="mt-0.5 block text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+                <span className="ds-app-menu-dropdown__coming-soon-label mt-0.5 block text-[length:var(--ds-text-xs)] font-normal leading-snug">
                   Coming soon
                 </span>
               </div>

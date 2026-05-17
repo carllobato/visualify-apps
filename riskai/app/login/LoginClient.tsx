@@ -4,6 +4,18 @@ import Link from "next/link";
 import { LegalDocumentLink } from "@/components/legal/LegalDocumentLink";
 import { useEffect, useState, type FormEvent } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import {
+  AppLoginCardHeader,
+  AppLoginCardLegalFooter,
+  appLoginCardLegalLinkClassName,
+  AppLoginFormError,
+  AppLoginPasswordField,
+  appLoginFormClassName,
+  AppLoginSubmitRow,
+  appLoginSubmitLabelsForMode,
+  AppLoginTabsSection,
+  AppLoginTrustLine,
+} from "@visualify/app-shell";
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { DASHBOARD_PATH } from "@/lib/routes";
@@ -15,8 +27,6 @@ type LoginTabId = "signin" | "signup";
 const tabSwitchMs = "duration-[250ms]";
 const tabSwitchEase = "ease-in-out";
 const tabCrossfadeClass = `transition-opacity ${tabSwitchMs} ${tabSwitchEase}`;
-const tabCollapseGridClass = `grid overflow-hidden transition-[grid-template-rows] ${tabSwitchMs} ${tabSwitchEase}`;
-
 /** Toggle to show the Google / Microsoft row again. */
 const SHOW_SOCIAL_LOGIN = false;
 
@@ -273,38 +283,41 @@ export function LoginClient() {
     }
   };
 
-  const legalLinkClass = "ds-text-link-muted text-[length:var(--ds-text-xs)]";
-
   const formAction = pathname ?? "/";
 
-  const errorBlock = (
-    <div
-      className={`${tabCollapseGridClass} ${error ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
-      aria-hidden={!error}
-    >
-      <div className="min-h-0 overflow-hidden">
-        {error ? (
-          <div className="space-y-1.5 text-center">
-            <Callout status="danger" role="alert" className="text-center text-[length:var(--ds-text-sm)]">
-              {error}
-            </Callout>
-            {tab === "signin" && (
-              <div>
-                <Link href="/forgot-password" className="ds-text-link-muted text-[length:var(--ds-text-xs)]">
-                  Trouble signing in?
-                </Link>
-              </div>
-            )}
-          </div>
-        ) : null}
-      </div>
-    </div>
+  const legalFooter = (
+    <AppLoginCardLegalFooter
+      privacyLink={
+        <LegalDocumentLink document="privacy" className={appLoginCardLegalLinkClassName}>
+          Privacy Policy
+        </LegalDocumentLink>
+      }
+      termsLink={
+        <LegalDocumentLink document="terms" className={appLoginCardLegalLinkClassName}>
+          Terms &amp; Conditions
+        </LegalDocumentLink>
+      }
+    />
   );
 
+  const signInFormError = (
+    <AppLoginFormError
+      message={error}
+      afterMessage={
+        <Link href="/forgot-password" className="ds-text-link-muted text-[length:var(--ds-text-xs)]">
+          Trouble signing in?
+        </Link>
+      }
+    />
+  );
+
+  const signUpFormError = <AppLoginFormError message={error} />;
+
   return (
-    <div className="w-full">
-      <div className="mb-4 w-full">
-        <div className="flex justify-center">
+    <>
+      <AppLoginCardHeader />
+
+      <AppLoginTabsSection>
           <Tabs className="max-w-full shrink-0">
             <Tab
               type="button"
@@ -331,9 +344,7 @@ export function LoginClient() {
               Sign up
             </Tab>
           </Tabs>
-        </div>
-        <div className="h-px w-full bg-[var(--ds-border)]" aria-hidden />
-      </div>
+      </AppLoginTabsSection>
 
       {reason === "session_replaced" && (
         <Callout status="warning" className="mb-3 text-center text-[length:var(--ds-text-sm)]">
@@ -388,7 +399,7 @@ export function LoginClient() {
           method="post"
           action={formAction}
           onSubmit={handleSignIn}
-          className="space-y-3"
+          className={appLoginFormClassName}
           autoComplete="on"
         >
           <div>
@@ -408,40 +419,30 @@ export function LoginClient() {
               disabled={loading}
             />
           </div>
-          <div>
-            <Label htmlFor="signin-password">Password</Label>
-            <Input
-              id="signin-password"
-              name="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-              autoCapitalize="off"
-              autoCorrect="off"
-              spellCheck={false}
-              disabled={loading}
-            />
-          </div>
+          <AppLoginPasswordField
+            id="signin-password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            required
+            autoComplete="current-password"
+            disabled={loading}
+          />
 
-          {errorBlock}
+          {signInFormError}
 
-          <div className="flex justify-center pt-1">
-            <Button type="submit" variant="primary" disabled={loading} className="max-w-full min-w-0 whitespace-normal text-center">
-              {loading ? "Please wait…" : "Continue"}
-            </Button>
-          </div>
-          <p className="mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
-            Secure login | Your data is protected
-          </p>
+          <AppLoginSubmitRow pending={loading} />
+          <AppLoginTrustLine />
+          {legalFooter}
         </form>
       ) : (
         <form
           method="post"
           action={formAction}
           onSubmit={handleSignUp}
-          className="space-y-3"
+          className={appLoginFormClassName}
           autoComplete="on"
         >
           <div>
@@ -461,49 +462,24 @@ export function LoginClient() {
               disabled={loading}
             />
           </div>
-          <div>
-            <Label htmlFor="signup-password">Password</Label>
-            <div className="relative">
-              <Input
-                id="signup-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-14"
-                required
-                autoComplete="new-password"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                disabled={loading}
-                minLength={6}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-1 top-1/2 min-h-0 -translate-y-1/2 px-2 py-1"
-                onClick={() => setShowPassword((v) => !v)}
-                disabled={loading}
-                aria-pressed={showPassword}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </Button>
-            </div>
-          </div>
+          <AppLoginPasswordField
+            id="signup-password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            required
+            autoComplete="new-password"
+            disabled={loading}
+            minLength={6}
+          />
 
-          {errorBlock}
+          {signUpFormError}
 
-          <div className="flex justify-center pt-1">
-            <Button type="submit" variant="primary" disabled={loading} className="max-w-full min-w-0 whitespace-normal text-center">
-              {loading ? "Please wait…" : "Sign up"}
-            </Button>
-          </div>
-          <p className="mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
-            Secure sign up | Your data is protected
-          </p>
+          <AppLoginSubmitRow pending={loading} {...appLoginSubmitLabelsForMode("signup")} />
+          <AppLoginTrustLine>Secure sign up | Your data is protected</AppLoginTrustLine>
+          {legalFooter}
         </form>
       )}
 
@@ -516,20 +492,6 @@ export function LoginClient() {
           onError={setError}
         />
       ) : null}
-
-      <footer className="mt-6 border-t border-[var(--ds-border)] pt-4">
-        <nav aria-label="Legal" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
-          <LegalDocumentLink document="privacy" className={legalLinkClass}>
-            Privacy Policy
-          </LegalDocumentLink>
-          <span className="select-none text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]" aria-hidden>
-            ·
-          </span>
-          <LegalDocumentLink document="terms" className={legalLinkClass}>
-            Terms &amp; Conditions
-          </LegalDocumentLink>
-        </nav>
-      </footer>
-    </div>
+    </>
   );
 }

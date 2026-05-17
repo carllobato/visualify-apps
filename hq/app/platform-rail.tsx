@@ -11,12 +11,13 @@ import {
   AppShellRailFooterAccount,
   AppShellRailHeader,
   AppShellRailSeparator,
-  RAIL_NAV_ROW_ACTIVE_CLASS,
-  RAIL_NAV_ROW_INACTIVE_CLASS,
-  RAIL_NAV_ROW_SHELL_CLASS,
+  appShellRailIconWellClassName,
+  appShellRailNavRowClass,
+  appShellRailPrimaryNavClassName,
   railLabelClass,
 } from "@visualify/app-shell";
 import { DashboardAccountMenu } from "./(hq)/dashboard/dashboard-account-menu";
+import { HqRailFooterHelp } from "@/components/hq-rail-footer-help";
 import { WorkspaceRailList } from "./entity-rail-list";
 import type { EntityRailWorkspace } from "@/lib/entity-rail-grouping";
 import { VISUALIFY_APP_CATALOG } from "@/lib/visualify-apps";
@@ -53,9 +54,9 @@ function RailNavLink({
       href={href}
       title={label}
       aria-label={label}
-      className={RAIL_NAV_ROW_SHELL_CLASS + (active ? RAIL_NAV_ROW_ACTIVE_CLASS : RAIL_NAV_ROW_INACTIVE_CLASS)}
+      className={appShellRailNavRowClass(active)}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center">{children}</span>
+      <span className={appShellRailIconWellClassName}>{children}</span>
       <span className={railLabelClass}>{label}</span>
     </Link>
   );
@@ -88,14 +89,14 @@ export function PlatformRail({
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="HQ"
-            currentAppName="Visualify HQ"
+            currentAppName="HQ"
             catalog={VISUALIFY_APP_CATALOG}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} />}
           />
 
           <AppShellRailSeparator />
 
-          <nav className="flex flex-col gap-2.5" aria-label="Primary">
+          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
             <RailNavLink href="/dashboard" pathname={pathname} label="Dashboard">
               <IconDashboard />
             </RailNavLink>
@@ -105,6 +106,7 @@ export function PlatformRail({
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>
+          <HqRailFooterHelp />
           <AppShellRailFooterAccount>
             <DashboardAccountMenu variant="rail" railPageActive={accountRailActive} />
           </AppShellRailFooterAccount>

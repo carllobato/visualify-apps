@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isAppHost } from "@/lib/host";
-import { LoginPageShell } from "./LoginPageShell";
+import { RiskAiLoggedOutLoginScreen } from "./RiskAiLoggedOutLoginScreen";
 
 type LoginSearchParams = Record<string, string | string[] | undefined>;
 
@@ -25,5 +25,5 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     const qs = sp.toString();
     redirect(qs ? `/?${qs}` : "/");
   }
-  return <LoginPageShell />;
+  return <RiskAiLoggedOutLoginScreen />;
 }

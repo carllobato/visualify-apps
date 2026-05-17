@@ -12,9 +12,10 @@ import {
 } from "@/lib/entity-rail-grouping";
 import { resolveWorkspaceFaviconUrl } from "@/lib/workspace-favicon";
 import {
-  RAIL_NAV_ROW_ACTIVE_CLASS,
-  RAIL_NAV_ROW_INACTIVE_CLASS,
-  RAIL_NAV_ROW_SHELL_CLASS,
+  appShellRailEntitySectionClassName,
+  appShellRailIconWellClassName,
+  appShellRailNavButtonRowClass,
+  RAIL_ROW_SHELL_CLASS,
   railLabelClass,
 } from "@visualify/app-shell";
 
@@ -101,12 +102,12 @@ function CreateWorkspaceRailRow({ pathname }: { pathname: string }) {
       aria-label={label}
       aria-current={active ? "page" : undefined}
       className={
-        RAIL_NAV_ROW_SHELL_CLASS +
+        RAIL_ROW_SHELL_CLASS +
         (active ? CREATE_WORKSPACE_ROW_ACTIVE_CLASS : CREATE_WORKSPACE_ROW_INACTIVE_CLASS) +
-        " no-underline bg-transparent"
+        " bg-transparent"
       }
     >
-      <span className="flex size-10 shrink-0 items-center justify-center opacity-80">
+      <span className={`${appShellRailIconWellClassName} opacity-80`}>
         <IconPlus />
       </span>
       <span className={createWorkspaceLabelClass}>{label}</span>
@@ -119,10 +120,6 @@ function workspaceRowAriaLabel(name: string, typeLabel: string, isSelected: bool
   if (isSelected) parts.push("active workspace");
   return parts.join(", ");
 }
-
-const RAIL_ROW_ICON_PX = 32;
-const RAIL_ROW_FAVICON_CLASS =
-  "size-8 shrink-0 rounded-[var(--ds-radius-sm)] object-contain";
 
 /** Website favicon in the rail row; falls back to type icons on error or missing URL. */
 function WorkspaceRowIcon({
@@ -140,19 +137,15 @@ function WorkspaceRowIcon({
       <img
         src={faviconUrl}
         alt=""
-        width={RAIL_ROW_ICON_PX}
-        height={RAIL_ROW_ICON_PX}
-        className={RAIL_ROW_FAVICON_CLASS}
+        width={20}
+        height={20}
+        className="size-5 shrink-0 rounded-[var(--ds-radius-sm)] object-contain"
         onError={() => setShowFavicon(false)}
       />
     );
   }
 
-  return isOrganisationWorkspaceType(workspaceType) ? (
-    <IconOrganisation size={RAIL_ROW_ICON_PX} />
-  ) : (
-    <IconWorkspace size={RAIL_ROW_ICON_PX} />
-  );
+  return isOrganisationWorkspaceType(workspaceType) ? <IconOrganisation /> : <IconWorkspace />;
 }
 
 function WorkspaceRow({
@@ -186,14 +179,12 @@ function WorkspaceRow({
       aria-label={ariaLabel}
       onClick={() => onSelect(id)}
       className={
-        RAIL_NAV_ROW_SHELL_CLASS +
-        (usesActiveChrome ? RAIL_NAV_ROW_ACTIVE_CLASS : RAIL_NAV_ROW_INACTIVE_CLASS) +
-        " cursor-pointer border-0 text-left no-underline " +
-        (!usesActiveChrome ? "bg-transparent " : "") +
-        (disabled ? "opacity-60 " : "")
+        appShellRailNavButtonRowClass(usesActiveChrome, {
+          transparentWhenInactive: !usesActiveChrome,
+        }) + (disabled ? " opacity-60" : "")
       }
     >
-      <span className="flex size-10 shrink-0 items-center justify-center">
+      <span className={appShellRailIconWellClassName}>
         <WorkspaceRowIcon websiteUrl={websiteUrl} workspaceType={workspaceType} />
       </span>
       <span className={railLabelClass}>{name}</span>
@@ -246,7 +237,7 @@ export function WorkspaceRailList({
 
   if (workspaces.length === 0) {
     return (
-      <section className="flex min-w-0 flex-col gap-2.5 pt-1" aria-label="Workspaces">
+      <section className={appShellRailEntitySectionClassName} aria-label="Workspaces">
         <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-tertiary)]">
           No workspaces to manage yet.
         </p>
@@ -261,7 +252,7 @@ export function WorkspaceRailList({
   const { label, items } = groupEntitiesForRail(workspaces);
 
   return (
-    <section className="flex min-w-0 flex-col gap-2.5 pt-1" aria-label={label}>
+    <section className={appShellRailEntitySectionClassName} aria-label={label}>
       {renderRows(items)}
       <CreateWorkspaceRailRow pathname={pathname} />
     </section>

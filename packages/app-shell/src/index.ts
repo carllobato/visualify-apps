@@ -1,4 +1,7 @@
 export {
+  appShellRailEntitySectionClassName,
+  appShellRailIconWellClassName,
+  appShellRailPrimaryNavClassName,
   railBrandTitleClass,
   railLabelClass,
   RAIL_ROW_ACTIVE_CLASS,
@@ -19,6 +22,7 @@ export {
   appShellRailAsideClassName,
   appShellRailBodyClassName,
   appShellRailExpandedWidthClassName,
+  appShellRailFooterActionWrapClassName,
   appShellRailFooterAccountOuterTailwindClassName,
   appShellRailFooterClassName,
   appShellRailHeaderClassName,
@@ -33,6 +37,8 @@ export {
 export {
   appShellRailFooterAccountRowClass,
   appShellRailFooterControlRowClass,
+  appShellRailNavButtonRowClass,
+  appShellRailNavRowClass,
 } from "./rail-footer-row-classes";
 
 export {
@@ -84,6 +90,8 @@ export type {
   AppShellRailProps,
 } from "./AppShellRail";
 
+export { AppShellRailNavSection } from "./AppShellRailNavSection";
+
 export { AppShellRailBrandAppMenu } from "./AppShellRailBrandAppMenu";
 export type {
   AppShellRailAppCatalogEntry,
@@ -101,3 +109,148 @@ export {
   appShellRailAccountMenuClassName,
 } from "./AppShellRailAccountTrigger";
 export type { AppShellRailAccountTriggerProps } from "./AppShellRailAccountTrigger";
+
+export {
+  AppShellRailFooterHelp,
+  AppShellRailFooterHelpTrigger,
+} from "./AppShellRailFooterHelp";
+export type {
+  AppShellRailFooterHelpProps,
+  AppShellRailFooterHelpTriggerProps,
+} from "./AppShellRailFooterHelp";
+
+export { AppShellHelpFeedbackModal } from "./AppShellHelpFeedbackModal";
+export type {
+  AppShellHelpFeedbackModalProps,
+  AppShellHelpFeedbackUser,
+} from "./AppShellHelpFeedbackModal";
+
+export { AppShellRailHelpFeedback } from "./AppShellRailHelpFeedback";
+export type { AppShellRailHelpFeedbackProps } from "./AppShellRailHelpFeedback";
+
+export {
+  listFactorsIndicatesVerifiedTotp,
+  totpFactorsFromListFactors,
+} from "./account-security/mfa";
+export type { MfaListFactorsLike } from "./account-security/mfa";
+export type { AppShellSupabaseAuthClient } from "./account-security/types";
+
+export { AppShellLastLoginPanel } from "./AppShellLastLoginPanel";
+export type { AppShellLastLoginPanelProps } from "./AppShellLastLoginPanel";
+
+export { AppShellTwoFactorSetup } from "./AppShellTwoFactorSetup";
+export type { AppShellTwoFactorSetupProps } from "./AppShellTwoFactorSetup";
+
+export { AppShellSignOutButton } from "./AppShellSignOutButton";
+export type { AppShellSignOutButtonProps } from "./AppShellSignOutButton";
+
+export { AppShellSignOutEverywhereButton } from "./AppShellSignOutEverywhereButton";
+export type { AppShellSignOutEverywhereButtonProps } from "./AppShellSignOutEverywhereButton";
+
+export { AppShellChangePasswordForm } from "./AppShellChangePasswordForm";
+export type { AppShellChangePasswordFormProps } from "./AppShellChangePasswordForm";
+
+export { AppShellDeleteAccountSection } from "./AppShellDeleteAccountSection";
+export type { AppShellDeleteAccountSectionProps } from "./AppShellDeleteAccountSection";
+
+export {
+  AccountSettingsCard,
+  AccountSettingsCardContent,
+  AccountSettingsCardFooter,
+  AccountSettingsCardHeader,
+  AccountSettingsHeader,
+  AccountSettingsPage,
+  AccountSettingsAppsPanel,
+  AccountSettingsAuthenticationPanel,
+  AccountSettingsProfilePanel,
+  AccountSettingsTabs,
+  VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG,
+  AccountSettingsTabsShell,
+  useAccountSettingsProfilePanel,
+  accountSettingsCardClassName,
+  accountSettingsCardContentClassName,
+  accountSettingsCardContentFormClassName,
+  accountSettingsCardFooterClassName,
+  accountSettingsCardHeaderClassName,
+  accountSettingsCardTitleClassName,
+  accountSettingsCardTitleDangerClassName,
+  accountSettingsHeaderDescriptionClassName,
+  accountSettingsIntroTextClassName,
+  accountSettingsPanelSectionClassName,
+  accountSettingsTabsShellClassName,
+} from "./account-settings";
+export type {
+  AccountSettingsCardContentProps,
+  AccountSettingsCardFooterProps,
+  AccountSettingsCardHeaderProps,
+  AccountSettingsCardProps,
+  AccountSettingsHeaderProps,
+  AccountSettingsPageProps,
+  AccountSettingsAppCatalogEntry,
+  AccountSettingsAppsPanelProps,
+  AccountSettingsAuthenticationPanelProps,
+  AccountSettingsProfilePanelProps,
+  AccountSettingsSignOutConfig,
+  AccountSettingsSignOutEverywhereConfig,
+  AccountSettingsTabConfig,
+  AccountSettingsTabsProps,
+  AccountSettingsTabsShellProps,
+} from "./account-settings";
+
+export {
+  APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
+  AppLoginBrandMark,
+  AppLoginCard,
+  AppLoginCardSuspense,
+  AppLoginCardHeader,
+  AppLoginCardLegalFooter,
+  AppLoginCopyright,
+  AppLoginFormError,
+  AppLoginPasswordField,
+  AppLoginFramedShell,
+  AppLoginScreen,
+  AppLoginPage,
+  AppLoginSuspenseFallback,
+  AppLoginTabsSection,
+  AppLoginSubmitRow,
+  appLoginSubmitLabelsForMode,
+  AppLoginTrustLine,
+  appLoginCardClassName,
+  appLoginCardContentClassName,
+  appLoginCardHeaderClassName,
+  appLoginFormSkeletonMinHeightClassName,
+  appLoginCardLegalFooterClassName,
+  appLoginTabsDividerClassName,
+  appLoginTabsRowClassName,
+  appLoginCardLegalLinkClassName,
+  appLoginCardLegalNavClassName,
+  appLoginCardLegalSepClassName,
+  appLoginCardTitleClassName,
+  appLoginFormClassName,
+  appLoginFormErrorClassName,
+  appLoginFormErrorStackClassName,
+  appLoginCopyrightClassName,
+  appLoginFramedRailAsideClassName,
+  appLoginFramedRailBrandLinkClassName,
+  appLoginFramedRailStackClassName,
+  appLoginPageMainClassName,
+  appLoginSubmitButtonClassName,
+  appLoginSubmitRowClassName,
+  appLoginTrustLineClassName,
+} from "./login-shell";
+export type {
+  AppLoginBrandMarkProps,
+  AppLoginCardHeaderProps,
+  AppLoginCardLegalFooterProps,
+  AppLoginCardProps,
+  AppLoginCardSuspenseProps,
+  AppLoginCopyrightProps,
+  AppLoginFormErrorProps,
+  AppLoginPasswordFieldProps,
+  AppLoginFramedShellProps,
+  AppLoginScreenProps,
+  AppLoginPageProps,
+  AppLoginTabsSectionProps,
+  AppLoginSubmitRowProps,
+  AppLoginTrustLineProps,
+} from "./login-shell";

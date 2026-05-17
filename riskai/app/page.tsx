@@ -2,8 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { DASHBOARD_PATH } from "@/lib/routes";
-import { LoginChrome } from "./login/LoginChrome";
-import { LoginPageShell } from "./login/LoginPageShell";
+import { RiskAiLoggedOutLoginScreen } from "./login/RiskAiLoggedOutLoginScreen";
 
 /**
  * Root host entry: login when signed out; signed-in users go to dashboard.
@@ -18,9 +17,5 @@ export default async function HomePage() {
     redirect(DASHBOARD_PATH);
   }
 
-  return (
-    <LoginChrome>
-      <LoginPageShell />
-    </LoginChrome>
-  );
+  return <RiskAiLoggedOutLoginScreen />;
 }

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { riskaiPath } from "@/lib/routes";
-import { LoginChrome } from "../../../login/LoginChrome";
+import { AppLoginFramedShell, AppLoginPage } from "@visualify/app-shell";
 
 const DEFAULT_NEXT = riskaiPath("/portfolios");
 
@@ -94,8 +94,9 @@ export function MfaVerifyClient() {
   }
 
   return (
-    <LoginChrome>
-      <div className="w-full max-w-sm rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-6 shadow-sm">
+    <AppLoginFramedShell brandHref="/" brandTitle="Visualify RiskAI" brandAriaLabel="Visualify RiskAI">
+      <AppLoginPage>
+        <div className="w-full max-w-sm rounded-[var(--ds-radius-md)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] p-6 shadow-sm">
         <h1 className="mb-1 text-lg font-semibold text-[var(--ds-text-primary)]">Two-step verification</h1>
         <p className="mb-4 text-sm text-[var(--ds-text-secondary)]">
           Enter the code from your authenticator app to continue.
@@ -125,7 +126,8 @@ export function MfaVerifyClient() {
             {loading ? "Verifying…" : "Continue"}
           </Button>
         </form>
-      </div>
-    </LoginChrome>
+        </div>
+      </AppLoginPage>
+    </AppLoginFramedShell>
   );
 }

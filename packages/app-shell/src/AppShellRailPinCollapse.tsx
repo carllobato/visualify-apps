@@ -1,6 +1,6 @@
 "use client";
 
-import { railLabelClass } from "./rail-row-classes";
+import { appShellRailIconWellClassName, railLabelClass } from "./rail-row-classes";
 import { appShellRailFooterControlRowClass } from "./rail-footer-row-classes";
 
 function RailPinOpenIcon() {
@@ -59,7 +59,7 @@ export function AppShellRailPinCollapse({ pinned, onToggle }: AppShellRailPinCol
       aria-label={pinned ? "Collapse sidebar" : "Pin sidebar open"}
       onClick={onToggle}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center">
+      <span className={appShellRailIconWellClassName}>
         {pinned ? <RailPanelLeftIcon /> : <RailPinOpenIcon />}
       </span>
       <span className={railLabelClass}>{pinned ? "Collapse" : "Pin Open"}</span>

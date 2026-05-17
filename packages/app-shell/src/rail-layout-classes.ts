@@ -60,3 +60,7 @@ export const appShellRailPinRevealPinnedClassName =
 export const appShellRailFooterAccountOuterTailwindClassName =
   "mt-2 w-full max-w-10 shrink-0 transition-[max-width] duration-[400ms] ease-out " +
   "group-hover:max-w-none group-data-[pinned=true]:max-w-none";
+
+/** Full-width footer action host (account menu, sign-out). */
+export const appShellRailFooterActionWrapClassName =
+  "relative flex w-full min-w-0 items-stretch";

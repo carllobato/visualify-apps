@@ -1,15 +1,15 @@
 import { Suspense } from "react";
+import { AppLoginFramedShell } from "@visualify/app-shell";
 import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
-import { LoginChrome } from "../../../login/LoginChrome";
 import { MfaVerifyClient } from "./MfaVerifyClient";
 
 export default function MfaVerifyPage() {
   return (
     <Suspense
       fallback={
-        <LoginChrome>
+        <AppLoginFramedShell brandHref="/" brandTitle="Visualify RiskAI" brandAriaLabel="Visualify RiskAI">
           <LoadingPlaceholderCompact className="text-center" label="Loading verification" />
-        </LoginChrome>
+        </AppLoginFramedShell>
       }
     >
       <MfaVerifyClient />

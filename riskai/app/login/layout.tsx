@@ -1,5 +1,4 @@
-import { LoginChrome } from "./LoginChrome";
-
+/** Pass-through layout: {@link RiskAiLoggedOutLoginScreen} includes {@link AppLoginFramedShell}. */
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
-  return <LoginChrome>{children}</LoginChrome>;
+  return children;
 }

@@ -10,10 +10,11 @@ import {
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
+  AppShellRailNavSection,
   AppShellRailSeparator,
-  RAIL_ROW_ACTIVE_CLASS,
-  RAIL_ROW_INACTIVE_CLASS,
-  RAIL_ROW_SHELL_CLASS,
+  appShellRailIconWellClassName,
+  appShellRailNavRowClass,
+  appShellRailPrimaryNavClassName,
   railLabelClass,
 } from "@visualify/app-shell";
 import { RISKAI_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
@@ -23,7 +24,9 @@ import {
   riskaiPath,
   RISKAI_BASE,
 } from "@/lib/routes";
-import { RiskAiLogoutButton } from "@/components/layout/RiskAiLogoutButton";
+import { RiskAiRailAccountMenu } from "@/components/layout/RiskAiRailAccountMenu";
+import { RiskAiRailFooterHelp } from "@/components/layout/RiskAiRailFooterHelp";
+import { useResolvedPortfolioId } from "@/hooks/useResolvedPortfolioId";
 
 const RISKAI_APP_SHELL_RAIL_PINNED_KEY = "riskai-app-shell-rail-pinned";
 
@@ -36,7 +39,17 @@ const ACCOUNT_SETTINGS_HREF = riskaiPath("/settings");
 
 const PROJECTS_PREFIX = `${RISKAI_BASE}/projects`;
 
-type RailPrimaryNavKey = "dashboard" | "portfolios" | "projects" | "risks" | "accountSettings";
+type RailPrimaryNavKey =
+  | "dashboard"
+  | "portfolios"
+  | "portfolioOverview"
+  | "portfolioProjects"
+  | "portfolioSettings"
+  | "projects"
+  | "projectOverview"
+  | "risks"
+  | "simulation"
+  | "projectSettings";
 
 function normalizePathname(pathname: string): string {
   if (!pathname) return "";
@@ -53,11 +66,48 @@ function isDashboardNavActive(pathname: string): boolean {
   return pathEqualsOrStartsWith(pathname, DASHBOARD_PATH);
 }
 
-/** Portfolio list and detail routes; never `/riskai/projects/…`. */
-function isPortfoliosNavActive(pathname: string): boolean {
+function isPortfolioSettingsNavActive(pathname: string, portfolioId: string | null): boolean {
+  if (portfolioId == null) return false;
+  return pathEqualsOrStartsWith(
+    pathname,
+    riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`)
+  );
+}
+
+function portfolioOverviewPath(portfolioId: string): string {
+  return normalizePathname(riskaiPath(`/portfolios/${portfolioId}`));
+}
+
+function isPortfolioOverviewNavActive(pathname: string, portfolioId: string | null): boolean {
+  if (portfolioId == null) return false;
+  return normalizePathname(pathname) === portfolioOverviewPath(portfolioId);
+}
+
+function isPortfolioProjectsNavActive(pathname: string, portfolioId: string | null): boolean {
+  if (portfolioId == null) return false;
+  return pathEqualsOrStartsWith(pathname, riskaiPath(`/portfolios/${portfolioId}/projects`));
+}
+
+/**
+ * Portfolio list and in-portfolio routes; inactive when a more specific portfolio
+ * child (overview, projects, settings) is active.
+ */
+function isPortfoliosNavActive(pathname: string, portfolioId: string | null): boolean {
   const p = normalizePathname(pathname);
   if (p.startsWith(PROJECTS_PREFIX)) return false;
+  if (isPortfolioOverviewNavActive(pathname, portfolioId)) return false;
+  if (isPortfolioProjectsNavActive(pathname, portfolioId)) return false;
+  if (isPortfolioSettingsNavActive(pathname, portfolioId)) return false;
   return pathEqualsOrStartsWith(pathname, PORTFOLIOS_HREF);
+}
+
+function projectBasePath(projectId: string): string {
+  return normalizePathname(riskaiPath(`/projects/${projectId}`));
+}
+
+function isProjectOverviewNavActive(pathname: string, projectId: string | null): boolean {
+  if (projectId == null) return false;
+  return normalizePathname(pathname) === projectBasePath(projectId);
 }
 
 function isRisksNavActive(pathname: string, projectId: string | null): boolean {
@@ -65,35 +115,50 @@ function isRisksNavActive(pathname: string, projectId: string | null): boolean {
   return pathEqualsOrStartsWith(pathname, riskaiPath(`/projects/${projectId}/risks`));
 }
 
-/** Project list and project routes except the risks register. */
-function isProjectsNavActive(pathname: string, projectId: string | null): boolean {
-  if (isRisksNavActive(pathname, projectId)) return false;
-  return pathEqualsOrStartsWith(pathname, PROJECTS_HREF);
+function isSimulationNavActive(pathname: string, projectId: string | null): boolean {
+  if (projectId == null) return false;
+  return pathEqualsOrStartsWith(pathname, riskaiPath(`/projects/${projectId}/simulation`));
 }
 
-function isAccountSettingsNavActive(pathname: string): boolean {
+function isProjectSettingsNavActive(pathname: string, projectId: string | null): boolean {
+  if (projectId == null) return false;
+  return pathEqualsOrStartsWith(pathname, riskaiPath(`/projects/${projectId}/settings`));
+}
+
+/** Global projects list only (`/riskai/projects`), not project detail routes. */
+function isProjectsNavActive(pathname: string, projectId: string | null): boolean {
+  if (isProjectOverviewNavActive(pathname, projectId)) return false;
+  if (isRisksNavActive(pathname, projectId)) return false;
+  if (isSimulationNavActive(pathname, projectId)) return false;
+  if (isProjectSettingsNavActive(pathname, projectId)) return false;
+  return normalizePathname(pathname) === normalizePathname(PROJECTS_HREF);
+}
+
+function isAccountSettingsRouteActive(pathname: string): boolean {
   return pathEqualsOrStartsWith(pathname, ACCOUNT_SETTINGS_HREF);
 }
 
 /**
  * At most one primary nav item is active. More specific segments win over broader prefixes
- * (e.g. risks over projects, settings over everything else on that path).
+ * (e.g. portfolio settings over portfolios; project sub-routes over the projects list).
  */
-function resolveActivePrimaryNav(pathname: string): RailPrimaryNavKey | null {
+function resolveActivePrimaryNav(
+  pathname: string,
+  portfolioId: string | null
+): RailPrimaryNavKey | null {
   const projectId = projectIdFromAppPathname(pathname);
 
-  if (isAccountSettingsNavActive(pathname)) return "accountSettings";
   if (isRisksNavActive(pathname, projectId)) return "risks";
+  if (isSimulationNavActive(pathname, projectId)) return "simulation";
+  if (isProjectSettingsNavActive(pathname, projectId)) return "projectSettings";
+  if (isProjectOverviewNavActive(pathname, projectId)) return "projectOverview";
+  if (isPortfolioSettingsNavActive(pathname, portfolioId)) return "portfolioSettings";
+  if (isPortfolioProjectsNavActive(pathname, portfolioId)) return "portfolioProjects";
+  if (isPortfolioOverviewNavActive(pathname, portfolioId)) return "portfolioOverview";
   if (isDashboardNavActive(pathname)) return "dashboard";
-  if (isPortfoliosNavActive(pathname)) return "portfolios";
+  if (isPortfoliosNavActive(pathname, portfolioId)) return "portfolios";
   if (isProjectsNavActive(pathname, projectId)) return "projects";
   return null;
-}
-
-function railNavRowClass(active: boolean): string {
-  return (
-    RAIL_ROW_SHELL_CLASS + (active ? RAIL_ROW_ACTIVE_CLASS : RAIL_ROW_INACTIVE_CLASS)
-  );
 }
 
 function RailNavLink({
@@ -112,9 +177,9 @@ function RailNavLink({
       href={href}
       title={label}
       aria-label={label}
-      className={railNavRowClass(active) + " no-underline"}
+      className={appShellRailNavRowClass(active)}
     >
-      <span className="flex size-10 shrink-0 items-center justify-center">{children}</span>
+      <span className={appShellRailIconWellClassName}>{children}</span>
       <span className={railLabelClass}>{label}</span>
     </Link>
   );
@@ -188,6 +253,27 @@ function IconProjectsList() {
   );
 }
 
+function IconProjectOverview() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      className="shrink-0"
+      aria-hidden
+    >
+      <rect width="7" height="9" x="3" y="3" rx="1" />
+      <rect width="7" height="5" x="14" y="3" rx="1" />
+      <rect width="7" height="9" x="14" y="12" rx="1" />
+      <rect width="7" height="5" x="3" y="16" rx="1" />
+    </svg>
+  );
+}
+
 function IconRisks() {
   return (
     <svg
@@ -208,7 +294,7 @@ function IconRisks() {
   );
 }
 
-function IconAccountSettings() {
+function IconSettings() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -229,17 +315,57 @@ function IconAccountSettings() {
   );
 }
 
+function IconSimulation() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0"
+      aria-hidden
+    >
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  );
+}
+
 /**
  * RiskAI platform rail — compound `@visualify/app-shell` layout (HQ-aligned) with RiskAI nav destinations.
  * Shown when `NEXT_PUBLIC_RISKAI_ENABLE_APP_SHELL=1` via `ProtectedShell`.
  */
 export function RiskAiAppShellRail() {
   const pathname = usePathname();
+  const portfolioId = useResolvedPortfolioId(pathname);
   const projectIdInUrl = projectIdFromAppPathname(pathname);
+  const onDashboard = isDashboardNavActive(pathname);
+  const showPortfolioNav = portfolioId != null;
+  const showGlobalPortfoliosAndProjects = !onDashboard && !showPortfolioNav;
+
+  const portfolioOverviewHref =
+    portfolioId != null ? riskaiPath(`/portfolios/${portfolioId}`) : null;
+  const portfolioProjectsHref =
+    portfolioId != null ? riskaiPath(`/portfolios/${portfolioId}/projects`) : null;
+  const portfolioSettingsHref =
+    portfolioId != null
+      ? riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`)
+      : null;
+  const projectOverviewHref =
+    projectIdInUrl != null ? riskaiPath(`/projects/${projectIdInUrl}`) : null;
   const risksHref =
     projectIdInUrl != null ? riskaiPath(`/projects/${projectIdInUrl}/risks`) : null;
+  const simulationHref =
+    projectIdInUrl != null ? riskaiPath(`/projects/${projectIdInUrl}/simulation`) : null;
+  const projectSettingsHref =
+    projectIdInUrl != null ? riskaiPath(`/projects/${projectIdInUrl}/settings`) : null;
 
-  const activeNav = resolveActivePrimaryNav(pathname);
+  const activeNav = resolveActivePrimaryNav(pathname, portfolioId);
+  const accountRailActive = isAccountSettingsRouteActive(pathname);
 
   return (
     <AppShellRail ariaLabel="RiskAI navigation" pinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}>
@@ -254,34 +380,88 @@ export function RiskAiAppShellRail() {
 
           <AppShellRailSeparator />
 
-          <nav className="flex flex-col gap-2.5" aria-label="Primary">
+          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
             <RailNavLink href={DASHBOARD_PATH} active={activeNav === "dashboard"} label="Dashboard">
               <IconCompass />
             </RailNavLink>
-            <RailNavLink href={PORTFOLIOS_HREF} active={activeNav === "portfolios"} label="Portfolios">
-              <IconLayers />
-            </RailNavLink>
-            <RailNavLink href={PROJECTS_HREF} active={activeNav === "projects"} label="Projects">
-              <IconProjectsList />
-            </RailNavLink>
-            {risksHref != null ? (
-              <RailNavLink href={risksHref} active={activeNav === "risks"} label="Risks">
-                <IconRisks />
-              </RailNavLink>
+            {showGlobalPortfoliosAndProjects ? (
+              <>
+                <RailNavLink href={PORTFOLIOS_HREF} active={activeNav === "portfolios"} label="Portfolios">
+                  <IconLayers />
+                </RailNavLink>
+                <RailNavLink href={PROJECTS_HREF} active={activeNav === "projects"} label="Projects">
+                  <IconProjectsList />
+                </RailNavLink>
+              </>
             ) : null}
-            <RailNavLink
-              href={ACCOUNT_SETTINGS_HREF}
-              active={activeNav === "accountSettings"}
-              label="Account Settings"
-            >
-              <IconAccountSettings />
-            </RailNavLink>
+            {showPortfolioNav ? (
+              <AppShellRailNavSection label="Portfolio">
+                {portfolioOverviewHref != null ? (
+                  <RailNavLink
+                    href={portfolioOverviewHref}
+                    active={activeNav === "portfolioOverview"}
+                    label="Portfolio Overview"
+                  >
+                    <IconLayers />
+                  </RailNavLink>
+                ) : null}
+                {portfolioProjectsHref != null ? (
+                  <RailNavLink
+                    href={portfolioProjectsHref}
+                    active={activeNav === "portfolioProjects"}
+                    label="Projects"
+                  >
+                    <IconProjectsList />
+                  </RailNavLink>
+                ) : null}
+                {portfolioSettingsHref != null ? (
+                  <RailNavLink
+                    href={portfolioSettingsHref}
+                    active={activeNav === "portfolioSettings"}
+                    label="Portfolio Settings"
+                  >
+                    <IconSettings />
+                  </RailNavLink>
+                ) : null}
+              </AppShellRailNavSection>
+            ) : null}
+            {projectOverviewHref != null ? (
+              <AppShellRailNavSection label="Projects">
+                <RailNavLink
+                  href={projectOverviewHref}
+                  active={activeNav === "projectOverview"}
+                  label="Project Overview"
+                >
+                  <IconProjectOverview />
+                </RailNavLink>
+                {risksHref != null ? (
+                  <RailNavLink href={risksHref} active={activeNav === "risks"} label="Risks">
+                    <IconRisks />
+                  </RailNavLink>
+                ) : null}
+                {simulationHref != null ? (
+                  <RailNavLink href={simulationHref} active={activeNav === "simulation"} label="Simulation">
+                    <IconSimulation />
+                  </RailNavLink>
+                ) : null}
+                {projectSettingsHref != null ? (
+                  <RailNavLink
+                    href={projectSettingsHref}
+                    active={activeNav === "projectSettings"}
+                    label="Project Settings"
+                  >
+                    <IconSettings />
+                  </RailNavLink>
+                ) : null}
+              </AppShellRailNavSection>
+            ) : null}
           </nav>
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>
+          <RiskAiRailFooterHelp />
           <AppShellRailFooterAccount>
-            <RiskAiLogoutButton variant="rail" />
+            <RiskAiRailAccountMenu railPageActive={accountRailActive} />
           </AppShellRailFooterAccount>
         </AppShellRailFooter>
       </AppShellRailBody>
