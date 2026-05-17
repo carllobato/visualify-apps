@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { APP_ORIGIN } from "@/lib/host";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 
@@ -33,8 +34,7 @@ async function acceptInvitationUrl(inviteToken: string): Promise<string> {
   const proto =
     forwardedProto ??
     (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
-  const base =
-    host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() ?? "http://localhost:3000");
+  const base = host ? `${proto}://${host}` : APP_ORIGIN;
   const u = new URL("/api/invitations/accept", base.endsWith("/") ? base.slice(0, -1) : base);
   u.searchParams.set("invite_token", inviteToken);
   return u.toString();

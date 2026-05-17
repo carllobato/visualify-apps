@@ -68,6 +68,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/settings",
+        destination: "/account",
+        permanent: true,
+      },
+      {
         source: "/projects/:projectId/setup",
         destination: "/projects/:projectId/settings",
         permanent: true,

@@ -1,6 +1,8 @@
 import {
   getProductOrigin,
+  hostFromOrigin,
   readPublicEnv,
+  resolveRiskAiPublicOrigin,
   VISUALIFY_PRODUCTS,
   type VisualifyProductKey,
 } from "@visualify/urls";
@@ -10,13 +12,30 @@ function defaultProductHost(productKey: VisualifyProductKey): string {
   return new URL(VISUALIFY_PRODUCTS[productKey].defaultOrigin).hostname;
 }
 
-/** App subdomain (e.g. app.visualify.com.au). */
-export const APP_HOST = readPublicEnv("NEXT_PUBLIC_APP_HOST") ?? defaultProductHost("riskai");
-/** Marketing site apex (e.g. visualify.com.au). */
-export const WEBSITE_HOST = readPublicEnv("NEXT_PUBLIC_WEBSITE_HOST") ?? defaultProductHost("website");
+/**
+ * RiskAI app origin (no trailing slash).
+ * Canonical: `NEXT_PUBLIC_RISKAI_ORIGIN`. Legacy: `NEXT_PUBLIC_APP_ORIGIN`.
+ */
+export const APP_ORIGIN = resolveRiskAiPublicOrigin();
 
-export const APP_ORIGIN = readPublicEnv("NEXT_PUBLIC_APP_ORIGIN") ?? getProductOrigin("riskai");
+/** Marketing site origin (no trailing slash). Canonical: `NEXT_PUBLIC_WEBSITE_ORIGIN`. */
 export const SITE_ORIGIN = readPublicEnv("NEXT_PUBLIC_WEBSITE_ORIGIN") ?? getProductOrigin("website");
+
+/**
+ * App host for dual-host routing (e.g. app.visualify.com.au).
+ * Derived from {@link APP_ORIGIN} when possible; legacy: `NEXT_PUBLIC_APP_HOST`.
+ */
+export const APP_HOST =
+  hostFromOrigin(APP_ORIGIN) ?? readPublicEnv("NEXT_PUBLIC_APP_HOST") ?? defaultProductHost("riskai");
+
+/**
+ * Marketing site host (e.g. visualify.com.au).
+ * Derived from {@link SITE_ORIGIN} when possible; legacy: `NEXT_PUBLIC_WEBSITE_HOST`.
+ */
+export const WEBSITE_HOST =
+  hostFromOrigin(SITE_ORIGIN) ??
+  readPublicEnv("NEXT_PUBLIC_WEBSITE_HOST") ??
+  defaultProductHost("website");
 
 export function normalizeHost(host: string): string {
   return host.split(":")[0]?.toLowerCase() ?? "";

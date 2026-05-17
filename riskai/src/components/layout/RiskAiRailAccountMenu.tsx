@@ -11,7 +11,7 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { riskaiPath } from "@/lib/routes";
 import type { User } from "@supabase/supabase-js";
 
-const ACCOUNT_SETTINGS_HREF = riskaiPath("/settings");
+const ACCOUNT_SETTINGS_HREF = riskaiPath("/account");
 
 /** Clears session via `app/auth/sign-out/route.ts`; same post-sign-out entry as `TopNav`. */
 const SIGN_OUT_ROUTE = "/auth/sign-out";

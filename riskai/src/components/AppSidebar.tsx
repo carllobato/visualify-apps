@@ -335,7 +335,7 @@ export function AppSidebar() {
         {isLoggedIn ? (
           <>
             <Link
-              href={riskaiPath("/settings")}
+              href={riskaiPath("/account")}
               className="flex items-center gap-2 w-full px-3 py-2 rounded-[var(--ds-radius-md)] text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-primary)] no-underline"
             >
               <CogIcon />

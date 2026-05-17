@@ -1,4 +1,4 @@
-import { resolveOriginFromProduct } from "./env";
+import { readPublicEnv, resolveOriginFromProduct } from "./env";
 import {
   getProductDefinition,
   HQ_APPS_PATH,
@@ -8,6 +8,45 @@ import {
 /** Strip trailing slashes from an origin or URL base. */
 export function normalizeOrigin(origin: string): string {
   return origin.trim().replace(/\/+$/, "");
+}
+
+/** Extract hostname from an origin URL. Returns `undefined` when the value is not a valid URL. */
+export function hostFromOrigin(origin: string): string | undefined {
+  const trimmed = origin.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  try {
+    const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    const hostname = new URL(withScheme).hostname;
+    return hostname || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * RiskAI app origin for shared platform code.
+ * Canonical: `NEXT_PUBLIC_RISKAI_ORIGIN`. Legacy: `NEXT_PUBLIC_APP_ORIGIN`.
+ */
+export function resolveRiskAiPublicOrigin(): string {
+  return normalizeOrigin(
+    readPublicEnv("NEXT_PUBLIC_RISKAI_ORIGIN") ??
+      readPublicEnv("NEXT_PUBLIC_APP_ORIGIN") ??
+      getProductOrigin("riskai"),
+  );
+}
+
+/**
+ * RiskAI app origin for marketing / website CTAs.
+ * Canonical: `NEXT_PUBLIC_RISKAI_ORIGIN`. Legacy: `NEXT_PUBLIC_RISKAI_APP_ORIGIN`.
+ */
+export function resolveRiskAiMarketingOrigin(): string {
+  return normalizeOrigin(
+    readPublicEnv("NEXT_PUBLIC_RISKAI_ORIGIN") ??
+      readPublicEnv("NEXT_PUBLIC_RISKAI_APP_ORIGIN") ??
+      getProductOrigin("riskai"),
+  );
 }
 
 /** Join a normalized origin with a path segment (path must start with `/` unless empty). */

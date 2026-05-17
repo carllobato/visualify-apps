@@ -244,7 +244,7 @@ export function NavBar() {
               {isLoggedIn ? (
                 <>
                   <Link
-                    href={riskaiPath("/settings")}
+                    href={riskaiPath("/account")}
                     role="menuitem"
                     onClick={() => setUserMenuOpen(false)}
                     className="block px-4 py-2 text-sm text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)] no-underline"

@@ -161,9 +161,9 @@ export function OnboardingHost() {
       if (!isOnboardingProfileComplete(meta, profileRow)) {
         resetPortfolioWizard();
         resetProjectWizard();
-        const settingsAppPath = riskaiPath("/settings");
-        const onSettingsRoute =
-          pathname === settingsAppPath || (pathname?.startsWith(`${settingsAppPath}/`) ?? false);
+        const accountAppPath = riskaiPath("/account");
+        const onAccountRoute =
+          pathname === accountAppPath || (pathname?.startsWith(`${accountAppPath}/`) ?? false);
         setInitialFirstName(
           typeof profileRow?.first_name === "string"
             ? profileRow.first_name
@@ -192,7 +192,7 @@ export function OnboardingHost() {
               ? meta.role
               : "",
         );
-        setShowProfileModal(!onSettingsRoute);
+        setShowProfileModal(!onAccountRoute);
         setReady(true);
         return;
       }

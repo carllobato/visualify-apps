@@ -15,6 +15,9 @@ export {
   getHqAppsUrl,
   getProductDashboardUrl,
   getProductOrigin,
+  hostFromOrigin,
   joinOriginPath,
   normalizeOrigin,
+  resolveRiskAiMarketingOrigin,
+  resolveRiskAiPublicOrigin,
 } from "./resolve";

@@ -9,7 +9,7 @@ const AUTHENTICATED_APP_ROOTS = [
   "/dashboard",
   "/portfolios",
   "/projects",
-  "/settings",
+  "/account",
   "/matrix",
   "/simulation",
   "/create-project",

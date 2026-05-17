@@ -201,7 +201,7 @@ export function TopNav({
                 className="absolute right-0 top-full z-[100] mt-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav"
               >
                 <Link
-                  href={riskaiPath("/settings")}
+                  href={riskaiPath("/account")}
                   role="menuitem"
                   className="ds-app-menu-dropdown__item"
                   onClick={() => setMenuOpen(false)}

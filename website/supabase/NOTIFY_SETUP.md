@@ -31,6 +31,19 @@ Add these **manually** (names must match):
 | `RESEND_API_KEY` | No | If omitted, the function logs a warning and returns **200** (no email). |
 | `CONTACT_FROM_EMAIL` | No | Example: `Visualify <noreply@yourdomain.com>`. Must be allowed in Resend. Default: `Visualify <onboarding@resend.dev>`. |
 | `NOTIFY_TO_EMAIL` | No | Inbox for notifications. Default: `help@visualify.com.au`. |
+| `SUPABASE_URL` | **Yes** (invitations) | Same as project URL (`https://<ref>.supabase.co`). Used to detect existing users for invite copy. |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Yes** (invitations) | Service role secret (never expose to the browser). |
+| `RISKAI_APP_ORIGIN` | **Yes** (invitations) | RiskAI app origin, no trailing slash — e.g. `https://app.visualify.com.au`. Builds invite links: `{origin}/invite?invite_token=…`. Must match canonical **`NEXT_PUBLIC_RISKAI_ORIGIN`** on the RiskAI Vercel project. |
+
+### Platform URLs (reference)
+
+| Surface | Canonical env (Next.js) | Production example |
+|---------|-------------------------|-------------------|
+| RiskAI app | `NEXT_PUBLIC_RISKAI_ORIGIN` | `https://app.visualify.com.au` |
+| HQ | `NEXT_PUBLIC_HQ_ORIGIN` | `https://hq.visualify.com.au` |
+| Marketing | `NEXT_PUBLIC_WEBSITE_ORIGIN` | `https://visualify.com.au` |
+
+RiskAI routes are **flat** (`/dashboard`, `/invite`, `/auth/confirm` — not `/riskai/dashboard`). Legacy paths redirect in `riskai/next.config.ts`.
 
 **Resend:** create an API key at [resend.com](https://resend.com). Verify your sending domain (or use Resend’s test sender per their rules).
 
@@ -101,6 +114,7 @@ Webhook **payload** shape (handled by the function):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+- `NEXT_PUBLIC_RISKAI_ORIGIN` (marketing Sign in / CTA links to the app; legacy: `NEXT_PUBLIC_RISKAI_APP_ORIGIN`)
 
 ---
 

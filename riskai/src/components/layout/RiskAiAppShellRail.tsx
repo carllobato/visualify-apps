@@ -35,7 +35,7 @@ const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
 
 const PORTFOLIOS_HREF = riskaiPath("/portfolios");
 const PROJECTS_HREF = riskaiPath("/projects");
-const ACCOUNT_SETTINGS_HREF = riskaiPath("/settings");
+const ACCOUNT_SETTINGS_HREF = riskaiPath("/account");
 
 const PROJECTS_PREFIX = riskaiPath("/projects");
 

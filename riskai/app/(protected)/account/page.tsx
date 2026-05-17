@@ -23,7 +23,7 @@ export default async function UserSettingsPage() {
   } = await supabase.auth.getUser();
 
   if (!user && !isDevAuthBypassEnabled()) {
-    redirect(await buildLoginRedirectUrl(riskaiPath("/settings")));
+    redirect(await buildLoginRedirectUrl(riskaiPath("/account")));
   }
 
   const legacyDocumentPadding = !RISKAI_ENABLE_APP_SHELL;

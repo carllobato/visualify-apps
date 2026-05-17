@@ -4,6 +4,11 @@ import type { AppShellRailAppCatalogEntry } from "../AppShellRailBrandAppMenu";
 /** Product catalog entry for Account → Apps (matches `visualify_products.key`). */
 export type AccountSettingsAppCatalogEntry = AppShellRailAppCatalogEntry;
 
+/**
+ * @deprecated Legacy override for Account → Apps RiskAI link. Prefer `NEXT_PUBLIC_RISKAI_ORIGIN`
+ * (dashboard URL is `{origin}/dashboard` via {@link getProductDashboardUrl}). Scheduled for removal
+ * after env migration; still honoured when set.
+ */
 function resolveRiskAiDashboardUrl(): string {
   return readPublicEnv("NEXT_PUBLIC_RISKAI_DASHBOARD_URL") ?? getProductDashboardUrl("riskai");
 }

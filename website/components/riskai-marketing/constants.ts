@@ -1,11 +1,9 @@
 /** Shared marketing tokens for RiskAI landing (website app). */
 
-import { getProductOrigin, joinOriginPath, normalizeOrigin, readPublicEnv } from "@visualify/urls";
+import { joinOriginPath, resolveRiskAiMarketingOrigin } from "@visualify/urls";
 
 function resolveRiskAiAppOrigin(): string {
-  return normalizeOrigin(
-    readPublicEnv("NEXT_PUBLIC_RISKAI_APP_ORIGIN") ?? getProductOrigin("riskai"),
-  );
+  return resolveRiskAiMarketingOrigin();
 }
 
 export const riskaiAppOrigin = resolveRiskAiAppOrigin();
