@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   ensureVisualifyProfileForAuthUser,
   normalizeVisualifyInviteEmail,
@@ -74,6 +75,16 @@ export function inviteErrorQueryValue(code: AcceptVisualifyInvitationErrorCode):
   }
 }
 
+type InvitationMembershipRow = {
+  resource_type: string;
+  resource_id: unknown;
+  role: unknown;
+};
+
+type EnsureMembershipResult =
+  | { ok: true; resourceId: string }
+  | { ok: false; code: "INVALID_INVITATION" | "MEMBERSHIP_INSERT_FAILED"; message?: string };
+
 function isPostgresUniqueViolation(err: unknown): boolean {
   return (
     typeof err === "object" &&
@@ -90,6 +101,278 @@ function failure(
 ): AcceptVisualifyInvitationFailure {
   console.warn("[acceptVisualifyInvitation] invitation failed", { code, message });
   return { ok: false, code, httpStatus, message };
+}
+
+function parseResourceId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function invitationRole(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function successForInvitation(
+  resourceType: string,
+  resourceId: string
+): AcceptVisualifyInvitationSuccess {
+  if (resourceType === "portfolio") {
+    return { ok: true, resource_type: "portfolio", portfolio_id: resourceId };
+  }
+  return { ok: true, resource_type: "project", project_id: resourceId };
+}
+
+async function findMembershipRow(
+  admin: SupabaseClient,
+  table: "visualify_project_members" | "visualify_portfolio_members",
+  resourceColumn: "project_id" | "portfolio_id",
+  resourceId: string,
+  userId: string
+) {
+  return admin
+    .from(table)
+    .select("id")
+    .eq(resourceColumn, resourceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+}
+
+/**
+ * Idempotent: ensures a membership row exists for the invited user and resource.
+ * Returns INVALID_INVITATION when resource_id is missing (caller must not mark accepted).
+ */
+async function ensureMemberRow(
+  admin: SupabaseClient,
+  params: {
+    table: "visualify_project_members" | "visualify_portfolio_members";
+    resourceColumn: "project_id" | "portfolio_id";
+    resourceId: string;
+    userId: string;
+    role: string;
+    resourceType: string;
+  }
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { table, resourceColumn, resourceId, userId, role, resourceType } = params;
+
+  const { data: existing, error: lookupErr } = await findMembershipRow(
+    admin,
+    table,
+    resourceColumn,
+    resourceId,
+    userId
+  );
+
+  if (lookupErr) {
+    console.error("[acceptVisualifyInvitation] membership lookup failed", {
+      userId,
+      resourceType,
+      resourceId,
+      table,
+      message: lookupErr.message,
+    });
+    return { ok: false, message: "Could not verify membership." };
+  }
+
+  if (existing?.id) {
+    console.info("[acceptVisualifyInvitation] membership already existed", {
+      userId,
+      resourceType,
+      resourceId,
+      table,
+      membershipId: existing.id,
+    });
+    return { ok: true };
+  }
+
+  const { error: insErr } = await admin.from(table).insert({
+    [resourceColumn]: resourceId,
+    user_id: userId,
+    role,
+  });
+
+  if (insErr) {
+    if (isPostgresUniqueViolation(insErr)) {
+      const { data: raced, error: raceLookupErr } = await findMembershipRow(
+        admin,
+        table,
+        resourceColumn,
+        resourceId,
+        userId
+      );
+
+      if (raceLookupErr) {
+        console.error("[acceptVisualifyInvitation] membership verification failed", {
+          userId,
+          resourceType,
+          resourceId,
+          table,
+          message: raceLookupErr.message,
+        });
+        return { ok: false, message: "Could not verify membership after conflict." };
+      }
+
+      if (raced?.id) {
+        console.info("[acceptVisualifyInvitation] membership verified after unique violation", {
+          userId,
+          resourceType,
+          resourceId,
+          table,
+          membershipId: raced.id,
+        });
+        return { ok: true };
+      }
+
+      console.error("[acceptVisualifyInvitation] membership verification failed", {
+        userId,
+        resourceType,
+        resourceId,
+        table,
+        message: insErr.message,
+        code: insErr.code,
+      });
+      return { ok: false, message: "Membership row missing after unique violation." };
+    }
+
+    console.error("[acceptVisualifyInvitation] membership insert failed", {
+      userId,
+      resourceType,
+      resourceId,
+      table,
+      message: insErr.message,
+      code: insErr.code,
+    });
+    return { ok: false, message: "Could not add membership." };
+  }
+
+  const { data: verified, error: verifyErr } = await findMembershipRow(
+    admin,
+    table,
+    resourceColumn,
+    resourceId,
+    userId
+  );
+
+  if (verifyErr || !verified?.id) {
+    console.error("[acceptVisualifyInvitation] membership verification failed", {
+      userId,
+      resourceType,
+      resourceId,
+      table,
+      message: verifyErr?.message ?? "Row not found after insert.",
+    });
+    return { ok: false, message: "Membership row missing after insert." };
+  }
+
+  console.info("[acceptVisualifyInvitation] membership inserted", {
+    userId,
+    resourceType,
+    resourceId,
+    table,
+    membershipId: verified.id,
+    role,
+  });
+  return { ok: true };
+}
+
+async function ensureMembershipForInvitation(
+  row: InvitationMembershipRow,
+  user: { id: string },
+  admin: SupabaseClient
+): Promise<EnsureMembershipResult> {
+  const resourceId = parseResourceId(row.resource_id);
+  if (!resourceId) {
+    console.warn("[acceptVisualifyInvitation] invitation missing resource_id", {
+      userId: user.id,
+      resourceType: row.resource_type,
+    });
+    return { ok: false, code: "INVALID_INVITATION", message: "Invitation has no resource id." };
+  }
+
+  const role = invitationRole(row.role);
+  if (!role) {
+    return { ok: false, code: "INVALID_INVITATION", message: "Invitation has no role." };
+  }
+
+  if (row.resource_type === "portfolio") {
+    const ensured = await ensureMemberRow(admin, {
+      table: "visualify_portfolio_members",
+      resourceColumn: "portfolio_id",
+      resourceId,
+      userId: user.id,
+      role,
+      resourceType: row.resource_type,
+    });
+    if (!ensured.ok) {
+      return { ok: false, code: "MEMBERSHIP_INSERT_FAILED", message: ensured.message };
+    }
+    return { ok: true, resourceId };
+  }
+
+  if (row.resource_type === "project") {
+    const ensuredProject = await ensureMemberRow(admin, {
+      table: "visualify_project_members",
+      resourceColumn: "project_id",
+      resourceId,
+      userId: user.id,
+      role,
+      resourceType: row.resource_type,
+    });
+    if (!ensuredProject.ok) {
+      return { ok: false, code: "MEMBERSHIP_INSERT_FAILED", message: ensuredProject.message };
+    }
+
+    const { data: projectRow, error: projectErr } = await admin
+      .from("visualify_projects")
+      .select("portfolio_id")
+      .eq("id", resourceId)
+      .maybeSingle();
+
+    if (projectErr) {
+      return {
+        ok: false,
+        code: "MEMBERSHIP_INSERT_FAILED",
+        message: "Could not load project for portfolio access.",
+      };
+    }
+
+    if (!projectRow) {
+      return {
+        ok: false,
+        code: "MEMBERSHIP_INSERT_FAILED",
+        message: "Project not found for invitation.",
+      };
+    }
+
+    const portfolioId =
+      typeof projectRow.portfolio_id === "string" ? projectRow.portfolio_id.trim() : "";
+    if (portfolioId) {
+      const ensuredPortfolio = await ensureMemberRow(admin, {
+        table: "visualify_portfolio_members",
+        resourceColumn: "portfolio_id",
+        resourceId: portfolioId,
+        userId: user.id,
+        role: "viewer",
+        resourceType: "portfolio",
+      });
+      if (!ensuredPortfolio.ok) {
+        return { ok: false, code: "MEMBERSHIP_INSERT_FAILED", message: ensuredPortfolio.message };
+      }
+    }
+
+    return { ok: true, resourceId };
+  }
+
+  return { ok: false, code: "INVALID_INVITATION", message: "Unsupported invitation resource type." };
+}
+
+function membershipFailure(
+  result: Extract<EnsureMembershipResult, { ok: false }>
+): AcceptVisualifyInvitationFailure {
+  if (result.code === "INVALID_INVITATION") {
+    return failure("INVALID_INVITATION", 400, result.message);
+  }
+  return failure("MEMBERSHIP_INSERT_FAILED", 500, result.message);
 }
 
 export type AcceptVisualifyInvitationParams = {
@@ -162,15 +445,16 @@ export async function acceptVisualifyInvitation(
 
   if (row.status === "accepted") {
     if (row.auth_user_id === user.id) {
-      console.info("[acceptVisualifyInvitation] invitation already accepted", {
+      const membership = await ensureMembershipForInvitation(row, user, admin);
+      if (!membership.ok) {
+        return membershipFailure(membership);
+      }
+      console.info("[acceptVisualifyInvitation] invitation already accepted; membership ensured", {
         userId: user.id,
         resourceType: row.resource_type,
-        resourceId: row.resource_id,
+        resourceId: membership.resourceId,
       });
-      if (row.resource_type === "portfolio") {
-        return { ok: true, resource_type: "portfolio", portfolio_id: row.resource_id };
-      }
-      return { ok: true, resource_type: "project", project_id: row.resource_id };
+      return successForInvitation(row.resource_type, membership.resourceId);
     }
     return failure("INVITATION_ALREADY_USED", 409);
   }
@@ -210,102 +494,12 @@ export async function acceptVisualifyInvitation(
     return failure("PROFILE_FAILED", 500, "Could not prepare account profile.");
   }
 
+  const membership = await ensureMembershipForInvitation(row, user, admin);
+  if (!membership.ok) {
+    return membershipFailure(membership);
+  }
+
   const nowIso = new Date().toISOString();
-  const membershipTable =
-    row.resource_type === "portfolio" ? "visualify_portfolio_members" : "visualify_project_members";
-  const membershipResourceColumn = row.resource_type === "portfolio" ? "portfolio_id" : "project_id";
-
-  const { data: existingMember, error: memberLookupErr } = await admin
-    .from(membershipTable)
-    .select("id")
-    .eq(membershipResourceColumn, row.resource_id)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (memberLookupErr) {
-    return failure("MEMBERSHIP_INSERT_FAILED", 500, "Could not verify membership.");
-  }
-
-  if (!existingMember) {
-    const { error: insErr } = await admin.from(membershipTable).insert({
-      [membershipResourceColumn]: row.resource_id,
-      user_id: user.id,
-      role: row.role,
-    });
-
-    if (insErr && !isPostgresUniqueViolation(insErr)) {
-      console.error("[acceptVisualifyInvitation] membership insert failed", {
-        userId: user.id,
-        resourceType: row.resource_type,
-        resourceId: row.resource_id,
-        message: insErr.message,
-        code: insErr.code,
-      });
-      return failure("MEMBERSHIP_INSERT_FAILED", 500, "Could not add membership.");
-    }
-
-    console.info("[acceptVisualifyInvitation] membership inserted", {
-      userId: user.id,
-      resourceType: row.resource_type,
-      resourceId: row.resource_id,
-      role: row.role,
-    });
-  }
-
-  if (row.resource_type === "project") {
-    const { data: projectRow, error: projectErr } = await admin
-      .from("visualify_projects")
-      .select("portfolio_id")
-      .eq("id", row.resource_id)
-      .maybeSingle();
-
-    if (projectErr) {
-      return failure("MEMBERSHIP_INSERT_FAILED", 500, "Could not load project for portfolio access.");
-    }
-
-    if (!projectRow) {
-      return failure("MEMBERSHIP_INSERT_FAILED", 500, "Project not found for invitation.");
-    }
-
-    const portfolioId = projectRow.portfolio_id;
-    if (portfolioId) {
-      const { data: existingPortfolioMember, error: pmLookupErr } = await admin
-        .from("visualify_portfolio_members")
-        .select("id")
-        .eq("portfolio_id", portfolioId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (pmLookupErr) {
-        return failure("MEMBERSHIP_INSERT_FAILED", 500, "Could not verify portfolio membership.");
-      }
-
-      if (!existingPortfolioMember) {
-        const { error: pmInsErr } = await admin.from("visualify_portfolio_members").insert({
-          portfolio_id: portfolioId,
-          user_id: user.id,
-          role: "viewer",
-        });
-
-        if (pmInsErr && !isPostgresUniqueViolation(pmInsErr)) {
-          console.error("[acceptVisualifyInvitation] portfolio membership insert failed", {
-            userId: user.id,
-            portfolioId,
-            message: pmInsErr.message,
-            code: pmInsErr.code,
-          });
-          return failure("MEMBERSHIP_INSERT_FAILED", 500, "Could not add portfolio membership.");
-        }
-
-        console.info("[acceptVisualifyInvitation] portfolio membership inserted", {
-          userId: user.id,
-          portfolioId,
-          role: "viewer",
-        });
-      }
-    }
-  }
-
   const { data: updated, error: updErr } = await admin
     .from("visualify_invitations")
     .update({
@@ -324,20 +518,26 @@ export async function acceptVisualifyInvitation(
   if (!updated?.length) {
     const { data: again } = await admin
       .from("visualify_invitations")
-      .select("status, auth_user_id, resource_id")
+      .select("status, auth_user_id, resource_id, resource_type, role")
       .eq("id", row.id)
       .maybeSingle();
 
     if (again?.status === "accepted" && again.auth_user_id === user.id) {
-      console.info("[acceptVisualifyInvitation] invitation accepted (race)", {
-        userId: user.id,
-        resourceType: row.resource_type,
-        resourceId: again.resource_id,
-      });
-      if (row.resource_type === "portfolio") {
-        return { ok: true, resource_type: "portfolio", portfolio_id: again.resource_id };
+      const healRow: InvitationMembershipRow = {
+        resource_type: again.resource_type ?? row.resource_type,
+        resource_id: again.resource_id ?? row.resource_id,
+        role: again.role ?? row.role,
+      };
+      const racedMembership = await ensureMembershipForInvitation(healRow, user, admin);
+      if (!racedMembership.ok) {
+        return membershipFailure(racedMembership);
       }
-      return { ok: true, resource_type: "project", project_id: again.resource_id };
+      console.info("[acceptVisualifyInvitation] invitation accepted (race); membership ensured", {
+        userId: user.id,
+        resourceType: healRow.resource_type,
+        resourceId: racedMembership.resourceId,
+      });
+      return successForInvitation(healRow.resource_type, racedMembership.resourceId);
     }
 
     return failure("CONFLICT", 409);
@@ -347,11 +547,8 @@ export async function acceptVisualifyInvitation(
     userId: user.id,
     invitationId: row.id,
     resourceType: row.resource_type,
-    resourceId: row.resource_id,
+    resourceId: membership.resourceId,
   });
 
-  if (row.resource_type === "portfolio") {
-    return { ok: true, resource_type: "portfolio", portfolio_id: row.resource_id };
-  }
-  return { ok: true, resource_type: "project", project_id: row.resource_id };
+  return successForInvitation(row.resource_type, membership.resourceId);
 }
