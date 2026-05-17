@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { PrivacyPolicyContent } from "./PrivacyPolicyContent";
 import { TermsContent } from "./TermsContent";
 
-export type LegalDocumentId = "privacy" | "terms";
+export type AppShellLegalDocumentId = "privacy" | "terms";
 
-const documentMeta: Record<LegalDocumentId, { title: string; effectiveDate: string }> = {
+const documentMeta: Record<AppShellLegalDocumentId, { title: string; effectiveDate: string }> = {
   privacy: {
     title: "Privacy Policy",
     effectiveDate: "March 21, 2026",
@@ -37,7 +38,13 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: LegalDocumentId; onClose: () => void }) {
+export function AppShellLegalDocumentModal({
+  legalDocument,
+  onClose,
+}: {
+  legalDocument: AppShellLegalDocumentId;
+  onClose: () => void;
+}) {
   const meta = documentMeta[legalDocument];
 
   useEffect(() => {
@@ -49,14 +56,14 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
   }, [onClose]);
 
   useEffect(() => {
-    const prev = window.document.body.style.overflow;
-    window.document.body.style.overflow = "hidden";
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     return () => {
-      window.document.body.style.overflow = prev;
+      document.body.style.overflow = prev;
     };
   }, []);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6" role="presentation">
       <button
         type="button"
@@ -67,14 +74,13 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="legal-doc-title"
+        aria-labelledby="app-shell-legal-doc-title"
         className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_60%,transparent)] bg-[color-mix(in_oklab,var(--ds-surface-muted)_95%,transparent)] shadow-[var(--ds-shadow-modal-panel)] dark:border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] dark:bg-[var(--ds-surface-inset)]"
       >
-        {/* Header */}
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] px-6 pt-6 sm:px-8 sm:pt-7">
           <div className="min-w-0 flex-1">
             <h1
-              id="legal-doc-title"
+              id="app-shell-legal-doc-title"
               className="text-2xl font-semibold tracking-tight text-[var(--ds-text-primary)] sm:text-[1.75rem]"
             >
               {meta.title}
@@ -93,12 +99,10 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
           </button>
         </div>
 
-        {/* Scrollable Content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {legalDocument === "privacy" ? <PrivacyPolicyContent inModal /> : <TermsContent inModal />}
         </div>
 
-        {/* Footer — subtle close only */}
         <div className="flex shrink-0 items-center justify-end border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] px-6 py-3 sm:px-8">
           <button
             type="button"
@@ -109,6 +113,7 @@ export function LegalDocumentModal({ legalDocument, onClose }: { legalDocument: 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

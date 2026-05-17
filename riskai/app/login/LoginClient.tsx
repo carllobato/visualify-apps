@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LegalDocumentLink } from "@/components/legal/LegalDocumentLink";
+import { AppShellLegalDocumentLink } from "@visualify/app-shell";
 import { useEffect, useState, type FormEvent } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -286,14 +286,14 @@ export function LoginClient() {
   const legalFooter = (
     <AppLoginCardLegalFooter
       privacyLink={
-        <LegalDocumentLink document="privacy" className={appLoginCardLegalLinkClassName}>
+        <AppShellLegalDocumentLink document="privacy" className={appLoginCardLegalLinkClassName}>
           Privacy Policy
-        </LegalDocumentLink>
+        </AppShellLegalDocumentLink>
       }
       termsLink={
-        <LegalDocumentLink document="terms" className={appLoginCardLegalLinkClassName}>
+        <AppShellLegalDocumentLink document="terms" className={appLoginCardLegalLinkClassName}>
           Terms &amp; Conditions
-        </LegalDocumentLink>
+        </AppShellLegalDocumentLink>
       }
     />
   );

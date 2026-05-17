@@ -5,7 +5,7 @@ import "./globals.css";
 import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ProjectionScenarioProvider } from "@/context/ProjectionScenarioContext";
-import { LegalDocumentProvider } from "@/components/legal/LegalDocumentProvider";
+import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
 import { RiskRegisterProvider } from "@/store/risk-register.store";
 import { InactivityGuard } from "@/components/InactivityGuard";
 import { SingleSessionGuard } from "@/components/SingleSessionGuard";
@@ -14,7 +14,7 @@ const geist = Geist({ subsets: ["latin"], weight: ["400", "500", "600"], variabl
 const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
-  title: "RiskAI",
+  title: visualifyAppDocumentTitle("RiskAI"),
   description: "AI-powered Risk Register",
 };
 
@@ -87,11 +87,11 @@ export default function RootLayout({
         <ThemeProvider>
           <ProjectionScenarioProvider>
             <RiskRegisterProvider>
-              <LegalDocumentProvider>
+              <AppShellLegalDocumentProvider>
                 {children}
                 <InactivityGuard />
                 {singleSessionGuardEnabled ? <SingleSessionGuard /> : null}
-              </LegalDocumentProvider>
+              </AppShellLegalDocumentProvider>
             </RiskRegisterProvider>
           </ProjectionScenarioProvider>
         </ThemeProvider>

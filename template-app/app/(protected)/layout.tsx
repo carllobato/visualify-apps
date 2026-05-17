@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import {
   AppShellFrameGutter,
   AppShellFramedSurface,
-  AppShellLegalFooter,
+  AppShellLegalFooterWithModals,
   AppShellMainColumn,
   AppShellOuterCanvas,
   AppShellScrollRegion,
@@ -37,8 +37,6 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(productConfig.HQ_APPS_URL);
   }
 
-  const legalOrigin = new URL(productConfig.HQ_APPS_URL).origin;
-
   return (
     <AppShellOuterCanvas>
       <TemplateAppShellRail />
@@ -46,12 +44,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         <AppShellFrameGutter>
           <AppShellFramedSurface>
             <AppShellScrollRegion
-              footer={
-                <AppShellLegalFooter
-                  privacyHref={`${legalOrigin}/privacy`}
-                  termsHref={`${legalOrigin}/terms`}
-                />
-              }
+              footer={<AppShellLegalFooterWithModals />}
             >
               {children}
             </AppShellScrollRegion>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { TermsContent } from "@/components/legal/TermsContent";
+import { TermsContent } from "@visualify/app-shell";
 
 export const metadata: Metadata = {
   title: "Terms & Conditions — RiskAI by Visualify",

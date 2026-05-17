@@ -1,3 +1,5 @@
+export { visualifyAppDocumentTitle } from "./visualify-document-title";
+
 export {
   appShellRailEntitySectionClassName,
   appShellRailIconWellClassName,
@@ -73,6 +75,17 @@ export type {
 
 export { AppShellLegalFooter } from "./AppShellLegalFooter";
 export type { AppShellLegalFooterProps } from "./AppShellLegalFooter";
+
+export {
+  AppShellLegalDocumentProvider,
+  AppShellLegalDocumentLink,
+  AppShellLegalDocumentModal,
+  AppShellLegalFooterWithModals,
+  PrivacyPolicyContent,
+  TermsContent,
+  useAppShellLegalDocument,
+} from "./legal";
+export type { AppShellLegalDocumentId } from "./legal";
 
 export {
   AppShellRail,

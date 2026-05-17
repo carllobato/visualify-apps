@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
 import {
   AppLoginCardHeader,
   AppLoginCardLegalFooter,
+  AppShellLegalDocumentLink,
   appLoginCardLegalLinkClassName,
   AppLoginFormError,
   AppLoginPasswordField,
@@ -188,14 +188,14 @@ export function LoginForm({ serverError }: { serverError?: string }) {
 
           <AppLoginCardLegalFooter
             privacyLink={
-              <Link href="#" className={appLoginCardLegalLinkClassName}>
+              <AppShellLegalDocumentLink document="privacy" className={appLoginCardLegalLinkClassName}>
                 Privacy Policy
-              </Link>
+              </AppShellLegalDocumentLink>
             }
             termsLink={
-              <Link href="#" className={appLoginCardLegalLinkClassName}>
+              <AppShellLegalDocumentLink document="terms" className={appLoginCardLegalLinkClassName}>
                 Terms &amp; Conditions
-              </Link>
+              </AppShellLegalDocumentLink>
             }
           />
         </form>
@@ -239,14 +239,14 @@ export function LoginForm({ serverError }: { serverError?: string }) {
 
           <AppLoginCardLegalFooter
             privacyLink={
-              <Link href="#" className={appLoginCardLegalLinkClassName}>
+              <AppShellLegalDocumentLink document="privacy" className={appLoginCardLegalLinkClassName}>
                 Privacy Policy
-              </Link>
+              </AppShellLegalDocumentLink>
             }
             termsLink={
-              <Link href="#" className={appLoginCardLegalLinkClassName}>
+              <AppShellLegalDocumentLink document="terms" className={appLoginCardLegalLinkClassName}>
                 Terms &amp; Conditions
-              </Link>
+              </AppShellLegalDocumentLink>
             }
           />
         </form>

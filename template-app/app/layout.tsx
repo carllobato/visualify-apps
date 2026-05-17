@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Visualify Template App",
+  title: visualifyAppDocumentTitle("Template App"),
   description: "Visualify product app starter",
 };
 
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AppShellLegalDocumentProvider>{children}</AppShellLegalDocumentProvider>
+      </body>
     </html>
   );
 }
