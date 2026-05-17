@@ -2603,9 +2603,9 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
         </Callout>
       )}
       {simulationReadOnly && (
-        <Callout status="info" className="mt-2" role="status">
-          View-only access: you cannot run or change simulations for this project.
-        </Callout>
+        <p className="m-0 mt-2 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]" role="status">
+          Read-only access
+        </p>
       )}
 
       {loadingSnapshot && (

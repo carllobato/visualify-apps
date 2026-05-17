@@ -9,6 +9,10 @@ import {
   isMemberAuthEmailsRpcMissing,
   memberAuthEmailLookup,
 } from "@/lib/db/memberAuthEmailsMap";
+import {
+  canAssignPortfolioInviteRole,
+  isPortfolioMemberRole,
+} from "@/lib/db/memberInviteRoles";
 import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
 import { coerceProfileFromUnknown } from "@/lib/profileDisplayCoerce";
 import type { ProfileDisplayRow } from "@/types/projectMembers";
@@ -21,12 +25,6 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
-
-const ROLES: PortfolioMemberRole[] = ["owner", "editor", "viewer"];
-
-function isRole(v: unknown): v is PortfolioMemberRole {
-  return typeof v === "string" && (ROLES as string[]).includes(v);
-}
 
 function portfolioInviteDebugEnabled() {
   return process.env.NODE_ENV === "development" || env.PORTFOLIO_INVITE_DEBUG;
@@ -239,10 +237,16 @@ export async function POST(
   if (!email) {
     return portfolioInviteTraceResponse({ error: "Email is required" }, 400);
   }
-  if (!isRole(body.role)) {
+  if (!isPortfolioMemberRole(body.role)) {
     return portfolioInviteTraceResponse({ error: "Invalid role" }, 400);
   }
   const role = body.role;
+  if (!canAssignPortfolioInviteRole(viewer.memberRole, role)) {
+    return portfolioInviteTraceResponse(
+      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
+      403
+    );
+  }
   const requestedFirstName = typeof body.first_name === "string" ? body.first_name.trim() : "";
   const requestedSurname = typeof body.surname === "string" ? body.surname.trim() : "";
 

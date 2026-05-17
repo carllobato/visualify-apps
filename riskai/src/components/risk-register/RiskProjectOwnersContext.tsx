@@ -43,6 +43,7 @@ type RiskProjectOwnersContextValue = {
   ownerNames: string[];
   loading: boolean;
   error: string | null;
+  ownersReadOnly: boolean;
   refetch: () => Promise<void>;
   /** Inserts if trimmed name is non-empty and not already present for this project. */
   createProjectOwner: (name: string) => Promise<void>;
@@ -53,11 +54,13 @@ const RiskProjectOwnersContext = createContext<RiskProjectOwnersContextValue | n
 export function RiskProjectOwnersProvider({
   projectId,
   extraOwnerNamesFromRisks,
+  ownersReadOnly = false,
   children,
 }: {
   projectId: string;
   /** Names present on `riskai_risks.owner` that may be missing from `riskai_project_owners` (e.g. seeded/demo rows). */
   extraOwnerNamesFromRisks?: string[];
+  ownersReadOnly?: boolean;
   children: ReactNode;
 }) {
   const [owners, setOwners] = useState<RiskaiProjectOwnerRow[]>([]);
@@ -97,6 +100,7 @@ export function RiskProjectOwnersProvider({
 
   const createProjectOwner = useCallback(
     async (rawName: string) => {
+      if (ownersReadOnly) return;
       const name = rawName.trim();
       if (!name) return;
       const supabase = supabaseBrowserClient();
@@ -110,7 +114,7 @@ export function RiskProjectOwnersProvider({
       dlog("[risk owner] created new owner", name);
       await loadOwners();
     },
-    [projectId, loadOwners]
+    [ownersReadOnly, projectId, loadOwners]
   );
 
   const ownersForPicker = useMemo(() => {
@@ -136,10 +140,11 @@ export function RiskProjectOwnersProvider({
       ownerNames: ownersForPicker.map((o) => o.name),
       loading,
       error,
+      ownersReadOnly,
       refetch: loadOwners,
       createProjectOwner,
     }),
-    [projectId, ownersForPicker, loading, error, loadOwners, createProjectOwner]
+    [projectId, ownersForPicker, loading, error, ownersReadOnly, loadOwners, createProjectOwner]
   );
 
   return (

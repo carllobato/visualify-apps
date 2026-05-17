@@ -500,7 +500,10 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     fetch("/api/project-context", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(toSave),
+      body: JSON.stringify({
+        ...toSave,
+        ...(projectId ? { projectId } : {}),
+      }),
     }).catch(() => {});
     if (projectId) {
       fetch(`/api/projects/${projectId}`, {
@@ -604,13 +607,9 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   return (
     <main className="ds-document-page">
       {settingsReadOnly && (
-        <Callout
-          status="info"
-          className="mb-4 !px-3 !py-2 text-[length:var(--ds-text-sm)]"
-          role="status"
-        >
+        <p className="mb-4 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]" role="status">
           {PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE}
-        </Callout>
+        </p>
       )}
 
       <div className="ds-project-settings-tabs">

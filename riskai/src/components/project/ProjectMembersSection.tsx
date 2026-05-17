@@ -25,6 +25,8 @@ import {
   TableRow,
 } from "@visualify/design-system";
 import { LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
+import { MemberSectionPermissionHints } from "@/components/settings/MemberSectionPermissionHints";
+import { getAssignableProjectInviteRoles } from "@/lib/db/memberInviteRoles";
 import {
   ADD_MEMBER_ROLE_PLACEHOLDER_LABEL,
   ADD_MEMBER_ROLE_VALIDATION_ERROR,
@@ -167,6 +169,14 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const canChangeRole = viewer?.canChangeMemberRoles ?? false;
   const canRemove = viewer?.canRemoveMembers ?? false;
   const showRowActions = canChangeRole || canRemove;
+  const assignableInviteRoles = useMemo(
+    () => getAssignableProjectInviteRoles(viewer?.memberRole ?? null),
+    [viewer?.memberRole]
+  );
+  const inviteRoleOptions = useMemo(
+    () => ROLE_OPTIONS.filter((o) => assignableInviteRoles.includes(o.value)),
+    [assignableInviteRoles]
+  );
 
   const membersRows = useMemo(() => {
     const uid = viewer?.currentUserId;
@@ -501,6 +511,11 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
           ) : null}
         </CardBody>
       </Card>
+      <MemberSectionPermissionHints
+        resource="project"
+        canInviteMembers={canInvite}
+        canChangeMemberRoles={canChangeRole}
+      />
       {canInvite && isAddMemberModalOpen
         ? createPortal(
             <div
@@ -586,7 +601,7 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                         <option value="" disabled>
                           {ADD_MEMBER_ROLE_PLACEHOLDER_LABEL}
                         </option>
-                        {ROLE_OPTIONS.map(({ value, label }) => (
+                        {inviteRoleOptions.map(({ value, label }) => (
                           <option key={value} value={value}>
                             {label}
                           </option>

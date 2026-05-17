@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { deriveGuidedRiskConversationState } from "@/lib/ai/deriveGuidedRiskConversationState";
 import type { GuidedRiskConversationState } from "@/lib/ai/guidedRiskConversationState";
+import { assertOptionalProjectContentEditFromBody } from "@/lib/auth/assertProjectAccess";
 import { requireUser } from "@/lib/auth/requireUser";
 import { checkAiRateLimit, buildRateLimit429Payload } from "@/server/ai/rate-limit";
 import { env } from "@/lib/env";
@@ -186,6 +187,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const projectAccess = await assertOptionalProjectContentEditFromBody(body);
+    if (projectAccess instanceof NextResponse) return projectAccess;
+
     const messages = normalizeMessages(body?.messages);
     const categories = normalizeCategories(body?.categories);
     const lastUser = [...messages].reverse().find((m) => m.role === "user");

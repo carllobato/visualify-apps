@@ -18,6 +18,7 @@ import {
 } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import { fetchLatestReportingMonthYearKeyForScope } from "@/lib/db/fetchLatestReportingMonthYearKeyForScope";
 import { formatReportMonthLabel } from "@/lib/db/snapshots";
+import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import type { ProjectCurrency } from "@/lib/projectContext";
 import { computeCoverageRatioByCurrency, sumContingencyByCurrency } from "@/lib/portfolioContingencyAggregate";
@@ -62,6 +63,15 @@ export default async function PortfolioOverviewPage({
   const reportingMonthYearFromUrl = reportingMonthYearKeyFromSearchParams(sp);
 
   const supabase = await supabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const portfolioAccess =
+    user != null ? await assertPortfolioAdminAccess(portfolioId, supabase, user.id) : null;
+  const canCreatePortfolioProject =
+    portfolioAccess != null && "portfolio" in portfolioAccess
+      ? portfolioAccess.canInviteMembers
+      : false;
 
   const defaultReportingMonthYear = await fetchLatestReportingMonthYearKeyForScope(supabase, {
     portfolioId,
@@ -329,6 +339,7 @@ export default async function PortfolioOverviewPage({
     <>
       <PortfolioOverviewContent
         portfolioId={portfolioId}
+        canCreatePortfolioProject={canCreatePortfolioProject}
         reportingUnit={reportingUnit}
         reportingMonthLabel={reportingMonthLabel}
         projectCount={dashboardProjectCount}

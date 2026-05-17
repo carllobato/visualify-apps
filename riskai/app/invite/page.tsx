@@ -1,8 +1,11 @@
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { APP_ORIGIN } from "@/lib/host";
-import { supabaseServerClient } from "@/lib/supabase/server";
+import {
+  acceptVisualifyInvitation,
+  inviteErrorQueryValue,
+  type AcceptVisualifyInvitationErrorCode,
+} from "@/lib/auth/acceptVisualifyInvitation";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import { supabaseServerClient } from "@/lib/supabase/server";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -19,25 +22,38 @@ function withInviteAcceptedQuery(path: string): string {
   return `${u.pathname}${u.search}`;
 }
 
-type AcceptJson = {
-  ok?: boolean;
-  error?: string;
-  resource_type?: string;
-  portfolio_id?: string;
-  project_id?: string;
-};
+function loginRedirectWithInviteContext(params: {
+  inviteToken: string;
+  invitedEmail: string;
+  mode: string;
+  inviteError?: string;
+  inviteConflict?: boolean;
+}): never {
+  const sp = new URLSearchParams();
+  sp.set("mode", params.mode || "signup");
+  if (params.inviteToken) sp.set("invite_token", params.inviteToken);
+  if (params.invitedEmail) sp.set("invited_email", params.invitedEmail);
+  if (params.inviteError) sp.set("invite_error", params.inviteError);
+  if (params.inviteConflict) sp.set("invite_conflict", "1");
+  redirect(`/login?${sp.toString()}`);
+}
 
-async function acceptInvitationUrl(inviteToken: string): Promise<string> {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const forwardedProto = h.get("x-forwarded-proto");
-  const proto =
-    forwardedProto ??
-    (host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https");
-  const base = host ? `${proto}://${host}` : APP_ORIGIN;
-  const u = new URL("/api/invitations/accept", base.endsWith("/") ? base.slice(0, -1) : base);
-  u.searchParams.set("invite_token", inviteToken);
-  return u.toString();
+function redirectInviteFailure(
+  code: AcceptVisualifyInvitationErrorCode,
+  inviteToken: string,
+  invitedEmail: string,
+  mode: string
+): never {
+  const useConflict =
+    code === "EMAIL_MISMATCH" || code === "CONFLICT" || code === "INVITATION_ALREADY_USED";
+
+  loginRedirectWithInviteContext({
+    inviteToken,
+    invitedEmail,
+    mode,
+    inviteError: inviteErrorQueryValue(code),
+    inviteConflict: useConflict,
+  });
 }
 
 export default async function InvitePage({
@@ -59,59 +75,31 @@ export default async function InvitePage({
     if (!inviteToken) {
       redirect("/login?mode=signup");
     }
-    const sp = new URLSearchParams();
-    sp.set("mode", mode || "signup");
-    sp.set("invite_token", inviteToken);
-    if (invitedEmail) {
-      sp.set("invited_email", invitedEmail);
-    }
-    redirect(`/login?${sp.toString()}`);
+    loginRedirectWithInviteContext({
+      inviteToken,
+      invitedEmail,
+      mode: mode || "signup",
+    });
   }
 
   if (!inviteToken) {
-    redirect(DASHBOARD_PATH);
+    redirect(`${DASHBOARD_PATH}?invite_error=invite_token_required`);
   }
 
-  const h = await headers();
-  const cookie = h.get("cookie") ?? "";
-  const res = await fetch(await acceptInvitationUrl(inviteToken), {
-    method: "GET",
-    ...(cookie ? { headers: { cookie } } : {}),
-    cache: "no-store",
+  const result = await acceptVisualifyInvitation({
+    inviteToken,
+    user: { id: user.id, email: user.email },
   });
 
-  let data: AcceptJson = {};
-  try {
-    data = (await res.json()) as AcceptJson;
-  } catch {
-    redirect(DASHBOARD_PATH);
+  if (result.ok) {
+    if (result.resource_type === "portfolio" && result.portfolio_id) {
+      redirect(withInviteAcceptedQuery(riskaiPath(`/portfolios/${result.portfolio_id}`)));
+    }
+    if (result.resource_type === "project" && result.project_id) {
+      redirect(withInviteAcceptedQuery(riskaiPath(`/projects/${result.project_id}`)));
+    }
+    redirect(withInviteAcceptedQuery(DASHBOARD_PATH));
   }
 
-  if (res.ok && data.ok) {
-    if (data.resource_type === "portfolio" && data.portfolio_id) {
-      redirect(withInviteAcceptedQuery(riskaiPath(`/portfolios/${data.portfolio_id}`)));
-    }
-    if (data.resource_type === "project" && data.project_id) {
-      redirect(withInviteAcceptedQuery(riskaiPath(`/projects/${data.project_id}`)));
-    }
-    redirect(DASHBOARD_PATH);
-  }
-
-  if (
-    (res.status === 403 && data.error === "EMAIL_MISMATCH") ||
-    (res.status === 409 && data.error === "CONFLICT")
-  ) {
-    const sp = new URLSearchParams();
-    sp.set("mode", "signup");
-    sp.set("invite_token", inviteToken);
-    sp.set("invite_conflict", "1");
-
-    if (invitedEmail) {
-      sp.set("invited_email", invitedEmail);
-    }
-
-    redirect(`/login?${sp.toString()}`);
-  }
-
-  redirect(DASHBOARD_PATH);
+  redirectInviteFailure(result.code, inviteToken, invitedEmail, mode || "signup");
 }

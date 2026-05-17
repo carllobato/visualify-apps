@@ -86,7 +86,8 @@ export function RiskOwnerPicker({
   disabled,
   allowEmptyPlaceholder,
 }: RiskOwnerPickerProps) {
-  const { owners, loading, error } = useRiskProjectOwners();
+  const { owners, loading, error, ownersReadOnly } = useRiskProjectOwners();
+  const fieldDisabled = disabled || ownersReadOnly;
   const nameSet = useMemo(() => new Set(owners.map((o) => o.name)), [owners]);
   const ownersForOptions = useMemo(
     () => owners.filter((o) => o.name.trim().length > 0),
@@ -158,7 +159,7 @@ export function RiskOwnerPicker({
           dlog("[risk owner] select change", { raw: v, logical, addNewMode: logical === NEW_RISK_OWNER_SENTINEL });
           onSelectChange(logical);
         }}
-        disabled={disabled}
+        disabled={fieldDisabled}
         aria-label="Owner"
       >
         {allowEmptyPlaceholder && (
@@ -177,9 +178,9 @@ export function RiskOwnerPicker({
             {o.name}
           </option>
         ))}
-        <option value={NEW_RISK_OWNER_SENTINEL}>Add new owner…</option>
+        {!ownersReadOnly && <option value={NEW_RISK_OWNER_SENTINEL}>Add new owner…</option>}
       </select>
-      {selectValue === NEW_RISK_OWNER_SENTINEL && (
+      {selectValue === NEW_RISK_OWNER_SENTINEL && !ownersReadOnly && (
         <input
           id={`${id}-new-name`}
           type="text"
@@ -188,7 +189,7 @@ export function RiskOwnerPicker({
           value={newNameDraft}
           onChange={(e) => onNewNameDraftChange(e.target.value)}
           onBlur={() => onNewNameInputBlur?.()}
-          disabled={disabled}
+          disabled={fieldDisabled}
           placeholder="New owner name"
           aria-label="New owner name"
         />

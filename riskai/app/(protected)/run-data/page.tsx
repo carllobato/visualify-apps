@@ -51,6 +51,8 @@ import {
   formatTriggeredByLabel,
 } from "@/lib/profiles/profileDb";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
+import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
+import { ProjectReadOnlyNotice } from "@/components/project/ProjectReadOnlyNotice";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { loadProjectContext, riskAppetiteToPercent } from "@/lib/projectContext";
 import {
@@ -172,6 +174,10 @@ export type RunDataPageProps = {
  * Every section supports validation of the data model and calculations; no decorative charts.
  */
 export default function RunDataPage({ projectId, projectName }: RunDataPageProps = {}) {
+  const projectPermissions = useProjectPermissions();
+  const simulationReadOnly =
+    Boolean(projectId?.trim()) &&
+    (projectPermissions == null || !projectPermissions.canEditContent);
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
   const { risks, simulation, runSimulation, clearSimulationHistory, hasDraftRisks, invalidRunnableCount, riskForecastsById, forwardPressure, setRisks, hydrateSimulationFromDbSnapshot } = useRiskRegister();
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
@@ -1266,6 +1272,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         <Button
           type="button"
           onClick={async () => {
+            if (simulationReadOnly) return;
             const snapshotProjectId = projectId?.trim();
             if (!snapshotProjectId) {
               console.error("[run-data] runSimulation skipped: projectId is required for snapshot access");
@@ -1287,7 +1294,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
               return;
             }
           }}
-          disabled={hasDraftRisks || invalidRunnableCount > 0}
+          disabled={simulationReadOnly || hasDraftRisks || invalidRunnableCount > 0}
           variant="secondary"
         >
           Run Simulation
@@ -1295,6 +1302,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
         <Button
           type="button"
           onClick={async () => {
+            if (simulationReadOnly) return;
             const snapshotProjectId = projectId?.trim();
             if (!snapshotProjectId) {
               console.error("[run-data] clearProjectSnapshots skipped: projectId is required for snapshot access");
@@ -1309,11 +1317,16 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
               console.error("[run-data] clear snapshots", err);
             }
           }}
+          disabled={simulationReadOnly}
           variant="secondary"
         >
           Clear History
         </Button>
-        <LockedReportingRunMonthSelect projectId={projectId} onSelectRow={handleSelectLockedReportingRun} />
+        <LockedReportingRunMonthSelect
+          projectId={projectId}
+          onSelectRow={handleSelectLockedReportingRun}
+          disabled={simulationReadOnly}
+        />
       </>
     ),
     [
@@ -1323,6 +1336,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
       invalidRunnableCount,
       projectId,
       runSimulation,
+      simulationReadOnly,
     ]
   );
   const showInlineHeader = !projectId || !setPageHeaderExtras;
@@ -1345,6 +1359,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           <div className={PAGE_ACTION_ROW}>{simulationActions}</div>
         </>
       )}
+      {simulationReadOnly && <ProjectReadOnlyNotice className="mb-3" />}
       <div className={PAGE_ACTION_ROW}>
         {hasDraftRisks && (
           <Callout status="warning" className={`${CALLOUT_ROW} text-[length:var(--ds-text-sm)]`} role="status">
@@ -3031,6 +3046,7 @@ export default function RunDataPage({ projectId, projectName }: RunDataPageProps
           {snapshotNeutral ? (
             <div className={SECTION_GAP}>
               <MitigationOptimisationPanel
+                projectId={projectId}
                 risks={risks}
                 neutralSnapshot={current ?? null}
                 targetPercent={targetPercent}

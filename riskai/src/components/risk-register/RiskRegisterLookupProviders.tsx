@@ -10,18 +10,25 @@ import { RiskStatusOptionsProvider } from "./RiskStatusOptionsContext";
 export function RiskRegisterLookupProviders({
   projectId,
   extraOwnerNamesFromRisks,
+  ownersReadOnly = false,
   children,
 }: {
   projectId: string;
   /** Owner strings from loaded risks so the picker lists names present on rows even if missing from `riskai_project_owners`. */
   extraOwnerNamesFromRisks?: string[];
+  /** When true, block creating new `riskai_project_owners` rows (viewer / read-only). */
+  ownersReadOnly?: boolean;
   children: ReactNode;
 }) {
   return (
     <RiskCategoryOptionsProvider>
       <RiskStatusOptionsProvider>
         <RiskAppliesToOptionsProvider>
-          <RiskProjectOwnersProvider projectId={projectId} extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}>
+          <RiskProjectOwnersProvider
+            projectId={projectId}
+            extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+            ownersReadOnly={ownersReadOnly}
+          >
             {children}
           </RiskProjectOwnersProvider>
         </RiskAppliesToOptionsProvider>

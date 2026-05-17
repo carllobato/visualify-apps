@@ -1,8 +1,7 @@
 import type { PortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAccess";
 
 /** Shown when project metadata fields are read-only (viewer / no edit permission). */
-export const PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE =
-  "View-only access: you can review project settings but not change them.";
+export const PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE = "Read-only access";
 
 /**
  * Portfolio settings banner from server-resolved capabilities (matches portfolio role model).

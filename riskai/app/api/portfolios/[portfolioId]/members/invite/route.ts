@@ -4,18 +4,16 @@ import {
   InviteToPortfolioError,
 } from "@/lib/auth/portfolioInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
+import {
+  canAssignPortfolioInviteRole,
+  isPortfolioMemberRole,
+} from "@/lib/db/memberInviteRoles";
 import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
 import type { PortfolioMemberRole } from "@/types/portfolioMembers";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-const ROLES: PortfolioMemberRole[] = ["owner", "editor", "viewer"];
-
-function isRole(v: unknown): v is PortfolioMemberRole {
-  return typeof v === "string" && (ROLES as string[]).includes(v);
-}
 
 function isMissingServiceRoleMessage(raw: string): boolean {
   const lower = raw.toLowerCase();
@@ -92,10 +90,16 @@ export async function POST(
   if (!firstName || !surname) {
     return NextResponse.json({ error: "First name and surname are required" }, { status: 400 });
   }
-  if (!isRole(body.role)) {
+  if (!isPortfolioMemberRole(body.role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   const role = body.role;
+  if (!canAssignPortfolioInviteRole(viewer.memberRole, role)) {
+    return NextResponse.json(
+      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
+      { status: 403 }
+    );
+  }
 
   const { data: found, error: rpcErr } = await supabase.rpc(
     "riskai_find_profile_by_email_for_portfolio",

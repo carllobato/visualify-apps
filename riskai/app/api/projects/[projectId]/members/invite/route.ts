@@ -6,6 +6,10 @@ import {
 } from "@/lib/auth/projectInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectIfAccessible } from "@/lib/db/projectAccess";
+import {
+  canAssignProjectInviteRole,
+  isProjectMemberRole,
+} from "@/lib/db/memberInviteRoles";
 import { getProjectMembersViewerContext } from "@/lib/db/projectMemberAccess";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
@@ -13,12 +17,6 @@ import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-const ROLES: ProjectMemberRole[] = ["owner", "editor", "viewer"];
-
-function isRole(v: unknown): v is ProjectMemberRole {
-  return typeof v === "string" && (ROLES as string[]).includes(v);
-}
 
 function logProjectInviteDiagnostic(payload: {
   projectId: string;
@@ -104,10 +102,16 @@ export async function POST(
   if (!firstName || !surname) {
     return NextResponse.json({ error: "First name and surname are required" }, { status: 400 });
   }
-  if (!isRole(body.role)) {
+  if (!isProjectMemberRole(body.role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   const role = body.role;
+  if (!canAssignProjectInviteRole(viewer.memberRole, role)) {
+    return NextResponse.json(
+      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
+      { status: 403 }
+    );
+  }
 
   const { data: found, error: rpcErr } = await supabase.rpc(
     "riskai_find_profile_by_email_for_project",

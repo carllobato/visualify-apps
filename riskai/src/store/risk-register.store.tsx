@@ -651,10 +651,16 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
     const neutralP80 = neutralSnapshot?.p80Cost ?? null;
     const t = setTimeout(() => {
       dlog("[store] sync -> /api/simulation-context", { riskCount, hasSnapshot, neutralP80 });
+      const syncProjectId =
+        typeof window !== "undefined" ? projectIdFromAppPathname(window.location.pathname) : null;
       fetch("/api/simulation-context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ risks: state.risks, neutralSnapshot: neutralSnapshot ?? null }),
+        body: JSON.stringify({
+          risks: state.risks,
+          neutralSnapshot: neutralSnapshot ?? null,
+          ...(syncProjectId ? { projectId: syncProjectId } : {}),
+        }),
       })
         .then((res) => {
           if (!res.ok) dwarn("[store] sync failed", { status: res.status });

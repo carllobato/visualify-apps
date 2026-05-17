@@ -25,7 +25,7 @@ export function RiskOwnerRowSelect({
   /** Merged onto the field (e.g. `truncate` in narrow table cells). */
   className?: string;
 }) {
-  const { createProjectOwner } = useRiskProjectOwners();
+  const { createProjectOwner, ownersReadOnly } = useRiskProjectOwners();
   const raw = (owner ?? "").trim();
   const normalized = raw === "Unassigned" ? "" : raw;
 
@@ -39,17 +39,18 @@ export function RiskOwnerRowSelect({
 
   const handleSelectChange = useCallback(
     (next: string) => {
+      if (ownersReadOnly) return;
       setSelectValue(next);
       if (next !== NEW_RISK_OWNER_SENTINEL) {
         setNewNameDraft("");
         onCommit(next.trim());
       }
     },
-    [onCommit]
+    [onCommit, ownersReadOnly]
   );
 
   const handleNewBlur = useCallback(async () => {
-    if (selectValue !== NEW_RISK_OWNER_SENTINEL) return;
+    if (ownersReadOnly || selectValue !== NEW_RISK_OWNER_SENTINEL) return;
     const resolved = getResolvedOwnerPickerValue(selectValue, newNameDraft);
     if (!resolved) return;
     try {
@@ -61,7 +62,7 @@ export function RiskOwnerRowSelect({
     setNewNameDraft("");
     onCommit(resolved);
     dlog("[risk owner] row blur new owner", resolved);
-  }, [selectValue, newNameDraft, createProjectOwner, onCommit]);
+  }, [ownersReadOnly, selectValue, newNameDraft, createProjectOwner, onCommit]);
 
   return (
     <RiskOwnerPicker
@@ -70,8 +71,9 @@ export function RiskOwnerRowSelect({
       newNameDraft={newNameDraft}
       onSelectChange={handleSelectChange}
       onNewNameDraftChange={setNewNameDraft}
-      onNewNameInputBlur={handleNewBlur}
+      onNewNameInputBlur={ownersReadOnly ? undefined : handleNewBlur}
       className={["min-w-0", className].filter(Boolean).join(" ")}
+      disabled={ownersReadOnly}
       allowEmptyPlaceholder={normalized === ""}
     />
   );

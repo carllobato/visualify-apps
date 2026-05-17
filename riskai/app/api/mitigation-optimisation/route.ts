@@ -9,6 +9,7 @@
  */
 import { NextResponse } from "next/server";
 import { getSimulationContext, getSimulationContextStatus } from "@/lib/getSimulationContext";
+import { assertOptionalProjectReadFromBody } from "@/lib/auth/assertProjectAccess";
 import { requireUser } from "@/lib/auth/requireUser";
 import { computeMitigationOptimisation, getNeutralP80Cost } from "@/engine/mitigationOptimisation";
 import type { BenefitMetric } from "@/engine/mitigationOptimisation";
@@ -105,6 +106,8 @@ export async function POST(req: Request) {
     if (body == null || typeof body !== "object") {
       return NextResponse.json({ error: "Body must be an object" }, { status: 400 });
     }
+    const projectAccess = await assertOptionalProjectReadFromBody(body);
+    if (projectAccess instanceof NextResponse) return projectAccess;
 
     const spendResult = validateSpendSteps(body.spendSteps);
     if (!spendResult.ok) {

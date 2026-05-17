@@ -37,6 +37,7 @@ import {
   isRiskStatusArchived,
 } from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
+import { ProjectReadOnlyNotice } from "@/components/project/ProjectReadOnlyNotice";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import {
@@ -836,10 +837,11 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   }
 
   return (
-    <RiskRegisterLookupProviders
-      projectId={projectIdTrimmed}
-      extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
-    >
+      <RiskRegisterLookupProviders
+        projectId={projectIdTrimmed}
+        extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+        ownersReadOnly={contentReadOnly}
+      >
     <>
     <main className={risks.length === 0 ? RISK_REGISTER_EMPTY_MAIN_CLASS : RISK_REGISTER_MAIN_CLASS}>
       <div className={registerHeaderBlockClass}>
@@ -852,6 +854,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
           onSaveToServer={contentReadOnly ? undefined : handleSaveToServer}
           saveToServerLoading={saveToServerLoading}
         />
+        {contentReadOnly && <ProjectReadOnlyNotice className="mt-2" />}
         {saveToServerError && (
           <FieldError className="mt-2">Save failed: {saveToServerError}</FieldError>
         )}

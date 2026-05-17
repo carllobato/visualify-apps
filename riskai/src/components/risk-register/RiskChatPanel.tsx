@@ -292,7 +292,11 @@ export function RiskChatPanel({
       const res = await fetch("/api/ai/risk-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, categories: categoryNames }),
+        body: JSON.stringify({
+          messages: next,
+          categories: categoryNames,
+          ...(projectId != null && projectId.trim() !== "" ? { projectId: projectId.trim() } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {

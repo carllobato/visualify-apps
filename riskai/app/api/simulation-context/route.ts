@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SimulationSnapshot } from "@/domain/simulation/simulation.types";
+import { assertOptionalProjectContentEditFromBody } from "@/lib/auth/assertProjectAccess";
 import { requireUser } from "@/lib/auth/requireUser";
 import { setSimulationContext } from "@/lib/getSimulationContext";
 import { dlog } from "@/lib/debug";
@@ -42,6 +43,9 @@ export async function POST(req: Request) {
     if (body == null || typeof body !== "object") {
       return NextResponse.json({ error: "Body must be an object" }, { status: 400 });
     }
+    const projectAccess = await assertOptionalProjectContentEditFromBody(body);
+    if (projectAccess instanceof NextResponse) return projectAccess;
+
     const b = body as Record<string, unknown>;
     const risks = Array.isArray(b.risks) ? b.risks : [];
     const neutralSnapshot = b.neutralSnapshot != null && isValidSnapshot(b.neutralSnapshot) ? b.neutralSnapshot : null;

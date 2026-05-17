@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import {
+  canAssignPortfolioInviteRole,
+  isPortfolioMemberRole,
+} from "@/lib/db/memberInviteRoles";
+import {
   countPortfolioOwners,
   getPortfolioMembersViewerContext,
 } from "@/lib/db/portfolioMemberAccess";
-import type { PortfolioMemberRole } from "@/types/portfolioMembers";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-const ROLES: PortfolioMemberRole[] = ["owner", "editor", "viewer"];
-
-function isRole(v: unknown): v is PortfolioMemberRole {
-  return typeof v === "string" && (ROLES as string[]).includes(v);
-}
 
 export async function PATCH(
   request: Request,
@@ -46,10 +43,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!isRole(body.role)) {
+  if (!isPortfolioMemberRole(body.role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   const nextRole = body.role;
+  if (!canAssignPortfolioInviteRole(viewer.memberRole, nextRole)) {
+    return NextResponse.json(
+      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
+      { status: 403 }
+    );
+  }
 
   const { data: row, error: fetchErr } = await supabase
     .from("visualify_portfolio_members")

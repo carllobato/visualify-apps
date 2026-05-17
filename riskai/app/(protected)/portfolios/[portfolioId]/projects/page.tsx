@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import { loadPortfolioProjectTilePayloads } from "@/lib/dashboard/projectTileServerData";
+import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
 import { Card, CardBody } from "@visualify/design-system";
@@ -15,6 +16,14 @@ export default async function PortfolioProjectsPage({
 }) {
   const { portfolioId } = await params;
   const supabase = await supabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const portfolioViewer =
+    user != null
+      ? await getPortfolioMembersViewerContext(supabase, portfolioId, user.id)
+      : null;
+  const canCreatePortfolioProject = portfolioViewer?.canInviteMembers ?? false;
 
   const { data: portfolio, error: portfolioError } = await supabase
     .from("visualify_portfolios")
@@ -39,9 +48,11 @@ export default async function PortfolioProjectsPage({
               <p id="portfolio-projects-empty-heading" className="ds-dashboard-empty-title">
                 No projects in this portfolio yet
               </p>
-              <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
-                Create project
-              </OpenProjectOnboardingLink>
+              {canCreatePortfolioProject ? (
+                <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
+                  Create project
+                </OpenProjectOnboardingLink>
+              ) : null}
               <div className="mt-5">
                 <Link
                   href={riskaiPath("/projects")}
@@ -73,15 +84,17 @@ export default async function PortfolioProjectsPage({
               <ProjectTile key={payload.id} payload={payload} />
             ))}
           </div>
-          <OpenProjectOnboardingLink
-            className="ds-dashboard-inline-create"
-            portfolioId={portfolioId}
-          >
-            <span className="ds-dashboard-inline-create-label">Create project</span>
-            <span className="ds-dashboard-inline-create-plus" aria-hidden>
-              +
-            </span>
-          </OpenProjectOnboardingLink>
+          {canCreatePortfolioProject ? (
+            <OpenProjectOnboardingLink
+              className="ds-dashboard-inline-create"
+              portfolioId={portfolioId}
+            >
+              <span className="ds-dashboard-inline-create-label">Create project</span>
+              <span className="ds-dashboard-inline-create-plus" aria-hidden>
+                +
+              </span>
+            </OpenProjectOnboardingLink>
+          ) : null}
         </div>
       </section>
     </main>

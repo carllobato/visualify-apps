@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseProjectContext } from "@/lib/projectContext";
 import { setProjectContext } from "@/lib/getProjectContext";
+import { assertOptionalProjectMetadataEditFromBody } from "@/lib/auth/assertProjectAccess";
 import { requireUser } from "@/lib/auth/requireUser";
 
 /**
@@ -19,6 +20,9 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
+    const projectAccess = await assertOptionalProjectMetadataEditFromBody(body);
+    if (projectAccess instanceof NextResponse) return projectAccess;
+
     const parsed = parseProjectContext(body);
     if (!parsed) {
       return NextResponse.json({ error: "Invalid project context" }, { status: 400 });

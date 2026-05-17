@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { assertOptionalProjectContentEditFromBody } from "@/lib/auth/assertProjectAccess";
 import { requireUser } from "@/lib/auth/requireUser";
 import { IntelligentExtractDraftSchema } from "@/domain/risk/risk.schema";
 import {
@@ -286,6 +287,9 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const projectAccess = await assertOptionalProjectContentEditFromBody(body);
+    if (projectAccess instanceof NextResponse) return projectAccess;
+
     const documentText = typeof body?.documentText === "string" ? body.documentText : "";
     const rawCategories = body?.categories;
     const categories = Array.isArray(rawCategories)

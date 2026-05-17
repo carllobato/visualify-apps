@@ -218,6 +218,7 @@ function PortfolioRiskByOwnerCard({
 
 type PortfolioOverviewContentProps = {
   portfolioId: string;
+  canCreatePortfolioProject: boolean;
   reportingUnit: ReportingUnitOption;
   /** Human label for the selected reporting month (e.g. “March 2026”); `null` when viewing latest / unscoped. */
   reportingMonthLabel: string | null;
@@ -277,6 +278,7 @@ type PortfolioOverviewContentProps = {
 
 export function PortfolioOverviewContent({
   portfolioId,
+  canCreatePortfolioProject,
   reportingUnit,
   reportingMonthLabel,
   projectCount,
@@ -509,10 +511,11 @@ export function PortfolioOverviewContent({
   }, [clearFirstProjectQueryParam]);
 
   const onStartFirstProjectOnboarding = useCallback(() => {
+    if (!canCreatePortfolioProject) return;
     setShowFirstProjectPrompt(false);
     clearFirstProjectQueryParam();
     dispatchOpenProjectOnboarding(portfolioId);
-  }, [clearFirstProjectQueryParam, portfolioId]);
+  }, [canCreatePortfolioProject, clearFirstProjectQueryParam, portfolioId]);
 
   const kpiSummaryTrendSlots = [
     reportingVsPriorMonthTrends?.portfolioRiskRating ?? null,
@@ -778,7 +781,7 @@ export function PortfolioOverviewContent({
         </DashboardCard>
       </section>
       <FirstProjectPromptModal
-        open={showFirstProjectPrompt}
+        open={showFirstProjectPrompt && canCreatePortfolioProject}
         onStartProjectOnboarding={onStartFirstProjectOnboarding}
         onDismiss={onDismissFirstProjectPrompt}
       />
@@ -789,6 +792,7 @@ export function PortfolioOverviewContent({
         onIndexChange={setOverviewModalIndex}
         onClose={() => setOverviewModalOpen(false)}
         portfolioId={portfolioId}
+        canCreatePortfolioProject={canCreatePortfolioProject}
         reportingUnit={reportingUnit}
         projectTilePayloads={projectTilePayloads}
         portfolioReportingFooter={portfolioReportingFooter}

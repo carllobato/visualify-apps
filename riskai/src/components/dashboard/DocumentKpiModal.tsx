@@ -77,6 +77,8 @@ type DocumentKpiModalProps = {
   onClose: () => void;
   /** When set with `projectTilePayloads`, the Projects KPI shows the same list as `/portfolios/:id/projects`. */
   portfolioId?: string;
+  /** When false, hide portfolio-scoped “Create project” affordances (portfolio viewer). */
+  canCreatePortfolioProject?: boolean;
   reportingUnit?: ReportingUnitOption;
   projectTilePayloads?: ProjectTilePayload[];
   /** Per-project lifecycle status counts for the Active Risks KPI modal. */
@@ -562,17 +564,21 @@ function PortfolioRagKpiModalBody({
 function PortfolioProjectsKpiModalBody({
   portfolioId,
   projectTilePayloads,
+  canCreatePortfolioProject = true,
 }: {
   portfolioId: string;
   projectTilePayloads: ProjectTilePayload[];
+  canCreatePortfolioProject?: boolean;
 }) {
   return projectTilePayloads.length === 0 ? (
     <Card variant="inset" className="w-full max-w-none text-center">
       <CardBody className="py-[var(--ds-space-6)]">
         <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
-        <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
-          Create project
-        </OpenProjectOnboardingLink>
+        {canCreatePortfolioProject ? (
+          <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
+            Create project
+          </OpenProjectOnboardingLink>
+        ) : null}
         <div className="mt-5">
           <Link href={riskaiPath("/projects")} className="ds-text-link-muted text-[length:var(--ds-text-sm)]">
             View all your projects
@@ -587,12 +593,14 @@ function PortfolioProjectsKpiModalBody({
           <ProjectTile key={payload.id} payload={payload} />
         ))}
       </div>
-      <OpenProjectOnboardingLink className="ds-dashboard-inline-create" portfolioId={portfolioId}>
-        <span className="ds-dashboard-inline-create-label">Create project</span>
-        <span className="ds-dashboard-inline-create-plus" aria-hidden>
-          +
-        </span>
-      </OpenProjectOnboardingLink>
+      {canCreatePortfolioProject ? (
+        <OpenProjectOnboardingLink className="ds-dashboard-inline-create" portfolioId={portfolioId}>
+          <span className="ds-dashboard-inline-create-label">Create project</span>
+          <span className="ds-dashboard-inline-create-plus" aria-hidden>
+            +
+          </span>
+        </OpenProjectOnboardingLink>
+      ) : null}
     </div>
   );
 }
@@ -1014,6 +1022,7 @@ export function DocumentKpiModal({
   onIndexChange,
   onClose,
   portfolioId,
+  canCreatePortfolioProject = true,
   reportingUnit = DEFAULT_REPORTING_UNIT,
   projectTilePayloads,
   portfolioReportingFooter,
@@ -1162,6 +1171,7 @@ export function DocumentKpiModal({
                 <PortfolioProjectsKpiModalBody
                   portfolioId={portfolioId}
                   projectTilePayloads={projectTilePayloads}
+                  canCreatePortfolioProject={canCreatePortfolioProject}
                 />
               </div>
             ) : showActiveRisksDetail && activeRiskStatusSummaryRows != null ? (

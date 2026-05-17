@@ -42,13 +42,20 @@ function formatBand(band: { from: number; to: number }): string {
 }
 
 type MitigationOptimisationPanelProps = {
+  projectId?: string | null;
   risks: Risk[];
   neutralSnapshot: SimulationSnapshot | null;
   targetPercent: number;
   targetScheduleDays: number | null;
 };
 
-export function MitigationOptimisationPanel({ risks, neutralSnapshot, targetPercent, targetScheduleDays }: MitigationOptimisationPanelProps) {
+export function MitigationOptimisationPanel({
+  projectId,
+  risks,
+  neutralSnapshot,
+  targetPercent,
+  targetScheduleDays,
+}: MitigationOptimisationPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ApiResult | null>(null);
@@ -58,16 +65,25 @@ export function MitigationOptimisationPanel({ risks, neutralSnapshot, targetPerc
     setError(null);
     try {
       // Ensure server-side simulation context is fresh before requesting optimisation.
+      const pid = projectId?.trim() || undefined;
+      const projectScope = pid ? { projectId: pid } : {};
       await fetch("/api/simulation-context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ risks, neutralSnapshot }),
+        body: JSON.stringify({ risks, neutralSnapshot, ...projectScope }),
       }).catch(() => {});
 
       const res = await fetch("/api/mitigation-optimisation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...DEFAULT_BODY, risks, neutralSnapshot, targetPercent, targetScheduleDays }),
+        body: JSON.stringify({
+          ...DEFAULT_BODY,
+          risks,
+          neutralSnapshot,
+          targetPercent,
+          targetScheduleDays,
+          ...projectScope,
+        }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) {
@@ -87,7 +103,7 @@ export function MitigationOptimisationPanel({ risks, neutralSnapshot, targetPerc
     } finally {
       setLoading(false);
     }
-  }, [risks, neutralSnapshot, targetPercent, targetScheduleDays]);
+  }, [projectId, risks, neutralSnapshot, targetPercent, targetScheduleDays]);
 
   // Wait for store sync (300ms debounce) to complete before first fetch so API sees current context.
   useEffect(() => {
