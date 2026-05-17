@@ -34,6 +34,13 @@ function resultToResponse(result: Awaited<ReturnType<typeof acceptVisualifyInvit
         portfolio_id: result.portfolio_id,
       });
     }
+    if (result.resource_type === "workspace") {
+      return NextResponse.json({
+        ok: true,
+        resource_type: "workspace",
+        workspace_id: result.workspace_id,
+      });
+    }
     return NextResponse.json({
       ok: true,
       resource_type: "project",

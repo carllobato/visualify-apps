@@ -92,6 +92,9 @@ export default async function InvitePage({
   });
 
   if (result.ok) {
+    if (result.resource_type === "workspace") {
+      redirect(withInviteAcceptedQuery(DASHBOARD_PATH));
+    }
     if (result.resource_type === "portfolio" && result.portfolio_id) {
       redirect(withInviteAcceptedQuery(riskaiPath(`/portfolios/${result.portfolio_id}`)));
     }

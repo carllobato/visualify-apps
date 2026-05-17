@@ -30,7 +30,8 @@ export type AcceptVisualifyInvitationErrorCode =
 
 export type AcceptVisualifyInvitationSuccess =
   | { ok: true; resource_type: "portfolio"; portfolio_id: string }
-  | { ok: true; resource_type: "project"; project_id: string };
+  | { ok: true; resource_type: "project"; project_id: string }
+  | { ok: true; resource_type: "workspace"; workspace_id: string };
 
 export type AcceptVisualifyInvitationFailure = {
   ok: false;
@@ -94,6 +95,21 @@ function isPostgresUniqueViolation(err: unknown): boolean {
   );
 }
 
+function postgresErrorMessage(err: unknown): string {
+  if (typeof err === "object" && err !== null && "message" in err) {
+    return String((err as { message: string }).message);
+  }
+  return "";
+}
+
+function isPostgresUndefinedColumn(err: unknown, columnName?: string): boolean {
+  if (typeof err !== "object" || err === null || !("code" in err)) return false;
+  const code = (err as { code: string }).code;
+  if (code !== "42703" && code !== "PGRST204") return false;
+  if (!columnName) return true;
+  return postgresErrorMessage(err).toLowerCase().includes(columnName.toLowerCase());
+}
+
 function failure(
   code: AcceptVisualifyInvitationErrorCode,
   httpStatus: number,
@@ -119,6 +135,9 @@ function successForInvitation(
 ): AcceptVisualifyInvitationSuccess {
   if (resourceType === "portfolio") {
     return { ok: true, resource_type: "portfolio", portfolio_id: resourceId };
+  }
+  if (resourceType === "workspace") {
+    return { ok: true, resource_type: "workspace", workspace_id: resourceId };
   }
   return { ok: true, resource_type: "project", project_id: resourceId };
 }
@@ -275,6 +294,150 @@ async function ensureMemberRow(
   return { ok: true };
 }
 
+async function findWorkspaceMembershipRow(
+  admin: SupabaseClient,
+  workspaceId: string,
+  userId: string
+) {
+  return admin
+    .from("visualify_workspace_members")
+    .select("id")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", userId)
+    .maybeSingle();
+}
+
+/**
+ * Idempotent workspace membership for workspace invitations.
+ * Sets status to active when the column exists; omits status if the column is absent.
+ */
+async function ensureWorkspaceMemberRow(
+  admin: SupabaseClient,
+  params: {
+    workspaceId: string;
+    userId: string;
+    role: string;
+  }
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { workspaceId, userId, role } = params;
+
+  const { data: existing, error: lookupErr } = await findWorkspaceMembershipRow(
+    admin,
+    workspaceId,
+    userId
+  );
+
+  if (lookupErr) {
+    if (
+      isPostgresUndefinedColumn(lookupErr, "workspace_id") ||
+      isPostgresUndefinedColumn(lookupErr, "user_id") ||
+      isPostgresUndefinedColumn(lookupErr, "role")
+    ) {
+      return { ok: false, message: "Workspace membership table is missing a required column." };
+    }
+    console.error("[acceptVisualifyInvitation] workspace membership lookup failed", {
+      userId,
+      workspaceId,
+      message: lookupErr.message,
+    });
+    return { ok: false, message: "Could not verify workspace membership." };
+  }
+
+  if (existing?.id) {
+    console.info("[acceptVisualifyInvitation] workspace membership already existed", {
+      userId,
+      workspaceId,
+      membershipId: existing.id,
+    });
+    return { ok: true };
+  }
+
+  const basePayload = {
+    workspace_id: workspaceId,
+    user_id: userId,
+    role,
+  };
+
+  async function insertWorkspaceMember(includeStatus: boolean) {
+    const payload = includeStatus ? { ...basePayload, status: "active" as const } : basePayload;
+    return admin.from("visualify_workspace_members").insert(payload);
+  }
+
+  let insErr = (await insertWorkspaceMember(true)).error;
+
+  if (insErr && isPostgresUndefinedColumn(insErr, "status")) {
+    insErr = (await insertWorkspaceMember(false)).error;
+  }
+
+  if (insErr) {
+    if (
+      isPostgresUndefinedColumn(insErr, "workspace_id") ||
+      isPostgresUndefinedColumn(insErr, "user_id") ||
+      isPostgresUndefinedColumn(insErr, "role")
+    ) {
+      return { ok: false, message: "Workspace membership table is missing a required column." };
+    }
+
+    if (isPostgresUniqueViolation(insErr)) {
+      const { data: raced, error: raceLookupErr } = await findWorkspaceMembershipRow(
+        admin,
+        workspaceId,
+        userId
+      );
+
+      if (raceLookupErr) {
+        console.error("[acceptVisualifyInvitation] workspace membership verification failed", {
+          userId,
+          workspaceId,
+          message: raceLookupErr.message,
+        });
+        return { ok: false, message: "Could not verify workspace membership after conflict." };
+      }
+
+      if (raced?.id) {
+        console.info(
+          "[acceptVisualifyInvitation] workspace membership verified after unique violation",
+          { userId, workspaceId, membershipId: raced.id }
+        );
+        return { ok: true };
+      }
+
+      return { ok: false, message: "Workspace membership row missing after unique violation." };
+    }
+
+    console.error("[acceptVisualifyInvitation] workspace membership insert failed", {
+      userId,
+      workspaceId,
+      message: insErr.message,
+      code: insErr.code,
+    });
+    return { ok: false, message: "Could not add workspace membership." };
+  }
+
+  const { data: verified, error: verifyErr } = await findWorkspaceMembershipRow(
+    admin,
+    workspaceId,
+    userId
+  );
+
+  if (verifyErr || !verified?.id) {
+    console.error("[acceptVisualifyInvitation] workspace membership verification failed", {
+      userId,
+      workspaceId,
+      message: verifyErr?.message ?? "Row not found after insert.",
+    });
+    return { ok: false, message: "Workspace membership row missing after insert." };
+  }
+
+  console.info("[acceptVisualifyInvitation] workspace membership inserted", {
+    userId,
+    workspaceId,
+    membershipId: verified.id,
+    role,
+  });
+  return { ok: true };
+}
+
 async function ensureMembershipForInvitation(
   row: InvitationMembershipRow,
   user: { id: string },
@@ -363,6 +526,18 @@ async function ensureMembershipForInvitation(
     return { ok: true, resourceId };
   }
 
+  if (row.resource_type === "workspace") {
+    const ensuredWorkspace = await ensureWorkspaceMemberRow(admin, {
+      workspaceId: resourceId,
+      userId: user.id,
+      role,
+    });
+    if (!ensuredWorkspace.ok) {
+      return { ok: false, code: "MEMBERSHIP_INSERT_FAILED", message: ensuredWorkspace.message };
+    }
+    return { ok: true, resourceId };
+  }
+
   return { ok: false, code: "INVALID_INVITATION", message: "Unsupported invitation resource type." };
 }
 
@@ -381,7 +556,7 @@ export type AcceptVisualifyInvitationParams = {
 };
 
 /**
- * Accepts a pending project or portfolio invitation for the authenticated user.
+ * Accepts a pending project, portfolio, or workspace invitation for the authenticated user.
  * Uses the service-role client for membership and invitation writes.
  */
 export async function acceptVisualifyInvitation(
@@ -439,7 +614,11 @@ export async function acceptVisualifyInvitation(
     return failure("INVALID_INVITATION", 404);
   }
 
-  if (row.resource_type !== "project" && row.resource_type !== "portfolio") {
+  if (
+    row.resource_type !== "project" &&
+    row.resource_type !== "portfolio" &&
+    row.resource_type !== "workspace"
+  ) {
     return failure("UNSUPPORTED_INVITATION_TYPE", 400);
   }
 
