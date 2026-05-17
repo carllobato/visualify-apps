@@ -2,12 +2,13 @@ import {
   VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG,
   type AccountSettingsAppCatalogEntry,
 } from "@visualify/app-shell";
+import { getProductDashboardUrl, getProductOrigin } from "@visualify/urls";
 
 /** RiskAI entry point (same as dashboard). */
-export const RISKAI_DASHBOARD_URL = "https://app.visualify.com.au/riskai/dashboard";
+export const RISKAI_DASHBOARD_URL = getProductDashboardUrl("riskai");
 
 /** Host for app routes shared with RiskAI (legal pages, etc.). */
-export const VISUALIFY_APP_ORIGIN = new URL(RISKAI_DASHBOARD_URL).origin;
+export const VISUALIFY_APP_ORIGIN = getProductOrigin("riskai");
 
 /** Template App on the shared app host (HQ dashboard tile for Visualify staff only). */
 export const TEMPLATE_APP_HQ_LAUNCH_URL = `${VISUALIFY_APP_ORIGIN}/template-app`;

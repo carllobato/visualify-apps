@@ -1,10 +1,21 @@
-/** App subdomain (e.g. app.visualify.com.au). */
-export const APP_HOST = process.env.NEXT_PUBLIC_APP_HOST?.trim() ?? "app.visualify.com.au";
-/** Marketing site apex (e.g. visualify.com.au). */
-export const WEBSITE_HOST = process.env.NEXT_PUBLIC_WEBSITE_HOST?.trim() ?? "visualify.com.au";
+import {
+  getProductOrigin,
+  readPublicEnv,
+  VISUALIFY_PRODUCTS,
+  type VisualifyProductKey,
+} from "@visualify/urls";
 
-export const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() ?? `https://${APP_HOST}`;
-export const SITE_ORIGIN = process.env.NEXT_PUBLIC_WEBSITE_ORIGIN?.trim() ?? `https://${WEBSITE_HOST}`;
+function defaultProductHost(productKey: VisualifyProductKey): string {
+  return new URL(VISUALIFY_PRODUCTS[productKey].defaultOrigin).hostname;
+}
+
+/** App subdomain (e.g. app.visualify.com.au). */
+export const APP_HOST = readPublicEnv("NEXT_PUBLIC_APP_HOST") ?? defaultProductHost("riskai");
+/** Marketing site apex (e.g. visualify.com.au). */
+export const WEBSITE_HOST = readPublicEnv("NEXT_PUBLIC_WEBSITE_HOST") ?? defaultProductHost("website");
+
+export const APP_ORIGIN = readPublicEnv("NEXT_PUBLIC_APP_ORIGIN") ?? getProductOrigin("riskai");
+export const SITE_ORIGIN = readPublicEnv("NEXT_PUBLIC_WEBSITE_ORIGIN") ?? getProductOrigin("website");
 
 export function normalizeHost(host: string): string {
   return host.split(":")[0]?.toLowerCase() ?? "";

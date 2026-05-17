@@ -1,16 +1,11 @@
+import { getProductDashboardUrl, readPublicEnv } from "@visualify/urls";
 import type { AppShellRailAppCatalogEntry } from "../AppShellRailBrandAppMenu";
 
 /** Product catalog entry for Account → Apps (matches `visualify_products.key`). */
 export type AccountSettingsAppCatalogEntry = AppShellRailAppCatalogEntry;
 
-const DEFAULT_RISKAI_DASHBOARD_URL = "https://app.visualify.com.au/riskai/dashboard";
-
 function resolveRiskAiDashboardUrl(): string {
-  if (typeof process !== "undefined") {
-    const fromEnv = process.env.NEXT_PUBLIC_RISKAI_DASHBOARD_URL?.trim();
-    if (fromEnv) return fromEnv;
-  }
-  return DEFAULT_RISKAI_DASHBOARD_URL;
+  return readPublicEnv("NEXT_PUBLIC_RISKAI_DASHBOARD_URL") ?? getProductDashboardUrl("riskai");
 }
 
 /**

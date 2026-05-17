@@ -1,12 +1,17 @@
 /** Shared marketing tokens for RiskAI landing (website app). */
 
-export const riskaiAppOrigin = (
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_RISKAI_APP_ORIGIN?.trim()) ||
-  "https://app.visualify.com.au"
-).replace(/\/+$/, "");
+import { getProductOrigin, joinOriginPath, normalizeOrigin, readPublicEnv } from "@visualify/urls";
+
+function resolveRiskAiAppOrigin(): string {
+  return normalizeOrigin(
+    readPublicEnv("NEXT_PUBLIC_RISKAI_APP_ORIGIN") ?? getProductOrigin("riskai"),
+  );
+}
+
+export const riskaiAppOrigin = resolveRiskAiAppOrigin();
 
 export const RISKAI_APP_URL = riskaiAppOrigin;
-export const RISKAI_LOGIN_URL = `${riskaiAppOrigin}/login`;
+export const RISKAI_LOGIN_URL = joinOriginPath(riskaiAppOrigin, "/login");
 
 /** Softer than raw `--ds-text-secondary` for long body copy (token-based mix). */
 export const bodySecondaryClass =

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getHqAppsUrl, readPublicEnv } from "@visualify/urls";
+
 /**
  * Generic Visualify product identity — set per deployed app (e.g. CostAI copies this package).
  *
@@ -9,7 +11,6 @@ import "server-only";
  * When unset, defaults match a sensible local/template setup (`template-app`, HQ apps URL).
  */
 const DEFAULT_PRODUCT_KEY = "template-app";
-const DEFAULT_HQ_APPS_URL = "https://hq.visualify.com.au/apps";
 
 export const productConfig = {
   /** Same as `visualify_products.key` for workspace entitlement checks. */
@@ -19,7 +20,6 @@ export const productConfig = {
   },
   /** HQ (or equivalent) apps URL when the signed-in user has no subscription for this product. */
   get HQ_APPS_URL(): string {
-    const value = process.env.NEXT_PUBLIC_HQ_APPS_URL?.trim();
-    return value || DEFAULT_HQ_APPS_URL;
+    return readPublicEnv("NEXT_PUBLIC_HQ_APPS_URL") ?? getHqAppsUrl();
   },
 };

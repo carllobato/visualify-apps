@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@visualify/app-shell": "workspace:^",
+    "@visualify/urls": "workspace:^",
     "@visualify/workspace-product-access": "workspace:^",
     "@supabase/supabase-js": "^2.98.0",
     "@supabase/ssr": "^0.9.0",
