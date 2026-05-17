@@ -9,10 +9,11 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
 import {
   DASHBOARD_PATH,
+  hasLegacyRiskAiPrefix,
+  isAuthenticatedAppPath,
   portfolioIdFromAppPathname,
   projectIdFromAppPathname,
   riskaiPath,
-  RISKAI_BASE,
 } from "@/lib/routes";
 
 const LOGIN_URL = "/?next=" + encodeURIComponent(DASHBOARD_PATH);
@@ -21,8 +22,8 @@ const LOGIN_URL = "/?next=" + encodeURIComponent(DASHBOARD_PATH);
 function isKnownAppRoute(pathname: string | null): boolean {
   if (!pathname || typeof pathname !== "string") return false;
   if (pathname === "/" || pathname.startsWith("/privacy") || pathname.startsWith("/terms")) return true;
-  if (pathname === DASHBOARD_PATH || pathname.startsWith(`${DASHBOARD_PATH}/`)) return true;
-  if (pathname === RISKAI_BASE || pathname.startsWith(`${RISKAI_BASE}/`)) return true;
+  if (isAuthenticatedAppPath(pathname)) return true;
+  if (hasLegacyRiskAiPrefix(pathname)) return true;
   if (pathname.startsWith("/login")) return true;
   if (pathname === "/404") return true;
   return false;

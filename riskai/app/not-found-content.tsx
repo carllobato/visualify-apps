@@ -22,7 +22,7 @@ export function NotFoundContent() {
             Home
           </a>
           <a
-            href="/riskai/projects"
+            href="/projects"
             className="px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] text-[var(--ds-status-success-fg)] hover:bg-[var(--ds-status-success-bg)] no-underline"
           >
             Projects

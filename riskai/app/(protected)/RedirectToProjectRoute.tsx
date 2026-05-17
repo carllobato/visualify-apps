@@ -19,7 +19,7 @@ export function RedirectToProjectRoute({ slug }: { slug: ProjectSlug }) {
     const raw =
       typeof window !== "undefined" ? window.localStorage.getItem(ACTIVE_PROJECT_KEY) : null;
     const activeId =
-      typeof raw === "string" && raw !== "undefined" && raw.trim().length > 0 ? raw : null;
+      typeof raw === "string" && raw !== "undefined" && raw.trim().length > 0 ? raw.trim() : null;
     if (activeId) {
       const path =
         slug === "project-home"

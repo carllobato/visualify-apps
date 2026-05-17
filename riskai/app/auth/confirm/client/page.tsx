@@ -4,21 +4,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Callout } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { DASHBOARD_PATH } from "@/lib/routes";
-
-function safeNextPath(raw: string | null, fallback: string): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return fallback;
-  }
-  return raw;
-}
+import { DASHBOARD_PATH, normalizeAppPath } from "@/lib/routes";
 
 function AuthConfirmClientPageContent() {
   const params = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const inviteToken = params.get("invite_token");
   const code = params.get("code");
-  const nextPath = useMemo(() => safeNextPath(params.get("next"), DASHBOARD_PATH), [params]);
+  const nextPath = useMemo(() => normalizeAppPath(params.get("next"), DASHBOARD_PATH), [params]);
 
   useEffect(() => {
     async function run() {

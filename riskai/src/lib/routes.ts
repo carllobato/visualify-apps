@@ -1,28 +1,78 @@
 /** Authenticated RiskAI UI (served under app host, e.g. app.visualify.com.au). */
-export const RISKAI_BASE = "/riskai";
-export const DASHBOARD_PATH = "/riskai/dashboard";
+export const RISKAI_BASE = "";
+export const DASHBOARD_PATH = "/dashboard";
 
-/** Prefix a path with the RiskAI app segment, e.g. `/projects` → `/riskai/projects`. */
+/** Legacy URL prefix; permanent redirects map `/riskai/*` → flat routes. */
+export const LEGACY_RISKAI_PREFIX = "/riskai";
+
+const AUTHENTICATED_APP_ROOTS = [
+  "/dashboard",
+  "/portfolios",
+  "/projects",
+  "/settings",
+  "/matrix",
+  "/simulation",
+  "/create-project",
+  "/onboarding",
+  "/not-found",
+  "/dev",
+  "/run-data",
+] as const;
+
+/** Strip legacy `/riskai` prefix for comparisons and link builders. */
+export function stripLegacyRiskAiPrefix(pathname: string): string {
+  if (pathname === LEGACY_RISKAI_PREFIX || pathname === `${LEGACY_RISKAI_PREFIX}/`) {
+    return DASHBOARD_PATH;
+  }
+  if (pathname.startsWith(`${LEGACY_RISKAI_PREFIX}/`)) {
+    const rest = pathname.slice(LEGACY_RISKAI_PREFIX.length);
+    return rest.startsWith("/") ? rest : `/${rest}`;
+  }
+  return pathname;
+}
+
+/** Canonical app path (flat). Accepts legacy-prefixed input and normalizes it. */
 export function riskaiPath(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  if (normalized === "/") return RISKAI_BASE;
-  return `${RISKAI_BASE}${normalized}`;
+  const flat = stripLegacyRiskAiPrefix(normalized);
+  if (flat === "/") return DASHBOARD_PATH;
+  return flat;
 }
 
-/** Project id from `/riskai/projects/[id]/…` (or null). */
+/** Safe post-auth / `?next=` target: flat canonical path, or dashboard when invalid. */
+export function normalizeAppPath(path: string | null | undefined, fallback = DASHBOARD_PATH): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return fallback;
+  return stripLegacyRiskAiPrefix(path);
+}
+
+function appPathSegments(pathname: string | null): string[] {
+  if (!pathname) return [];
+  return stripLegacyRiskAiPrefix(pathname).split("/").filter(Boolean);
+}
+
+/** Project id from `/projects/[id]/…` or legacy `/riskai/projects/[id]/…`. */
 export function projectIdFromAppPathname(pathname: string | null): string | null {
-  if (!pathname) return null;
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] === "riskai" && segments[1] === "projects" && segments[2]) return segments[2];
+  const segments = appPathSegments(pathname);
+  if (segments[0] === "projects" && segments[1]) return segments[1];
   return null;
 }
 
-/** Portfolio id from `/riskai/portfolios/[id]/…` (or null). */
+/** Portfolio id from `/portfolios/[id]/…` or legacy `/riskai/portfolios/[id]/…`. */
 export function portfolioIdFromAppPathname(pathname: string | null): string | null {
-  if (!pathname) return null;
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] === "riskai" && segments[1] === "portfolios" && segments[2]) return segments[2];
+  const segments = appPathSegments(pathname);
+  if (segments[0] === "portfolios" && segments[1]) return segments[1];
   return null;
+}
+
+export function hasLegacyRiskAiPrefix(pathname: string): boolean {
+  return pathname === LEGACY_RISKAI_PREFIX || pathname.startsWith(`${LEGACY_RISKAI_PREFIX}/`);
+}
+
+/** True for authenticated app surfaces (flat or legacy-prefixed). */
+export function isAuthenticatedAppPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const flat = stripLegacyRiskAiPrefix(pathname);
+  return AUTHENTICATED_APP_ROOTS.some((root) => flat === root || flat.startsWith(`${root}/`));
 }
 
 /**
@@ -35,7 +85,7 @@ export function portfolioRouteTitleFromPathname(
 ): string | null {
   const pid = portfolioId.trim();
   if (!pathname || !pid) return null;
-  const normalized = pathname.replace(/\/+$/, "") || pathname;
+  const normalized = stripLegacyRiskAiPrefix(pathname).replace(/\/+$/, "") || pathname;
   const overview = riskaiPath(`/portfolios/${pid}`).replace(/\/+$/, "");
   const projects = riskaiPath(`/portfolios/${pid}/projects`).replace(/\/+$/, "");
   const settings = riskaiPath(`/portfolios/${pid}/portfolio-settings`).replace(/\/+$/, "");

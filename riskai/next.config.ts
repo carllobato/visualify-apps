@@ -28,133 +28,53 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: "/dashboard",
-        destination: "/riskai/dashboard",
+        source: "/riskai",
+        destination: "/dashboard",
         permanent: true,
       },
       {
-        source: "/dashboard/:path*",
-        destination: "/riskai/dashboard/:path*",
-        permanent: true,
-      },
-      {
-        source: "/portfolios/:path*",
-        destination: "/riskai/portfolios/:path*",
-        permanent: true,
-      },
-      {
-        source: "/projects/:path*",
-        destination: "/riskai/projects/:path*",
-        permanent: true,
-      },
-      {
-        source: "/settings/:path*",
-        destination: "/riskai/settings/:path*",
-        permanent: true,
-      },
-      {
-        source: "/settings",
-        destination: "/riskai/settings",
-        permanent: true,
-      },
-      {
-        source: "/matrix/:path*",
-        destination: "/riskai/matrix/:path*",
-        permanent: true,
-      },
-      {
-        source: "/matrix",
-        destination: "/riskai/matrix",
-        permanent: true,
-      },
-      {
-        source: "/simulation/:path*",
-        destination: "/riskai/simulation/:path*",
-        permanent: true,
-      },
-      {
-        source: "/simulation",
-        destination: "/riskai/simulation",
-        permanent: true,
-      },
-      {
-        source: "/create-project/:path*",
-        destination: "/riskai/create-project/:path*",
-        permanent: true,
-      },
-      {
-        source: "/create-project",
-        destination: "/riskai/create-project",
-        permanent: true,
-      },
-      {
-        source: "/onboarding/:path*",
-        destination: "/riskai/onboarding/:path*",
+        source: "/riskai/:path*",
+        destination: "/:path*",
         permanent: true,
       },
       {
         source: "/run-data/:path*",
-        destination: "/riskai/dev/run-data/:path*",
+        destination: "/dev/run-data/:path*",
         permanent: true,
       },
       {
         source: "/run-data",
-        destination: "/riskai/dev/run-data",
-        permanent: true,
-      },
-      {
-        source: "/riskai/run-data/:path*",
-        destination: "/riskai/dev/run-data/:path*",
-        permanent: true,
-      },
-      {
-        source: "/riskai/run-data",
-        destination: "/riskai/dev/run-data",
+        destination: "/dev/run-data",
         permanent: true,
       },
       {
         source: "/project-not-found/:path*",
-        destination: "/riskai/not-found/:path*",
+        destination: "/not-found/:path*",
         permanent: true,
       },
       {
         source: "/project-not-found",
-        destination: "/riskai/not-found",
+        destination: "/not-found",
         permanent: true,
       },
       {
-        source: "/portfolio/:path*",
-        destination: "/riskai/portfolio/:path*",
+        source: "/portfolios/:portfolioId/settings",
+        destination: "/portfolios/:portfolioId/portfolio-settings",
         permanent: true,
       },
       {
-        source: "/dev/:path*",
-        destination: "/riskai/dev/:path*",
+        source: "/portfolios/:portfolioId/admin",
+        destination: "/portfolios/:portfolioId/portfolio-settings",
         permanent: true,
       },
       {
-        source: "/dev",
-        destination: "/riskai/dev",
+        source: "/projects/:projectId/setup",
+        destination: "/projects/:projectId/settings",
         permanent: true,
       },
       {
-        source: "/riskai/portfolios/:portfolioId/settings",
-        destination: "/riskai/portfolios/:portfolioId/portfolio-settings",
-        permanent: true,
-      },
-      {
-        source: "/riskai/portfolios/:portfolioId/admin",
-        destination: "/riskai/portfolios/:portfolioId/portfolio-settings",
-        permanent: true,
-      },
-      {
-        source: "/riskai/projects/:projectId/setup",
-        destination: "/riskai/projects/:projectId/settings",
-        permanent: true,
-      },
-      {
-        source: "/riskai/projects/:projectId/project-home",
-        destination: "/riskai/projects/:projectId",
+        source: "/projects/:projectId/project-home",
+        destination: "/projects/:projectId",
         permanent: true,
       },
     ];

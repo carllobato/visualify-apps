@@ -92,6 +92,7 @@ function CreateProjectForm() {
       } catch {
         // ignore
       }
+      setLoading(false);
       router.replace(riskaiPath(`/projects/${projectId}`));
       router.refresh();
       return;

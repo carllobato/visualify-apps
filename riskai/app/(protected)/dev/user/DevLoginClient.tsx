@@ -29,7 +29,7 @@ export default function DevLoginClient() {
         return;
       }
       setStatus("Sign up successful. You may need to confirm your email, or you can Sign In.");
-      window.location.href = "/riskai/dev/user";
+      window.location.href = "/dev/user";
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -49,7 +49,7 @@ export default function DevLoginClient() {
         return;
       }
       setStatus("Signed in.");
-      window.location.href = "/riskai/dev/user";
+      window.location.href = "/dev/user";
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }

@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { riskaiPath } from "@/lib/routes";
+import { normalizeAppPath, riskaiPath } from "@/lib/routes";
 import { AppLoginFramedShell, AppLoginPage } from "@visualify/app-shell";
 
 const DEFAULT_NEXT = riskaiPath("/portfolios");
@@ -21,8 +21,7 @@ function pickTotpFactor(factors: { all?: FactorLike[]; totp?: FactorLike[] } | n
 }
 
 function safeNextPath(raw: string | null): string {
-  if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
-  return DEFAULT_NEXT;
+  return normalizeAppPath(raw, DEFAULT_NEXT);
 }
 
 export function MfaVerifyClient() {

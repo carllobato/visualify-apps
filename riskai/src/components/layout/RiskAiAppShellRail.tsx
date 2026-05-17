@@ -22,7 +22,7 @@ import {
   DASHBOARD_PATH,
   projectIdFromAppPathname,
   riskaiPath,
-  RISKAI_BASE,
+  stripLegacyRiskAiPrefix,
 } from "@/lib/routes";
 import { RiskAiRailAccountMenu } from "@/components/layout/RiskAiRailAccountMenu";
 import { RiskAiRailFooterHelp } from "@/components/layout/RiskAiRailFooterHelp";
@@ -37,7 +37,7 @@ const PORTFOLIOS_HREF = riskaiPath("/portfolios");
 const PROJECTS_HREF = riskaiPath("/projects");
 const ACCOUNT_SETTINGS_HREF = riskaiPath("/settings");
 
-const PROJECTS_PREFIX = `${RISKAI_BASE}/projects`;
+const PROJECTS_PREFIX = riskaiPath("/projects");
 
 type RailPrimaryNavKey =
   | "dashboard"
@@ -53,7 +53,8 @@ type RailPrimaryNavKey =
 
 function normalizePathname(pathname: string): string {
   if (!pathname) return "";
-  return pathname.replace(/\/+$/, "") || pathname;
+  const flat = stripLegacyRiskAiPrefix(pathname);
+  return flat.replace(/\/+$/, "") || flat;
 }
 
 function pathEqualsOrStartsWith(pathname: string, base: string): boolean {

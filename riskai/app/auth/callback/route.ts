@@ -2,14 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getLoginPathForHost } from "@/lib/host";
+import { normalizeAppPath } from "@/lib/routes";
 import { env } from "@/lib/env";
 import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 
 function safeNextPath(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
-    return "/";
-  }
-  return raw;
+  return normalizeAppPath(raw, "/");
 }
 
 function authErrorRedirect(request: NextRequest, message: string): NextResponse {

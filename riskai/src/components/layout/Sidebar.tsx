@@ -12,7 +12,7 @@ import {
   portfolioIdFromAppPathname,
   projectIdFromAppPathname,
   riskaiPath,
-  RISKAI_BASE,
+  stripLegacyRiskAiPrefix,
 } from "@/lib/routes";
 import { HelpFeedbackModal } from "./HelpFeedbackModal";
 
@@ -367,30 +367,30 @@ export function Sidebar({
   const portfolioOverviewHref = portfolioId ? riskaiPath(`/portfolios/${portfolioId}`) : riskaiPath("/portfolios");
   const projectBase = projectId ? riskaiPath(`/projects/${projectId}`) : null;
 
-  const dashboardActive = pathname === DASHBOARD_PATH;
+  const path = stripLegacyRiskAiPrefix(pathname ?? "");
+  const dashboardActive = path === DASHBOARD_PATH;
+  const portfolioOverviewPath =
+    portfolioId != null ? riskaiPath(`/portfolios/${portfolioId}`).replace(/\/+$/, "") : null;
   const portfolioOverviewActive =
-    portfolioId != null &&
-    (pathname === `${RISKAI_BASE}/portfolios/${portfolioId}` ||
-      pathname === `${RISKAI_BASE}/portfolios/${portfolioId}/`);
+    portfolioOverviewPath != null &&
+    (path === portfolioOverviewPath || path === `${portfolioOverviewPath}/`);
   const portfolioProjectsActive =
-    portfolioId != null && pathname.startsWith(`${RISKAI_BASE}/portfolios/${portfolioId}/projects`);
+    portfolioId != null && path.startsWith(riskaiPath(`/portfolios/${portfolioId}/projects`));
   const portfolioSettingsActive =
     portfolioId != null &&
-    pathname.startsWith(`${RISKAI_BASE}/portfolios/${portfolioId}/portfolio-settings`);
+    path.startsWith(riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`));
 
   const projectOverviewActive =
-    projectBase != null &&
-    (pathname === projectBase || pathname === `${projectBase}/`);
-  const runDataActive = projectBase != null && pathname.startsWith(`${projectBase}/run-data`);
-  const risksActive = projectBase != null && pathname.startsWith(`${projectBase}/risks`);
-  const simulationActive =
-    projectNavBase != null && pathname.startsWith(`${projectNavBase}/simulation`);
+    projectBase != null && (path === projectBase || path === `${projectBase}/`);
+  const runDataActive = projectBase != null && path.startsWith(`${projectBase}/run-data`);
+  const risksActive = projectBase != null && path.startsWith(`${projectBase}/risks`);
+  const simulationActive = projectNavBase != null && path.startsWith(`${projectNavBase}/simulation`);
   const healthActive =
-    (projectNavBase != null && pathname.startsWith(`${projectNavBase}/engine-health`)) ||
-    pathname === `${RISKAI_BASE}/dev/engine-health` ||
-    pathname.startsWith(`${RISKAI_BASE}/dev/engine-health/`);
+    (projectNavBase != null && path.startsWith(`${projectNavBase}/engine-health`)) ||
+    path === riskaiPath("/dev/engine-health") ||
+    path.startsWith(`${riskaiPath("/dev/engine-health")}/`);
   const projectSettingsActive =
-    projectNavBase != null && pathname.startsWith(`${projectNavBase}/settings`);
+    projectNavBase != null && path.startsWith(`${projectNavBase}/settings`);
 
   const navTransition = "duration-[400ms] ease-out";
 

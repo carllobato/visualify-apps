@@ -41,7 +41,7 @@ export const VISUALIFY_PRODUCTS: Readonly<Record<VisualifyProductKey, VisualifyP
   riskai: {
     key: "riskai",
     defaultOrigin: "https://app.visualify.com.au",
-    dashboardPath: "/riskai/dashboard",
+    dashboardPath: "/dashboard",
     originEnvVar: "NEXT_PUBLIC_RISKAI_ORIGIN",
   },
 };

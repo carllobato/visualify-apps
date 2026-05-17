@@ -18,7 +18,7 @@ import {
 } from "@visualify/app-shell";
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { DASHBOARD_PATH, normalizeAppPath } from "@/lib/routes";
 import { APP_ORIGIN } from "@/lib/host";
 
 type LoginTabId = "signin" | "signup";
@@ -170,7 +170,7 @@ function LoginSocialProviders({
 export function LoginClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? DASHBOARD_PATH;
+  const next = normalizeAppPath(searchParams.get("next"), DASHBOARD_PATH);
   const inviteTokenRaw = searchParams.get("invite_token");
   const inviteToken = typeof inviteTokenRaw === "string" ? inviteTokenRaw.trim() : "";
   const invitedEmailRaw = searchParams.get("invited_email");
@@ -207,8 +207,7 @@ export function LoginClient() {
       window.location.href = `/invite?invite_token=${encodeURIComponent(inviteToken)}`;
       return;
     }
-    const path = next.startsWith("/") && !next.startsWith("//") ? next : DASHBOARD_PATH;
-    window.location.href = path;
+    window.location.href = next;
   };
 
   const handleSignIn = async (e: FormEvent) => {
@@ -232,9 +231,8 @@ export function LoginClient() {
         aalData?.nextLevel === "aal2" &&
         aalData.currentLevel !== "aal2"
       ) {
-        const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : DASHBOARD_PATH;
         const verifyUrl = new URL("/mfa/verify", window.location.origin);
-        verifyUrl.searchParams.set("next", safeNext);
+        verifyUrl.searchParams.set("next", next);
         if (inviteToken) {
           verifyUrl.searchParams.set("invite_token", inviteToken);
         }

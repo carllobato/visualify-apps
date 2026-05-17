@@ -224,6 +224,7 @@ export default function PortfolioSettingsContent({
         setDeleting(false);
         return;
       }
+      setDeleting(false);
       router.replace(riskaiPath("/portfolios"));
       router.refresh();
     } catch {

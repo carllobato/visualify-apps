@@ -81,8 +81,8 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  revalidatePath(`/riskai/projects/${projectId}`);
-  revalidatePath(`/riskai/projects/${projectId}/settings`);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/settings`);
 
   return NextResponse.json({ id: projectId, name });
 }
@@ -172,8 +172,8 @@ export async function DELETE(
     return NextResponse.json({ error: deleteError.message }, { status: 500 });
   }
 
-  revalidatePath(`/riskai/portfolios/${bundle.portfolioId}`);
-  revalidatePath(`/riskai/portfolios/${bundle.portfolioId}/projects`);
+  revalidatePath(`/portfolios/${bundle.portfolioId}`);
+  revalidatePath(`/portfolios/${bundle.portfolioId}/projects`);
 
   return NextResponse.json({ ok: true, portfolioId: bundle.portfolioId });
 }

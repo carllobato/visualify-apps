@@ -300,7 +300,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     setSavedBaselineFingerprint(null);
 
     if (!trimmedProjectId) {
-      const stored = loadProjectContext(projectId ?? undefined);
+      const stored = loadProjectContext(trimmedProjectId || undefined);
       let nextForm = defaultContext();
       let nextRaw: RawNumericFields = rawNumericFieldsFromContext(nextForm);
       if (stored) {
@@ -546,6 +546,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         setDeleting(false);
         return;
       }
+      setDeleting(false);
       if (data.portfolioId) {
         router.replace(riskaiPath(`/portfolios/${data.portfolioId}/projects`));
       } else {

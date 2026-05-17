@@ -4,6 +4,7 @@ import {
   VISUALIFY_PRODUCTS,
   type VisualifyProductKey,
 } from "@visualify/urls";
+import { hasLegacyRiskAiPrefix, isAuthenticatedAppPath } from "@/lib/routes";
 
 function defaultProductHost(productKey: VisualifyProductKey): string {
   return new URL(VISUALIFY_PRODUCTS[productKey].defaultOrigin).hostname;
@@ -43,8 +44,8 @@ export function isWebsiteHost(host: string): boolean {
 
 /** Paths that only exist on the app host; website visitors are sent to the app origin. */
 export function isAppAreaPath(pathname: string): boolean {
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return true;
-  if (pathname === "/riskai" || pathname.startsWith("/riskai/")) return true;
+  if (isAuthenticatedAppPath(pathname)) return true;
+  if (hasLegacyRiskAiPrefix(pathname)) return true;
   return false;
 }
 

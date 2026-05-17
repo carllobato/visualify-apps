@@ -34,7 +34,7 @@ export function getProductOrigin(productKey: VisualifyProductKey): string {
 /**
  * Canonical dashboard / launcher URL for a product (origin + {@link VisualifyProductDefinition.dashboardPath}).
  *
- * @example getProductDashboardUrl("riskai") // https://app.visualify.com.au/riskai/dashboard
+ * @example getProductDashboardUrl("riskai") // https://app.visualify.com.au/dashboard
  */
 export function getProductDashboardUrl(productKey: VisualifyProductKey): string {
   const product = getProductDefinition(productKey);
