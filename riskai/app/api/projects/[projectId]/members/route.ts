@@ -13,11 +13,15 @@ import {
 import { getProjectMembersViewerContext } from "@/lib/db/projectMemberAccess";
 import type {
   ProjectMemberRole,
-  ProjectMemberRow,
   ProfileDisplayRow,
   ProjectMemberWithProfileRow,
+  ProjectWorkspaceRole,
 } from "@/types/projectMembers";
 import { coerceProfileFromUnknown } from "@/lib/profileDisplayCoerce";
+import {
+  normalizeWorkspaceRole,
+  type WorkspaceRole,
+} from "@visualify/workspace-product-access";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
 import {
   createVisualifyProjectInvitationAndInvite,
@@ -51,8 +55,150 @@ function isMissingServiceRoleMessage(raw: string): boolean {
   );
 }
 
+function isActiveWorkspaceMemberStatus(value: string | null | undefined): boolean {
+  if (value == null || value === "") return true;
+  return value.trim().toLowerCase() === "active";
+}
+
+function workspaceRoleLabel(role: WorkspaceRole): string {
+  switch (role) {
+    case "owner":
+      return "Workspace owner";
+    case "admin":
+      return "Workspace admin";
+    case "member":
+      return "Workspace member";
+    case "viewer":
+      return "Workspace viewer";
+    default:
+      return "Workspace member";
+  }
+}
+
+function syntheticWorkspaceMemberId(workspaceId: string, userId: string): string {
+  return `workspace:${workspaceId}:${userId}`;
+}
+
 /**
- * GET /api/projects/[projectId]/members — Member rows + profiles map (merge on client).
+ * Merges direct project_members (authoritative) with active workspace members.
+ * Dedupes by user_id; direct rows always win over inherited workspace rows.
+ */
+async function loadMergedProjectMemberRows(
+  supabase: Awaited<ReturnType<typeof supabaseServerClient>>,
+  projectId: string,
+  directRawRows: Record<string, unknown>[],
+): Promise<ProjectMemberWithProfileRow[]> {
+  // Direct rows are authoritative for role, id, and edit/remove targets.
+  const shaped: ProjectMemberWithProfileRow[] = directRawRows.map((raw) => ({
+    id: raw.id as string,
+    project_id: raw.project_id as string,
+    user_id: raw.user_id as string,
+    role: raw.role as ProjectMemberRole,
+    created_at: raw.created_at as string,
+    updated_at: raw.updated_at as string,
+    profiles: null,
+    email: null,
+    resolvedProfile: null,
+    membershipSource: "direct",
+    isProjectMemberEditable: true,
+  }));
+
+  const directUserIds = new Set(shaped.map((r) => r.user_id));
+
+  const { data: project, error: projectErr } = await supabase
+    .from("visualify_projects")
+    .select("workspace_id, portfolio_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (projectErr) {
+    console.error("[project-members] GET project workspace scope:", projectErr.message);
+    return shaped;
+  }
+
+  let workspaceId =
+    typeof project?.workspace_id === "string" && project.workspace_id.trim().length > 0
+      ? project.workspace_id.trim()
+      : null;
+
+  if (!workspaceId) {
+    const portfolioId =
+      typeof project?.portfolio_id === "string" && project.portfolio_id.trim().length > 0
+        ? project.portfolio_id.trim()
+        : null;
+    if (portfolioId) {
+      const { data: portfolio, error: portfolioErr } = await supabase
+        .from("visualify_portfolios")
+        .select("workspace_id")
+        .eq("id", portfolioId)
+        .maybeSingle();
+      if (portfolioErr) {
+        console.error("[project-members] GET portfolio workspace_id:", portfolioErr.message);
+        return shaped;
+      }
+      workspaceId =
+        typeof portfolio?.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
+          ? portfolio.workspace_id.trim()
+          : null;
+    }
+  }
+
+  if (!workspaceId) {
+    return shaped;
+  }
+
+  const { data: workspaceRows, error: workspaceErr } = await supabase
+    .from("visualify_workspace_members")
+    .select("user_id, role, status, created_at")
+    .eq("workspace_id", workspaceId);
+
+  if (workspaceErr) {
+    console.error("[project-members] GET workspace members:", workspaceErr.message);
+    return shaped;
+  }
+
+  for (const row of workspaceRows ?? []) {
+    const userId = typeof row.user_id === "string" ? row.user_id.trim() : "";
+    if (!userId || directUserIds.has(userId)) {
+      continue;
+    }
+    if (!isActiveWorkspaceMemberStatus(row.status as string | null | undefined)) {
+      continue;
+    }
+
+    const workspaceRole = normalizeWorkspaceRole(row.role as string | null | undefined);
+    if (!workspaceRole) {
+      continue;
+    }
+
+    const createdAt =
+      typeof row.created_at === "string" && row.created_at.trim().length > 0
+        ? row.created_at
+        : "";
+
+    // Inherited workspace rows are read-only in the members UI (no project_members id).
+    shaped.push({
+      id: syntheticWorkspaceMemberId(workspaceId, userId),
+      project_id: projectId,
+      user_id: userId,
+      role: workspaceRole as ProjectMemberRole,
+      created_at: createdAt,
+      updated_at: createdAt,
+      profiles: null,
+      email: null,
+      resolvedProfile: null,
+      membershipSource: "workspace",
+      workspaceRole: workspaceRole as ProjectWorkspaceRole,
+      roleLabel: workspaceRoleLabel(workspaceRole),
+      isProjectMemberEditable: false,
+    });
+  }
+
+  return shaped;
+}
+
+/**
+ * GET /api/projects/[projectId]/members — Member rows + profiles map (direct + inherited workspace).
  */
 export async function GET(
   _request: Request,
@@ -92,17 +238,7 @@ export async function GET(
 
   const rawRows = (members ?? []) as Record<string, unknown>[];
 
-  let shaped: ProjectMemberWithProfileRow[] = rawRows.map((raw) => ({
-    id: raw.id as string,
-    project_id: raw.project_id as string,
-    user_id: raw.user_id as string,
-    role: raw.role as ProjectMemberRole,
-    created_at: raw.created_at as string,
-    updated_at: raw.updated_at as string,
-    profiles: null,
-    email: null,
-    resolvedProfile: null,
-  }));
+  let shaped = await loadMergedProjectMemberRows(supabase, projectId, rawRows);
 
   const memberUserIds = [...new Set(shaped.map((r) => r.user_id))];
   const profilesMap: Record<string, ProfileDisplayRow> = {};

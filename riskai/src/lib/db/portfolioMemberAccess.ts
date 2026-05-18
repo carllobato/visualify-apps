@@ -1,3 +1,5 @@
+import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
+import { resolveWorkspacePortfolioCapabilities } from "@/lib/workspace/workspaceRoleCapabilities";
 import type {
   PortfolioMemberRole,
   PortfolioMembersViewerContext,
@@ -63,6 +65,21 @@ export function resolvePortfolioMemberCapabilityFlags(
 /**
  * Viewer context for portfolio members UI. Capability flags align with portfolio RLS and API routes.
  */
+function viewerContextFromCapabilityFlags(
+  userId: string,
+  isTableOwner: boolean,
+  rowRole: string | undefined,
+  caps: PortfolioMemberCapabilityFlags,
+): PortfolioMembersViewerContext {
+  const canManageMembers = caps.canChangeMemberRoles || caps.canRemoveMembers;
+  return {
+    currentUserId: userId,
+    canManageMembers,
+    memberRole: displayMemberRole(isTableOwner, rowRole),
+    ...caps,
+  };
+}
+
 export async function getPortfolioMembersViewerContext(
   supabase: SupabaseClient,
   portfolioId: string,
@@ -70,7 +87,7 @@ export async function getPortfolioMembersViewerContext(
 ): Promise<PortfolioMembersViewerContext | null> {
   const { data: portfolio, error: pErr } = await supabase
     .from("visualify_portfolios")
-    .select("owner_user_id")
+    .select("owner_user_id, workspace_id")
     .eq("id", portfolioId)
     .single();
 
@@ -87,19 +104,47 @@ export async function getPortfolioMembersViewerContext(
     .maybeSingle();
 
   const rowRole = memberRow?.role as string | undefined;
-  if (!isTableOwner && (!memberRow || !portfolioMemberRoleAllowsSettingsPageAccess(rowRole))) {
+
+  if (isTableOwner) {
+    return viewerContextFromCapabilityFlags(
+      userId,
+      true,
+      rowRole,
+      resolvePortfolioMemberCapabilityFlags(true, rowRole),
+    );
+  }
+
+  if (!memberRow || !portfolioMemberRoleAllowsSettingsPageAccess(rowRole)) {
+    const workspaceId =
+      typeof portfolio.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
+        ? portfolio.workspace_id.trim()
+        : null;
+
+    if (workspaceId) {
+      const workspaceRole = await fetchWorkspaceMemberRole(supabase, workspaceId, userId);
+      if (workspaceRole) {
+        const workspaceCaps = resolveWorkspacePortfolioCapabilities(workspaceRole);
+        if (workspaceCaps.canAccessPortfolioSettings) {
+          const caps: PortfolioMemberCapabilityFlags = {
+            canEditPortfolioDetails: workspaceCaps.canEditPortfolioDetails,
+            canInviteMembers: workspaceCaps.canInviteMembers,
+            canChangeMemberRoles: workspaceCaps.canChangeMemberRoles,
+            canRemoveMembers: workspaceCaps.canRemoveMembers,
+          };
+          return viewerContextFromCapabilityFlags(userId, false, rowRole, caps);
+        }
+      }
+    }
+
     return null;
   }
 
-  const caps = resolvePortfolioMemberCapabilityFlags(isTableOwner, rowRole);
-  const canManageMembers = caps.canChangeMemberRoles || caps.canRemoveMembers;
-
-  return {
-    currentUserId: userId,
-    canManageMembers,
-    memberRole: displayMemberRole(isTableOwner, rowRole),
-    ...caps,
-  };
+  return viewerContextFromCapabilityFlags(
+    userId,
+    false,
+    rowRole,
+    resolvePortfolioMemberCapabilityFlags(false, rowRole),
+  );
 }
 
 export async function countPortfolioOwners(

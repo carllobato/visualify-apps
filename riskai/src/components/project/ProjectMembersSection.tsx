@@ -115,6 +115,11 @@ function isStandardProjectRole(role: string): role is ProjectMemberRole {
   return (ROLE_OPTIONS as { value: string }[]).some((o) => o.value === role);
 }
 
+/** Inherited workspace rows are read-only; direct project_members rows stay editable. */
+function isReadOnlyInheritedMember(m: ProjectMemberWithProfileRow): boolean {
+  return m.membershipSource === "workspace" || m.isProjectMemberEditable === false;
+}
+
 export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState(true);
   const [members, setMembers] = useState<ProjectMemberWithProfileRow[]>([]);
@@ -418,7 +423,11 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                     const displayName = computeDisplayName(normalizedProfile, m.email, m.user_id);
                     const displayEmail = computeDisplayEmail(normalizedProfile, m.email);
                     const isSelf = viewer?.currentUserId === m.user_id;
+                    const readOnlyInherited = isReadOnlyInheritedMember(m);
                     const busy = pendingId === m.id;
+                    const roleDisplay =
+                      m.roleLabel?.trim() ||
+                      (m.role ? `${m.role[0].toUpperCase()}${m.role.slice(1)}` : "");
                     return (
                       <TableRow
                         key={m.id}
@@ -427,7 +436,7 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                         <TableCell className="text-[var(--ds-text-primary)]">{displayName}</TableCell>
                         <TableCell className="text-[var(--ds-text-secondary)]">{displayEmail}</TableCell>
                         <TableCell>
-                          {canChangeRole && !isSelf ? (
+                          {canChangeRole && !isSelf && !readOnlyInherited ? (
                             <select
                               className={projectSettingsSelectClass(false, "sm")}
                               value={m.role}
@@ -451,8 +460,8 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                               ))}
                             </select>
                           ) : (
-                            <span className="inline-flex h-9 w-full items-center px-3 py-1 capitalize text-[var(--ds-text-primary)]">
-                              {m.role}
+                            <span className="inline-flex h-9 w-full items-center px-3 py-1 text-[var(--ds-text-primary)]">
+                              {roleDisplay}
                             </span>
                           )}
                         </TableCell>
@@ -460,7 +469,7 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
                           <TableCell>
                             <div className={membersActionsSlotOuterClass}>
                               <div className={membersActionsSlotInnerClass}>
-                                {canRemove && !isSelf ? (
+                                {canRemove && !isSelf && !readOnlyInherited ? (
                                   <Button
                                     type="button"
                                     variant="ghost"

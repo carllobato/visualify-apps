@@ -1,5 +1,9 @@
 export type ProjectMemberRole = "owner" | "editor" | "viewer";
 
+export type ProjectMemberSource = "direct" | "workspace";
+
+export type ProjectWorkspaceRole = "owner" | "admin" | "member" | "viewer";
+
 export type ProjectMemberRow = {
   id: string;
   project_id: string;
@@ -26,6 +30,13 @@ export type ProjectMemberWithProfileRow = ProjectMemberRow & {
   email?: string | null;
   /** Single profile for display after server-side coercion / fill (may be null). */
   resolvedProfile?: ProfileDisplayRow | null;
+  /** Direct project_members row vs inherited workspace membership (GET list only). */
+  membershipSource?: ProjectMemberSource;
+  workspaceRole?: ProjectWorkspaceRole | null;
+  /** Display label for inherited workspace rows; not a project_members role. */
+  roleLabel?: string;
+  /** False for inherited workspace rows (no PATCH/DELETE). */
+  isProjectMemberEditable?: boolean;
 };
 
 export type ProjectMembersViewerContext = {

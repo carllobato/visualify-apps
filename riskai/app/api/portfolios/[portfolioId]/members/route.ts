@@ -17,9 +17,13 @@ import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess
 import { coerceProfileFromUnknown } from "@/lib/profileDisplayCoerce";
 import type { ProfileDisplayRow } from "@/types/projectMembers";
 import type {
-  PortfolioMemberRole,
   PortfolioMemberWithProfileRow,
+  PortfolioWorkspaceRole,
 } from "@/types/portfolioMembers";
+import {
+  normalizeWorkspaceRole,
+  type WorkspaceRole,
+} from "@visualify/workspace-product-access";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
@@ -44,6 +48,124 @@ function isMissingServiceRoleMessage(raw: string): boolean {
     lower.includes("admin operations") ||
     lower.includes("missing required environment variable")
   );
+}
+
+function isActiveWorkspaceMemberStatus(value: string | null | undefined): boolean {
+  if (value == null || value === "") return true;
+  return value.trim().toLowerCase() === "active";
+}
+
+function workspaceRoleLabel(role: WorkspaceRole): string {
+  switch (role) {
+    case "owner":
+      return "Workspace owner";
+    case "admin":
+      return "Workspace admin";
+    case "member":
+      return "Workspace member";
+    case "viewer":
+      return "Workspace viewer";
+    default:
+      return "Workspace member";
+  }
+}
+
+function syntheticWorkspaceMemberId(workspaceId: string, userId: string): string {
+  return `workspace:${workspaceId}:${userId}`;
+}
+
+/**
+ * Merges direct portfolio_members (authoritative) with active workspace members.
+ * Dedupes by user_id; direct rows always win over inherited workspace rows.
+ */
+async function loadMergedPortfolioMemberRows(
+  supabase: Awaited<ReturnType<typeof supabaseServerClient>>,
+  portfolioId: string,
+  directRawRows: Record<string, unknown>[],
+): Promise<PortfolioMemberWithProfileRow[]> {
+  // Direct rows are authoritative for role, id, and edit/remove targets.
+  const shaped: PortfolioMemberWithProfileRow[] = directRawRows.map((raw) => ({
+    id: raw.id as string,
+    portfolio_id: raw.portfolio_id as string,
+    user_id: raw.user_id as string,
+    role: String(raw.role ?? ""),
+    created_at: raw.created_at as string,
+    profiles: null,
+    email: null,
+    resolvedProfile: null,
+    membershipSource: "direct",
+    isPortfolioMemberEditable: true,
+  }));
+
+  const directUserIds = new Set(shaped.map((r) => r.user_id));
+
+  const { data: portfolio, error: portfolioErr } = await supabase
+    .from("visualify_portfolios")
+    .select("workspace_id")
+    .eq("id", portfolioId)
+    .maybeSingle();
+
+  if (portfolioErr) {
+    console.error("[portfolio-members] GET workspace_id:", portfolioErr.message);
+    return shaped;
+  }
+
+  const workspaceId =
+    typeof portfolio?.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
+      ? portfolio.workspace_id.trim()
+      : null;
+
+  if (!workspaceId) {
+    return shaped;
+  }
+
+  const { data: workspaceRows, error: workspaceErr } = await supabase
+    .from("visualify_workspace_members")
+    .select("user_id, role, status, created_at")
+    .eq("workspace_id", workspaceId);
+
+  if (workspaceErr) {
+    console.error("[portfolio-members] GET workspace members:", workspaceErr.message);
+    return shaped;
+  }
+
+  for (const row of workspaceRows ?? []) {
+    const userId = typeof row.user_id === "string" ? row.user_id.trim() : "";
+    if (!userId || directUserIds.has(userId)) {
+      continue;
+    }
+    if (!isActiveWorkspaceMemberStatus(row.status as string | null | undefined)) {
+      continue;
+    }
+
+    const workspaceRole = normalizeWorkspaceRole(row.role as string | null | undefined);
+    if (!workspaceRole) {
+      continue;
+    }
+
+    const createdAt =
+      typeof row.created_at === "string" && row.created_at.trim().length > 0
+        ? row.created_at
+        : "";
+
+    // Inherited workspace rows are read-only in the members UI (no portfolio_members id).
+    shaped.push({
+      id: syntheticWorkspaceMemberId(workspaceId, userId),
+      portfolio_id: portfolioId,
+      user_id: userId,
+      role: workspaceRole,
+      created_at: createdAt,
+      profiles: null,
+      email: null,
+      resolvedProfile: null,
+      membershipSource: "workspace",
+      workspaceRole: workspaceRole as PortfolioWorkspaceRole,
+      roleLabel: workspaceRoleLabel(workspaceRole),
+      isPortfolioMemberEditable: false,
+    });
+  }
+
+  return shaped;
 }
 
 function splitInviteNameFromEmail(email: string): { firstName: string; surname: string } {
@@ -97,16 +219,7 @@ export async function GET(
     });
   }
 
-  let shaped: PortfolioMemberWithProfileRow[] = rawRows.map((raw) => ({
-    id: raw.id as string,
-    portfolio_id: raw.portfolio_id as string,
-    user_id: raw.user_id as string,
-    role: String(raw.role ?? ""),
-    created_at: raw.created_at as string,
-    profiles: null,
-    email: null,
-    resolvedProfile: null,
-  }));
+  let shaped = await loadMergedPortfolioMemberRows(supabase, portfolioId, rawRows);
 
   const memberUserIds = [...new Set(shaped.map((r) => r.user_id))];
   const profilesMap: Record<string, ProfileDisplayRow> = {};

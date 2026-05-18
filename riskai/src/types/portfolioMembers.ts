@@ -2,6 +2,10 @@ import type { ProfileDisplayRow } from "@/types/projectMembers";
 
 export type PortfolioMemberRole = "owner" | "editor" | "viewer";
 
+export type PortfolioMemberSource = "direct" | "workspace";
+
+export type PortfolioWorkspaceRole = "owner" | "admin" | "member" | "viewer";
+
 export type PortfolioMemberRow = {
   id: string;
   portfolio_id: string;
@@ -16,6 +20,13 @@ export type PortfolioMemberWithProfileRow = PortfolioMemberRow & {
   profile?: ProfileDisplayRow | ProfileDisplayRow[] | null;
   email?: string | null;
   resolvedProfile?: ProfileDisplayRow | null;
+  /** Direct portfolio_members row vs inherited workspace membership (GET list only). */
+  membershipSource?: PortfolioMemberSource;
+  workspaceRole?: PortfolioWorkspaceRole | null;
+  /** Display label for inherited workspace rows; not a portfolio_members role. */
+  roleLabel?: string;
+  /** False for inherited workspace rows (no PATCH/DELETE). */
+  isPortfolioMemberEditable?: boolean;
 };
 
 export type PortfolioMembersViewerContext = {

@@ -1,7 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
-import { useLayoutEffect } from "react";
+import { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { usePathname } from "next/navigation";
 
@@ -15,16 +15,30 @@ type PageTransitionProps = {
  * `key={pathname}` remounts this wrapper on every client-side URL change inside the shell so
  * each route gets a fresh subtree. `initial={false}` keeps content visible immediately (avoids
  * long or stuck opacity-0 fades after RSC navigations such as onboarding redirects).
+ *
+ * Async RSC children suspend during SSR; a motion-only wrapper can hydrate as Suspense vs motion
+ * mismatch. We SSR a stable `div`, then enable motion after mount.
  */
 export function PageTransition({ children, scrollContainerRef }: PageTransitionProps) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion() === true;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useLayoutEffect(() => {
     const el = scrollContainerRef?.current;
     if (el) el.scrollTop = 0;
     else window.scrollTo(0, 0);
   }, [pathname, scrollContainerRef]);
+
+  const inner = <Suspense fallback={null}>{children}</Suspense>;
+
+  if (!mounted) {
+    return <div className="min-h-0 w-full">{inner}</div>;
+  }
 
   return (
     <motion.div
@@ -37,7 +51,7 @@ export function PageTransition({ children, scrollContainerRef }: PageTransitionP
         ease: [0.25, 0.1, 0.25, 1],
       }}
     >
-      {children}
+      {inner}
     </motion.div>
   );
 }
