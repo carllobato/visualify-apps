@@ -42,7 +42,7 @@ export type AssertProjectAccessResult =
 
 /**
  * Server-only. Verifies the current user can read the project and returns capability flags
- * (table owner, project_members role, or portfolio-only) aligned with RLS.
+ * (table owner, project_members role, or inherited read as viewer via `can_read_project`).
  */
 export async function assertProjectAccess(
   projectId: string

@@ -3,7 +3,11 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { resolvePortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAccess";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import type { ProjectPermissions } from "@/types/projectPermissions";
-import { resolveProjectPermissions } from "@/lib/db/projectPermissions.logic";
+import { canReadProject } from "@/lib/db/canReadAccess";
+import {
+  resolveInheritedProjectReadPermissions,
+  resolveProjectPermissions,
+} from "@/lib/db/projectPermissions.logic";
 
 export type ProjectRow = { id: string; name: string; created_at: string | null };
 
@@ -34,21 +38,58 @@ export async function getProjectIfAccessible(
 
 /**
  * Project row + permission flags for the given user (must match session for RLS).
- * Used by API routes and assertProjectAccess; keeps checks aligned with project_members.
- * Request-cached per (projectId, userId) so nested routes can reuse the layout’s fetch without another round trip.
+ * Direct owner/project_members roles first; inherited workspace/portfolio read via `can_read_project`
+ * resolves as viewer-only. Request-cached per (projectId, userId).
  */
+type ProjectAccessRow = {
+  id: string;
+  name: string;
+  created_at: string | null;
+  owner_user_id: string;
+  portfolio_id: string | null;
+};
+
+const PROJECT_ACCESS_ROW_SELECT =
+  "id, name, created_at, owner_user_id, portfolio_id" as const;
+
 export const getProjectAccessForUser = cache(async function getProjectAccessForUser(
   projectId: string,
   userId: string
 ): Promise<ProjectAccessBundle | null> {
   const supabase = await supabaseServerClient();
-  const { data, error } = await supabase
-    .from("visualify_projects")
-    .select("id, name, created_at, owner_user_id, portfolio_id")
-    .eq("id", projectId)
-    .single();
 
-  if (error || !data) return null;
+  const loadProjectRow = () =>
+    supabase
+      .from("visualify_projects")
+      .select(PROJECT_ACCESS_ROW_SELECT)
+      .eq("id", projectId)
+      .single();
+
+  let data: ProjectAccessRow | null = null;
+
+  const initial = await loadProjectRow();
+  if (initial.data) {
+    data = initial.data as ProjectAccessRow;
+  } else {
+    const readable = await canReadProject(supabase, projectId, userId);
+    if (!readable) return null;
+
+    const retry = await loadProjectRow();
+    if (retry.data) {
+      data = retry.data as ProjectAccessRow;
+    } else {
+      console.warn(
+        "[projectAccess] getProjectAccessForUser: can_read_project without projects row; using inherited read bundle",
+        { projectId, userId, message: retry.error?.message ?? initial.error?.message },
+      );
+      return {
+        project: { id: projectId, name: "", created_at: null },
+        permissions: resolveInheritedProjectReadPermissions(),
+        ownerUserId: "",
+        portfolioId: null,
+      };
+    }
+  }
 
   const { data: memberRow } = await supabase
     .from("visualify_project_members")
@@ -58,13 +99,18 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     .maybeSingle();
 
   const memberRole = (memberRow?.role as ProjectMemberRole | undefined) ?? null;
-  const permissions = resolveProjectPermissions({
-    tableOwnerUserId: data.owner_user_id as string,
-    currentUserId: userId,
-    memberRole,
-  });
+  let permissions =
+    resolveProjectPermissions({
+      tableOwnerUserId: data.owner_user_id as string,
+      currentUserId: userId,
+      memberRole,
+    }) ?? null;
 
-  if (!permissions) return null;
+  if (!permissions) {
+    const readable = await canReadProject(supabase, projectId, userId);
+    if (!readable) return null;
+    permissions = resolveInheritedProjectReadPermissions();
+  }
 
   let canEditPortfolioDetails = false;
   if (permissions.accessMode === "owner" && data.portfolio_id) {

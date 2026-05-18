@@ -1,6 +1,6 @@
 /**
- * Effective project capabilities for the current user (table owner or direct project_members role).
- * Viewers cannot mutate risks/snapshots.
+ * Effective project capabilities for the current user (table owner, direct project_members role,
+ * or inherited read). Viewers and inherited readers cannot mutate risks/snapshots.
  */
 export type ProjectAccessMode = "owner" | "editor" | "viewer";
 

@@ -1,6 +1,7 @@
 /**
- * Roles allowed on `visualify_invitations` when `resource_type = 'workspace'`
- * (aligned with `visualify_workspace_members.role`).
+ * Roles allowed on `visualify_invitations` when `resource_type = 'workspace'`.
+ * Subset of workspace member roles: DB constraint allows owner/admin/member only
+ * (see migration 20260516120000_workspace_invitations_owner_role.sql).
  */
 export const WORKSPACE_INVITE_ROLES = ["owner", "admin", "member"] as const;
 

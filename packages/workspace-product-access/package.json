@@ -5,6 +5,10 @@
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types src/workspaceRoles.test.ts"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0"
   }

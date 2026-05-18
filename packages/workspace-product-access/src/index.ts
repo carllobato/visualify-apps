@@ -1,5 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export {
+  WORKSPACE_ROLES,
+  WORKSPACE_ROLE_RANK,
+  WORKSPACE_ROLES_BY_DESCENDING_PRIVILEGE,
+  type WorkspaceRole,
+  isWorkspaceRole,
+  normalizeWorkspaceRole,
+  workspaceRoleRank,
+  isWorkspaceRoleAtLeast,
+  canAssignWorkspaceRole,
+} from "./workspaceRoles";
+
 /**
  * One workspace entitlement to a product (flattened from the members → workspaces →
  * workspace_products → products chain).

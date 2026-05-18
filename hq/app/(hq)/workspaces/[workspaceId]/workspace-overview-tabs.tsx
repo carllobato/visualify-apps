@@ -45,12 +45,12 @@ export type WorkspaceOverviewUserRow = {
   status: string | null;
 };
 
-type RoleBadgeKey = "owner" | "admin" | "member" | "other";
+type RoleBadgeKey = "owner" | "admin" | "member" | "viewer" | "other";
 type StatusBadgeKey = "active" | "invited" | "inactive";
 
 function workspaceRoleBadgeKey(raw: string | null | undefined): RoleBadgeKey {
   const s = (raw ?? "").trim().toLowerCase();
-  if (s === "owner" || s === "admin" || s === "member") return s;
+  if (s === "owner" || s === "admin" || s === "member" || s === "viewer") return s;
   return "other";
 }
 

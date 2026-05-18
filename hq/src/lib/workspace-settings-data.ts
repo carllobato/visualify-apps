@@ -1,6 +1,10 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  normalizeWorkspaceRole,
+  workspaceRoleRank,
+} from "@visualify/workspace-product-access";
 import { cookies } from "next/headers";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -339,11 +343,10 @@ function displayNameFromWorkspaceProfile(p: WorkspaceProfileRow | null): string 
   return full.length > 0 ? full : null;
 }
 
-const WORKSPACE_MEMBER_ROLE_ORDER: Record<string, number> = {
-  owner: 0,
-  admin: 1,
-  member: 2,
-};
+function workspaceMemberRoleSortKey(role: string): number {
+  const normalized = normalizeWorkspaceRole(role);
+  return normalized != null ? workspaceRoleRank(normalized) : 99;
+}
 
 /**
  * Workspace directory for HQ admin (visualify_workspace_members + visualify_profiles only).
@@ -404,8 +407,8 @@ export async function fetchWorkspaceMembersForAdmin(
   mapped.sort((a, b) => {
     const ar = (a.role ?? "").trim().toLowerCase();
     const br = (b.role ?? "").trim().toLowerCase();
-    const ra = WORKSPACE_MEMBER_ROLE_ORDER[ar] ?? 99;
-    const rb = WORKSPACE_MEMBER_ROLE_ORDER[br] ?? 99;
+    const ra = workspaceMemberRoleSortKey(ar);
+    const rb = workspaceMemberRoleSortKey(br);
     if (ra !== rb) return ra - rb;
     const an = (a.displayName ?? a.email ?? a.userId).toLowerCase();
     const bn = (b.displayName ?? b.email ?? b.userId).toLowerCase();

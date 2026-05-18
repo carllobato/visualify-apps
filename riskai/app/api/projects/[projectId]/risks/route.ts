@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  accessDeniedResponse,
+  assertProjectAccess,
+} from "@/lib/auth/assertProjectAccess";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
 import { RISK_STATUS_ARCHIVED_LOOKUP } from "@/domain/risk/riskFieldSemantics";
@@ -39,8 +43,11 @@ export async function GET(
     return NextResponse.json({ error: "Project ID required" }, { status: 400 });
   }
 
-  const access = await getProjectAccessForUser(projectId, user.id);
-  if (!access) {
+  const readAccess = await assertProjectAccess(projectId);
+  if ("error" in readAccess) {
+    if (readAccess.error === "unauthorized") {
+      return accessDeniedResponse(readAccess);
+    }
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
