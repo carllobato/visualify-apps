@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   normalizeWorkspaceRole,
@@ -89,9 +90,35 @@ export type WorkspaceDashboardEntry = {
   id: string;
   name: string;
   website_url: string | null;
+  memberRole: string;
+  memberCount: number;
+  productCount: number;
 };
 
-async function fetchManageableWorkspacesInternal(
+async function fetchWorkspaceMemberCountsByIds(workspaceIds: string[]): Promise<Map<string, number>> {
+  if (workspaceIds.length === 0) return new Map();
+
+  const supabase = await supabaseServerClient();
+  const { data, error } = await supabase
+    .from("visualify_workspace_members")
+    .select("workspace_id")
+    .in("workspace_id", workspaceIds);
+
+  if (error) {
+    console.error("fetchWorkspaceMemberCountsByIds:", error.message);
+    return new Map();
+  }
+
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { workspace_id: string }[]) {
+    const id = row.workspace_id;
+    if (!id) continue;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+async function fetchManageableWorkspacesInternalImpl(
   userId: string,
   supabaseClient?: SupabaseClient,
 ): Promise<
@@ -181,6 +208,29 @@ async function fetchManageableWorkspacesInternal(
   return [...dedup.values()];
 }
 
+/** Per-request dedup when layout and page loaders both need manageable workspaces. */
+const fetchManageableWorkspacesInternalCached = cache((userId: string) =>
+  fetchManageableWorkspacesInternalImpl(userId),
+);
+
+async function fetchManageableWorkspacesInternal(
+  userId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<
+  Array<
+    ManageableWorkspaceSummary & {
+      productCount: number;
+      logo_url: string | null;
+      website_url: string | null;
+    }
+  >
+> {
+  if (supabaseClient) {
+    return fetchManageableWorkspacesInternalImpl(userId, supabaseClient);
+  }
+  return fetchManageableWorkspacesInternalCached(userId);
+}
+
 export async function fetchManageableWorkspacesForRail(userId: string): Promise<WorkspaceRailEntry[]> {
   const rows = await fetchManageableWorkspacesInternal(userId);
   return rows.map((r) => ({
@@ -195,10 +245,14 @@ export async function fetchManageableWorkspacesForDashboard(
   userId: string,
 ): Promise<WorkspaceDashboardEntry[]> {
   const rows = await fetchManageableWorkspacesInternal(userId);
+  const memberCounts = await fetchWorkspaceMemberCountsByIds(rows.map((r) => r.id));
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
     website_url: r.website_url,
+    memberRole: r.memberRole,
+    memberCount: memberCounts.get(r.id) ?? 0,
+    productCount: r.productCount,
   }));
 }
 

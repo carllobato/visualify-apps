@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { appShellRailFooterAccountOuterTailwindClassName } from "./rail-layout-classes";
-import { appShellRailIconWellClassName, railLabelClass } from "./rail-row-classes";
+import { appShellRailFooterRowOuterTailwindClassName } from "./rail-layout-classes";
+import { appShellRailFooterIconWellClassName, railLabelClass } from "./rail-row-classes";
 import { appShellRailFooterControlRowClass } from "./rail-footer-row-classes";
 
 function HelpCircleIcon() {
@@ -42,7 +42,7 @@ export type AppShellRailFooterHelpProps = {
  */
 export function AppShellRailFooterHelp({ children, className }: AppShellRailFooterHelpProps) {
   return (
-    <div className={mergeClass(appShellRailFooterAccountOuterTailwindClassName, className)}>
+    <div className={mergeClass(appShellRailFooterRowOuterTailwindClassName, className)}>
       {children}
     </div>
   );
@@ -67,7 +67,7 @@ export function AppShellRailFooterHelpTrigger({
       aria-label={label}
       onClick={onClick}
     >
-      <span className={appShellRailIconWellClassName}>
+      <span className={appShellRailFooterIconWellClassName}>
         <HelpCircleIcon />
       </span>
       <span className={railLabelClass}>{label}</span>

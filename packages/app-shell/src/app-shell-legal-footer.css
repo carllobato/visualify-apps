@@ -8,13 +8,14 @@
 }
 
 .vf-app-shell-legal-footer-bar {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
+  height: var(--vf-app-shell-footer-band-height, 2.5rem);
+  min-height: var(--vf-app-shell-footer-band-height, 2.5rem);
+  max-height: var(--vf-app-shell-footer-band-height, 2.5rem);
   border-top: 1px solid var(--ds-border-subtle);
-  /* ~2× prior ~24px row: more vertical padding + minimum tap/read band */
-  padding-block: 0.5rem;
-  min-height: 48px;
-  box-sizing: border-box;
+  padding-block: 0;
 }
 
 .vf-app-shell-legal-footer-content {

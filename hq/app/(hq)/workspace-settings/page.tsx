@@ -1,3 +1,4 @@
+import { AppShellPageHeader } from "@visualify/app-shell";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
@@ -16,10 +17,11 @@ export default async function WorkspaceSettingsPage() {
   if (!cookieId) {
     return (
       <main className="w-full min-w-0 px-0 pb-4">
-        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace</h1>
-        <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-          Select a workspace from the rail to open its admin hub.
-        </p>
+        <AppShellPageHeader
+          title="Workspace"
+          description="Select a workspace from the rail to open its admin hub."
+          className="mb-8"
+        />
       </main>
     );
   }
@@ -28,10 +30,11 @@ export default async function WorkspaceSettingsPage() {
   if (!manageable) {
     return (
       <main className="w-full min-w-0 px-0 pb-4">
-        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Workspace</h1>
-        <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-          This workspace is not available for administration. Choose another workspace from the rail.
-        </p>
+        <AppShellPageHeader
+          title="Workspace"
+          description="This workspace is not available for administration. Choose another workspace from the rail."
+          className="mb-8"
+        />
         <Link
           href="/account"
           className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]"

@@ -44,6 +44,16 @@ export function canAssignWorkspaceInviteRole(
   return canAssignWorkspaceRole(inviter, target);
 }
 
+/** Display label for `visualify_workspace_members.role` on admin surfaces. */
+export function workspaceMemberRoleLabel(raw: string | null | undefined): string {
+  const s = (raw ?? "").trim().toLowerCase();
+  if (s === "owner" || s === "admin" || s === "member" || s === "viewer") {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  const t = raw?.trim();
+  return t && t.length > 0 ? t : "Member";
+}
+
 /** Lowest-privilege assignable role (default for new invites). */
 export function defaultWorkspaceInviteRole(
   inviterRoleRaw: string | null | undefined,

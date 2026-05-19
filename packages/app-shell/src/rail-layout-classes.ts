@@ -36,8 +36,7 @@ export const appShellRailHeaderClassName =
   "flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain";
 
 /** Bottom stack (pin/collapse + account) — pinned to the bottom of the rail. */
-export const appShellRailFooterClassName =
-  "flex w-full shrink-0 flex-col pt-5 pb-2 sm:pb-2.5";
+export const appShellRailFooterClassName = "vf-app-shell-rail-footer";
 
 /** Divider between brand and nav — expands with rail width. */
 export const appShellRailSeparatorClassName =
@@ -56,10 +55,13 @@ export const appShellRailPinRevealPinnedClassName =
   "overflow-hidden transition-[max-height,opacity,margin-bottom] duration-[400ms] ease-out " +
   "pointer-events-auto max-h-20 opacity-100";
 
-/** Account footer outer — expands with rail width. */
-export const appShellRailFooterAccountOuterTailwindClassName =
-  "mt-2 w-full max-w-10 shrink-0 transition-[max-width] duration-[400ms] ease-out " +
+/** Footer help row outer — icon width when collapsed; full width on hover or pin. */
+export const appShellRailFooterRowOuterTailwindClassName =
+  "w-full max-w-10 shrink-0 transition-[max-width] duration-[400ms] ease-out " +
   "group-hover:max-w-none group-data-[pinned=true]:max-w-none";
+
+/** @deprecated Use {@link appShellRailFooterRowOuterTailwindClassName} */
+export const appShellRailFooterAccountOuterTailwindClassName = appShellRailFooterRowOuterTailwindClassName;
 
 /** Full-width footer action host (account menu, sign-out). */
 export const appShellRailFooterActionWrapClassName =

@@ -1,3 +1,4 @@
+import { AppShellPageHeader } from "@visualify/app-shell";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
@@ -44,8 +45,7 @@ function billingStatusSummary(attached: AttachedWorkspaceProduct[]): string {
 function noAccessMain(title: string, body: string) {
   return (
     <main className="w-full min-w-0 px-0 pb-4">
-      <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">{title}</h1>
-      <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">{body}</p>
+      <AppShellPageHeader title={title} description={body} className="mb-8" />
       <Link
         href="/account"
         className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-primary)] no-underline hover:bg-[var(--ds-surface-hover)]"

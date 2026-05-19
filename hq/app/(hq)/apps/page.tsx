@@ -1,3 +1,4 @@
+import { AppShellPageHeader } from "@visualify/app-shell";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@visualify/design-system";
@@ -41,12 +42,11 @@ export default async function AppsPage() {
   if (!cookieWorkspaceId) {
     return (
       <main className="w-full min-w-0 px-0 pb-10 pt-0">
-        <div className="space-y-2.5">
-          <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Apps</h1>
-          <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-            Select a workspace in the rail to view active apps and products you can add.
-          </p>
-        </div>
+        <AppShellPageHeader
+          title="Apps"
+          description="Select a workspace in the rail to view active apps and products you can add."
+          className="mb-8"
+        />
         <Card
           variant="default"
           className="w-full [border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
@@ -65,12 +65,11 @@ export default async function AppsPage() {
   if (!manageable) {
     return (
       <main className="w-full min-w-0 px-0 pb-10 pt-0">
-        <div className="space-y-2.5">
-          <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Apps</h1>
-          <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-            You need workspace admin access to manage apps for this workspace.
-          </p>
-        </div>
+        <AppShellPageHeader
+          title="Apps"
+          description="You need workspace admin access to manage apps for this workspace."
+          className="mb-8"
+        />
         <Card
           variant="default"
           className="w-full [border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]"
@@ -108,14 +107,17 @@ export default async function AppsPage() {
 
   return (
     <main className="w-full min-w-0 px-0 pb-10 pt-0">
-      <div className="space-y-2.5">
-        <h1 className="mb-2 text-2xl font-semibold text-[var(--ds-text-primary)]">Apps</h1>
-        <p className="mb-8 text-sm text-[var(--ds-text-secondary)]">
-          Managing apps for{" "}
-          <span className="font-medium text-[var(--ds-text-primary)]">{manageable.name}</span>. Active apps
-          have an ongoing subscription; inactive catalog apps can be enabled from Billing.
-        </p>
-      </div>
+      <AppShellPageHeader
+        title="Apps"
+        description={
+          <>
+            Managing apps for{" "}
+            <span className="font-medium text-[var(--ds-text-primary)]">{manageable.name}</span>. Active apps
+            have an ongoing subscription; inactive catalog apps can be enabled from Billing.
+          </>
+        }
+        className="mb-8"
+      />
 
       <div className="space-y-10">
         <section aria-labelledby="active-apps-heading" className="space-y-4">

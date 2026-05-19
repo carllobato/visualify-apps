@@ -6,11 +6,12 @@ import {
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 import { PlatformRail } from "./platform-rail";
-import { SiteLegalFooter } from "@/components/site-legal-footer";
+import { HqAppFooter } from "@/components/hq-app-footer";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import {
   fetchManageableWorkspacesForRail,
-  resolveSelectedWorkspaceIdForRail,
+  readVisualifyActiveWorkspaceIdFromCookie,
+  type WorkspaceRailEntry,
 } from "@/lib/workspace-settings-data";
 
 /**
@@ -19,8 +20,23 @@ import {
  */
 export async function HqSignedInShell({ children }: { children: React.ReactNode }) {
   const user = await resolveAuthenticatedUser();
-  const workspaces = user ? await fetchManageableWorkspacesForRail(user.id) : [];
-  const selectedWorkspaceId = user ? await resolveSelectedWorkspaceIdForRail(user.id) : null;
+
+  let workspaces: WorkspaceRailEntry[] = [];
+  let selectedWorkspaceId: string | null = null;
+
+  if (user) {
+    const [railWorkspaces, cookieWorkspaceId] = await Promise.all([
+      fetchManageableWorkspacesForRail(user.id),
+      readVisualifyActiveWorkspaceIdFromCookie(),
+    ]);
+    workspaces = railWorkspaces;
+    // Validate against the rail list already loaded above — same rule as
+    // resolveSelectedWorkspaceIdForRail without a second fetchManageableWorkspacesInternal call.
+    selectedWorkspaceId =
+      cookieWorkspaceId && workspaces.some((w) => w.id === cookieWorkspaceId)
+        ? cookieWorkspaceId
+        : null;
+  }
 
   return (
     <AppShellOuterCanvas>
@@ -29,7 +45,7 @@ export async function HqSignedInShell({ children }: { children: React.ReactNode 
       <AppShellMainColumn>
         <AppShellFrameGutter>
           <AppShellFramedSurface>
-            <AppShellScrollRegion footer={<SiteLegalFooter />}>{children}</AppShellScrollRegion>
+            <AppShellScrollRegion footer={<HqAppFooter />}>{children}</AppShellScrollRegion>
           </AppShellFramedSurface>
         </AppShellFrameGutter>
       </AppShellMainColumn>

@@ -13,6 +13,9 @@ export const shellPageHeaderRailRowClassName = "flex h-10 min-h-10 items-center"
 /** 40×40 icon column shared by brand, nav, pin, and footer rows. */
 export const appShellRailIconWellClassName = "flex size-10 shrink-0 items-center justify-center";
 
+/** Footer rows use the same 40×40 icon column as primary nav (see {@link appShellRailIconWellClassName}). */
+export const appShellRailFooterIconWellClassName = appShellRailIconWellClassName;
+
 /** Primary / entity nav stack inside {@link appShellRailHeaderClassName}. */
 export const appShellRailPrimaryNavClassName = "flex flex-col gap-2.5";
 

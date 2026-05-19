@@ -3,6 +3,7 @@ export { visualifyAppDocumentTitle } from "./visualify-document-title";
 export {
   appShellRailEntitySectionClassName,
   appShellRailIconWellClassName,
+  appShellRailFooterIconWellClassName,
   appShellRailPrimaryNavClassName,
   railBrandTitleClass,
   railLabelClass,
@@ -26,6 +27,7 @@ export {
   appShellRailExpandedWidthClassName,
   appShellRailFooterActionWrapClassName,
   appShellRailFooterAccountOuterTailwindClassName,
+  appShellRailFooterRowOuterTailwindClassName,
   appShellRailFooterClassName,
   appShellRailHeaderClassName,
   appShellRailHoverTimingClassName,
@@ -55,6 +57,13 @@ export {
   appShellScrollMainSlotClassName,
   appShellScrollRegionClassName,
 } from "./layout-classes";
+
+export {
+  AppShellPageHeader,
+  appShellPageHeaderDescriptionClassName,
+  appShellPageTitleClassName,
+} from "./AppShellPageHeader";
+export type { AppShellPageHeaderProps } from "./AppShellPageHeader";
 
 export {
   AppShellFrameGutter,

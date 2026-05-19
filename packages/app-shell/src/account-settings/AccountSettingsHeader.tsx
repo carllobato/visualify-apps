@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
-import {
-  accountSettingsHeaderDescriptionClassName,
-  accountSettingsHeaderRowClassName,
-  accountSettingsHeaderStackedTitleClassName,
-  accountSettingsHeaderTitleClassName,
-} from "./classes";
+import { AppShellPageHeader, appShellPageTitleClassName } from "../AppShellPageHeader";
+import { shellPageHeaderRailRowClassName } from "../rail-row-classes";
+import { accountSettingsHeaderRowClassName } from "./classes";
 import { mergeClass } from "./merge-class";
 
 export type AccountSettingsHeaderProps = {
@@ -30,16 +27,19 @@ export function AccountSettingsHeader({
 
   if (description && !actionsSlotPassed) {
     return (
-      <header className={className}>
-        <h1 className={accountSettingsHeaderStackedTitleClassName}>{title}</h1>
-        <p className={accountSettingsHeaderDescriptionClassName}>{description}</p>
-      </header>
+      <AppShellPageHeader
+        title={title}
+        description={description}
+        className={mergeClass("mb-6", className)}
+      />
     );
   }
 
   return (
     <div className={mergeClass(accountSettingsHeaderRowClassName, className)}>
-      <h1 className={accountSettingsHeaderTitleClassName}>{title}</h1>
+      <div className={shellPageHeaderRailRowClassName}>
+        <h1 className={appShellPageTitleClassName}>{title}</h1>
+      </div>
       {actions ?? null}
     </div>
   );

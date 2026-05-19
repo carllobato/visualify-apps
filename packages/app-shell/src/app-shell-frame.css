@@ -17,10 +17,22 @@ html:has(.vf-app-shell-outer-canvas) body {
 }
 
 .vf-app-shell-outer-canvas {
+  /*
+   * Frame gutter inset and footer band height are shared so the rail account row
+   * aligns with the main-column legal footer bar (border + 40px control height).
+   */
+  --vf-app-shell-frame-edge-inset: 0.5rem;
+  --vf-app-shell-footer-band-height: 2.5rem;
   display: flex;
   min-height: 100dvh;
   background-color: color-mix(in oklab, var(--ds-surface-muted) 24%, var(--ds-canvas));
   color: var(--ds-text-primary);
+}
+
+@media (min-width: 640px) {
+  .vf-app-shell-outer-canvas {
+    --vf-app-shell-frame-edge-inset: 0.625rem;
+  }
 }
 
 .vf-app-shell-main-column {
@@ -37,13 +49,7 @@ html:has(.vf-app-shell-outer-canvas) body {
   min-height: 0;
   flex: 1 1 0%;
   flex-direction: column;
-  padding: 0.5rem;
-}
-
-@media (min-width: 640px) {
-  .vf-app-shell-frame-gutter {
-    padding: 0.625rem;
-  }
+  padding: var(--vf-app-shell-frame-edge-inset);
 }
 
 .vf-app-shell-framed-surface {
@@ -118,36 +124,37 @@ html:has(.vf-app-shell-outer-canvas) body {
   justify-content: center;
 }
 
-/*
- * Outer slot matches `.vf-app-shell-legal-footer-bar` height (48px); inner strip stays `h-10` (40px)
- * for parity with workspace rail rows, vertically centred in the slot.
- */
+/* Rail footer stack — bottom inset matches `.vf-app-shell-frame-gutter` padding. */
+.vf-app-shell-rail-footer {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0;
+  padding-top: 1rem;
+  padding-bottom: var(--vf-app-shell-frame-edge-inset);
+}
+
+/* Account row — 40px band aligns with `.vf-app-shell-legal-footer-bar`. */
 .vf-app-shell-rail-footer-account-outer {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  height: 48px;
-  min-height: 48px;
-  max-height: 48px;
   flex-shrink: 0;
   width: 100%;
-  border-top: 1px solid var(--ds-border-subtle);
-  padding: 0;
-  /* Visible so rail footer popovers anchored `left-full` are not clipped. */
   overflow: visible;
 }
 
-/* Inner row: 40px — same height as rail control rows; border lives on `.vf-app-shell-rail-footer-account-outer`. */
+/* 40px account row — aligns with `.vf-app-shell-legal-footer-bar` band height. */
 .vf-app-shell-rail-footer-account-strip {
   box-sizing: border-box;
   display: flex;
   align-items: stretch;
-  height: 2.5rem;
-  min-height: 2.5rem;
-  max-height: 2.5rem;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   width: 100%;
+  height: var(--vf-app-shell-footer-band-height);
+  min-height: var(--vf-app-shell-footer-band-height);
+  max-height: var(--vf-app-shell-footer-band-height);
   overflow: visible;
 }

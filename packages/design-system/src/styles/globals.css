@@ -1200,6 +1200,175 @@ ul[role="listbox"] button:focus-visible {
   color: var(--ds-text-secondary);
 }
 
+/*
+ * HQ platform dashboard — workspace launcher grid (stacked, each tile half of the row).
+ */
+.ds-hq-workspace-launcher-grid {
+  margin: 0;
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+.ds-hq-workspace-launcher-grid > li {
+  width: 100%;
+  min-width: 0;
+}
+
+/*
+ * HQ platform dashboard — workspace launcher tiles.
+ * Shell: `.ds-document-tile-panel` + `--interactive` (hover lift).
+ */
+.ds-hq-workspace-launcher-tile {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.ds-hq-workspace-launcher-tile__open {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  padding-right: calc(var(--ds-space-3) + 1.75rem);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.ds-hq-workspace-launcher-tile__open:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.ds-hq-workspace-launcher-tile__open:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: -2px;
+}
+
+.ds-hq-workspace-launcher-tile__header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: var(--ds-space-2);
+}
+
+.ds-hq-workspace-launcher-tile__name {
+  margin: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ds-text-sm);
+  font-weight: 600;
+  line-height: 1.375;
+  color: var(--ds-text-primary);
+}
+
+.ds-hq-workspace-launcher-tile__meta {
+  margin: 2px 0 0;
+  display: block;
+  font-size: var(--ds-text-xs);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--ds-text-tertiary);
+}
+
+.ds-hq-workspace-launcher-tile__settings {
+  position: absolute;
+  top: var(--ds-space-1);
+  right: var(--ds-space-1);
+  z-index: 10;
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ds-radius-sm);
+  color: var(--ds-text-tertiary);
+  text-decoration: none;
+  opacity: 0.75;
+  transition:
+    opacity 150ms ease-out,
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.ds-hq-workspace-launcher-tile__settings:hover {
+  opacity: 1;
+  background-color: var(--ds-surface-hover);
+  color: var(--ds-text-secondary);
+}
+
+.ds-hq-workspace-launcher-tile__settings:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+
+.ds-hq-workspace-launcher-tile__apps {
+  border-top: 1px solid var(--ds-border-subtle);
+  padding-inline: var(--ds-space-3);
+  padding-block: var(--ds-space-1);
+}
+
+.ds-hq-workspace-launcher-tile__apps-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-1);
+}
+
+.ds-hq-workspace-launcher-tile__app-line {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ds-text-xs);
+  line-height: 1.35;
+}
+
+.ds-hq-workspace-launcher-tile__app-name {
+  font-weight: 500;
+  color: var(--ds-text-secondary);
+  text-decoration: none;
+}
+
+a.ds-hq-workspace-launcher-tile__app-name:hover {
+  color: var(--ds-text-primary);
+}
+
+.ds-hq-workspace-launcher-tile__app-sep {
+  color: var(--ds-text-tertiary);
+}
+
+.ds-hq-workspace-launcher-tile__app-count-link {
+  font-weight: 400;
+  color: var(--ds-text-tertiary);
+  text-decoration: none;
+}
+
+.ds-hq-workspace-launcher-tile__app-count-link:hover {
+  color: var(--ds-text-secondary);
+}
+
+.ds-hq-workspace-launcher-empty {
+  padding: var(--ds-space-2) var(--ds-space-3);
+}
+
 /* Empty inset cards — primary CTA (navigates; not <button>) */
 .ds-dashboard-empty-title {
   margin: 0;

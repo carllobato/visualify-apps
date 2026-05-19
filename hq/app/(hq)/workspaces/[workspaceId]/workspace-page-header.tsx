@@ -1,5 +1,6 @@
 "use client";
 
+import { appShellPageTitleClassName, shellPageHeaderRailRowClassName } from "@visualify/app-shell";
 import { useState } from "react";
 import { resolveWorkspaceFaviconUrl } from "@/lib/workspace-favicon";
 
@@ -90,9 +91,9 @@ export function WorkspacePageHeader({
   return (
     <header className="mb-2 flex items-center gap-3">
       <WorkspacePageAvatar websiteUrl={websiteUrl} workspaceName={workspaceName} />
-      <h1 className="min-w-0 text-2xl font-semibold text-[var(--ds-text-primary)]">
-        {workspaceName} Workspace
-      </h1>
+      <div className={`min-w-0 flex-1 ${shellPageHeaderRailRowClassName}`}>
+        <h1 className={appShellPageTitleClassName}>{workspaceName}</h1>
+      </div>
     </header>
   );
 }

@@ -1,4 +1,4 @@
-import { railBrandTitleClass, shellPageHeaderRailRowClassName } from "@visualify/app-shell";
+import { AppShellPageHeader } from "@visualify/app-shell";
 import { Card, CardContent, CardHeader } from "@visualify/design-system";
 import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
@@ -42,16 +42,10 @@ export default async function ShellPreviewPage() {
   return (
     <div className="flex min-h-full flex-col items-start justify-start px-0 pb-10 pt-0">
       <main className="w-full max-w-none shrink-0 space-y-10">
-        <div className="space-y-2.5">
-          <div className={shellPageHeaderRailRowClassName}>
-            <h1 className={`m-0 text-[var(--ds-text-primary)] ${railBrandTitleClass}`}>
-              Northwind Studio
-            </h1>
-          </div>
-          <p className="max-w-xl text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-            Manage apps, members, and billing for this organisation workspace.
-          </p>
-        </div>
+        <AppShellPageHeader
+          title="Northwind Studio"
+          description="Manage apps, members, and billing for this organisation workspace."
+        />
 
         <section aria-labelledby="shell-preview-overview-heading" className="space-y-4">
           <h2

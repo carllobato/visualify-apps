@@ -12,10 +12,9 @@ import {
 } from "@/lib/entity-rail-grouping";
 import { resolveWorkspaceFaviconUrl } from "@/lib/workspace-favicon";
 import {
-  appShellRailEntitySectionClassName,
+  AppShellRailNavSection,
   appShellRailIconWellClassName,
   appShellRailNavButtonRowClass,
-  RAIL_ROW_SHELL_CLASS,
   railLabelClass,
 } from "@visualify/app-shell";
 
@@ -68,52 +67,8 @@ function IconOrganisation({ size = 20 }: { size?: number }) {
   );
 }
 
-function IconPlus() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-    </svg>
-  );
-}
-
-const CREATE_WORKSPACE_ROW_INACTIVE_CLASS =
-  "text-[var(--ds-text-tertiary)] hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_3%,var(--ds-canvas))] hover:text-[var(--ds-text-secondary)]";
-
-const CREATE_WORKSPACE_ROW_ACTIVE_CLASS =
-  "bg-[color-mix(in_oklab,var(--ds-text-primary)_4%,var(--ds-canvas))] text-[var(--ds-text-secondary)] " +
-  "hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_6%,var(--ds-canvas))] hover:text-[var(--ds-text-secondary)]";
-
-const createWorkspaceLabelClass =
-  railLabelClass.replace("font-medium", "font-normal");
-
-
 const RAIL_MINI_LINK_CLASS =
   "text-left text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)] underline underline-offset-2 hover:text-[var(--ds-text-primary)]";
-
-function CreateWorkspaceRailRow({ pathname }: { pathname: string }) {
-  const active =
-    pathname === "/create-workspace" || pathname.startsWith("/create-workspace/");
-  const label = "Create workspace";
-
-  return (
-    <Link
-      href="/create-workspace"
-      title={label}
-      aria-label={label}
-      aria-current={active ? "page" : undefined}
-      className={
-        RAIL_ROW_SHELL_CLASS +
-        (active ? CREATE_WORKSPACE_ROW_ACTIVE_CLASS : CREATE_WORKSPACE_ROW_INACTIVE_CLASS) +
-        " bg-transparent"
-      }
-    >
-      <span className={`${appShellRailIconWellClassName} opacity-80`}>
-        <IconPlus />
-      </span>
-      <span className={createWorkspaceLabelClass}>{label}</span>
-    </Link>
-  );
-}
 
 function workspaceRowAriaLabel(name: string, typeLabel: string, isSelected: boolean): string {
   const parts = [name, typeLabel];
@@ -237,26 +192,20 @@ export function WorkspaceRailList({
 
   if (workspaces.length === 0) {
     return (
-      <section className={appShellRailEntitySectionClassName} aria-label="Workspaces">
+      <AppShellRailNavSection label="WORKSPACES">
         <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-tertiary)]">
           No workspaces to manage yet.
         </p>
-        <CreateWorkspaceRailRow pathname={pathname} />
         <Link href="/account" className={RAIL_MINI_LINK_CLASS}>
           Join Workspace
         </Link>
-      </section>
+      </AppShellRailNavSection>
     );
   }
 
-  const { label, items } = groupEntitiesForRail(workspaces);
+  const { items } = groupEntitiesForRail(workspaces);
 
-  return (
-    <section className={appShellRailEntitySectionClassName} aria-label={label}>
-      {renderRows(items)}
-      <CreateWorkspaceRailRow pathname={pathname} />
-    </section>
-  );
+  return <AppShellRailNavSection label="WORKSPACES">{renderRows(items)}</AppShellRailNavSection>;
 }
 
 /** @deprecated Use {@link WorkspaceRailList} */

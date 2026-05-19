@@ -2,7 +2,7 @@
 
 import type { ReactNode, RefObject } from "react";
 import { appShellRailFooterActionWrapClassName } from "./rail-layout-classes";
-import { appShellRailIconWellClassName, railLabelClass } from "./rail-row-classes";
+import { appShellRailFooterIconWellClassName, railLabelClass } from "./rail-row-classes";
 
 export type AppShellRailAccountTriggerProps = {
   menuOpen: boolean;
@@ -48,7 +48,7 @@ export function AppShellRailAccountTrigger({
         title="Account"
         onClick={onToggle}
       >
-        <span className={appShellRailIconWellClassName}>{icon}</span>
+        <span className={appShellRailFooterIconWellClassName}>{icon}</span>
         <span className={labelClassName}>{label}</span>
       </button>
       {menu}

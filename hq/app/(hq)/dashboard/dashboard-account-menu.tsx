@@ -12,11 +12,11 @@ import { authDisabledStubUser, isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import type { User } from "@supabase/supabase-js";
 
-const PersonIcon = () => (
+const PersonIcon = ({ size = 20 }: { size?: number }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="20"
-    height="20"
+    width={size}
+    height={size}
     viewBox="0 0 24 24"
     fill="none"
     stroke="currentColor"
@@ -177,7 +177,7 @@ export function DashboardAccountMenu({
         onToggle={() => setMenuOpen((o) => !o)}
         rowClassName={appShellRailFooterAccountRowClass(railPageActive)}
         pageActive={railPageActive}
-        icon={<PersonIcon />}
+        icon={<PersonIcon size={18} />}
         menu={accountMenuPanel}
         menuRef={menuRef}
       />

@@ -1,6 +1,6 @@
 /** @type {import("next").NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@visualify/design-system"],
+  transpilePackages: ["@visualify/design-system", "@visualify/app-shell"],
   async redirects() {
     return [
       {
