@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { appShellRailRuleClassName } from "./rail-layout-classes";
 import { appShellRailEntitySectionClassName } from "./rail-row-classes";
 
 type AppShellRailNavSectionProps = {
@@ -13,9 +14,9 @@ const sectionHeadingRevealClass =
   "group-hover:max-w-[11rem] group-hover:w-auto group-hover:opacity-100 " +
   "group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:w-auto group-data-[pinned=true]:opacity-100";
 
-const sectionHeadingRuleClass =
-  "pointer-events-none absolute inset-x-0 top-1/2 z-0 h-px -translate-y-1/2 " +
-  "bg-[var(--ds-status-neutral-subtle-border)] opacity-100 transition-opacity duration-[400ms] ease-out " +
+const sectionHeadingLineClass =
+  `pointer-events-none absolute left-0 top-1/2 z-0 -translate-y-1/2 ${appShellRailRuleClassName} ` +
+  "opacity-100 transition-[max-width,opacity] duration-[400ms] ease-out " +
   "group-hover:opacity-0 group-data-[pinned=true]:opacity-0";
 
 /**
@@ -29,10 +30,12 @@ export function AppShellRailNavSection({ label, children, className }: AppShellR
 
   return (
     <section className={rootClass} aria-label={label}>
-      <div className="pb-0.5 pt-1">
-        <div className="relative h-4">
-          <div className={sectionHeadingRuleClass} aria-hidden />
-          <span className={`ds-sidebar-section-header ds-sidebar-section-header-label ${sectionHeadingRevealClass}`}>
+      <div className="relative flex h-10 w-full min-w-0 shrink-0 items-end">
+        <div className="relative w-full min-w-0 leading-none">
+          <div className={sectionHeadingLineClass} aria-hidden />
+          <span
+            className={`ds-sidebar-section-header ds-sidebar-section-header-label leading-none ${sectionHeadingRevealClass}`}
+          >
             {label}
           </span>
         </div>

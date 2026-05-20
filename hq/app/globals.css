@@ -111,19 +111,3 @@ body {
   border-bottom-left-radius: var(--ds-radius-app-frame);
   border-bottom-right-radius: var(--ds-radius-app-frame);
 }
-
-/** HQ signed-in shell — legal footer bar uses shared `--vf-app-shell-footer-band-height`. */
-.hq-app-footer .vf-app-shell-legal-footer-bar {
-  border-top: none;
-}
-
-.hq-app-footer .vf-app-shell-legal-footer-content {
-  gap: 0.5rem 1rem;
-  font-size: var(--ds-text-xs);
-  line-height: 1.25;
-  color: var(--ds-text-tertiary);
-}
-
-.hq-app-footer .vf-app-shell-legal-footer-sep {
-  opacity: 0.55;
-}

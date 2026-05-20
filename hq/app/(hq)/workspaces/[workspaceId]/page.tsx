@@ -89,7 +89,12 @@ export default async function HqWorkspacePage({
   return (
     <main className="w-full min-w-0 px-0 pb-4">
       <ActiveWorkspaceCookieSync workspaceId={manageable.id} />
-      <WorkspacePageHeader workspaceName={manageable.name} websiteUrl={websiteUrl || null} />
+      <WorkspacePageHeader
+        workspaceName={manageable.name}
+        websiteUrl={websiteUrl || null}
+        workspaceType={manageable.workspace_type}
+        logoUrl={manageable.logo_url}
+      />
 
       <WorkspaceOverviewTabs
         initialTab={initialTab}

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AppShellRail,
@@ -11,10 +10,8 @@ import {
   AppShellRailFooterAccount,
   AppShellRailHeader,
   AppShellRailSeparator,
-  appShellRailIconWellClassName,
-  appShellRailNavRowClass,
+  AppShellRailNavLink,
   appShellRailPrimaryNavClassName,
-  railLabelClass,
 } from "@visualify/app-shell";
 import { DashboardAccountMenu } from "./(hq)/dashboard/dashboard-account-menu";
 import { HqRailFooterHelp } from "@/components/hq-rail-footer-help";
@@ -33,32 +30,6 @@ function railNavHrefActive(pathname: string, href: string): boolean {
   return (
     pathname === pathOnly ||
     (pathOnly.length > 1 && pathname.startsWith(`${pathOnly}/`))
-  );
-}
-
-function RailNavLink({
-  href,
-  label,
-  pathname,
-  children,
-}: {
-  href: string;
-  label: string;
-  pathname: string;
-  children: React.ReactNode;
-}) {
-  const active = railNavHrefActive(pathname, href);
-
-  return (
-    <Link
-      href={href}
-      title={label}
-      aria-label={label}
-      className={appShellRailNavRowClass(active)}
-    >
-      <span className={appShellRailIconWellClassName}>{children}</span>
-      <span className={railLabelClass}>{label}</span>
-    </Link>
   );
 }
 
@@ -97,9 +68,13 @@ export function PlatformRail({
           <AppShellRailSeparator />
 
           <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
-            <RailNavLink href="/dashboard" pathname={pathname} label="Dashboard">
+            <AppShellRailNavLink
+              href="/dashboard"
+              active={railNavHrefActive(pathname, "/dashboard")}
+              label="Dashboard"
+            >
               <IconDashboard />
-            </RailNavLink>
+            </AppShellRailNavLink>
           </nav>
 
           <WorkspaceRailList workspaces={workspaces} selectedWorkspaceId={selectedWorkspaceId} />

@@ -3,6 +3,8 @@ export type EntityRailWorkspace = {
   name: string;
   workspace_type: string;
   website_url: string | null;
+  logo_url: string | null;
+  avatarInitials: string | null;
 };
 
 function normType(t: string): string {

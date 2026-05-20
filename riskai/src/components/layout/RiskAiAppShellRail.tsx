@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AppShellRail,
@@ -10,12 +9,10 @@ import {
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
+  AppShellRailNavLink,
   AppShellRailNavSection,
   AppShellRailSeparator,
-  appShellRailIconWellClassName,
-  appShellRailNavRowClass,
   appShellRailPrimaryNavClassName,
-  railLabelClass,
 } from "@visualify/app-shell";
 import { RISKAI_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import {
@@ -162,47 +159,14 @@ function resolveActivePrimaryNav(
   return null;
 }
 
-function RailNavLink({
-  href,
-  label,
-  active,
-  children,
-}: {
-  href: string;
-  label: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
+/** HQ-aligned dashboard nav icon (`hq/app/platform-rail.tsx`). */
+function IconDashboard() {
   return (
-    <Link
-      href={href}
-      title={label}
-      aria-label={label}
-      className={appShellRailNavRowClass(active)}
-    >
-      <span className={appShellRailIconWellClassName}>{children}</span>
-      <span className={railLabelClass}>{label}</span>
-    </Link>
-  );
-}
-
-function IconCompass() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={20}
-      height={20}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m16.24 7.76-2.06 6.28L7.76 16.24l2.06-6.28 6.44-2.12z" />
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+      <rect x={3} y={3} width={8} height={8} rx={1} stroke="currentColor" strokeWidth={1.5} />
+      <rect x={13} y={3} width={8} height={5} rx={1} stroke="currentColor" strokeWidth={1.5} />
+      <rect x={13} y={10} width={8} height={11} rx={1} stroke="currentColor" strokeWidth={1.5} />
+      <rect x={3} y={13} width={8} height={8} rx={1} stroke="currentColor" strokeWidth={1.5} />
     </svg>
   );
 }
@@ -382,77 +346,77 @@ export function RiskAiAppShellRail() {
           <AppShellRailSeparator />
 
           <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
-            <RailNavLink href={DASHBOARD_PATH} active={activeNav === "dashboard"} label="Dashboard">
-              <IconCompass />
-            </RailNavLink>
+            <AppShellRailNavLink href={DASHBOARD_PATH} active={activeNav === "dashboard"} label="Dashboard">
+              <IconDashboard />
+            </AppShellRailNavLink>
             {showGlobalPortfoliosAndProjects ? (
               <>
-                <RailNavLink href={PORTFOLIOS_HREF} active={activeNav === "portfolios"} label="Portfolios">
+                <AppShellRailNavLink href={PORTFOLIOS_HREF} active={activeNav === "portfolios"} label="Portfolios">
                   <IconLayers />
-                </RailNavLink>
-                <RailNavLink href={PROJECTS_HREF} active={activeNav === "projects"} label="Projects">
+                </AppShellRailNavLink>
+                <AppShellRailNavLink href={PROJECTS_HREF} active={activeNav === "projects"} label="Projects">
                   <IconProjectsList />
-                </RailNavLink>
+                </AppShellRailNavLink>
               </>
             ) : null}
             {showPortfolioNav ? (
               <AppShellRailNavSection label="Portfolio">
                 {portfolioOverviewHref != null ? (
-                  <RailNavLink
+                  <AppShellRailNavLink
                     href={portfolioOverviewHref}
                     active={activeNav === "portfolioOverview"}
                     label="Portfolio Overview"
                   >
                     <IconLayers />
-                  </RailNavLink>
+                  </AppShellRailNavLink>
                 ) : null}
                 {portfolioProjectsHref != null ? (
-                  <RailNavLink
+                  <AppShellRailNavLink
                     href={portfolioProjectsHref}
                     active={activeNav === "portfolioProjects"}
                     label="Projects"
                   >
                     <IconProjectsList />
-                  </RailNavLink>
+                  </AppShellRailNavLink>
                 ) : null}
                 {portfolioSettingsHref != null ? (
-                  <RailNavLink
+                  <AppShellRailNavLink
                     href={portfolioSettingsHref}
                     active={activeNav === "portfolioSettings"}
                     label="Portfolio Settings"
                   >
                     <IconSettings />
-                  </RailNavLink>
+                  </AppShellRailNavLink>
                 ) : null}
               </AppShellRailNavSection>
             ) : null}
             {projectOverviewHref != null ? (
               <AppShellRailNavSection label="Projects">
-                <RailNavLink
+                <AppShellRailNavLink
                   href={projectOverviewHref}
                   active={activeNav === "projectOverview"}
                   label="Project Overview"
                 >
                   <IconProjectOverview />
-                </RailNavLink>
+                </AppShellRailNavLink>
                 {risksHref != null ? (
-                  <RailNavLink href={risksHref} active={activeNav === "risks"} label="Risks">
+                  <AppShellRailNavLink href={risksHref} active={activeNav === "risks"} label="Risks">
                     <IconRisks />
-                  </RailNavLink>
+                  </AppShellRailNavLink>
                 ) : null}
                 {simulationHref != null ? (
-                  <RailNavLink href={simulationHref} active={activeNav === "simulation"} label="Simulation">
+                  <AppShellRailNavLink href={simulationHref} active={activeNav === "simulation"} label="Simulation">
                     <IconSimulation />
-                  </RailNavLink>
+                  </AppShellRailNavLink>
                 ) : null}
                 {projectSettingsHref != null ? (
-                  <RailNavLink
+                  <AppShellRailNavLink
                     href={projectSettingsHref}
                     active={activeNav === "projectSettings"}
                     label="Project Settings"
                   >
                     <IconSettings />
-                  </RailNavLink>
+                  </AppShellRailNavLink>
                 ) : null}
               </AppShellRailNavSection>
             ) : null}

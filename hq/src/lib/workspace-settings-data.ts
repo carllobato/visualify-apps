@@ -8,6 +8,7 @@ import {
 } from "@visualify/workspace-product-access";
 import { cookies } from "next/headers";
 import { supabaseServerClient } from "@/lib/supabase/server";
+import { resolveWorkspaceTileAvatarInitials } from "@/lib/workspace-avatar-initials";
 
 export const VISUALIFY_ACTIVE_WORKSPACE_COOKIE = "visualify_active_workspace_id";
 
@@ -47,8 +48,36 @@ type WorkspaceRow = {
   status: string | null;
   logo_url: string | null;
   website_url: string | null;
+  owner_user_id: string | null;
   visualify_workspace_products: { id: string }[] | { id: string } | null;
 };
+
+type OwnerProfileSlice = {
+  first_name: string | null;
+  surname: string | null;
+};
+
+async function fetchOwnerProfilesByUserIds(userIds: string[]): Promise<Map<string, OwnerProfileSlice>> {
+  const out = new Map<string, OwnerProfileSlice>();
+  if (userIds.length === 0) return out;
+
+  const supabase = await supabaseServerClient();
+  const { data, error } = await supabase
+    .from("visualify_profiles")
+    .select("id, first_name, surname")
+    .in("id", userIds);
+
+  if (error) {
+    console.error("fetchOwnerProfilesByUserIds:", error.message);
+    return out;
+  }
+
+  for (const row of (data ?? []) as { id: string; first_name: string | null; surname: string | null }[]) {
+    if (!row.id) continue;
+    out.set(row.id, { first_name: row.first_name, surname: row.surname });
+  }
+  return out;
+}
 
 function productCount(ws: WorkspaceRow): number {
   const raw = ws.visualify_workspace_products;
@@ -84,12 +113,16 @@ export type WorkspaceRailEntry = {
   name: string;
   workspace_type: string;
   website_url: string | null;
+  logo_url: string | null;
+  avatarInitials: string | null;
 };
 
 export type WorkspaceDashboardEntry = {
   id: string;
   name: string;
   website_url: string | null;
+  logo_url: string | null;
+  avatarInitials: string | null;
   memberRole: string;
   memberCount: number;
   productCount: number;
@@ -127,6 +160,7 @@ async function fetchManageableWorkspacesInternalImpl(
       productCount: number;
       logo_url: string | null;
       website_url: string | null;
+      owner_user_id: string | null;
     }
   >
 > {
@@ -157,6 +191,7 @@ async function fetchManageableWorkspacesInternalImpl(
       status,
       logo_url,
       website_url,
+      owner_user_id,
       visualify_workspace_products ( id )
     `
     )
@@ -174,6 +209,7 @@ async function fetchManageableWorkspacesInternalImpl(
       productCount: number;
       logo_url: string | null;
       website_url: string | null;
+      owner_user_id: string | null;
     }
   > = [];
 
@@ -198,6 +234,8 @@ async function fetchManageableWorkspacesInternalImpl(
       logo_url: ws.logo_url ?? null,
       website_url:
         typeof ws.website_url === "string" && ws.website_url.trim() ? ws.website_url.trim() : null,
+      owner_user_id:
+        typeof ws.owner_user_id === "string" && ws.owner_user_id.trim() ? ws.owner_user_id.trim() : null,
     });
   }
 
@@ -222,6 +260,7 @@ async function fetchManageableWorkspacesInternal(
       productCount: number;
       logo_url: string | null;
       website_url: string | null;
+      owner_user_id: string | null;
     }
   >
 > {
@@ -231,13 +270,49 @@ async function fetchManageableWorkspacesInternal(
   return fetchManageableWorkspacesInternalCached(userId);
 }
 
+async function fetchAvatarInitialsByWorkspaceId(
+  rows: Array<{
+    id: string;
+    name: string;
+    workspace_type: string;
+    owner_user_id: string | null;
+  }>,
+): Promise<Map<string, string | null>> {
+  const ownerIds = [
+    ...new Set(
+      rows
+        .map((r) => r.owner_user_id?.trim())
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const ownerProfiles = await fetchOwnerProfilesByUserIds(ownerIds);
+  const out = new Map<string, string | null>();
+  for (const r of rows) {
+    const ownerId = r.owner_user_id?.trim() ?? "";
+    const ownerProfile = ownerId ? ownerProfiles.get(ownerId) : undefined;
+    out.set(
+      r.id,
+      resolveWorkspaceTileAvatarInitials({
+        workspaceType: r.workspace_type,
+        workspaceName: r.name,
+        ownerFirstName: ownerProfile?.first_name ?? null,
+        ownerSurname: ownerProfile?.surname ?? null,
+      }),
+    );
+  }
+  return out;
+}
+
 export async function fetchManageableWorkspacesForRail(userId: string): Promise<WorkspaceRailEntry[]> {
   const rows = await fetchManageableWorkspacesInternal(userId);
+  const avatarInitialsById = await fetchAvatarInitialsByWorkspaceId(rows);
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
     workspace_type: r.workspace_type,
     website_url: r.website_url,
+    logo_url: r.logo_url,
+    avatarInitials: avatarInitialsById.get(r.id) ?? null,
   }));
 }
 
@@ -245,11 +320,17 @@ export async function fetchManageableWorkspacesForDashboard(
   userId: string,
 ): Promise<WorkspaceDashboardEntry[]> {
   const rows = await fetchManageableWorkspacesInternal(userId);
-  const memberCounts = await fetchWorkspaceMemberCountsByIds(rows.map((r) => r.id));
+  const [memberCounts, avatarInitialsById] = await Promise.all([
+    fetchWorkspaceMemberCountsByIds(rows.map((r) => r.id)),
+    fetchAvatarInitialsByWorkspaceId(rows),
+  ]);
+
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
     website_url: r.website_url,
+    logo_url: r.logo_url,
+    avatarInitials: avatarInitialsById.get(r.id) ?? null,
     memberRole: r.memberRole,
     memberCount: memberCounts.get(r.id) ?? 0,
     productCount: r.productCount,

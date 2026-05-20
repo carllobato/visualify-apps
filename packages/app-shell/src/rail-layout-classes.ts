@@ -31,17 +31,22 @@ export const appShellRailAsideClassName =
 export const appShellRailBodyClassName =
   "flex min-h-0 flex-1 flex-col overflow-hidden pt-5";
 
+import { appShellRailNavStackGapClassName } from "./rail-row-classes";
+
 /** Top stack (brand, separator, primary nav) — scrolls when nav exceeds viewport. */
 export const appShellRailHeaderClassName =
-  "flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain";
+  `flex min-h-0 flex-1 flex-col ${appShellRailNavStackGapClassName} overflow-y-auto overscroll-contain`;
 
 /** Bottom stack (pin/collapse + account) — pinned to the bottom of the rail. */
 export const appShellRailFooterClassName = "vf-app-shell-rail-footer";
 
-/** Divider between brand and nav — expands with rail width. */
-export const appShellRailSeparatorClassName =
+/** Collapsed-rail horizontal rule — 40px wide, `--ds-border-subtle`, expands with rail on hover/pin. */
+export const appShellRailRuleClassName =
   "h-px w-full max-w-10 shrink-0 bg-[var(--ds-border-subtle)] transition-[max-width] duration-[400ms] ease-out " +
   "group-hover:max-w-none group-data-[pinned=true]:max-w-none";
+
+/** Divider between brand and nav — expands with rail width. */
+export const appShellRailSeparatorClassName = appShellRailRuleClassName;
 
 /** Pin/collapse row reveal container (visible when pinned or on rail hover). */
 export const appShellRailPinRevealClassName =

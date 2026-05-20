@@ -19,7 +19,7 @@ html:has(.vf-app-shell-outer-canvas) body {
 .vf-app-shell-outer-canvas {
   /*
    * Frame gutter inset and footer band height are shared so the rail account row
-   * aligns with the main-column legal footer bar (border + 40px control height).
+   * aligns with the main-column legal footer bar (40px band height).
    */
   --vf-app-shell-frame-edge-inset: 0.5rem;
   --vf-app-shell-footer-band-height: 2.5rem;
@@ -131,7 +131,7 @@ html:has(.vf-app-shell-outer-canvas) body {
   width: 100%;
   flex-shrink: 0;
   flex-direction: column;
-  gap: 0;
+  gap: 2px;
   padding-top: 1rem;
   padding-bottom: var(--vf-app-shell-frame-edge-inset);
 }

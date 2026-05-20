@@ -4,6 +4,8 @@ export {
   appShellRailEntitySectionClassName,
   appShellRailIconWellClassName,
   appShellRailFooterIconWellClassName,
+  appShellRailNavIconSlotClassName,
+  appShellRailNavStackGapClassName,
   appShellRailPrimaryNavClassName,
   railBrandTitleClass,
   railLabelClass,
@@ -113,6 +115,12 @@ export type {
 } from "./AppShellRail";
 
 export { AppShellRailNavSection } from "./AppShellRailNavSection";
+
+export { AppShellRailNavLink } from "./AppShellRailNavLink";
+export type { AppShellRailNavLinkProps } from "./AppShellRailNavLink";
+
+export { AppShellEntityAvatar } from "./AppShellEntityAvatar";
+export type { AppShellEntityAvatarProps, AppShellEntityAvatarSize } from "./AppShellEntityAvatar";
 
 export { AppShellRailBrandAppMenu } from "./AppShellRailBrandAppMenu";
 export type {

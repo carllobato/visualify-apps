@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AppShellRail,
@@ -10,10 +9,8 @@ import {
   AppShellRailFooterAccount,
   AppShellRailHeader,
   AppShellRailSeparator,
-  appShellRailIconWellClassName,
-  appShellRailNavRowClass,
+  AppShellRailNavLink,
   appShellRailPrimaryNavClassName,
-  railLabelClass,
 } from "@visualify/app-shell";
 import { TEMPLATE_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import { TemplateRailAccountMenu } from "./TemplateRailAccountMenu";
@@ -23,32 +20,6 @@ const TEMPLATE_RAIL_PINNED_KEY = "template-app-platform-rail-pinned";
 function railNavHrefActive(pathname: string, href: string): boolean {
   const pathOnly = href.split("#")[0] ?? href;
   return pathname === pathOnly || (pathOnly.length > 1 && pathname.startsWith(`${pathOnly}/`));
-}
-
-function RailNavLink({
-  href,
-  label,
-  pathname,
-  children,
-}: {
-  href: string;
-  label: string;
-  pathname: string;
-  children: React.ReactNode;
-}) {
-  const active = railNavHrefActive(pathname, href);
-
-  return (
-    <Link
-      href={href}
-      title={label}
-      aria-label={label}
-      className={appShellRailNavRowClass(active)}
-    >
-      <span className={appShellRailIconWellClassName}>{children}</span>
-      <span className={railLabelClass}>{label}</span>
-    </Link>
-  );
 }
 
 function IconDashboard() {
@@ -97,9 +68,13 @@ export function TemplateAppShellRail() {
           <AppShellRailSeparator />
 
           <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
-            <RailNavLink href="/dashboard" pathname={pathname} label="Dashboard">
+            <AppShellRailNavLink
+              href="/dashboard"
+              active={railNavHrefActive(pathname, "/dashboard")}
+              label="Dashboard"
+            >
               <IconDashboard />
-            </RailNavLink>
+            </AppShellRailNavLink>
           </nav>
         </AppShellRailHeader>
 

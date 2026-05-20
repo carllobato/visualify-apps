@@ -13,15 +13,23 @@ export const shellPageHeaderRailRowClassName = "flex h-10 min-h-10 items-center"
 /** 40×40 icon column shared by brand, nav, pin, and footer rows. */
 export const appShellRailIconWellClassName = "flex size-10 shrink-0 items-center justify-center";
 
+/** 25×25 mark inside the icon well (entity avatars, nav glyphs). */
+export const appShellRailNavIconSlotClassName =
+  "flex size-[25px] shrink-0 items-center justify-center";
+
 /** Footer rows use the same 40×40 icon column as primary nav (see {@link appShellRailIconWellClassName}). */
 export const appShellRailFooterIconWellClassName = appShellRailIconWellClassName;
 
+/** Vertical gap between rail interactive rows — 4px (`h-10` rows stay 40px). */
+export const appShellRailNavStackGapClassName = "gap-1";
+
 /** Primary / entity nav stack inside {@link appShellRailHeaderClassName}. */
-export const appShellRailPrimaryNavClassName = "flex flex-col gap-2.5";
+export const appShellRailPrimaryNavClassName =
+  `flex flex-col ${appShellRailNavStackGapClassName}`;
 
 /** Grouped entity list below primary nav (e.g. HQ workspaces) — same vertical rhythm as nav. */
 export const appShellRailEntitySectionClassName =
-  "flex min-w-0 flex-col gap-2.5";
+  `flex min-w-0 flex-col ${appShellRailNavStackGapClassName}`;
 
 /** Label revealed when the rail is hovered or pinned (width/opacity transition). */
 export const railLabelClass =
@@ -31,7 +39,7 @@ export const railLabelClass =
   "group-data-[pinned=true]:w-auto group-data-[pinned=true]:flex-1 group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:opacity-100";
 
 export const RAIL_ROW_SHELL_CLASS =
-  "relative flex h-10 w-full min-w-0 items-center gap-0 rounded-[var(--ds-radius-md)] no-underline " +
+  "relative flex h-10 min-h-10 max-h-10 w-full min-w-0 items-center gap-0 rounded-[var(--ds-radius-md)] no-underline " +
   "transition-[color,background-color,box-shadow,gap] duration-[400ms] ease-out " +
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)] " +
   "group-hover:gap-2 group-data-[pinned=true]:gap-2 ";

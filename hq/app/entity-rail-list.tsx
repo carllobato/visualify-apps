@@ -4,13 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { setVisualifyActiveWorkspaceIdAction } from "./workspace-switcher-actions";
-import {
-  groupEntitiesForRail,
-  isOrganisationWorkspaceType,
-  workspaceTypeDisplayLabel,
-  type EntityRailWorkspace,
-} from "@/lib/entity-rail-grouping";
-import { resolveWorkspaceFaviconUrl } from "@/lib/workspace-favicon";
+import { groupEntitiesForRail, workspaceTypeDisplayLabel, type EntityRailWorkspace } from "@/lib/entity-rail-grouping";
+import { WorkspaceAvatar } from "@/components/workspace-avatar.client";
 import {
   AppShellRailNavSection,
   appShellRailIconWellClassName,
@@ -27,46 +22,6 @@ function pathnameShowsWorkspaceRowActiveChrome(pathname: string): boolean {
   return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
-function IconWorkspace({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-      <path d="M4 21h16" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-      <path
-        d="M6 21V9l6-4 6 4v12"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M10 21v-5h4v5" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 11h4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconOrganisation({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-      <path d="M4 21h16" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-      <path
-        d="M8 21V5h8v16"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M11 8h2M11 11h2M11 14h2" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
-      <path
-        d="M11 17h2v4"
-        stroke="currentColor"
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 const RAIL_MINI_LINK_CLASS =
   "text-left text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)] underline underline-offset-2 hover:text-[var(--ds-text-primary)]";
 
@@ -76,38 +31,13 @@ function workspaceRowAriaLabel(name: string, typeLabel: string, isSelected: bool
   return parts.join(", ");
 }
 
-/** Website favicon in the rail row; falls back to type icons on error or missing URL. */
-function WorkspaceRowIcon({
-  websiteUrl,
-  workspaceType,
-}: {
-  websiteUrl: string | null;
-  workspaceType: string;
-}) {
-  const faviconUrl = resolveWorkspaceFaviconUrl(websiteUrl);
-  const [showFavicon, setShowFavicon] = useState(Boolean(faviconUrl));
-
-  if (showFavicon && faviconUrl) {
-    return (
-      <img
-        src={faviconUrl}
-        alt=""
-        width={20}
-        height={20}
-        className="size-5 shrink-0 rounded-[var(--ds-radius-sm)] object-contain"
-        onError={() => setShowFavicon(false)}
-      />
-    );
-  }
-
-  return isOrganisationWorkspaceType(workspaceType) ? <IconOrganisation /> : <IconWorkspace />;
-}
-
 function WorkspaceRow({
   id,
   name,
   workspaceType,
   websiteUrl,
+  logoUrl,
+  avatarInitials,
   isSelected,
   usesActiveChrome,
   disabled,
@@ -117,6 +47,8 @@ function WorkspaceRow({
   name: string;
   workspaceType: string;
   websiteUrl: string | null;
+  logoUrl: string | null;
+  avatarInitials: string | null;
   isSelected: boolean;
   usesActiveChrome: boolean;
   disabled: boolean;
@@ -140,7 +72,12 @@ function WorkspaceRow({
       }
     >
       <span className={appShellRailIconWellClassName}>
-        <WorkspaceRowIcon websiteUrl={websiteUrl} workspaceType={workspaceType} />
+        <WorkspaceAvatar
+          size="rail"
+          logoUrl={logoUrl}
+          websiteUrl={websiteUrl}
+          avatarInitials={avatarInitials}
+        />
       </span>
       <span className={railLabelClass}>{name}</span>
     </button>
@@ -181,6 +118,8 @@ export function WorkspaceRailList({
           name={w.name}
           workspaceType={w.workspace_type}
           websiteUrl={w.website_url}
+          logoUrl={w.logo_url}
+          avatarInitials={w.avatarInitials}
           isSelected={isSelected}
           usesActiveChrome={workspaceChromeActive && isSelected}
           disabled={busyId !== null}

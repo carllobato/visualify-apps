@@ -3,7 +3,6 @@
 import type { ChangeEvent, MouseEvent, FormEvent } from "react";
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePathname } from "next/navigation";
 import { Button, Callout, Label, Textarea } from "@visualify/design-system";
 
 type HelpAction = "issue" | "feature" | "question";
@@ -38,10 +37,15 @@ function displayNameFromUser(user: AppShellHelpFeedbackUser): string {
   return (local || "User").slice(0, MAX_NAME);
 }
 
-function buildContactBody(action: HelpAction, pathname: string | null, userMessage: string): string {
-  const ctx = pathname && pathname.trim() !== "" ? pathname.trim() : "unknown";
+type HelpPageContext = {
+  url: string;
+  path: string;
+};
+
+function buildContactBody(action: HelpAction, pageContext: HelpPageContext, userMessage: string): string {
   return `Type: ${action}
-Context: ${ctx}
+URL: ${pageContext.url}
+Path: ${pageContext.path}
 
 ${userMessage.trim()}`;
 }
@@ -55,7 +59,6 @@ export function AppShellHelpFeedbackModal({
 }: AppShellHelpFeedbackModalProps) {
   const titleId = useId();
   const fieldId = useId();
-  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [action, setAction] = useState<HelpAction>("issue");
@@ -119,6 +122,10 @@ export function AppShellHelpFeedbackModal({
         return;
       }
       const name = user ? displayNameFromUser(user) : "";
+      const pageContext: HelpPageContext = {
+        url: window.location.href,
+        path: window.location.pathname,
+      };
 
       const res = await fetch(contactApiPath, {
         method: "POST",
@@ -126,8 +133,10 @@ export function AppShellHelpFeedbackModal({
         body: JSON.stringify({
           name,
           email,
-          message: buildContactBody(action, pathname, bodyText),
+          message: buildContactBody(action, pageContext, bodyText),
           source,
+          url: pageContext.url,
+          path: pageContext.path,
         }),
       });
 

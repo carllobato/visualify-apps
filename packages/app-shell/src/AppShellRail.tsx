@@ -1,5 +1,6 @@
 "use client";
 
+import "./app-shell-frame.css";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {

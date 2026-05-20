@@ -60,7 +60,7 @@ export function AppShellLegalFooter({
 
   return (
     <footer className={rootClass}>
-      <div className="ds-site-footer-inner vf-app-shell-legal-footer-bar">
+      <div className="vf-app-shell-legal-footer-bar">
         <div className="vf-app-shell-legal-footer-content">
           <nav aria-label="Footer" className="vf-app-shell-legal-footer-nav">
             {privacyControl}
