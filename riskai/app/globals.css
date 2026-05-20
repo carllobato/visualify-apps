@@ -27,6 +27,12 @@ body {
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
+/* App shell scroll region already applies horizontal inset (see app-shell-frame.css). */
+.vf-app-shell-scroll-region .ds-dashboard-page,
+.vf-app-shell-scroll-region .ds-document-page {
+  padding-inline: 0;
+}
+
 .risk-focus-highlight {
   background: var(--ds-focus-highlight-bg);
   outline: 2px solid var(--ds-focus-highlight-outline);

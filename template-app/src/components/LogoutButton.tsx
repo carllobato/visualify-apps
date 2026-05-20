@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import {
-  RAIL_NAV_ROW_INACTIVE_CLASS,
-  RAIL_NAV_ROW_SHELL_CLASS,
-  railLabelClass,
-} from "@visualify/app-shell";
+import { appShellRailNavRowClass, railLabelClass } from "@visualify/app-shell";
 
 function IconSignOut() {
   return (
@@ -49,10 +45,12 @@ export function LogoutButton({ variant = "default" }: LogoutButtonProps) {
       if (!res.ok) {
         await supabaseBrowserClient().auth.signOut();
       }
-      router.push("/");
-      router.refresh();
+    } catch {
+      await supabaseBrowserClient().auth.signOut();
     } finally {
       setPending(false);
+      router.push("/");
+      router.refresh();
     }
   }
 
@@ -65,8 +63,7 @@ export function LogoutButton({ variant = "default" }: LogoutButtonProps) {
         title={pending ? "Signing out…" : "Sign out"}
         aria-label={pending ? "Signing out…" : "Sign out"}
         className={
-          `${RAIL_NAV_ROW_SHELL_CLASS}${RAIL_NAV_ROW_INACTIVE_CLASS}` +
-          " w-full cursor-pointer border-0 bg-transparent text-left no-underline disabled:opacity-50"
+          `${appShellRailNavRowClass(false)} w-full cursor-pointer border-0 text-left no-underline disabled:opacity-50`
         }
       >
         <span className="flex size-10 shrink-0 items-center justify-center">

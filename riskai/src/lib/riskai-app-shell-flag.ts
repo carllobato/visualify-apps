@@ -4,8 +4,8 @@
  * Default is off. Enable only for migration testing:
  * `NEXT_PUBLIC_RISKAI_ENABLE_APP_SHELL=1` (see `riskai/.env.example`).
  *
- * Not wired into `ProtectedShell` yet; consumers should branch on {@link RISKAI_ENABLE_APP_SHELL}
- * when the migration is ready.
+ * Wired in {@link ProtectedShell} and account settings padding; keep off in production until
+ * staging sign-off (see App Shell rollout checklist).
  */
 export const RISKAI_ENABLE_APP_SHELL =
   process.env.NEXT_PUBLIC_RISKAI_ENABLE_APP_SHELL === "1";

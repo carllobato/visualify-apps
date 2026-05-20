@@ -1,5 +1,7 @@
 # Supabase & platform env (local + Vercel)
 
+> **Platform contract:** Cross-app env rules, Vercel/Supabase baselines, and safety checks — [`docs/environment-variables.md`](../../docs/environment-variables.md). This doc is RiskAI-specific (Save, dual-host, local + Vercel).
+
 The app saves risks to **Supabase** when you click the header **Save** button. This is the same in local development and on Vercel: there is no "local-only" mode. For Save to work you need Supabase env vars set in both places.
 
 ## Canonical URL env (platform)

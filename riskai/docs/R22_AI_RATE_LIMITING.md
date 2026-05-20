@@ -55,6 +55,8 @@ Additionally, the following headers are set on 429 responses:
 
 ### Required environment variables
 
+> **Platform contract:** RiskAI env baselines (incl. Upstash) — [`docs/environment-variables.md`](../../docs/environment-variables.md).
+
 The rate limiter requires an Upstash Redis instance configured via environment variables:
 
 - `UPSTASH_REDIS_REST_URL`

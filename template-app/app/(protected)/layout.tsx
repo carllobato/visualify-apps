@@ -13,7 +13,7 @@ import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { isVisualifyStaffEmail } from "@/lib/auth/visualifyStaff";
 import { productConfig } from "@/lib/product-config";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { TemplateAppShellRail } from "@/components/TemplateAppShellRail";
+import { TemplateAppShellRail } from "@/components/layout/TemplateAppShellRail";
 
 export const dynamic = "force-dynamic";
 

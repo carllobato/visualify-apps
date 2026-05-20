@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Website
+        run: pnpm --filter visualify-site run lint
+
+      - name: Test RiskAI
+        run: pnpm --filter riskai-mvp run test
+
+      - name: Test workspace-product-access
+        run: pnpm --filter @visualify/workspace-product-access run test
+
+      - name: Build HQ
+        run: pnpm --filter visualify-hq run build
+
+      - name: Build RiskAI
+        run: pnpm --filter riskai-mvp run build
+
+      - name: Build Website
+        run: pnpm --filter visualify-site run build

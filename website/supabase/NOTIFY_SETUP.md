@@ -4,6 +4,8 @@ Architecture: **Website → API route → Supabase insert** → **Database Webho
 
 The Next.js app only validates and writes rows. Email runs **after** the row exists, from Supabase.
 
+> **Platform contract:** Cross-app env rules and how Edge secrets align with Vercel — [`docs/environment-variables.md`](../../docs/environment-variables.md) (§6 Edge ↔ Vercel). This doc covers notify-on-insert setup only.
+
 ---
 
 ## 1. Prerequisites (you apply in Supabase)

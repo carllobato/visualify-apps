@@ -24,7 +24,7 @@ Supabase Dashboard → your project → **SQL Editor** → **New query**.
 
 The app expects those snake_case columns on **`profiles`**. **`role`** is not stored on this table.
 
-**Wrong Supabase project?** `NEXT_PUBLIC_SUPABASE_URL` in `.env.local` must match the project where you ran the SQL.
+**Wrong Supabase project?** `NEXT_PUBLIC_SUPABASE_URL` in `.env.local` must match the project where you ran the SQL. See shared Supabase rules in [`docs/environment-variables.md`](../../docs/environment-variables.md).
 
 **Settings / onboarding save** uses **`POST /api/me/profile`**, which upserts **`public.profiles`** and returns a **500** with Supabase’s error message if the row cannot be written (no silent success).
 
