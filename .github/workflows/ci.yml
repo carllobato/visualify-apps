@@ -36,6 +36,9 @@ jobs:
         run: pnpm --filter visualify-hq run build
 
       - name: Build RiskAI
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.RISKAI_NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.RISKAI_NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: pnpm --filter riskai-mvp run build
 
       - name: Build Website
