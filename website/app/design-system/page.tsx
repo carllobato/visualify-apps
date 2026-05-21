@@ -23,8 +23,6 @@ import {
   DashboardTileDelta,
   DashboardTileKpi,
   DashboardTileStatus,
-  StatBlock,
-  StatusBlock,
   Tab,
   Table,
   TableBody,
