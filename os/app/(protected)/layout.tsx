@@ -28,7 +28,23 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(buildLoginRedirectUrl(pathname));
   }
 
-  const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
+  const productKey = productConfig.PRODUCT_KEY;
+  let entitled = false;
+  try {
+    entitled = await hasProductAccess(user.id, productKey);
+  } catch (err) {
+    console.error("[visualify-os-entitlement-debug] hasProductAccess error:", err);
+  }
+
+  console.log(
+    JSON.stringify({
+      tag: "visualify-os-entitlement-debug",
+      userId: user.id,
+      productKey,
+      entitled,
+    }),
+  );
+
   if (!entitled) {
     redirect(productConfig.HQ_APPS_URL);
   }
