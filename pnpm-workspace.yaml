@@ -2,5 +2,6 @@ packages:
   - "riskai"
   - "website"
   - "hq"
+  - "os"
   - "template-app"
   - "packages/*"

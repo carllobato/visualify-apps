@@ -1,5 +1,5 @@
 /** Known Visualify surfaces with a public origin. */
-export const VISUALIFY_PRODUCT_KEYS = ["website", "hq", "riskai"] as const;
+export const VISUALIFY_PRODUCT_KEYS = ["website", "hq", "riskai", "os"] as const;
 
 export type VisualifyProductKey = (typeof VISUALIFY_PRODUCT_KEYS)[number];
 
@@ -7,7 +7,8 @@ export type VisualifyProductKey = (typeof VISUALIFY_PRODUCT_KEYS)[number];
 export type VisualifyProductOriginEnvVar =
   | "NEXT_PUBLIC_WEBSITE_ORIGIN"
   | "NEXT_PUBLIC_HQ_ORIGIN"
-  | "NEXT_PUBLIC_RISKAI_ORIGIN";
+  | "NEXT_PUBLIC_RISKAI_ORIGIN"
+  | "NEXT_PUBLIC_OS_ORIGIN";
 
 export type VisualifyProductDefinition = {
   readonly key: VisualifyProductKey;
@@ -43,6 +44,12 @@ export const VISUALIFY_PRODUCTS: Readonly<Record<VisualifyProductKey, VisualifyP
     defaultOrigin: "https://riskai.visualify.com.au",
     dashboardPath: "/dashboard",
     originEnvVar: "NEXT_PUBLIC_RISKAI_ORIGIN",
+  },
+  os: {
+    key: "os",
+    defaultOrigin: "https://os.visualify.com.au",
+    dashboardPath: "/today",
+    originEnvVar: "NEXT_PUBLIC_OS_ORIGIN",
   },
 };
 

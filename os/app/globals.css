@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@import "../../packages/design-system/src/styles/globals.css";
+
+/* Workspace packages */
+@source "../../packages/design-system/src";
+@source "../../packages/app-shell/src";
+
+/* This app */
+@source "../app";
+@source "../src";
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}

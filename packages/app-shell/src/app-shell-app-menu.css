@@ -1,4 +1,66 @@
-/* App switcher / account menus — modifier for unavailable catalog entries. */
+/**
+ * Popover panel for app menus (rail app switcher, account menu, etc.).
+ * Imported by rail/menu components — do not duplicate in app globals.css.
+ */
+.ds-app-menu-dropdown {
+  overflow: hidden;
+  border-radius: var(--ds-radius-app-frame);
+  border: 0 !important;
+  background-color: var(--ds-app-document-bg) !important;
+  box-shadow: var(--ds-elevation-app-frame);
+  padding: 0;
+}
+
+.ds-app-menu-dropdown--min-w-nav {
+  min-width: 200px;
+}
+
+.ds-app-menu-dropdown--min-w-full {
+  min-width: 100%;
+}
+
+.ds-app-menu-dropdown__item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: var(--ds-space-3) var(--ds-space-4);
+  text-align: left;
+  font-size: var(--ds-text-sm);
+  font-weight: inherit;
+  font-family: inherit;
+  line-height: inherit;
+  color: var(--ds-text-primary);
+  text-decoration: none;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.ds-app-menu-dropdown__item:hover,
+.ds-app-menu-dropdown__item:focus-visible {
+  background-color: var(--ds-menu-item-hover-bg) !important;
+}
+
+.ds-app-menu-dropdown__item:focus-visible {
+  outline: 2px solid var(--ds-primary);
+  outline-offset: 2px;
+}
+
+.ds-app-menu-dropdown > .ds-app-menu-dropdown__item:first-child {
+  border-top-left-radius: var(--ds-radius-app-frame);
+  border-top-right-radius: var(--ds-radius-app-frame);
+}
+
+.ds-app-menu-dropdown > .ds-app-menu-dropdown__item:last-child {
+  border-bottom-left-radius: var(--ds-radius-app-frame);
+  border-bottom-right-radius: var(--ds-radius-app-frame);
+}
+
+/* App switcher — modifier for unavailable catalog entries. */
 .ds-app-menu-dropdown__item--coming-soon {
   color: color-mix(in oklab, var(--ds-text-muted) 88%, transparent);
   opacity: 0.72;
