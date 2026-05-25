@@ -2,7 +2,7 @@
 export const OS_ROUTES = {
   today: "/today",
   inbox: "/inbox",
-  vectors: "/vectors",
+  streams: "/streams",
   projects: "/projects",
   waitingOns: "/waiting-ons",
   decisions: "/decisions",
@@ -21,7 +21,7 @@ export const OS_PRIMARY_NAV: readonly {
 }[] = [
   { href: OS_ROUTES.today, label: "Today" },
   { href: OS_ROUTES.inbox, label: "Inbox" },
-  { href: OS_ROUTES.vectors, label: "Vectors" },
+  { href: OS_ROUTES.streams, label: "Streams" },
   { href: OS_ROUTES.projects, label: "Projects" },
   { href: OS_ROUTES.waitingOns, label: "Waiting Ons" },
   { href: OS_ROUTES.decisions, label: "Decisions" },

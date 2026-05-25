@@ -1,12 +1,9 @@
-import { OsPagePlaceholder } from "@/components/OsPagePlaceholder";
+import { redirect } from "next/navigation";
+import { OS_ROUTES } from "@/lib/os-routes";
 
 export const dynamic = "force-dynamic";
 
-export default function VectorsPage() {
-  return (
-    <OsPagePlaceholder
-      title="Vectors"
-      description="Directional threads and ongoing themes across your work and life."
-    />
-  );
+/** Legacy route — bookmarks and links still use /vectors. */
+export default function VectorsRedirectPage() {
+  redirect(OS_ROUTES.streams);
 }

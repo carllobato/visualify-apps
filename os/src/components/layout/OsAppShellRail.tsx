@@ -46,7 +46,7 @@ function IconInbox() {
   );
 }
 
-function IconVectors() {
+function IconStreams() {
   return (
     <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
       <path stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" d="M4 18l6-8 4 5 6-11" />
@@ -107,7 +107,7 @@ function IconSettings() {
 const NAV_ICONS: Record<string, () => ReactElement> = {
   [OS_ROUTES.today]: IconSun,
   [OS_ROUTES.inbox]: IconInbox,
-  [OS_ROUTES.vectors]: IconVectors,
+  [OS_ROUTES.streams]: IconStreams,
   [OS_ROUTES.projects]: IconFolder,
   [OS_ROUTES.waitingOns]: IconClock,
   [OS_ROUTES.decisions]: IconBranch,

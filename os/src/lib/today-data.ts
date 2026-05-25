@@ -12,7 +12,7 @@ export type TodayTask = {
   priorityLevel: string | null;
   dueAt: string | null;
   projectId: string | null;
-  vectorId: string | null;
+  streamId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -28,7 +28,7 @@ export type TodayWaitingOn = {
   expectedResponseAt: string | null;
   lastFollowedUpAt: string | null;
   projectId: string | null;
-  vectorId: string | null;
+  streamId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,12 +38,12 @@ export type TodayProject = {
   name: string;
   description: string | null;
   status: string;
-  vectorId: string | null;
+  streamId: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
-export type TodayVector = {
+export type TodayStream = {
   id: string;
   name: string;
   description: string | null;
@@ -68,9 +68,22 @@ export type TodayPageData = {
   tasks: TodayTask[];
   waitingOns: TodayWaitingOn[];
   projects: TodayProject[];
-  vectors: TodayVector[];
+  streams: TodayStream[];
   latestBriefing: TodayBriefing | null;
 };
+
+/** Ensures every Today slice is defined (guards partial / stale fetch results). */
+export function normalizeTodayPageData(
+  data: Partial<TodayPageData> & { vectors?: TodayStream[] },
+): TodayPageData {
+  return {
+    tasks: data.tasks ?? [],
+    waitingOns: data.waitingOns ?? [],
+    projects: data.projects ?? [],
+    streams: data.streams ?? data.vectors ?? [],
+    latestBriefing: data.latestBriefing ?? null,
+  };
+}
 
 type OsTaskRow = {
   id: string;
@@ -80,7 +93,7 @@ type OsTaskRow = {
   priority_level: string | null;
   due_at: string | null;
   project_id: string | null;
-  vector_id: string | null;
+  stream_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -96,7 +109,7 @@ type OsWaitingOnRow = {
   expected_response_at: string | null;
   last_followed_up_at: string | null;
   project_id: string | null;
-  vector_id: string | null;
+  stream_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -106,12 +119,12 @@ type OsProjectRow = {
   name: string;
   description: string | null;
   status: string;
-  vector_id: string | null;
+  stream_id: string | null;
   created_at: string;
   updated_at: string;
 };
 
-type OsVectorRow = {
+type OsStreamRow = {
   id: string;
   name: string;
   description: string | null;
@@ -141,7 +154,7 @@ function mapTask(row: OsTaskRow): TodayTask {
     priorityLevel: row.priority_level,
     dueAt: row.due_at,
     projectId: row.project_id,
-    vectorId: row.vector_id,
+    streamId: row.stream_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -159,7 +172,7 @@ function mapWaitingOn(row: OsWaitingOnRow): TodayWaitingOn {
     expectedResponseAt: row.expected_response_at,
     lastFollowedUpAt: row.last_followed_up_at,
     projectId: row.project_id,
-    vectorId: row.vector_id,
+    streamId: row.stream_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -171,13 +184,13 @@ function mapProject(row: OsProjectRow): TodayProject {
     name: row.name,
     description: row.description,
     status: row.status,
-    vectorId: row.vector_id,
+    streamId: row.stream_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
-function mapVector(row: OsVectorRow): TodayVector {
+function mapStream(row: OsStreamRow): TodayStream {
   return {
     id: row.id,
     name: row.name,
@@ -206,7 +219,7 @@ async function fetchActiveTasks(supabase: SupabaseClient, userId: string): Promi
   const { data, error } = await supabase
     .from("os_tasks")
     .select(
-      "id, title, description, status, priority_level, due_at, project_id, vector_id, created_at, updated_at",
+      "id, title, description, status, priority_level, due_at, project_id, stream_id, created_at, updated_at",
     )
     .eq("owner_user_id", userId)
     .eq("status", "active")
@@ -229,7 +242,7 @@ async function fetchActiveWaitingOns(
   const { data, error } = await supabase
     .from("os_waiting_ons")
     .select(
-      "id, title, description, status, priority_level, waiting_on_name, waiting_on_contact, expected_response_at, last_followed_up_at, project_id, vector_id, created_at, updated_at",
+      "id, title, description, status, priority_level, waiting_on_name, waiting_on_contact, expected_response_at, last_followed_up_at, project_id, stream_id, created_at, updated_at",
     )
     .eq("owner_user_id", userId)
     .eq("status", "active")
@@ -247,7 +260,7 @@ async function fetchActiveWaitingOns(
 async function fetchActiveProjects(supabase: SupabaseClient, userId: string): Promise<TodayProject[]> {
   const { data, error } = await supabase
     .from("os_projects")
-    .select("id, name, description, status, vector_id, created_at, updated_at")
+    .select("id, name, description, status, stream_id, created_at, updated_at")
     .eq("owner_user_id", userId)
     .eq("status", "active")
     .order("created_at", { ascending: true });
@@ -260,20 +273,20 @@ async function fetchActiveProjects(supabase: SupabaseClient, userId: string): Pr
   return ((data ?? []) as OsProjectRow[]).map(mapProject);
 }
 
-async function fetchActiveVectors(supabase: SupabaseClient, userId: string): Promise<TodayVector[]> {
+async function fetchActiveStreams(supabase: SupabaseClient, userId: string): Promise<TodayStream[]> {
   const { data, error } = await supabase
-    .from("os_vectors")
+    .from("os_streams")
     .select("id, name, description, status, color, icon, created_at, updated_at")
     .eq("owner_user_id", userId)
     .eq("status", "active")
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("fetchTodayPageData os_vectors:", error.message);
+    console.error("fetchTodayPageData os_streams:", error.message);
     return [];
   }
 
-  return ((data ?? []) as OsVectorRow[]).map(mapVector);
+  return ((data ?? []) as OsStreamRow[]).map(mapStream);
 }
 
 async function fetchLatestBriefing(
@@ -303,19 +316,19 @@ async function fetchLatestBriefing(
  */
 export async function fetchTodayPageData(userId: string): Promise<TodayPageData> {
   const supabase = await supabaseServerClient();
-  const [tasks, waitingOns, projects, vectors, latestBriefing] = await Promise.all([
+  const [tasks, waitingOns, projects, streams, latestBriefing] = await Promise.all([
     fetchActiveTasks(supabase, userId),
     fetchActiveWaitingOns(supabase, userId),
     fetchActiveProjects(supabase, userId),
-    fetchActiveVectors(supabase, userId),
+    fetchActiveStreams(supabase, userId),
     fetchLatestBriefing(supabase, userId),
   ]);
 
-  return {
+  return normalizeTodayPageData({
     tasks,
     waitingOns,
     projects,
-    vectors,
+    streams,
     latestBriefing,
-  };
+  });
 }
