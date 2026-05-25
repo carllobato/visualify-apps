@@ -40,8 +40,16 @@ export type { AccountSettingsAppsPanelProps } from "./AccountSettingsAppsPanel";
 
 export {
   VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG,
+  VISUALIFY_STAFF_ONLY_ACCOUNT_APP_CATALOG,
 } from "./visualify-account-app-catalog";
 export type { AccountSettingsAppCatalogEntry } from "./visualify-account-app-catalog";
+
+export {
+  buildVisualifyAccountAppCatalogForUser,
+  resolveAccountSettingsEntitledProductKeys,
+} from "./resolve-account-settings-entitlements";
+
+export { isVisualifyStaffEmail } from "../auth/isVisualifyStaffEmail";
 
 export { AccountSettingsAuthenticationPanel } from "./AccountSettingsAuthenticationPanel";
 export type {

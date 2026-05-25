@@ -7,7 +7,10 @@ import {
 } from "./AccountSettingsCard";
 import { accountSettingsIntroTextClassName, accountSettingsPanelSectionClassName } from "./classes";
 import type { AccountSettingsAppCatalogEntry } from "./visualify-account-app-catalog";
-import { VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG } from "./visualify-account-app-catalog";
+import {
+  buildVisualifyAccountAppCatalogForUser,
+  resolveAccountSettingsEntitledProductKeys,
+} from "./resolve-account-settings-entitlements";
 
 function AppRow({ app, access }: { app: AccountSettingsAppCatalogEntry; access: "granted" | "denied" }) {
   const canOpen = access === "granted" && Boolean(app.href?.trim());
@@ -45,14 +48,23 @@ function AppRow({ app, access }: { app: AccountSettingsAppCatalogEntry; access: 
 export type AccountSettingsAppsPanelProps = {
   /** `visualify_products.key` values from workspaces where the user has membership + trial/active subscription. */
   workspaceEntitledProductKeys: readonly string[];
+  /** Signed-in user email — when `@visualify.com.au`, staff see the full catalog as entitled. */
+  userEmail?: string | null;
   appCatalog?: readonly AccountSettingsAppCatalogEntry[];
 };
 
 export function AccountSettingsAppsPanel({
   workspaceEntitledProductKeys,
-  appCatalog = VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG,
+  userEmail,
+  appCatalog: appCatalogProp,
 }: AccountSettingsAppsPanelProps) {
-  const entitledSet = new Set(workspaceEntitledProductKeys);
+  const appCatalog = appCatalogProp ?? buildVisualifyAccountAppCatalogForUser(userEmail);
+  const effectiveEntitledKeys = resolveAccountSettingsEntitledProductKeys(
+    workspaceEntitledProductKeys,
+    userEmail,
+    appCatalog,
+  );
+  const entitledSet = new Set(effectiveEntitledKeys);
   const withAccess = appCatalog.filter((a) => entitledSet.has(a.id));
   const withoutAccess = appCatalog.filter((a) => !entitledSet.has(a.id));
 

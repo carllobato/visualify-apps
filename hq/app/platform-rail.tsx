@@ -17,7 +17,7 @@ import { DashboardAccountMenu } from "./(hq)/dashboard/dashboard-account-menu";
 import { HqRailFooterHelp } from "@/components/hq-rail-footer-help";
 import { WorkspaceRailList } from "./entity-rail-list";
 import type { EntityRailWorkspace } from "@/lib/entity-rail-grouping";
-import { VISUALIFY_APP_CATALOG } from "@/lib/visualify-apps";
+import type { VisualifyAppDefinition } from "@/lib/visualify-apps";
 
 /** Persist pin preference — each HQ page mounts its own shell, so state must survive remounts. */
 const HQ_PLATFORM_RAIL_PINNED_KEY = "hq-platform-rail-pinned";
@@ -47,9 +47,11 @@ function IconDashboard() {
 export function PlatformRail({
   workspaces,
   selectedWorkspaceId,
+  appCatalog,
 }: {
   workspaces: EntityRailWorkspace[];
   selectedWorkspaceId: string | null;
+  appCatalog: readonly VisualifyAppDefinition[];
 }) {
   const pathname = usePathname();
   const accountRailActive = railNavHrefActive(pathname, "/account");
@@ -61,7 +63,7 @@ export function PlatformRail({
           <AppShellRailBrandAppMenu
             appShortName="HQ"
             currentAppName="HQ"
-            catalog={VISUALIFY_APP_CATALOG}
+            catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} />}
           />
 

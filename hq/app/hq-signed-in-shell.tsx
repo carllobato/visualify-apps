@@ -6,6 +6,7 @@ import {
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 import { PlatformRail } from "./platform-rail";
+import { getVisualifyAppCatalogForUser } from "@/lib/visualify-apps";
 import { HqAppFooter } from "@/components/hq-app-footer";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import {
@@ -23,6 +24,7 @@ export async function HqSignedInShell({ children }: { children: React.ReactNode 
 
   let workspaces: WorkspaceRailEntry[] = [];
   let selectedWorkspaceId: string | null = null;
+  const appCatalog = getVisualifyAppCatalogForUser(user?.email);
 
   if (user) {
     const [railWorkspaces, cookieWorkspaceId] = await Promise.all([
@@ -40,7 +42,11 @@ export async function HqSignedInShell({ children }: { children: React.ReactNode 
 
   return (
     <AppShellOuterCanvas>
-      <PlatformRail workspaces={workspaces} selectedWorkspaceId={selectedWorkspaceId} />
+      <PlatformRail
+        workspaces={workspaces}
+        selectedWorkspaceId={selectedWorkspaceId}
+        appCatalog={appCatalog}
+      />
 
       <AppShellMainColumn>
         <AppShellFrameGutter>

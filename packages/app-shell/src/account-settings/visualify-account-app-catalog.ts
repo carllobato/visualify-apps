@@ -1,4 +1,9 @@
-import { getProductDashboardUrl, readPublicEnv } from "@visualify/urls";
+import {
+  getHqAppsUrl,
+  getProductDashboardUrl,
+  getProductOrigin,
+  readPublicEnv,
+} from "@visualify/urls";
 import type { AppShellRailAppCatalogEntry } from "../AppShellRailBrandAppMenu";
 
 /** Product catalog entry for Account → Apps (matches `visualify_products.key`). */
@@ -13,10 +18,28 @@ function resolveRiskAiDashboardUrl(): string {
   return readPublicEnv("NEXT_PUBLIC_RISKAI_DASHBOARD_URL") ?? getProductDashboardUrl("riskai");
 }
 
+/** Template App on the shared RiskAI app host (staff-only catalog entry). */
+function resolveTemplateAppLaunchUrl(): string {
+  return `${getProductOrigin("riskai")}/template-app`;
+}
+
 /**
- * Platform catalog for Account → Apps. Catalog `id` matches `visualify_products.key` for workspace entitlement checks.
+ * Platform catalog for Account → Apps and HQ app surfaces. Catalog `id` matches `visualify_products.key`
+ * for workspace entitlement checks.
  */
 export const VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG: readonly AccountSettingsAppCatalogEntry[] = [
+  {
+    id: "hq",
+    name: "Visualify HQ",
+    description: "App launcher, workspaces, and account.",
+    href: getHqAppsUrl(),
+  },
+  {
+    id: "os",
+    name: "OS",
+    description: "Personal operating system — calm, operational, high-signal.",
+    href: getProductDashboardUrl("os"),
+  },
   {
     id: "riskai",
     name: "RiskAI",
@@ -37,5 +60,21 @@ export const VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG: readonly AccountSettingsApp
     id: "scheduleai",
     name: "ScheduleAI",
     description: "Planning, milestones and schedule intelligence.",
+  },
+  {
+    id: "website",
+    name: "Website",
+    description: "Visualify marketing site and public presence.",
+    href: getProductDashboardUrl("website"),
+  },
+];
+
+/** Internal scaffold — shown only for `@visualify.com.au` staff in account and app switcher surfaces. */
+export const VISUALIFY_STAFF_ONLY_ACCOUNT_APP_CATALOG: readonly AccountSettingsAppCatalogEntry[] = [
+  {
+    id: "template",
+    name: "Template App",
+    description: "Internal product scaffold and integration reference for Visualify staff.",
+    href: resolveTemplateAppLaunchUrl(),
   },
 ];

@@ -66,7 +66,12 @@ export function AccountSettingsSignedIn(props: {
           {
             id: "apps",
             label: "Apps",
-            panel: <AccountSettingsAppsPanel workspaceEntitledProductKeys={workspaceEntitledProductKeys} />,
+            panel: (
+              <AccountSettingsAppsPanel
+                workspaceEntitledProductKeys={workspaceEntitledProductKeys}
+                userEmail={email}
+              />
+            ),
           },
           {
             id: "authentication",
