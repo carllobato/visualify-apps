@@ -2,6 +2,7 @@
  * Mobile bottom tab bar — frosted glass pill (below md only).
  * Wrapper (`nav`) carries a bottom scrim for blur contrast; pill (`__list`) is the glass surface.
  * Scroll inset pairs with `.vf-app-shell-has-mobile-bottom-nav` in `app-shell-frame.css`.
+ * Dimension fallbacks align with mobile `--vf-app-shell-mobile-bottom-nav-*` on `.vf-app-shell-outer-canvas`.
  */
 
 .vf-app-shell-mobile-bottom-nav {
@@ -37,8 +38,8 @@
     right: 0;
     bottom: 0;
     height: calc(
-      var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.125rem) +
-        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.625rem) + 2.25rem +
+      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.875rem) +
+        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.75rem) + 2.25rem +
         env(safe-area-inset-bottom, 0px)
     );
     pointer-events: none;
@@ -58,25 +59,26 @@
     box-sizing: border-box;
     display: flex;
     min-width: 0;
-    height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.125rem);
-    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.125rem);
+    height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.875rem);
+    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.875rem);
     align-items: center;
     justify-content: space-between;
-    gap: 0.1875rem;
-    margin: 0 max(0.875rem, env(safe-area-inset-left, 0px))
+    gap: 0.125rem;
+    margin: 0 max(1rem, env(safe-area-inset-left, 0px))
       calc(
-        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.625rem) + env(safe-area-inset-bottom, 0px)
+        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.75rem) + env(safe-area-inset-bottom, 0px)
       );
-    padding: 0.1875rem;
+    margin-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding: 0.125rem;
     list-style: none;
     border: 0;
-    border-radius: 9999px;
-    background-color: color-mix(in srgb, var(--ds-surface) 78%, transparent);
+    border-radius: 1.625rem;
+    background-color: color-mix(in srgb, var(--ds-surface) 91%, transparent);
     box-shadow:
-      0 1px 0 color-mix(in oklab, white 80%, transparent),
-      0 12px 32px color-mix(in srgb, var(--ds-text-primary) 10%, transparent),
-      0 4px 12px color-mix(in srgb, var(--ds-text-primary) 6%, transparent);
-    /* Lighter blur + no whole-element opacity — sharper pill rim on iOS / PWA. */
+      inset 0 1px 0 color-mix(in oklab, white 88%, transparent),
+      0 0.5px 1px color-mix(in srgb, var(--ds-text-primary) 4%, transparent),
+      0 2px 8px -1px color-mix(in srgb, var(--ds-text-primary) 7%, transparent),
+      0 8px 24px -6px color-mix(in srgb, var(--ds-text-primary) 9%, transparent);
     -webkit-backdrop-filter: blur(16px) saturate(165%);
     backdrop-filter: blur(16px) saturate(165%);
     pointer-events: auto;
@@ -87,7 +89,7 @@
     (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
   ) {
     .vf-app-shell-mobile-bottom-nav__list {
-      background-color: color-mix(in srgb, var(--ds-canvas) 72%, var(--ds-surface-muted) 28%);
+      background-color: color-mix(in srgb, var(--ds-surface) 94%, var(--ds-canvas) 6%);
     }
   }
 
@@ -103,26 +105,25 @@
     display: flex;
     width: 100%;
     min-width: 0;
-    min-height: 0;
+    min-height: 2.75rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.0625rem;
-    padding: 0.1875rem 0.125rem;
+    gap: 0.25rem;
+    padding: 0.125rem 0.0625rem;
     border: 0;
-    border-radius: 9999px;
+    border-radius: 1.375rem;
     background: transparent;
     text-decoration: none;
     font-size: 0.625rem;
     font-weight: 500;
     line-height: 1.2;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.015em;
     -webkit-tap-highlight-color: transparent;
     transition:
       background-color 160ms cubic-bezier(0.32, 0.72, 0, 1),
-      box-shadow 160ms cubic-bezier(0.32, 0.72, 0, 1),
       transform 140ms cubic-bezier(0.32, 0.72, 0, 1),
-      opacity 160ms ease-out;
+      color 160ms ease-out;
   }
 
   .vf-app-shell-mobile-bottom-nav__control:active {
@@ -130,7 +131,7 @@
   }
 
   .vf-app-shell-mobile-bottom-nav__control:hover:not([data-active="true"]) {
-    background-color: color-mix(in oklab, var(--ds-surface) 32%, transparent);
+    background-color: color-mix(in oklab, var(--ds-text-primary) 4%, var(--ds-surface) 96%);
   }
 
   .vf-app-shell-mobile-bottom-nav__control:focus-visible {
@@ -138,7 +139,7 @@
     outline-offset: 1px;
   }
 
-  /* Selection: icon + label only — glass lives on the pill, not the tab. */
+  /* Selection: icon + label only — no capsule glow on the tab control. */
   .vf-app-shell-mobile-bottom-nav__control[data-active="true"],
   .vf-app-shell-mobile-bottom-nav__control[data-active="true"]:hover {
     background-color: transparent;
@@ -150,13 +151,12 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    color: color-mix(in oklab, var(--ds-text-primary) 94%, var(--ds-text-secondary) 6%);
+    width: 1.3125rem;
+    height: 1.3125rem;
+    color: var(--ds-text-secondary);
     opacity: 1;
-    transition:
-      color 160ms cubic-bezier(0.32, 0.72, 0, 1),
-      opacity 160ms ease-out;
+    filter: none;
+    transition: color 160ms cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   .vf-app-shell-mobile-bottom-nav__control[data-active="true"] .vf-app-shell-mobile-bottom-nav__icon {
@@ -166,27 +166,26 @@
 
   .vf-app-shell-mobile-bottom-nav__icon svg {
     display: block;
-    width: 1.0625rem;
-    height: 1.0625rem;
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .vf-app-shell-mobile-bottom-nav__label {
     overflow: hidden;
     max-width: 100%;
     padding-inline: 0.125rem;
-    color: color-mix(in oklab, var(--ds-text-primary) 94%, var(--ds-text-secondary) 6%);
+    color: var(--ds-text-secondary);
     text-overflow: ellipsis;
     white-space: nowrap;
     opacity: 1;
     transition:
       color 160ms cubic-bezier(0.32, 0.72, 0, 1),
-      opacity 160ms ease-out,
       font-weight 160ms ease-out;
   }
 
   .vf-app-shell-mobile-bottom-nav__control:hover:not([data-active="true"]) .vf-app-shell-mobile-bottom-nav__icon,
   .vf-app-shell-mobile-bottom-nav__control:hover:not([data-active="true"]) .vf-app-shell-mobile-bottom-nav__label {
-    color: var(--ds-text-primary);
+    color: color-mix(in oklab, var(--ds-text-primary) 42%, var(--ds-text-secondary) 58%);
   }
 
   .vf-app-shell-mobile-bottom-nav__control[data-active="true"] .vf-app-shell-mobile-bottom-nav__label {
