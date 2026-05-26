@@ -6,10 +6,11 @@ function mergeClass(...parts: (string | undefined)[]): string {
 }
 
 /** Page title typography — matches {@link railBrandTitleClass} on the rail brand row. */
-export const appShellPageTitleClassName = `m-0 text-[var(--ds-text-primary)] ${railBrandTitleClass}`;
+export const appShellPageTitleClassName =
+  `m-0 text-[var(--ds-text-primary)] ${railBrandTitleClass} max-md:text-[length:var(--ds-text-2xl)] max-md:leading-tight`;
 
 export const appShellPageHeaderDescriptionClassName =
-  "m-0 max-w-2xl text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]";
+  "m-0 max-w-2xl text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)] max-md:text-[length:var(--ds-text-base)] max-md:leading-relaxed";
 
 export type AppShellPageHeaderProps = {
   title: ReactNode;

@@ -1,19 +1,13 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import {
-  AppShellFrameGutter,
-  AppShellFramedSurface,
-  AppShellLegalFooterWithModals,
-  AppShellMainColumn,
-  AppShellOuterCanvas,
-  AppShellScrollRegion,
-} from "@visualify/app-shell";
+import { AppShellLegalFooterWithModals, AppShellOuterCanvas } from "@visualify/app-shell";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
 import { OS_DEFAULT_ROUTE } from "@/lib/os-routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { OsAppShellRail } from "@/components/layout/OsAppShellRail";
+import { OsProtectedDocument } from "@/components/layout/OsProtectedDocument";
 
 export const dynamic = "force-dynamic";
 
@@ -50,17 +44,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   return (
-    <AppShellOuterCanvas>
+    <AppShellOuterCanvas mobileHeaderExpected>
       <OsAppShellRail />
-      <AppShellMainColumn>
-        <AppShellFrameGutter>
-          <AppShellFramedSurface>
-            <AppShellScrollRegion footer={<AppShellLegalFooterWithModals />}>
-              {children}
-            </AppShellScrollRegion>
-          </AppShellFramedSurface>
-        </AppShellFrameGutter>
-      </AppShellMainColumn>
+      <OsProtectedDocument footer={<AppShellLegalFooterWithModals />}>{children}</OsProtectedDocument>
     </AppShellOuterCanvas>
   );
 }

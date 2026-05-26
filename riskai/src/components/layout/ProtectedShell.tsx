@@ -5,7 +5,9 @@ import {
   AppShellFrameGutter,
   AppShellFramedSurface,
   AppShellMainColumn,
+  AppShellMobileHeader,
   AppShellOuterCanvas,
+  AppShellRailBrandMark,
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
@@ -32,9 +34,14 @@ export function ProtectedShell({
     return (
       <>
         <OnboardingHost />
-        <AppShellOuterCanvas>
+        <AppShellOuterCanvas mobileHeaderExpected>
           <RiskAiAppShellRail />
           <AppShellMainColumn>
+            <AppShellMobileHeader
+              appName="Risk AI"
+              pageTitle="Dashboard"
+              appIcon={<AppShellRailBrandMark src="/visualify-brand-mark.png" alt="" />}
+            />
             <AppShellFrameGutter>
               <AppShellFramedSurface>
                 <AppShellScrollRegion footer={<AppShellLegalFooterWithModals />}>

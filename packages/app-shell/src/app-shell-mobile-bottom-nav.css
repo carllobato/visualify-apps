@@ -1,0 +1,213 @@
+/**
+ * Mobile bottom tab bar — frosted glass pill (below md only).
+ * Wrapper (`nav`) carries a bottom scrim for blur contrast; pill (`__list`) is the glass surface.
+ * Scroll inset pairs with `.vf-app-shell-has-mobile-bottom-nav` in `app-shell-frame.css`.
+ */
+
+.vf-app-shell-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  /* Full-width anchor — transparent so backdrop-filter on the pill can sample page content. */
+  .vf-app-shell-mobile-bottom-nav {
+    box-sizing: border-box;
+    position: fixed;
+    z-index: 45;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Light contrast scrim — supports blur on white pages without a footer wash. */
+  .vf-app-shell-mobile-bottom-nav::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: calc(
+      var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.125rem) +
+        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.625rem) + 2.25rem +
+        env(safe-area-inset-bottom, 0px)
+    );
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklab, var(--ds-primary) 4%, transparent) 55%,
+      color-mix(in oklab, var(--ds-primary-subtle) 22%, var(--ds-canvas) 78%) 100%
+    );
+    opacity: 0.42;
+  }
+
+  /* Floating glass pill — no `isolation` (it traps backdrop-filter against an empty stack). */
+  .vf-app-shell-mobile-bottom-nav__list {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    display: flex;
+    min-width: 0;
+    height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.125rem);
+    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.125rem);
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.1875rem;
+    margin: 0 max(0.875rem, env(safe-area-inset-left, 0px))
+      calc(
+        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.625rem) + env(safe-area-inset-bottom, 0px)
+      );
+    padding: 0.25rem;
+    list-style: none;
+    border: 0;
+    border-image: none;
+    border-radius: 9999px;
+    opacity: 0.9;
+    background-color: rgba(181, 181, 181, 0.25);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, white 40%, transparent),
+      0 10px 28px color-mix(in srgb, var(--ds-canvas) 22%, transparent),
+      0 3px 10px color-mix(in srgb, var(--ds-canvas) 14%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @supports not (
+    (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
+  ) {
+    .vf-app-shell-mobile-bottom-nav__list {
+      background-color: color-mix(in srgb, var(--ds-canvas) 72%, var(--ds-surface-muted) 28%);
+    }
+  }
+
+  .vf-app-shell-mobile-bottom-nav__item {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 0%;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control {
+    box-sizing: border-box;
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: 9999px;
+    background: transparent;
+    text-decoration: none;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      background-color 160ms cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 160ms cubic-bezier(0.32, 0.72, 0, 1),
+      transform 140ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 160ms ease-out;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control:active {
+    transform: scale(0.98);
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control:hover:not([data-active="true"]) {
+    background-color: color-mix(in oklab, var(--ds-surface) 32%, transparent);
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control:focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--ds-primary) 45%, transparent);
+    outline-offset: 1px;
+  }
+
+  /* Selection: icon + label only — glass lives on the pill, not the tab. */
+  .vf-app-shell-mobile-bottom-nav__control[data-active="true"],
+  .vf-app-shell-mobile-bottom-nav__control[data-active="true"]:hover {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 1.375rem;
+    height: 1.375rem;
+    color: color-mix(in oklab, var(--ds-text-primary) 94%, var(--ds-text-secondary) 6%);
+    opacity: 1;
+    transition:
+      color 160ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 160ms ease-out;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control[data-active="true"] .vf-app-shell-mobile-bottom-nav__icon {
+    color: var(--ds-primary);
+    opacity: 1;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__icon svg {
+    display: block;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__label {
+    overflow: hidden;
+    max-width: 100%;
+    padding-inline: 0.125rem;
+    color: color-mix(in oklab, var(--ds-text-primary) 94%, var(--ds-text-secondary) 6%);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 1;
+    transition:
+      color 160ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 160ms ease-out,
+      font-weight 160ms ease-out;
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control:hover:not([data-active="true"]) .vf-app-shell-mobile-bottom-nav__icon,
+  .vf-app-shell-mobile-bottom-nav__control:hover:not([data-active="true"]) .vf-app-shell-mobile-bottom-nav__label {
+    color: var(--ds-text-primary);
+  }
+
+  .vf-app-shell-mobile-bottom-nav__control[data-active="true"] .vf-app-shell-mobile-bottom-nav__label {
+    color: var(--ds-primary);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vf-app-shell-mobile-bottom-nav__control,
+    .vf-app-shell-mobile-bottom-nav__icon,
+    .vf-app-shell-mobile-bottom-nav__label {
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@media (min-width: 768px) {
+  .vf-app-shell-mobile-bottom-nav {
+    display: none !important;
+  }
+}

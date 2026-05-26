@@ -98,6 +98,43 @@ export {
 } from "./legal";
 export type { AppShellLegalDocumentId } from "./legal";
 
+export { appShellNavHrefActive } from "./app-shell-nav-active";
+
+export { AppShellMobileBottomNav } from "./AppShellMobileBottomNav";
+export type {
+  AppShellMobileBottomNavItem,
+  AppShellMobileBottomNavLinkItem,
+  AppShellMobileBottomNavMoreItem,
+  AppShellMobileBottomNavProps,
+} from "./AppShellMobileBottomNav";
+
+export { AppShellMobileNavTrigger } from "./AppShellMobileNavTrigger";
+export type { AppShellMobileNavTriggerProps } from "./AppShellMobileNavTrigger";
+
+export { AppShellMobileHeader } from "./AppShellMobileHeader";
+export type { AppShellMobileHeaderProps } from "./AppShellMobileHeader";
+
+export {
+  AppShellMobileHeaderPresenceProvider,
+  useAppShellMobileHeaderPresent,
+} from "./app-shell-mobile-header-context";
+
+export {
+  useAppShellRailMobileNav,
+  useAppShellRailNavActionOnClick,
+} from "./app-shell-rail-mobile-context";
+export type { AppShellRailMobileNavContextValue } from "./app-shell-rail-mobile-context";
+
+export { AppShellRailNavButton } from "./AppShellRailNavButton";
+export type { AppShellRailNavButtonProps } from "./AppShellRailNavButton";
+
+export {
+  APP_SHELL_RAIL_MOBILE_NAV_ACTION_ATTR,
+  appShellRailNavActionButtonProps,
+  appShellRailNavActionButtonOptOutProps,
+  shouldCloseMobileDrawerForRailButton,
+} from "./rail-mobile-nav-action";
+
 export {
   AppShellRail,
   AppShellRailBody,

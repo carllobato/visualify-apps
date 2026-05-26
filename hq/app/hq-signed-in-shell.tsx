@@ -1,11 +1,6 @@
-import {
-  AppShellFrameGutter,
-  AppShellFramedSurface,
-  AppShellMainColumn,
-  AppShellOuterCanvas,
-  AppShellScrollRegion,
-} from "@visualify/app-shell";
+import { AppShellOuterCanvas } from "@visualify/app-shell";
 import { PlatformRail } from "./platform-rail";
+import { HqSignedInDocument } from "./hq-signed-in-document";
 import { getVisualifyAppCatalogForUser } from "@/lib/visualify-apps";
 import { HqAppFooter } from "@/components/hq-app-footer";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
@@ -41,20 +36,14 @@ export async function HqSignedInShell({ children }: { children: React.ReactNode 
   }
 
   return (
-    <AppShellOuterCanvas>
+    <AppShellOuterCanvas mobileHeaderExpected>
       <PlatformRail
         workspaces={workspaces}
         selectedWorkspaceId={selectedWorkspaceId}
         appCatalog={appCatalog}
       />
 
-      <AppShellMainColumn>
-        <AppShellFrameGutter>
-          <AppShellFramedSurface>
-            <AppShellScrollRegion footer={<HqAppFooter />}>{children}</AppShellScrollRegion>
-          </AppShellFramedSurface>
-        </AppShellFrameGutter>
-      </AppShellMainColumn>
+      <HqSignedInDocument footer={<HqAppFooter />}>{children}</HqSignedInDocument>
     </AppShellOuterCanvas>
   );
 }

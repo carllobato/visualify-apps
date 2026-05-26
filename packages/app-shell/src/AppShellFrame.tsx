@@ -4,7 +4,6 @@ import {
   appShellFrameGutterClassName,
   appShellFramedSurfaceClassName,
   appShellMainColumnClassName,
-  appShellOuterCanvasClassName,
   appShellScrollFooterSlotClassName,
   appShellScrollInnerCenteredClassName,
   appShellScrollMainSlotClassName,
@@ -15,15 +14,8 @@ function mergeClass(base: string, extra?: string): string {
   return extra ? `${base} ${extra}` : base;
 }
 
-export type AppShellOuterCanvasProps = {
-  children: ReactNode;
-  className?: string;
-};
-
-/** Full-viewport outer row (canvas). Pass rail/aside + {@link AppShellMainColumn} as children. */
-export function AppShellOuterCanvas({ children, className }: AppShellOuterCanvasProps) {
-  return <div className={mergeClass(appShellOuterCanvasClassName, className)}>{children}</div>;
-}
+export type { AppShellOuterCanvasProps } from "./AppShellOuterCanvas";
+export { AppShellOuterCanvas } from "./AppShellOuterCanvas";
 
 export type AppShellMainColumnProps = {
   children: ReactNode;

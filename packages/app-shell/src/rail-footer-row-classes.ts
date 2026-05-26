@@ -9,7 +9,11 @@ export function appShellRailNavRowClass(active: boolean): string {
   return `${RAIL_ROW_SHELL_CLASS}${active ? RAIL_ROW_ACTIVE_CLASS : RAIL_ROW_INACTIVE_CLASS}`;
 }
 
-/** Rail `<button>` row (workspace picker, sign-out, etc.). */
+/**
+ * Rail `<button>` row (workspace picker, sign-out, etc.).
+ * Workspace/selection buttons close the mobile drawer via {@link AppShellRail} capture heuristics,
+ * or spread {@link appShellRailNavActionButtonProps} for explicit opt-in.
+ */
 export function appShellRailNavButtonRowClass(
   active: boolean,
   options?: { transparentWhenInactive?: boolean },

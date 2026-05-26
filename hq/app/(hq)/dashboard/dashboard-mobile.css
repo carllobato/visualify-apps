@@ -1,0 +1,103 @@
+/**
+ * HQ dashboard — mobile composition only (max-width 767px).
+ * Scoped under `.ds-hq-dashboard-page` so desktop launcher styles are unchanged.
+ */
+
+@media (max-width: 767px) {
+  .ds-hq-dashboard-page {
+    padding-bottom: 0.5rem;
+  }
+
+  .ds-hq-dashboard-page__main {
+    gap: 0.75rem;
+  }
+
+  /* Workspace list — tighter rhythm between cards. */
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-grid {
+    gap: 0.625rem;
+  }
+
+  /* Lighter tiles — less “floating card” on a phone home screen. */
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile.ds-document-tile-panel {
+    border-color: color-mix(in oklab, var(--ds-border) 72%, transparent);
+    background-color: var(--ds-surface);
+    box-shadow: none;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile.ds-document-tile-panel--interactive:hover,
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile.ds-document-tile-panel--interactive:active {
+    transform: none;
+    box-shadow: none;
+    background-color: color-mix(in oklab, var(--ds-text-primary) 3%, var(--ds-surface));
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__open {
+    min-height: 0;
+    padding: 0.75rem 2.5rem 0.75rem 0.75rem;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__header {
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Slightly larger workspace mark on mobile (tile size is 32px on desktop). */
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__header .size-8 {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--ds-radius-md);
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__header .size-8 img {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__name {
+    font-size: 0.9375rem;
+    line-height: 1.3;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__meta {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__settings {
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__apps {
+    padding-inline: 0.75rem;
+    padding-block: 0.5rem 0.625rem;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-tile__apps-list {
+    gap: 0.125rem;
+  }
+
+  .ds-hq-dashboard-page .ds-hq-workspace-launcher-empty {
+    padding: 0.875rem 1rem;
+    border-color: color-mix(in oklab, var(--ds-border) 72%, transparent);
+    box-shadow: none;
+  }
+
+  /* Legal footer — present but quieter than workspace content. */
+  .vf-app-shell-scroll-footer-slot:has(.ds-hq-dashboard-page) .vf-app-shell-legal-footer-bar {
+    height: auto;
+    min-height: 2.25rem;
+    max-height: none;
+    padding-block: 0.375rem;
+  }
+
+  .vf-app-shell-scroll-footer-slot:has(.ds-hq-dashboard-page) .vf-app-shell-legal-footer-content {
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    color: color-mix(in oklab, var(--ds-text-tertiary) 92%, transparent);
+    gap: 0.25rem 0.625rem;
+  }
+}

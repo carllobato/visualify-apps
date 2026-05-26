@@ -4,6 +4,7 @@ import "./app-shell-app-menu.css";
 
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { appShellRailMobileOpenFlexRevealClassName, appShellRailMobileOpenRowGapClassName } from "./rail-mobile-classes";
 import { appShellRailIconWellClassName, railBrandTitleClass } from "./rail-row-classes";
 
 export type AppShellRailAppCatalogEntry = {
@@ -93,7 +94,10 @@ export function AppShellRailBrandAppMenu({
   return (
     <div
       ref={wrapRef}
-      className="relative flex h-10 w-full min-w-0 shrink-0 items-center gap-0 rounded-[var(--ds-radius-md)] transition-[gap] duration-[400ms] ease-out group-hover:gap-2 group-data-[pinned=true]:gap-2"
+      className={
+        "relative flex h-10 w-full min-w-0 shrink-0 items-center gap-0 rounded-[var(--ds-radius-md)] transition-[gap] duration-[400ms] ease-out group-hover:gap-2 group-data-[pinned=true]:gap-2 " +
+        appShellRailMobileOpenRowGapClassName
+      }
       onMouseLeave={scheduleClose}
     >
       <button
@@ -102,7 +106,8 @@ export function AppShellRailBrandAppMenu({
           "relative flex h-10 min-h-0 min-w-0 flex-1 items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
           "transition-[color,gap] duration-[400ms] ease-out " +
           "group-hover:gap-2 group-data-[pinned=true]:gap-2 " +
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]"
+          appShellRailMobileOpenRowGapClassName +
+          " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]"
         }
         aria-expanded={menuOpen}
         aria-haspopup="menu"
@@ -114,7 +119,7 @@ export function AppShellRailBrandAppMenu({
         <span
           className={
             `hidden min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
-            "group-hover:flex group-data-[pinned=true]:flex"
+            "group-hover:flex group-data-[pinned=true]:flex " + appShellRailMobileOpenFlexRevealClassName
           }
         >
           <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">

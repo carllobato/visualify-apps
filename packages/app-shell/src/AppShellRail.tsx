@@ -2,8 +2,10 @@
 
 import "./app-shell-frame.css";
 import "./app-shell-app-menu.css";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { AppShellMobileNavTrigger } from "./AppShellMobileNavTrigger";
+import { useAppShellRailMobileNav } from "./app-shell-rail-mobile-context";
 import {
   appShellRailAsideClassName,
   appShellRailBodyClassName,
@@ -23,6 +25,11 @@ import {
   appShellRailFooterAccountStripClassName,
 } from "./layout-classes";
 import { AppShellRailPinCollapse } from "./AppShellRailPinCollapse";
+import { useAppShellMobileHeaderPresent } from "./app-shell-mobile-header-context";
+import { shouldCloseMobileDrawerForRailButton } from "./rail-mobile-nav-action";
+
+/** Fixed hamburger below `md` — layout in `app-shell-frame.css` (safe-area + 44px target). */
+const appShellRailBuiltInMobileTriggerClassName = "vf-app-shell-mobile-nav-trigger";
 
 type AppShellRailContextValue = {
   pinned: boolean;
@@ -48,6 +55,11 @@ export type AppShellRailProps = {
    * Omit for hover-only rails without a pin/collapse control.
    */
   pinnedStorageKey?: string;
+  /**
+   * When false, never mount the legacy floating hamburger below `md`.
+   * When true (default), mounts it only if no {@link AppShellMobileHeader} is present.
+   */
+  builtInMobileNavTrigger?: boolean;
   className?: string;
 };
 
@@ -63,10 +75,12 @@ export function AppShellRail({
   children,
   ariaLabel,
   pinnedStorageKey,
+  builtInMobileNavTrigger = true,
   className,
 }: AppShellRailProps) {
   const [pinned, setPinned] = useState(false);
   const skipInitialPersist = useRef(true);
+  const { mobileOpen, closeMobile } = useAppShellRailMobileNav();
 
   useEffect(() => {
     if (!pinnedStorageKey) return;
@@ -92,19 +106,44 @@ export function AppShellRail({
     }
   }, [pinned, pinnedStorageKey]);
 
+  const mobileHeaderPresent = useAppShellMobileHeaderPresent();
+  const showFloatingMobileTrigger =
+    builtInMobileNavTrigger && !mobileHeaderPresent;
+
   const widthClass = pinned ? appShellRailPinnedWidthClassName : appShellRailExpandedWidthClassName;
 
+  const handleRailClickCapture = (event: MouseEvent<HTMLElement>) => {
+    if (!mobileOpen) return;
+    const target = event.target as HTMLElement;
+
+    const anchor = target.closest("a[href]");
+    if (anchor) {
+      closeMobile();
+      return;
+    }
+
+    const button = target.closest("button");
+    if (button && shouldCloseMobileDrawerForRailButton(button)) {
+      closeMobile();
+    }
+  };
+
   return (
-    <AppShellRailContext.Provider
-      value={{ pinned, togglePinned: () => setPinned((p) => !p) }}
-    >
+    <AppShellRailContext.Provider value={{ pinned, togglePinned: () => setPinned((p) => !p) }}>
+      {showFloatingMobileTrigger ? (
+        <AppShellMobileNavTrigger className={appShellRailBuiltInMobileTriggerClassName} />
+      ) : null}
+
       <aside
+        id="vf-app-shell-rail"
         data-pinned={pinned ? "true" : undefined}
+        data-mobile-open={mobileOpen ? "true" : undefined}
         className={mergeClass(
-          `${appShellRailAsideClassName} ${widthClass} transition-[width] ${appShellRailHoverTimingClassName}`,
+          `${appShellRailAsideClassName} ${widthClass} transition-[width,transform] ${appShellRailHoverTimingClassName}`,
           className,
         )}
         aria-label={ariaLabel}
+        onClickCapture={handleRailClickCapture}
       >
         {children}
       </aside>

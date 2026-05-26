@@ -112,8 +112,8 @@ function TodaySection({
   }
 
   return (
-    <section className="flex flex-col gap-2.5">
-      <h2 className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+    <section className="flex flex-col gap-2.5 max-md:gap-3">
+      <h2 className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] max-md:text-[0.8125rem] max-md:leading-snug">
         {title}
       </h2>
       {isEmpty ? (
@@ -146,14 +146,16 @@ function BriefingBlock({ briefing }: { briefing: TodayBriefing }) {
   return (
     <article className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+        <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] max-md:text-[0.8125rem]">
           Daily briefing
         </p>
-        <h2 className="break-words text-[length:var(--ds-text-xl)] font-semibold leading-snug tracking-tight text-[var(--ds-text-primary)]">
+        <h2 className="break-words text-[length:var(--ds-text-xl)] font-semibold leading-snug tracking-tight text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-2xl)] max-md:leading-tight">
           {briefing.title}
         </h2>
         {meta ? (
-          <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">{meta}</p>
+          <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] max-md:text-[length:var(--ds-text-sm)] max-md:leading-snug">
+            {meta}
+          </p>
         ) : null}
       </div>
       {preview ? (
@@ -184,12 +186,14 @@ function TaskRow({ task }: { task: TodayTask }) {
   const priority = formatDisplayLabel(task.priorityLevel);
   const meta = [priority, due].filter(Boolean).join(" · ");
   return (
-    <li className="py-3 first:pt-0 last:pb-0">
-      <p className="break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+    <li className="py-3 first:pt-0 last:pb-0 max-md:py-3.5">
+      <p className="break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)] max-md:leading-snug">
         {task.title}
       </p>
       {meta ? (
-        <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">{meta}</p>
+        <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] max-md:mt-1.5 max-md:text-[length:var(--ds-text-sm)] max-md:leading-snug">
+          {meta}
+        </p>
       ) : null}
     </li>
   );
@@ -200,12 +204,14 @@ function WaitingOnRow({ item }: { item: TodayWaitingOn }) {
   const who = item.waitingOnName?.trim() || item.waitingOnContact?.trim() || null;
   const meta = [who, expected].filter(Boolean).join(" · ");
   return (
-    <li className="py-3 first:pt-0 last:pb-0">
-      <p className="break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+    <li className="py-3 first:pt-0 last:pb-0 max-md:py-3.5">
+      <p className="break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)] max-md:leading-snug">
         {item.title}
       </p>
       {meta ? (
-        <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">{meta}</p>
+        <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] max-md:mt-1.5 max-md:text-[length:var(--ds-text-sm)] max-md:leading-snug">
+          {meta}
+        </p>
       ) : null}
     </li>
   );
@@ -213,8 +219,8 @@ function WaitingOnRow({ item }: { item: TodayWaitingOn }) {
 
 function ProjectRow({ project }: { project: TodayProject }) {
   return (
-    <li className="py-2">
-      <p className="break-words text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-primary)]">
+    <li className="py-2 max-md:py-2.5">
+      <p className="break-words text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)]">
         {project.name}
       </p>
     </li>
@@ -223,8 +229,8 @@ function ProjectRow({ project }: { project: TodayProject }) {
 
 function StreamRow({ stream }: { stream: TodayStream }) {
   return (
-    <li className="py-2">
-      <p className="break-words text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-primary)]">
+    <li className="py-2 max-md:py-2.5">
+      <p className="break-words text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)]">
         {stream.name}
       </p>
     </li>
@@ -259,10 +265,12 @@ export default async function TodayPage() {
   const hasContext = projects.length > 0 || streams.length > 0;
 
   return (
-    <main className="mx-auto flex w-full min-w-0 max-w-2xl flex-col px-4 py-5 sm:px-6 sm:py-7">
-      <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">Today</p>
+    <main className="mx-auto flex w-full min-w-0 max-w-2xl flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:px-0 max-md:py-4">
+      <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)] max-md:hidden">
+        Today
+      </p>
 
-      <div className="mt-5 flex flex-col gap-6 sm:gap-7">
+      <div className="mt-5 flex flex-col gap-6 sm:gap-7 max-md:mt-0 max-md:gap-5">
         {latestBriefing ? (
           <BriefingBlock briefing={latestBriefing} />
         ) : (
@@ -271,7 +279,7 @@ export default async function TodayPage() {
           </p>
         )}
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-5 max-md:gap-4">
           <TodaySection title="Active tasks" emptyMessage="Nothing active right now.">
             {visibleTasks.length > 0 ? (
               <div>
@@ -301,8 +309,8 @@ export default async function TodayPage() {
       </div>
 
       {hasContext ? (
-        <div className="mt-10 flex flex-col gap-7 border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] pt-9 sm:mt-12 sm:gap-8 sm:pt-10">
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+        <div className="mt-10 flex flex-col gap-7 border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] pt-9 sm:mt-12 sm:gap-8 sm:pt-10 max-md:mt-8 max-md:gap-6 max-md:pt-7">
+          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] max-md:text-[0.8125rem]">
             Context
           </p>
 
