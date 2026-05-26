@@ -1,0 +1,228 @@
+/**
+ * OS Today — mobile composition (max-width 767px).
+ * Canvas fills the scroll pane; `.os-today-feed` owns content inset and bottom-nav clearance.
+ */
+
+@media (max-width: 767px) {
+  /*
+   * Today owns inset and bottom clearance — reset shell scroll padding (must beat
+   * `.vf-app-shell-has-mobile-header .vf-app-shell-scroll-region` in app-shell-frame.css).
+   */
+  .vf-app-shell-outer-canvas .vf-app-shell-scroll-region:has(> .os-today-page) {
+    --os-today-canvas: color-mix(in oklab, var(--ds-bg) 76%, var(--ds-surface-muted) 24%);
+    padding: 0;
+    background-color: var(--os-today-canvas);
+  }
+
+  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header
+    .vf-app-shell-scroll-region:has(> .os-today-page) {
+    padding-top: 0;
+  }
+
+  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-bottom-nav
+    .vf-app-shell-scroll-region:has(> .os-today-page) {
+    padding-bottom: 0;
+  }
+
+  .os-today-page {
+    --os-today-bottom-clearance: calc(
+      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.875rem) +
+        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0.75rem) + 0.375rem +
+        env(safe-area-inset-bottom, 0px)
+    );
+
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: var(--os-today-canvas);
+  }
+
+  .os-today-feed {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.875rem;
+    width: 100%;
+    min-width: 0;
+    padding-top: 0.625rem;
+    padding-bottom: var(--os-today-bottom-clearance);
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  }
+
+  /* Raised white surfaces — applied here (not via Tailwind) so mobile cards always render. */
+  .os-today-card,
+  .os-today-hero,
+  .os-today-hero--empty,
+  .os-today-block__surface {
+    overflow: hidden;
+    border-radius: 1rem;
+    border: 1px solid color-mix(in oklab, var(--ds-border) 40%, transparent);
+    background-color: var(--ds-surface);
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 94%, transparent),
+      0 2px 6px color-mix(in srgb, var(--ds-text-primary) 6%, transparent),
+      0 10px 28px color-mix(in srgb, var(--ds-text-primary) 10%, transparent);
+  }
+
+  .os-today-hero,
+  .os-today-hero--empty {
+    box-shadow:
+      0 1px 0 color-mix(in oklab, white 96%, transparent),
+      0 2px 8px color-mix(in srgb, var(--ds-text-primary) 7%, transparent),
+      0 14px 36px color-mix(in srgb, var(--ds-text-primary) 12%, transparent);
+  }
+
+  .os-today-block__label {
+    margin: 0 0 0.375rem 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    line-height: 1.25;
+    color: var(--ds-text-tertiary);
+    text-transform: uppercase;
+  }
+
+  /* —— Hero —— */
+  .os-today-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 1rem 1.0625rem;
+  }
+
+  .os-today-hero__eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ds-text-tertiary);
+  }
+
+  .os-today-hero__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.28;
+    letter-spacing: -0.02em;
+    color: var(--ds-text-primary);
+  }
+
+  .os-today-hero__meta {
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--ds-text-secondary);
+  }
+
+  .os-today-hero__body {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--ds-text-primary);
+  }
+
+  .os-today-hero__more summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ds-primary);
+    background: none;
+    list-style: none;
+  }
+
+  .os-today-hero__more summary span {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: color-mix(in oklab, var(--ds-primary) 35%, transparent);
+  }
+
+  .os-today-hero--empty {
+    padding: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--ds-text-muted);
+  }
+
+  /* —— List rows (tasks, waiting on, context) —— */
+  .os-today-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.6875rem 0.875rem;
+    border-bottom: 1px solid color-mix(in oklab, var(--ds-border) 24%, transparent);
+  }
+
+  .os-today-row:last-child {
+    border-bottom: 0;
+  }
+
+  .os-today-row:active {
+    background-color: color-mix(in oklab, var(--ds-surface-muted) 42%, transparent);
+  }
+
+  .os-today-row__status {
+    flex-shrink: 0;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    border: 1.5px solid color-mix(in oklab, var(--ds-primary) 30%, transparent);
+    background-color: color-mix(in oklab, var(--ds-primary) 36%, transparent);
+  }
+
+  .os-today-row__status--waiting {
+    border-color: color-mix(in oklab, var(--ds-warning) 34%, transparent);
+    background-color: color-mix(in oklab, var(--ds-warning) 32%, transparent);
+  }
+
+  .os-today-row__body {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .os-today-row__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--ds-text-primary);
+  }
+
+  .os-today-row__meta {
+    margin-top: 0.1875rem;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    color: var(--ds-text-secondary);
+  }
+
+  .os-today-row__chevron {
+    flex-shrink: 0;
+    width: 0.375rem;
+    height: 0.375rem;
+    border-right: 1.5px solid color-mix(in oklab, var(--ds-text-tertiary) 65%, transparent);
+    border-bottom: 1.5px solid color-mix(in oklab, var(--ds-text-tertiary) 65%, transparent);
+    transform: rotate(-45deg);
+    opacity: 0.5;
+  }
+
+  .os-today-more {
+    padding: 0.5rem 0.875rem 0.75rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--ds-text-tertiary);
+  }
+
+  .os-today-empty {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--ds-text-muted);
+  }
+
+}

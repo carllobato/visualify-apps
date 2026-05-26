@@ -4,12 +4,11 @@ import {
   fetchTodayPageData,
   normalizeTodayPageData,
   type TodayBriefing,
-  type TodayProject,
   type TodayTask,
-  type TodayStream,
   type TodayWaitingOn,
 } from "@/lib/today-data";
 import { supabaseServerClient } from "@/lib/supabase/server";
+import "./today-mobile.css";
 
 export const dynamic = "force-dynamic";
 
@@ -94,7 +93,8 @@ function splitBriefingContent(content: string): { preview: string; remainder: st
   return { preview, remainder: remainder || null };
 }
 
-function TodaySection({
+/** Section + surface — card on mobile, open layout on desktop. */
+function TodayBlock({
   title,
   emptyMessage,
   children,
@@ -112,19 +112,21 @@ function TodaySection({
   }
 
   return (
-    <section className="flex flex-col gap-2.5 max-md:gap-3">
-      <h2 className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] max-md:text-[0.8125rem] max-md:leading-snug">
+    <section className="os-today-block flex flex-col gap-2.5">
+      <h2 className="os-today-block__label text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
         {title}
       </h2>
-      {isEmpty ? (
-        emptyMessage ? (
-          <p className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-muted)]">
-            {emptyMessage}
-          </p>
-        ) : null
-      ) : (
-        children
-      )}
+      <div className="os-today-block__surface">
+        {isEmpty ? (
+          emptyMessage ? (
+            <p className="os-today-empty text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-muted)]">
+              {emptyMessage}
+            </p>
+          ) : null
+        ) : (
+          children
+        )}
+      </div>
     </section>
   );
 }
@@ -133,7 +135,9 @@ function MoreItemsIndicator({ total, shown }: { total: number; shown: number }) 
   const hidden = total - shown;
   if (hidden <= 0) return null;
   return (
-    <p className="pt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">+{hidden} more</p>
+    <p className="os-today-more pt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)] max-md:pt-0">
+      +{hidden} more
+    </p>
   );
 }
 
@@ -144,31 +148,29 @@ function BriefingBlock({ briefing }: { briefing: TodayBriefing }) {
   const { preview, remainder } = splitBriefingContent(briefing.content);
 
   return (
-    <article className="flex flex-col gap-4">
+    <article className="os-today-hero flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] max-md:text-[0.8125rem]">
+        <p className="os-today-hero__eyebrow text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
           Daily briefing
         </p>
-        <h2 className="break-words text-[length:var(--ds-text-xl)] font-semibold leading-snug tracking-tight text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-2xl)] max-md:leading-tight">
+        <h2 className="os-today-hero__title break-words text-[length:var(--ds-text-xl)] font-semibold leading-snug tracking-tight text-[var(--ds-text-primary)]">
           {briefing.title}
         </h2>
         {meta ? (
-          <p className="text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] max-md:text-[length:var(--ds-text-sm)] max-md:leading-snug">
+          <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
             {meta}
           </p>
         ) : null}
       </div>
       {preview ? (
         <div className="flex flex-col gap-3">
-          <p className="whitespace-pre-wrap break-words text-[length:var(--ds-text-base)] leading-relaxed text-[var(--ds-text-primary)]">
+          <p className="os-today-hero__body whitespace-pre-wrap break-words text-[length:var(--ds-text-base)] leading-relaxed text-[var(--ds-text-primary)]">
             {preview}
           </p>
           {remainder ? (
-            <details className="group">
+            <details className="os-today-hero__more group">
               <summary className="cursor-pointer list-none text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] marker:content-none [&::-webkit-details-marker]:hidden">
-                <span className="underline decoration-[var(--ds-border)] underline-offset-2 group-open:no-underline">
-                  Read full briefing
-                </span>
+                <span>Read full briefing</span>
               </summary>
               <p className="mt-3 whitespace-pre-wrap break-words text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-primary)]">
                 {remainder}
@@ -186,15 +188,19 @@ function TaskRow({ task }: { task: TodayTask }) {
   const priority = formatDisplayLabel(task.priorityLevel);
   const meta = [priority, due].filter(Boolean).join(" · ");
   return (
-    <li className="py-3 first:pt-0 last:pb-0 max-md:py-3.5">
-      <p className="break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)] max-md:leading-snug">
-        {task.title}
-      </p>
-      {meta ? (
-        <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] max-md:mt-1.5 max-md:text-[length:var(--ds-text-sm)] max-md:leading-snug">
-          {meta}
+    <li className="os-today-row py-3 first:pt-0 last:pb-0 max-md:py-0">
+      <span className="os-today-row__status hidden max-md:block" aria-hidden />
+      <div className="os-today-row__body">
+        <p className="os-today-row__title break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+          {task.title}
         </p>
-      ) : null}
+        {meta ? (
+          <p className="os-today-row__meta mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+            {meta}
+          </p>
+        ) : null}
+      </div>
+      <span className="os-today-row__chevron hidden max-md:inline-block" aria-hidden />
     </li>
   );
 }
@@ -204,46 +210,32 @@ function WaitingOnRow({ item }: { item: TodayWaitingOn }) {
   const who = item.waitingOnName?.trim() || item.waitingOnContact?.trim() || null;
   const meta = [who, expected].filter(Boolean).join(" · ");
   return (
-    <li className="py-3 first:pt-0 last:pb-0 max-md:py-3.5">
-      <p className="break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)] max-md:leading-snug">
-        {item.title}
-      </p>
-      {meta ? (
-        <p className="mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)] max-md:mt-1.5 max-md:text-[length:var(--ds-text-sm)] max-md:leading-snug">
-          {meta}
+    <li className="os-today-row py-3 first:pt-0 last:pb-0 max-md:py-0">
+      <span
+        className="os-today-row__status os-today-row__status--waiting hidden max-md:block"
+        aria-hidden
+      />
+      <div className="os-today-row__body">
+        <p className="os-today-row__title break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+          {item.title}
         </p>
-      ) : null}
+        {meta ? (
+          <p className="os-today-row__meta mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+            {meta}
+          </p>
+        ) : null}
+      </div>
+      <span className="os-today-row__chevron hidden max-md:inline-block" aria-hidden />
     </li>
   );
 }
 
-function ProjectRow({ project }: { project: TodayProject }) {
-  return (
-    <li className="py-2 max-md:py-2.5">
-      <p className="break-words text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)]">
-        {project.name}
-      </p>
-    </li>
-  );
-}
-
-function StreamRow({ stream }: { stream: TodayStream }) {
-  return (
-    <li className="py-2 max-md:py-2.5">
-      <p className="break-words text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-primary)] max-md:text-[length:var(--ds-text-base)]">
-        {stream.name}
-      </p>
-    </li>
-  );
-}
-
-/** Borderless operational list — paired inside a single focus band when needed. */
 function FocusList({ children }: { children: ReactNode }) {
-  return <ul className="flex flex-col divide-y divide-[color-mix(in_oklab,var(--ds-border)_55%,transparent)]">{children}</ul>;
-}
-
-function ContextList({ children }: { children: ReactNode }) {
-  return <ul className="flex flex-col">{children}</ul>;
+  return (
+    <ul className="flex flex-col divide-y divide-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] max-md:divide-y-0">
+      {children}
+    </ul>
+  );
 }
 
 export default async function TodayPage() {
@@ -256,85 +248,54 @@ export default async function TodayPage() {
     redirect("/login");
   }
 
-  const { tasks, waitingOns, projects, streams, latestBriefing } = normalizeTodayPageData(
+  const { tasks, waitingOns, latestBriefing } = normalizeTodayPageData(
     await fetchTodayPageData(user.id),
   );
 
   const visibleTasks = tasks.slice(0, FOCUS_LIST_LIMIT);
   const visibleWaitingOns = waitingOns.slice(0, FOCUS_LIST_LIMIT);
-  const hasContext = projects.length > 0 || streams.length > 0;
 
   return (
-    <main className="mx-auto flex w-full min-w-0 max-w-2xl flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:px-0 max-md:py-4">
+    <main className="os-today-page mx-auto flex w-full min-w-0 max-w-2xl flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
       <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)] max-md:hidden">
         Today
       </p>
 
-      <div className="mt-5 flex flex-col gap-6 sm:gap-7 max-md:mt-0 max-md:gap-5">
+      <div className="os-today-feed mt-5 flex flex-col gap-6 sm:gap-7 max-md:mt-0">
         {latestBriefing ? (
           <BriefingBlock briefing={latestBriefing} />
         ) : (
-          <p className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-muted)]">
+          <p className="os-today-card os-today-hero os-today-hero--empty text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-muted)]">
             No briefing yet today.
           </p>
         )}
 
-        <div className="flex flex-col gap-5 max-md:gap-4">
-          <TodaySection title="Active tasks" emptyMessage="Nothing active right now.">
-            {visibleTasks.length > 0 ? (
-              <div>
-                <FocusList>
-                  {visibleTasks.map((task) => (
-                    <TaskRow key={task.id} task={task} />
-                  ))}
-                </FocusList>
-                <MoreItemsIndicator total={tasks.length} shown={visibleTasks.length} />
-              </div>
-            ) : null}
-          </TodaySection>
+        <TodayBlock title="Active tasks" emptyMessage="Nothing active right now.">
+          {visibleTasks.length > 0 ? (
+            <>
+              <FocusList>
+                {visibleTasks.map((task) => (
+                  <TaskRow key={task.id} task={task} />
+                ))}
+              </FocusList>
+              <MoreItemsIndicator total={tasks.length} shown={visibleTasks.length} />
+            </>
+          ) : null}
+        </TodayBlock>
 
-          <TodaySection title="Waiting on" emptyMessage="Nothing blocked on others.">
-            {visibleWaitingOns.length > 0 ? (
-              <div>
-                <FocusList>
-                  {visibleWaitingOns.map((item) => (
-                    <WaitingOnRow key={item.id} item={item} />
-                  ))}
-                </FocusList>
-                <MoreItemsIndicator total={waitingOns.length} shown={visibleWaitingOns.length} />
-              </div>
-            ) : null}
-          </TodaySection>
-        </div>
+        <TodayBlock title="Waiting on" emptyMessage="Nothing blocked on others.">
+          {visibleWaitingOns.length > 0 ? (
+            <>
+              <FocusList>
+                {visibleWaitingOns.map((item) => (
+                  <WaitingOnRow key={item.id} item={item} />
+                ))}
+              </FocusList>
+              <MoreItemsIndicator total={waitingOns.length} shown={visibleWaitingOns.length} />
+            </>
+          ) : null}
+        </TodayBlock>
       </div>
-
-      {hasContext ? (
-        <div className="mt-10 flex flex-col gap-7 border-t border-[color-mix(in_oklab,var(--ds-border)_50%,transparent)] pt-9 sm:mt-12 sm:gap-8 sm:pt-10 max-md:mt-8 max-md:gap-6 max-md:pt-7">
-          <p className="text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)] max-md:text-[0.8125rem]">
-            Context
-          </p>
-
-          <TodaySection title="Active projects" hideWhenEmpty>
-            {projects.length > 0 ? (
-              <ContextList>
-                {projects.map((project) => (
-                  <ProjectRow key={project.id} project={project} />
-                ))}
-              </ContextList>
-            ) : null}
-          </TodaySection>
-
-          <TodaySection title="Streams" hideWhenEmpty>
-            {streams.length > 0 ? (
-              <ContextList>
-                {streams.map((stream) => (
-                  <StreamRow key={stream.id} stream={stream} />
-                ))}
-              </ContextList>
-            ) : null}
-          </TodaySection>
-        </div>
-      ) : null}
     </main>
   );
 }
