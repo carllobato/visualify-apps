@@ -270,31 +270,33 @@ export default async function TodayPage() {
           </p>
         )}
 
-        <TodayBlock title="Active tasks" emptyMessage="Nothing active right now.">
-          {visibleTasks.length > 0 ? (
-            <>
-              <FocusList>
-                {visibleTasks.map((task) => (
-                  <TaskRow key={task.id} task={task} />
-                ))}
-              </FocusList>
-              <MoreItemsIndicator total={tasks.length} shown={visibleTasks.length} />
-            </>
-          ) : null}
-        </TodayBlock>
+        <div className="os-today-ops max-md:block md:contents">
+          <TodayBlock title="Active tasks" emptyMessage="Nothing active right now.">
+            {visibleTasks.length > 0 ? (
+              <>
+                <FocusList>
+                  {visibleTasks.map((task) => (
+                    <TaskRow key={task.id} task={task} />
+                  ))}
+                </FocusList>
+                <MoreItemsIndicator total={tasks.length} shown={visibleTasks.length} />
+              </>
+            ) : null}
+          </TodayBlock>
 
-        <TodayBlock title="Waiting on" emptyMessage="Nothing blocked on others.">
-          {visibleWaitingOns.length > 0 ? (
-            <>
-              <FocusList>
-                {visibleWaitingOns.map((item) => (
-                  <WaitingOnRow key={item.id} item={item} />
-                ))}
-              </FocusList>
-              <MoreItemsIndicator total={waitingOns.length} shown={visibleWaitingOns.length} />
-            </>
-          ) : null}
-        </TodayBlock>
+          <TodayBlock title="Waiting on" emptyMessage="Nothing blocked on others.">
+            {visibleWaitingOns.length > 0 ? (
+              <>
+                <FocusList>
+                  {visibleWaitingOns.map((item) => (
+                    <WaitingOnRow key={item.id} item={item} />
+                  ))}
+                </FocusList>
+                <MoreItemsIndicator total={waitingOns.length} shown={visibleWaitingOns.length} />
+              </>
+            ) : null}
+          </TodayBlock>
+        </div>
       </div>
     </main>
   );

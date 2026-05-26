@@ -14,6 +14,8 @@ export type AppShellMobileHeaderProps = {
   appIcon?: ReactNode;
   pageTitle?: string;
   rightSlot?: ReactNode;
+  /** When false, omits the in-header hamburger (e.g. drawer opened from bottom nav “More”). Default true. */
+  showMenuTrigger?: boolean;
   className?: string;
 };
 
@@ -26,6 +28,7 @@ export function AppShellMobileHeader({
   appIcon,
   pageTitle,
   rightSlot,
+  showMenuTrigger = true,
   className,
 }: AppShellMobileHeaderProps) {
   const { registerMobileHeader, unregisterMobileHeader } =
@@ -48,7 +51,9 @@ export function AppShellMobileHeader({
     >
       <div className="vf-app-shell-mobile-header__inner">
         <div className="vf-app-shell-mobile-header__leading">
-          <AppShellMobileNavTrigger className="vf-app-shell-mobile-nav-trigger--in-header" />
+          {showMenuTrigger ? (
+            <AppShellMobileNavTrigger className="vf-app-shell-mobile-nav-trigger--in-header" />
+          ) : null}
           <div className="vf-app-shell-mobile-header__identity">
             {appIcon != null ? (
               <span className="vf-app-shell-mobile-header__icon" aria-hidden>

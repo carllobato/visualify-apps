@@ -14,6 +14,7 @@ import {
 } from "@visualify/app-shell";
 import { buildOsMobileBottomNavItems } from "@/lib/os-mobile-bottom-nav";
 import { OS_PRIMARY_NAV, OS_ROUTES } from "@/lib/os-routes";
+import "./os-mobile-shell.css";
 
 const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
 
@@ -37,8 +38,9 @@ export function OsProtectedDocument({ children }: { children: ReactNode }) {
   return (
     <AppShellMainColumn>
       <AppShellMobileHeader
-        appName="OS"
-        pageTitle={pageTitle}
+        className="os-mobile-shell-header"
+        appName={pageTitle}
+        showMenuTrigger={false}
         appIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
       />
       <AppShellFrameGutter>
