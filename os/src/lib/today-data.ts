@@ -72,6 +72,29 @@ export type TodayPageData = {
   latestBriefing: TodayBriefing | null;
 };
 
+const MS_PER_LOCAL_DAY = 86_400_000;
+
+function startOfLocalDayMs(d: Date): number {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+/** True when `iso` falls on the local calendar day of `now` (default: today). */
+export function isTaskDueOnLocalDay(iso: string | null, now: Date = new Date()): boolean {
+  if (!iso) return false;
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) return false;
+  return startOfLocalDayMs(target) === startOfLocalDayMs(now);
+}
+
+/**
+ * Tasks for the Today surface: due today only.
+ * TODO: When `os_tasks` gains an explicit scheduled-for-today field (e.g. `scheduled_at`),
+ * include tasks scheduled for today even when `due_at` is on another day.
+ */
+export function filterTasksForTodaySurface(tasks: TodayTask[]): TodayTask[] {
+  return tasks.filter((task) => isTaskDueOnLocalDay(task.dueAt));
+}
+
 /** Ensures every Today slice is defined (guards partial / stale fetch results). */
 export function normalizeTodayPageData(
   data: Partial<TodayPageData> & { vectors?: TodayStream[] },
