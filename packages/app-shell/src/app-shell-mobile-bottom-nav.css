@@ -36,7 +36,10 @@
     bottom: 0;
     height: calc(
       var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.75rem) +
-        var(--vf-app-shell-mobile-bottom-nav-home-inset, max(0.5rem, env(safe-area-inset-bottom, 0px))) +
+        var(
+          --vf-app-shell-mobile-bottom-nav-home-inset,
+          calc(env(safe-area-inset-bottom, 0px) + 30px)
+        ) +
         1rem
     );
     pointer-events: none;
@@ -58,7 +61,10 @@
     height: auto;
     min-height: calc(
       var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.75rem) +
-        var(--vf-app-shell-mobile-bottom-nav-home-inset, max(0.5rem, env(safe-area-inset-bottom, 0px)))
+        var(
+          --vf-app-shell-mobile-bottom-nav-home-inset,
+          calc(env(safe-area-inset-bottom, 0px) + 30px)
+        )
     );
     align-items: flex-start;
     justify-content: space-between;
@@ -66,7 +72,10 @@
     width: 100%;
     margin: 0;
     padding: 0.25rem env(safe-area-inset-right, 0px)
-      var(--vf-app-shell-mobile-bottom-nav-home-inset, max(0.5rem, env(safe-area-inset-bottom, 0px)))
+      var(
+          --vf-app-shell-mobile-bottom-nav-home-inset,
+          calc(env(safe-area-inset-bottom, 0px) + 30px)
+        )
       env(safe-area-inset-left, 0px);
     list-style: none;
     border: 0;
