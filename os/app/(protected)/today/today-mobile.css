@@ -55,6 +55,17 @@
   opacity: 0.9;
 }
 
+.os-today-hero__meta-row {
+  min-height: 1.05rem;
+}
+
+.os-today-hero__weather {
+  font-size: var(--ds-text-xs, 0.75rem);
+  line-height: 1.35;
+  color: var(--ds-text-muted);
+  white-space: nowrap;
+}
+
 @media (max-width: 767px) {
   .vf-app-shell-outer-canvas .vf-app-shell-scroll-region:has(> .os-today-page) {
     padding: 0;

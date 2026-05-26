@@ -8,12 +8,12 @@ export type MorningBriefVoiceProps = {
   className?: string;
 };
 
+const BRIEF_AUDIO_PATH = "/api/os/brief-audio";
+
+type PlaybackStatus = "idle" | "preparing" | "playing" | "error";
+
 function mergeClass(...parts: (string | undefined)[]) {
   return parts.filter(Boolean).join(" ");
-}
-
-function speechSynthesisAvailable(): boolean {
-  return typeof window !== "undefined" && "speechSynthesis" in window;
 }
 
 function PlayIcon() {
@@ -47,64 +47,136 @@ function PauseIcon() {
   );
 }
 
+function statusLabel(status: PlaybackStatus): string {
+  switch (status) {
+    case "preparing":
+      return "Preparing…";
+    case "playing":
+      return "Stop";
+    case "error":
+      return "Unable to play";
+    default:
+      return "Listen";
+  }
+}
+
 export function MorningBriefVoice({ text, className }: MorningBriefVoiceProps) {
   const [mounted, setMounted] = useState(false);
-  const [supported, setSupported] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [status, setStatus] = useState<PlaybackStatus>("idle");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const objectUrlRef = useRef<string | null>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
+
+  const revokeObjectUrl = useCallback(() => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current);
+      objectUrlRef.current = null;
+    }
+  }, []);
+
+  const stopPlayback = useCallback(() => {
+    fetchAbortRef.current?.abort();
+    fetchAbortRef.current = null;
+
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
+    }
+
+    revokeObjectUrl();
+    setStatus("idle");
+  }, [revokeObjectUrl]);
 
   useEffect(() => {
     setMounted(true);
-    setSupported(speechSynthesisAvailable());
-  }, []);
-
-  const stop = useCallback(() => {
-    if (!speechSynthesisAvailable()) return;
-    window.speechSynthesis.cancel();
-    utteranceRef.current = null;
-    setPlaying(false);
-  }, []);
-
-  useEffect(() => {
     return () => {
-      if (speechSynthesisAvailable()) {
-        window.speechSynthesis.cancel();
+      fetchAbortRef.current?.abort();
+      fetchAbortRef.current = null;
+
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.src = "";
+        audioRef.current = null;
+      }
+
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
     };
   }, []);
 
-  const play = useCallback(() => {
+  const playFromServer = useCallback(async () => {
     const trimmed = text.trim();
-    if (!speechSynthesisAvailable() || !trimmed) return;
+    if (!trimmed) return;
 
-    window.speechSynthesis.cancel();
+    stopPlayback();
+    setStatus("preparing");
 
-    const utterance = new SpeechSynthesisUtterance(trimmed);
-    const lang =
-      typeof navigator !== "undefined" && navigator.language
-        ? navigator.language
-        : "en-GB";
-    utterance.lang = lang;
-    utterance.onend = () => {
-      utteranceRef.current = null;
-      setPlaying(false);
-    };
-    utterance.onerror = () => {
-      utteranceRef.current = null;
-      setPlaying(false);
-    };
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
 
-    utteranceRef.current = utterance;
-    setPlaying(true);
-    window.speechSynthesis.speak(utterance);
-  }, [text]);
+    try {
+      const response = await fetch(BRIEF_AUDIO_PATH, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: trimmed }),
+        signal: controller.signal,
+        credentials: "same-origin",
+      });
+
+      if (!response.ok) {
+        setStatus("error");
+        return;
+      }
+
+      const blob = await response.blob();
+      if (!blob.size) {
+        setStatus("error");
+        return;
+      }
+
+      const objectUrl = URL.createObjectURL(blob);
+      objectUrlRef.current = objectUrl;
+
+      const audio = new Audio(objectUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        stopPlayback();
+      };
+      audio.onerror = () => {
+        revokeObjectUrl();
+        audioRef.current = null;
+        setStatus("error");
+      };
+
+      await audio.play();
+      setStatus("playing");
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
+      setStatus("error");
+    } finally {
+      if (fetchAbortRef.current === controller) {
+        fetchAbortRef.current = null;
+      }
+    }
+  }, [text, stopPlayback, revokeObjectUrl]);
 
   const onControlClick = () => {
-    if (playing) {
-      stop();
-    } else {
-      play();
+    if (status === "preparing") return;
+
+    if (status === "playing") {
+      stopPlayback();
+      return;
     }
+
+    void playFromServer();
   };
 
   if (!mounted) {
@@ -120,34 +192,41 @@ export function MorningBriefVoice({ text, className }: MorningBriefVoiceProps) {
     );
   }
 
-  if (!supported) {
-    return null;
-  }
-
   const trimmed = text.trim();
   if (trimmed.length === 0) {
     return null;
   }
+
+  const label = statusLabel(status);
+  const ariaLabel =
+    status === "playing"
+      ? "Stop morning brief"
+      : status === "preparing"
+        ? "Preparing morning brief audio"
+        : status === "error"
+          ? "Unable to play morning brief, tap to retry"
+          : "Listen to morning brief. Audio won't start automatically.";
 
   return (
     <button
       type="button"
       className={mergeClass(
         "os-today-hero__listen",
-        playing ? "os-today-hero__listen--active" : undefined,
+        status === "playing" || status === "preparing" ? "os-today-hero__listen--active" : undefined,
+        status === "error" ? "os-today-hero__listen--error" : undefined,
         className,
       )}
       onClick={onControlClick}
-      aria-pressed={playing}
-      aria-label={
-        playing
-          ? "Pause morning brief"
-          : "Play morning brief. Audio won't start automatically."
-      }
+      disabled={status === "preparing"}
+      aria-pressed={status === "playing"}
+      aria-busy={status === "preparing"}
+      aria-label={ariaLabel}
+      title={label}
     >
       <span className="os-today-hero__listen-icon">
-        {playing ? <PauseIcon /> : <PlayIcon />}
+        {status === "playing" ? <PauseIcon /> : <PlayIcon />}
       </span>
+      <span className="sr-only">{label}</span>
     </button>
   );
 }

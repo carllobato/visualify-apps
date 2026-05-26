@@ -1,4 +1,5 @@
 import { MorningBriefVoice } from "@/components/today/MorningBriefVoice";
+import { TodayWeatherChip } from "@/components/today/TodayWeatherChip";
 import type { TodayBriefing } from "@/lib/today-data";
 import { TODAY_MORNING_BRIEF_PLACEHOLDER } from "@/lib/today-morning-brief";
 
@@ -34,15 +35,18 @@ export function TodayBriefingHero({
           </h2>
           <MorningBriefVoice text={spokenBriefText} className="shrink-0" />
         </div>
-        {metaLine ? (
-          <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
-            {metaLine}
-          </p>
-        ) : !hasWrittenBrief ? (
-          <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
-            No written briefing yet.
-          </p>
-        ) : null}
+        <div className="os-today-hero__meta-row flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          {metaLine ? (
+            <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+              {metaLine}
+            </p>
+          ) : !hasWrittenBrief ? (
+            <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+              No written briefing yet.
+            </p>
+          ) : null}
+          <TodayWeatherChip />
+        </div>
       </div>
 
       {previewBody ? (
