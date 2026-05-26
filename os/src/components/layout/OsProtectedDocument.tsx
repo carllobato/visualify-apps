@@ -29,13 +29,7 @@ function osMobilePageTitle(pathname: string): string {
   return "OS";
 }
 
-export function OsProtectedDocument({
-  children,
-  footer,
-}: {
-  children: ReactNode;
-  footer: ReactNode;
-}) {
+export function OsProtectedDocument({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const pageTitle = osMobilePageTitle(pathname);
   const bottomNavItems = buildOsMobileBottomNavItems(pathname);
@@ -49,7 +43,7 @@ export function OsProtectedDocument({
       />
       <AppShellFrameGutter>
         <AppShellFramedSurface>
-          <AppShellScrollRegion footer={footer}>{children}</AppShellScrollRegion>
+          <AppShellScrollRegion>{children}</AppShellScrollRegion>
         </AppShellFramedSurface>
       </AppShellFrameGutter>
       <AppShellMobileBottomNav items={bottomNavItems} ariaLabel="OS primary" />

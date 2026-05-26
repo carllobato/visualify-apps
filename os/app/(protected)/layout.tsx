@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { AppShellLegalFooterWithModals, AppShellOuterCanvas } from "@visualify/app-shell";
+import { AppShellOuterCanvas } from "@visualify/app-shell";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
@@ -46,7 +46,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   return (
     <AppShellOuterCanvas mobileHeaderExpected>
       <OsAppShellRail />
-      <OsProtectedDocument footer={<AppShellLegalFooterWithModals />}>{children}</OsProtectedDocument>
+      <OsProtectedDocument>{children}</OsProtectedDocument>
     </AppShellOuterCanvas>
   );
 }

@@ -2,7 +2,6 @@ import { AppShellOuterCanvas } from "@visualify/app-shell";
 import { PlatformRail } from "./platform-rail";
 import { HqSignedInDocument } from "./hq-signed-in-document";
 import { getVisualifyAppCatalogForUser } from "@/lib/visualify-apps";
-import { HqAppFooter } from "@/components/hq-app-footer";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import {
   fetchManageableWorkspacesForRail,
@@ -43,7 +42,7 @@ export async function HqSignedInShell({ children }: { children: React.ReactNode 
         appCatalog={appCatalog}
       />
 
-      <HqSignedInDocument footer={<HqAppFooter />}>{children}</HqSignedInDocument>
+      <HqSignedInDocument>{children}</HqSignedInDocument>
     </AppShellOuterCanvas>
   );
 }

@@ -12,13 +12,7 @@ import {
 
 const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
 
-export function HqSignedInDocument({
-  children,
-  footer,
-}: {
-  children: ReactNode;
-  footer: ReactNode;
-}) {
+export function HqSignedInDocument({ children }: { children: ReactNode }) {
   return (
     <AppShellMainColumn>
       <AppShellMobileHeader
@@ -28,7 +22,7 @@ export function HqSignedInDocument({
       />
       <AppShellFrameGutter>
         <AppShellFramedSurface>
-          <AppShellScrollRegion footer={footer}>{children}</AppShellScrollRegion>
+          <AppShellScrollRegion>{children}</AppShellScrollRegion>
         </AppShellFramedSurface>
       </AppShellFrameGutter>
     </AppShellMainColumn>

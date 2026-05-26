@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { AppShellLegalFooterWithModals } from "../legal/AppShellLegalFooterWithModals";
 import {
   accountSettingsPageLegacyPaddingClassName,
   accountSettingsPageShellClassName,
@@ -24,5 +25,10 @@ export function AccountSettingsPage({
     ? accountSettingsPageLegacyPaddingClassName
     : accountSettingsPageShellClassName;
 
-  return <main className={mergeClass(base, className)}>{children}</main>;
+  return (
+    <main className={mergeClass(mergeClass("flex min-h-full min-w-0 flex-col", base), className)}>
+      <div className="min-w-0 flex-1">{children}</div>
+      <AppShellLegalFooterWithModals className="mt-8" />
+    </main>
+  );
 }

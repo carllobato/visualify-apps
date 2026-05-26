@@ -85,19 +85,4 @@
     border-color: color-mix(in oklab, var(--ds-border) 72%, transparent);
     box-shadow: none;
   }
-
-  /* Legal footer — present but quieter than workspace content. */
-  .vf-app-shell-scroll-footer-slot:has(.ds-hq-dashboard-page) .vf-app-shell-legal-footer-bar {
-    height: auto;
-    min-height: 2.25rem;
-    max-height: none;
-    padding-block: 0.375rem;
-  }
-
-  .vf-app-shell-scroll-footer-slot:has(.ds-hq-dashboard-page) .vf-app-shell-legal-footer-content {
-    font-size: 0.6875rem;
-    line-height: 1.35;
-    color: color-mix(in oklab, var(--ds-text-tertiary) 92%, transparent);
-    gap: 0.25rem 0.625rem;
-  }
 }

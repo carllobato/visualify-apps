@@ -11,7 +11,6 @@ import {
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
-import { AppShellLegalFooterWithModals } from "@visualify/app-shell";
 import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
 import { RiskAiAppShellRail } from "@/components/layout/RiskAiAppShellRail";
 import { TopNav } from "./TopNav";
@@ -44,7 +43,7 @@ export function ProtectedShell({
             />
             <AppShellFrameGutter>
               <AppShellFramedSurface>
-                <AppShellScrollRegion footer={<AppShellLegalFooterWithModals />}>
+                <AppShellScrollRegion>
                   <PageTransition>{children}</PageTransition>
                 </AppShellScrollRegion>
               </AppShellFramedSurface>
@@ -76,9 +75,6 @@ export function ProtectedShell({
                 <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col">
                   <div className="min-h-0 min-w-0 flex-1">
                     <PageTransition>{children}</PageTransition>
-                  </div>
-                  <div className="mt-auto shrink-0">
-                    <AppShellLegalFooterWithModals />
                   </div>
                 </div>
               </div>
