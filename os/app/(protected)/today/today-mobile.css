@@ -319,8 +319,26 @@
     border-bottom: 0;
   }
 
-  .os-today-row:active {
-    background-color: color-mix(in oklab, var(--ds-surface-muted) 35%, transparent);
+  .os-today-task-row__inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+  }
+
+  .os-today-task-row__main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .os-today-row__link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .os-today-row__link:active {
+    opacity: 0.92;
   }
 
   .os-today-row__body {
@@ -332,6 +350,49 @@
     font-weight: 500;
     line-height: 1.4;
     color: var(--ds-text-primary);
+  }
+
+  .os-today-row__meta {
+    margin: 0.25rem 0 0;
+  }
+
+  .os-today-row__project {
+    font-weight: 500;
+    color: color-mix(in oklab, var(--ds-text-primary) 82%, var(--ds-text-secondary));
+  }
+
+  .os-today-row__meta-sep {
+    color: var(--ds-text-muted);
+  }
+
+  .os-today-task-row__complete-form {
+    flex-shrink: 0;
+    margin: 0;
+    padding-top: 0.0625rem;
+  }
+
+  .os-today-task-row__complete {
+    display: inline-flex;
+    min-height: 2rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3125rem 0.625rem;
+    border-radius: 0.5rem;
+    border: 0.5px solid color-mix(in oklab, var(--ds-primary) 22%, var(--ds-border));
+    background: color-mix(in oklab, var(--ds-surface-muted) 35%, var(--ds-surface));
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
+    color: color-mix(in oklab, var(--ds-primary) 85%, var(--ds-text-primary));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .os-today-task-row__complete:active:not(:disabled) {
+    background: color-mix(in oklab, var(--ds-surface-muted) 55%, var(--ds-surface));
+  }
+
+  .os-today-task-row__complete:disabled {
+    opacity: 0.55;
   }
 
   .os-today-empty-state {

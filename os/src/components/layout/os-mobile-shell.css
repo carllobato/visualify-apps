@@ -9,6 +9,7 @@
     --os-mobile-shell-bg: color-mix(in oklab, var(--os-mobile-canvas) 92%, var(--ds-surface) 8%);
     --os-today-canvas: var(--os-mobile-shell-bg);
     --os-streams-canvas: var(--os-mobile-shell-bg);
+    --os-projects-canvas: var(--os-mobile-shell-bg);
   }
 
   .os-mobile-shell-header.vf-app-shell-mobile-header {

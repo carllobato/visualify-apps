@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { TodayBriefingHero } from "@/components/today/TodayBriefingHero";
 import { TodayStreamFilterBar } from "@/components/today/TodayStreamFilter";
+import { TodayTaskRow } from "@/components/today/TodayTaskRow";
 import {
   fetchTodayPageData,
   filterTasksForTodaySurface,
@@ -65,18 +66,6 @@ function splitBriefingContent(content: string): { preview: string; remainder: st
   return { preview, remainder: remainder || null };
 }
 
-function TaskRow({ task }: { task: TodayTask }) {
-  return (
-    <li className="os-today-row py-3 first:pt-0 last:pb-0 max-md:py-0">
-      <div className="os-today-row__body">
-        <p className="os-today-row__title break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
-          {task.title}
-        </p>
-      </div>
-    </li>
-  );
-}
-
 function TaskList({ children }: { children: ReactNode }) {
   return (
     <ul className="flex flex-col divide-y divide-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] max-md:divide-y-0">
@@ -88,9 +77,11 @@ function TaskList({ children }: { children: ReactNode }) {
 function TodayTasksCard({
   tasks,
   streamFilter,
+  projectNamesById,
 }: {
   tasks: TodayTask[];
   streamFilter: TodayStreamFilter;
+  projectNamesById: Record<string, string>;
 }) {
   const focused = streamFilter.kind === "stream";
 
@@ -102,9 +93,21 @@ function TodayTasksCard({
       <div className="os-today-block__surface">
         {tasks.length > 0 ? (
           <TaskList>
-            {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} />
-            ))}
+            {tasks.map((task) => {
+              const projectId = task.projectId?.trim();
+              const projectName =
+                projectId && projectNamesById[projectId]
+                  ? projectNamesById[projectId]
+                  : null;
+
+              return (
+                <TodayTaskRow
+                  key={task.id}
+                  task={task}
+                  projectName={projectName}
+                />
+              );
+            })}
           </TaskList>
         ) : (
           <div className="os-today-empty-state">
@@ -149,6 +152,9 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
     streamFilter,
     projects,
   );
+  const projectNamesById = Object.fromEntries(
+    projects.map((project) => [project.id, project.name]),
+  );
 
   const { preview, remainder } = latestBriefing
     ? splitBriefingContent(latestBriefing.content)
@@ -177,7 +183,11 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
           previewRemainder={remainder}
         />
 
-        <TodayTasksCard tasks={todaysTasks} streamFilter={streamFilter} />
+        <TodayTasksCard
+          tasks={todaysTasks}
+          streamFilter={streamFilter}
+          projectNamesById={projectNamesById}
+        />
       </div>
     </main>
   );

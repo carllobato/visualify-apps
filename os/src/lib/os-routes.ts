@@ -17,6 +17,10 @@ export function osStreamDetailPath(streamId: string): string {
   return `${OS_ROUTES.streams}/${encodeURIComponent(streamId.trim())}`;
 }
 
+export function osProjectDetailPath(projectId: string): string {
+  return `${OS_ROUTES.projects}/${encodeURIComponent(projectId.trim())}`;
+}
+
 export type OsRoutePath = (typeof OS_ROUTES)[keyof typeof OS_ROUTES];
 
 export const OS_PRIMARY_NAV: readonly {
