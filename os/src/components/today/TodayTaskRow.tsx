@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { taskPriorityLabel } from "@/components/projects/task-display";
+import { TaskMetaInline } from "@/components/tasks/TaskMetaInline";
 import type { TodayTask, TodayTaskReason } from "@/lib/today-data";
-import { osProjectDetailPath } from "@/lib/os-routes";
+import { osTaskDetailPath } from "@/lib/os-routes";
 import {
   completeTaskFromFormAction,
   type TaskRowActionFormState,
@@ -35,8 +36,7 @@ function todayReasonLabel(reason: TodayTaskReason | undefined): string | null {
 export function TodayTaskRow({ task, projectName, reason }: TodayTaskRowProps) {
   const router = useRouter();
   const priority = taskPriorityLabel(task.priorityLevel);
-  const projectId = task.projectId?.trim() || null;
-  const href = projectId ? osProjectDetailPath(projectId) : null;
+  const taskHref = osTaskDetailPath(task.id);
 
   const [completeState, completeAction, completePending] = useActionState<
     TaskRowActionFormState | null,
@@ -60,23 +60,12 @@ export function TodayTaskRow({ task, projectName, reason }: TodayTaskRowProps) {
       <p className="os-today-row__title break-words text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
         {task.title}
       </p>
-      {metaParts.length > 0 ? (
-        <p className="os-today-row__meta text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-secondary)]">
-          {metaParts.map((part, index) => (
-            <span key={part}>
-              {index > 0 ? (
-                <span className="os-today-row__meta-sep" aria-hidden>
-                  {" "}
-                  ·{" "}
-                </span>
-              ) : null}
-              <span className={index === 0 && projectName ? "os-today-row__project" : undefined}>
-                {part}
-              </span>
-            </span>
-          ))}
-        </p>
-      ) : null}
+      <TaskMetaInline
+        items={metaParts}
+        className="os-today-row__meta text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-secondary)]"
+        separatorClassName="os-today-row__meta-sep"
+        firstItemClassName={projectName ? "os-today-row__project" : undefined}
+      />
       {completeState?.error ? (
         <p
           className="os-today-row__error mt-1 text-[length:var(--ds-text-xs)] text-[var(--ds-danger,#b42318)]"
@@ -91,23 +80,22 @@ export function TodayTaskRow({ task, projectName, reason }: TodayTaskRowProps) {
   return (
     <li className="os-today-row os-today-task-row py-3 first:pt-0 last:pb-0 max-md:py-0">
       <div className="os-today-task-row__inner">
-        {href ? (
-          <Link href={href} className="os-today-task-row__main os-today-row__link">
-            <div className="os-today-row__body">{body}</div>
-          </Link>
-        ) : (
-          <div className="os-today-task-row__main">
-            <div className="os-today-row__body">{body}</div>
-          </div>
-        )}
+        <Link
+          href={taskHref}
+          className="os-today-task-row__main os-today-row__link rounded-[8px] transition-colors hover:bg-[color-mix(in_oklab,var(--ds-surface)_70%,var(--ds-bg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-text-secondary)_35%,transparent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--ds-surface)]"
+          aria-label={`Open task details: ${task.title}`}
+        >
+          <div className="os-today-row__body">{body}</div>
+        </Link>
 
         <form action={completeAction} className="os-today-task-row__complete-form">
           <input type="hidden" name="id" value={task.id} />
           <button
             type="submit"
             disabled={completePending}
-            className="os-today-task-row__complete"
+            className="os-today-task-row__complete border border-[color-mix(in_oklab,var(--ds-border)_72%,transparent)] bg-[var(--ds-surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_oklab,var(--ds-text-secondary)_35%,transparent)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--ds-surface)]"
             aria-label={`Mark task complete: ${task.title}`}
+            title="Complete task"
           >
             <span className="os-today-task-row__check" aria-hidden>
               {completePending ? "…" : "✓"}

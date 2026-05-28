@@ -77,10 +77,34 @@ function IconSettings() {
   );
 }
 
+function IconMore() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+      <circle cx={6} cy={12} r={1.75} fill="currentColor" />
+      <circle cx={12} cy={12} r={1.75} fill="currentColor" />
+      <circle cx={18} cy={12} r={1.75} fill="currentColor" />
+    </svg>
+  );
+}
+
+function IconList() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+      <path stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" d="M9 7h10M9 12h10M9 17h10" />
+      <circle cx={5} cy={7} r={1.25} fill="currentColor" />
+      <circle cx={5} cy={12} r={1.25} fill="currentColor" />
+      <circle cx={5} cy={17} r={1.25} fill="currentColor" />
+    </svg>
+  );
+}
+
 const OS_NAV_ICONS: Record<OsRoutePath, () => ReactElement> = {
   [OS_ROUTES.today]: IconSun,
   [OS_ROUTES.inbox]: IconInbox,
   [OS_ROUTES.streams]: IconStreams,
+  [OS_ROUTES.more]: IconMore,
+  [OS_ROUTES.tasks]: IconList,
+  [OS_ROUTES.allTasks]: IconList,
   [OS_ROUTES.projects]: IconFolder,
   [OS_ROUTES.waitingOns]: IconClock,
   [OS_ROUTES.decisions]: IconBranch,

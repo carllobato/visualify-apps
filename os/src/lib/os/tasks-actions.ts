@@ -179,6 +179,7 @@ function revalidateTaskPaths(options?: {
   streamIds?: readonly (string | null | undefined)[];
 }): void {
   revalidatePath(OS_ROUTES.today);
+  revalidatePath(OS_ROUTES.allTasks);
   revalidatePath(OS_ROUTES.projects);
 
   const projectSeen = new Set<string>();
