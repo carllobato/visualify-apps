@@ -29,6 +29,7 @@ export type StreamRelatedTask = {
   dueAt: string | null;
   priorityLevel: string | null;
   projectId: string | null;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -107,6 +108,7 @@ function mapTask(row: OsTaskRow): StreamRelatedTask {
     dueAt: row.due_at,
     priorityLevel: row.priority_level,
     projectId: row.project_id,
+    createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
@@ -125,16 +127,21 @@ export async function fetchProjectsForStream(
   supabase: SupabaseClient,
   userId: string,
   streamId: string,
-  limit = STREAM_RELATED_LIST_LIMIT,
+  limit: number | null = STREAM_RELATED_LIST_LIMIT,
 ): Promise<StreamRelatedProject[]> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("os_projects")
     .select("id, name, description, status, stream_id, created_at, updated_at")
     .eq("owner_user_id", userId)
     .eq("stream_id", streamId)
     .eq("status", OS_ITEM_STATUS_ACTIVE)
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+    .order("updated_at", { ascending: false });
+
+  if (typeof limit === "number") {
+    query = query.limit(limit);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("fetchProjectsForStream os_projects:", error.message);
@@ -149,7 +156,7 @@ export async function fetchTasksForStream(
   userId: string,
   streamId: string,
   projectIdsInStream: readonly string[] = [],
-  limit = STREAM_RELATED_LIST_LIMIT,
+  limit: number | null = STREAM_RELATED_LIST_LIMIT,
 ): Promise<StreamRelatedTask[]> {
   const base = () =>
     supabase
@@ -158,11 +165,16 @@ export async function fetchTasksForStream(
       .eq("owner_user_id", userId)
       .eq("status", OS_ITEM_STATUS_ACTIVE);
 
-  const { data: directRows, error: directError } = await base()
+  let directQuery = base()
     .eq("stream_id", streamId)
     .order("due_at", { ascending: true, nullsFirst: false })
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+    .order("updated_at", { ascending: false });
+
+  if (typeof limit === "number") {
+    directQuery = directQuery.limit(limit);
+  }
+
+  const { data: directRows, error: directError } = await directQuery;
 
   if (directError) {
     console.error("fetchTasksForStream os_tasks (stream_id):", directError.message);
@@ -175,11 +187,16 @@ export async function fetchTasksForStream(
     return direct;
   }
 
-  const { data: projectRows, error: projectError } = await base()
+  let projectQuery = base()
     .in("project_id", [...projectIdsInStream])
     .order("due_at", { ascending: true, nullsFirst: false })
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+    .order("updated_at", { ascending: false });
+
+  if (typeof limit === "number") {
+    projectQuery = projectQuery.limit(limit);
+  }
+
+  const { data: projectRows, error: projectError } = await projectQuery;
 
   if (projectError) {
     console.error("fetchTasksForStream os_tasks (project_id):", projectError.message);
@@ -187,7 +204,9 @@ export async function fetchTasksForStream(
   }
 
   const viaProject = ((projectRows ?? []) as OsTaskRow[]).map(mapTask);
-  return mergeById(direct, viaProject, limit);
+  return typeof limit === "number"
+    ? mergeById(direct, viaProject, limit)
+    : mergeById(direct, viaProject, Number.MAX_SAFE_INTEGER);
 }
 
 export async function fetchWaitingOnsForStream(
@@ -234,6 +253,32 @@ export async function fetchWaitingOnsForStream(
 
   const viaProject = ((projectRows ?? []) as OsWaitingOnRow[]).map(mapWaitingOn);
   return mergeById(direct, viaProject, limit);
+}
+
+/** All active projects linked to a stream. */
+export async function fetchAllProjectsForStreamForUser(
+  userId: string,
+  streamId: string,
+): Promise<StreamRelatedProject[]> {
+  const id = streamId.trim();
+  if (!id) return [];
+
+  const supabase = await supabaseServerClient();
+  return fetchProjectsForStream(supabase, userId, id, null);
+}
+
+/** All active tasks linked to a stream directly or through its active projects. */
+export async function fetchAllTasksForStreamForUser(
+  userId: string,
+  streamId: string,
+): Promise<StreamRelatedTask[]> {
+  const id = streamId.trim();
+  if (!id) return [];
+
+  const supabase = await supabaseServerClient();
+  const projects = await fetchProjectsForStream(supabase, userId, id, null);
+  const projectIds = projects.map((project) => project.id);
+  return fetchTasksForStream(supabase, userId, id, projectIds, null);
 }
 
 /**

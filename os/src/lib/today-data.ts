@@ -17,6 +17,12 @@ export type TodayTask = {
   updatedAt: string;
 };
 
+export type TodayTaskReason = "overdue" | "due_today" | "critical" | "high_priority";
+
+export type TodaySurfaceTask = TodayTask & {
+  reason: TodayTaskReason;
+};
+
 export type TodayWaitingOn = {
   id: string;
   title: string;
@@ -86,13 +92,89 @@ export function isTaskDueOnLocalDay(iso: string | null, now: Date = new Date()):
   return startOfLocalDayMs(target) === startOfLocalDayMs(now);
 }
 
+/** True when `iso` is on a calendar day before `now` (local time). */
+export function isTaskOverdueOnLocalDay(iso: string | null, now: Date = new Date()): boolean {
+  if (!iso) return false;
+  const target = new Date(iso);
+  if (Number.isNaN(target.getTime())) return false;
+  return startOfLocalDayMs(target) < startOfLocalDayMs(now);
+}
+
+function normalizedPriority(priorityLevel: string | null): string | null {
+  const trimmed = priorityLevel?.trim().toLowerCase();
+  return trimmed || null;
+}
+
+function classifyTodayTaskReason(task: TodayTask, now: Date): TodayTaskReason | null {
+  if (isTaskOverdueOnLocalDay(task.dueAt, now)) return "overdue";
+  if (isTaskDueOnLocalDay(task.dueAt, now)) return "due_today";
+
+  const priority = normalizedPriority(task.priorityLevel);
+  if (priority === "critical") return "critical";
+  if (priority === "high") return "high_priority";
+
+  return null;
+}
+
+function reasonOrder(reason: TodayTaskReason): number {
+  switch (reason) {
+    case "overdue":
+      return 0;
+    case "due_today":
+      return 1;
+    case "critical":
+      return 2;
+    case "high_priority":
+      return 3;
+  }
+}
+
+function dueSortValue(dueAt: string | null): number {
+  if (!dueAt) return Number.POSITIVE_INFINITY;
+  const parsed = Date.parse(dueAt);
+  if (Number.isNaN(parsed)) return Number.POSITIVE_INFINITY;
+  return parsed;
+}
+
 /**
  * Tasks for the Today surface: due today only.
  * TODO: When `os_tasks` gains an explicit scheduled-for-today field (e.g. `scheduled_at`),
  * include tasks scheduled for today even when `due_at` is on another day.
  */
 export function filterTasksForTodaySurface(tasks: TodayTask[]): TodayTask[] {
-  return tasks.filter((task) => isTaskDueOnLocalDay(task.dueAt));
+  const now = new Date();
+
+  return tasks.filter((task) => classifyTodayTaskReason(task, now) !== null);
+}
+
+/**
+ * Calm Today selection:
+ * overdue → due today → critical → high-priority,
+ * then due date / created-at fallback, with a small cap.
+ */
+export function selectTasksForTodaySurface(
+  tasks: TodayTask[],
+  limit = 6,
+): TodaySurfaceTask[] {
+  const now = new Date();
+  const selected = tasks
+    .map((task) => {
+      const reason = classifyTodayTaskReason(task, now);
+      if (!reason) return null;
+      return { ...task, reason };
+    })
+    .filter((task): task is TodaySurfaceTask => task !== null)
+    .sort((a, b) => {
+      const reasonDelta = reasonOrder(a.reason) - reasonOrder(b.reason);
+      if (reasonDelta !== 0) return reasonDelta;
+
+      const dueDelta = dueSortValue(a.dueAt) - dueSortValue(b.dueAt);
+      if (dueDelta !== 0) return dueDelta;
+
+      return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+    });
+
+  return selected.slice(0, Math.max(0, limit));
 }
 
 /** Ensures every Today slice is defined (guards partial / stale fetch results). */

@@ -11,6 +11,7 @@ import {
   OS_INBOX_PROCESSING_STATUS,
   type OsInboxItem,
 } from "@/lib/os/inbox-data";
+import { fetchActiveStreams } from "@/lib/os/streams-data";
 import { resolveAuthenticatedOsUserId } from "@/lib/os/auth";
 import "./inbox-mobile.css";
 
@@ -54,7 +55,11 @@ function hasLinkedItems(linked: { tasks: { id: string }[]; waitingOns: { id: str
 async function createInboxItemFormAction(formData: FormData): Promise<void> {
   "use server";
   const rawContent = formData.get("rawContent");
-  await createInboxItemAction(typeof rawContent === "string" ? rawContent : "");
+  const streamContextName = formData.get("streamContextName");
+  await createInboxItemAction(
+    typeof rawContent === "string" ? rawContent : "",
+    typeof streamContextName === "string" ? streamContextName : null,
+  );
 }
 
 async function archiveInboxItemFormAction(formData: FormData): Promise<void> {
@@ -80,24 +85,23 @@ export default async function InboxPage() {
   }
 
   const items = await fetchInboxItemsForCurrentUser();
+  const streams = await fetchActiveStreams();
   const linkedByInboxId = await fetchLinkedOperationalItemsByInboxId(
     userId,
     items.map((item) => item.id),
   );
 
   return (
-    <main className="os-inbox-page mx-auto flex w-full min-w-0 flex-col px-4 py-5 sm:px-6 sm:py-6 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
-      <header className="os-inbox-page__intro max-md:hidden">
+    <main className="os-inbox-page mx-auto flex w-full min-w-0 max-w-none flex-col px-4 py-5 sm:px-6 sm:py-6 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
+      <header className="os-inbox-page__intro">
         <p className="os-inbox-page__eyebrow">Inbox</p>
-        <p className="os-inbox-page__lede">Capture now. Organize later.</p>
+        <h1 className="os-inbox-page__title">Capture now</h1>
+        <p className="os-inbox-page__lede">Quick capture with assignment and organization handled for you.</p>
       </header>
 
       <div className="os-inbox-feed mt-4 flex flex-col max-md:mt-0">
-        <section className="os-inbox-capture" aria-labelledby="os-inbox-capture-heading">
-          <h2 id="os-inbox-capture-heading" className="os-inbox-block__label">
-            Quick capture
-          </h2>
-          <InboxCaptureForm action={createInboxItemFormAction} />
+        <section className="os-inbox-capture" aria-label="Capture">
+          <InboxCaptureForm action={createInboxItemFormAction} streams={streams} />
         </section>
 
         <section className="os-inbox-list-section" aria-labelledby="os-inbox-list-heading">
@@ -125,7 +129,8 @@ export default async function InboxPage() {
                         <time className="os-inbox-item__time" dateTime={item.createdAt}>
                           {formatRelativeDate(item.createdAt)}
                         </time>
-                        {item.processingStatus === OS_INBOX_PROCESSING_STATUS.queued ? (
+                        {item.processingStatus === OS_INBOX_PROCESSING_STATUS.queued ||
+                        item.processingStatus === OS_INBOX_PROCESSING_STATUS.failed ? (
                           <>
                             <span className="os-inbox-item__meta-sep" aria-hidden="true">
                               ·
@@ -136,7 +141,9 @@ export default async function InboxPage() {
                             >
                               <input type="hidden" name="id" value={item.id} />
                               <button type="submit" className="os-inbox-item__archive-button">
-                                Process
+                                {item.processingStatus === OS_INBOX_PROCESSING_STATUS.failed
+                                  ? "Retry"
+                                  : "Process"}
                               </button>
                             </form>
                           </>

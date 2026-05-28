@@ -1,9 +1,11 @@
 import "server-only";
 
 import OpenAI from "openai";
-import { createProjectAction } from "@/lib/os/projects-actions";
 import { fetchActiveProjectsForUserId } from "@/lib/os/projects-data";
+import { fetchActiveStreamsForUser } from "@/lib/os/streams-data";
 import { createTaskAction } from "@/lib/os/tasks-actions";
+import { fetchActiveTasksForUserId } from "@/lib/os/tasks-data";
+import { stripInboxStreamContext } from "@/lib/os/inbox-stream-context";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 const SUMMARY_MAX = 400;
@@ -60,6 +62,21 @@ function normalizeSpace(value: string): string {
 
 function normalizeNameKey(value: string): string {
   return normalizeSpace(value).toLowerCase();
+}
+
+function normalizeTaskTitleKey(value: string): string {
+  const lower = value.toLowerCase();
+  const punctuationStripped = lower.replace(/[.,!?;:'"`()[\]{}\\/_-]+/g, " ");
+  const collapsed = punctuationStripped.replace(/\s+/g, " ").trim();
+  const normalizedFollowUp = collapsed.replace(/^follow\s*up\s*on\s+/, "follow up ");
+  return normalizedFollowUp.trim();
+}
+
+function tokenize(value: string): string[] {
+  return normalizeNameKey(value)
+    .split(" ")
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 3);
 }
 
 function normalizeOptionalText(value: unknown, maxLength: number): string | null {
@@ -157,33 +174,335 @@ function parseStructuredPayload(raw: string): InboxAiStructuredResult | null {
   return { summary, tasks, projects, waitingOns };
 }
 
-function shouldCreateProjectFromInbox(rawContent: string, projectName: string): boolean {
-  const body = rawContent.toLowerCase();
-  const name = projectName.toLowerCase();
-  if (projectName.trim().length < 4) return false;
-  if (!body.includes(name)) return false;
+type MatchingProject = {
+  id: string;
+  streamId: string | null;
+  nameKey: string;
+  tokens: string[];
+};
 
-  const vagueSignals = ["idea", "someday", "maybe", "could", "explore", "brainstorm"];
-  if (vagueSignals.some((token) => body.includes(token))) {
-    return false;
+type MatchingStream = {
+  id: string;
+  nameKey: string;
+  tokens: string[];
+};
+
+type ResolvedOperationalLink = {
+  projectId: string | null;
+  streamId: string | null;
+};
+
+type TokenMatchScore = {
+  matched: number;
+  ratio: number;
+  hasLongTokenMatch: boolean;
+};
+
+function countTokenMatches(textTokens: Set<string>, candidateTokens: readonly string[]): number {
+  let count = 0;
+  for (const token of candidateTokens) {
+    if (textTokens.has(token)) count += 1;
   }
-  return true;
+  return count;
 }
 
-function resolveObviousProjectForWaitingOn(
-  rawContent: string,
-  projectIdsByNameKey: ReadonlyMap<string, string>,
-): string | null {
-  const body = rawContent.toLowerCase();
-  const matches: string[] = [];
-  for (const [nameKey, projectId] of projectIdsByNameKey.entries()) {
-    if (nameKey.length < 4) continue;
-    if (body.includes(nameKey)) {
-      matches.push(projectId);
-      if (matches.length > 1) return null;
+function scoreTokenMatch(
+  textTokens: Set<string>,
+  candidateTokens: readonly string[],
+): TokenMatchScore {
+  if (candidateTokens.length === 0) {
+    return { matched: 0, ratio: 0, hasLongTokenMatch: false };
+  }
+  let matched = 0;
+  let hasLongTokenMatch = false;
+  for (const token of candidateTokens) {
+    if (!textTokens.has(token)) continue;
+    matched += 1;
+    if (token.length >= 6) hasLongTokenMatch = true;
+  }
+  return {
+    matched,
+    ratio: matched / candidateTokens.length,
+    hasLongTokenMatch,
+  };
+}
+
+function hasStrongTextOverlapWithProject(searchableText: string, project: MatchingProject): boolean {
+  const textKey = normalizeNameKey(searchableText);
+  if (!textKey) return false;
+  if (textKey.includes(project.nameKey)) return true;
+
+  const textTokens = new Set(tokenize(textKey));
+  if (textTokens.size === 0) return false;
+  const score = scoreTokenMatch(textTokens, project.tokens);
+  if (score.matched >= 2 && score.ratio >= 0.75) return true;
+  if (project.tokens.length === 1 && score.hasLongTokenMatch) return true;
+  return false;
+}
+
+function hasStrongStreamMention(searchableText: string, stream: MatchingStream): boolean {
+  const textKey = normalizeNameKey(searchableText);
+  if (!textKey) return false;
+  if (textKey.includes(stream.nameKey)) return true;
+  const textTokens = new Set(tokenize(textKey));
+  if (textTokens.size === 0) return false;
+  const score = scoreTokenMatch(textTokens, stream.tokens);
+  if (score.matched >= 2 && score.ratio >= 0.8) return true;
+  if (stream.tokens.length === 1 && score.hasLongTokenMatch) return true;
+  return false;
+}
+
+function hasWeddingLikeSignal(searchableText: string): boolean {
+  const textKey = normalizeNameKey(searchableText);
+  if (!textKey) return false;
+  return [
+    "wedding",
+    "bride",
+    "groom",
+    "bridal",
+    "honeymoon",
+    "maid of honor",
+    "best man",
+  ].some((token) => textKey.includes(token));
+}
+
+function hasConflictingStrongStreamSignal(args: {
+  searchableText: string;
+  targetStreamId: string | null;
+  streams: readonly MatchingStream[];
+}): boolean {
+  const { searchableText, targetStreamId, streams } = args;
+  if (!targetStreamId) return false;
+  return streams.some(
+    (stream) => stream.id !== targetStreamId && hasStrongStreamMention(searchableText, stream),
+  );
+}
+
+function pickBestStreamByName(
+  searchableText: string,
+  streams: readonly MatchingStream[],
+): MatchingStream | null {
+  const textKey = normalizeNameKey(searchableText);
+  if (!textKey) return null;
+
+  const exact = streams.find((stream) => textKey.includes(stream.nameKey));
+  if (exact) return exact;
+
+  const textTokens = new Set(tokenize(textKey));
+  if (textTokens.size === 0) return null;
+
+  let best: { stream: MatchingStream; score: number } | null = null;
+  for (const stream of streams) {
+    if (stream.tokens.length === 0) continue;
+    const matched = countTokenMatches(textTokens, stream.tokens);
+    const score = matched / stream.tokens.length;
+    if (score < 0.8 || matched < 2) continue;
+    if (!best || score > best.score) {
+      best = { stream, score };
     }
   }
-  return matches[0] ?? null;
+  return best?.stream ?? null;
+}
+
+function pickBestProjectByName(
+  searchableText: string,
+  projects: readonly MatchingProject[],
+): MatchingProject | null {
+  const textKey = normalizeNameKey(searchableText);
+  if (!textKey) return null;
+
+  const exactMatches = projects.filter((project) => textKey.includes(project.nameKey));
+  if (exactMatches.length === 1) return exactMatches[0];
+  if (exactMatches.length > 1) return null;
+
+  const textTokens = new Set(tokenize(textKey));
+  if (textTokens.size === 0) return null;
+
+  let best: { project: MatchingProject; score: number } | null = null;
+  for (const project of projects) {
+    if (project.tokens.length === 0) continue;
+    const matched = countTokenMatches(textTokens, project.tokens);
+    const score = matched / project.tokens.length;
+    if (score < 0.75 || matched < 1) continue;
+    if (!best || score > best.score) {
+      best = { project, score };
+    } else if (best && score === best.score && best.project.id !== project.id) {
+      best = null;
+    }
+  }
+  if (best?.project) return best.project;
+
+  const candidates = projects
+    .map((project) => {
+      if (project.tokens.length === 0) return null;
+      const matchedTokens = project.tokens.filter((token) => textTokens.has(token));
+      if (matchedTokens.length === 0) return null;
+      return { project, matchedTokens };
+    })
+    .filter(
+      (
+        candidate,
+      ): candidate is { project: MatchingProject; matchedTokens: string[] } => candidate != null,
+    );
+  if (candidates.length === 0) return null;
+
+  const strongCandidates = candidates.filter(({ matchedTokens }) =>
+    matchedTokens.some((token) => token.length >= 6),
+  );
+  const source = strongCandidates.length > 0 ? strongCandidates : candidates;
+  if (source.length === 1) return source[0].project;
+
+  source.sort((a, b) => b.matchedTokens.length - a.matchedTokens.length);
+  if (
+    source.length >= 2 &&
+    source[0].matchedTokens.length === source[1].matchedTokens.length
+  ) {
+    return null;
+  }
+  return source[0].project;
+}
+
+function chooseSafeDefaultStream(
+  searchableText: string,
+  streams: readonly MatchingStream[],
+): string | null {
+  if (streams.length === 0) return null;
+  const text = normalizeNameKey(searchableText);
+  const workSignals = [
+    "invoice",
+    "client",
+    "proposal",
+    "contract",
+    "finance",
+    "payment",
+    "vendor",
+    "approval",
+    "stakeholder",
+    "budget",
+    "work",
+    "commercial",
+  ];
+  const personalSignals = [
+    "personal",
+    "family",
+    "home",
+    "health",
+    "wedding",
+    "travel",
+    "life admin",
+    "friend",
+    "birthday",
+    "appointment",
+  ];
+
+  const streamByName = new Map<string, MatchingStream>();
+  for (const stream of streams) {
+    streamByName.set(stream.nameKey, stream);
+  }
+
+  const workStream =
+    streamByName.get("work") ??
+    streams.find((stream) => stream.nameKey.includes("work") || stream.nameKey.includes("finance")) ??
+    null;
+  const personalStream =
+    streamByName.get("personal") ??
+    streams.find((stream) => stream.nameKey.includes("personal") || stream.nameKey.includes("life")) ??
+    null;
+
+  if (workSignals.some((signal) => text.includes(signal))) {
+    return workStream?.id ?? null;
+  }
+  if (personalSignals.some((signal) => text.includes(signal))) {
+    return personalStream?.id ?? null;
+  }
+  return personalStream?.id ?? workStream?.id ?? null;
+}
+
+function resolveOperationalLink(args: {
+  itemText: string;
+  rawContentText: string;
+  hintedProjectTitle?: string | null;
+  streamContextName: string | null;
+  projects: readonly MatchingProject[];
+  streams: readonly MatchingStream[];
+}): ResolvedOperationalLink {
+  const mergedText = `${args.itemText}\n${args.rawContentText}`;
+  const projectHint = normalizeOptionalText(args.hintedProjectTitle, PROJECT_NAME_MAX);
+  const streamFromText = pickBestStreamByName(mergedText, args.streams);
+  const streamFromContext = args.streamContextName
+    ? pickBestStreamByName(args.streamContextName, args.streams)
+    : null;
+  const effectiveStreamId = streamFromText?.id ?? streamFromContext?.id ?? null;
+
+  const canUseProject = (project: MatchingProject): boolean => {
+    const projectStreamId = project.streamId ?? null;
+    const projectStream = projectStreamId
+      ? args.streams.find((stream) => stream.id === projectStreamId) ?? null
+      : null;
+    if (
+      hasConflictingStrongStreamSignal({
+        searchableText: mergedText,
+        targetStreamId: projectStreamId ?? effectiveStreamId,
+        streams: args.streams,
+      })
+    ) {
+      return false;
+    }
+
+    if (
+      hasWeddingLikeSignal(mergedText) &&
+      projectStreamId &&
+      projectStream &&
+      !hasStrongStreamMention(mergedText, projectStream)
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const hintProject = projectHint ? pickBestProjectByName(projectHint, args.projects) : null;
+  if (hintProject && hasStrongTextOverlapWithProject(projectHint ?? "", hintProject) && canUseProject(hintProject)) {
+    return {
+      projectId: hintProject.id,
+      streamId: hintProject.streamId ?? effectiveStreamId,
+    };
+  }
+
+  const projectFromText = pickBestProjectByName(mergedText, args.projects);
+  if (projectFromText && hasStrongTextOverlapWithProject(mergedText, projectFromText) && canUseProject(projectFromText)) {
+    return {
+      projectId: projectFromText.id,
+      streamId: projectFromText.streamId ?? effectiveStreamId,
+    };
+  }
+
+  if (streamFromContext) {
+    const activeProjectsInStream = args.projects.filter((project) => project.streamId === streamFromContext.id);
+    if (
+      activeProjectsInStream.length === 1 &&
+      !hasConflictingStrongStreamSignal({
+        searchableText: mergedText,
+        targetStreamId: streamFromContext.id,
+        streams: args.streams,
+      }) &&
+      !hasWeddingLikeSignal(mergedText)
+    ) {
+      return {
+        projectId: activeProjectsInStream[0].id,
+        streamId: streamFromContext.id,
+      };
+    }
+  }
+
+  if (effectiveStreamId) {
+    return { projectId: null, streamId: effectiveStreamId };
+  }
+
+  return {
+    projectId: null,
+    streamId: chooseSafeDefaultStream(mergedText, args.streams),
+  };
 }
 
 async function waitingOnAlreadyExists(
@@ -216,6 +535,7 @@ async function createWaitingOnFromInbox(args: {
   waitingOnName: string | null;
   priority: AiTaskPriority;
   projectId: string | null;
+  streamId: string | null;
 }): Promise<string | null> {
   const supabase = await supabaseServerClient();
   const payload: Record<string, unknown> = {
@@ -226,6 +546,7 @@ async function createWaitingOnFromInbox(args: {
     priority_level: args.priority || "medium",
     status: "active",
     project_id: args.projectId,
+    stream_id: args.streamId,
     source_inbox_item_id: args.sourceInboxItemId,
   };
 
@@ -263,7 +584,11 @@ async function createWaitingOnFromInbox(args: {
   return null;
 }
 
-async function requestStructuredInboxProcessing(rawContent: string): Promise<InboxAiStructuredResult | null> {
+async function requestStructuredInboxProcessing(args: {
+  rawContent: string;
+  streamContextName: string | null;
+  existingProjectNames: string[];
+}): Promise<InboxAiStructuredResult | null> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
     console.log("[inbox/process] missing OPENAI_API_KEY");
@@ -271,7 +596,14 @@ async function requestStructuredInboxProcessing(rawContent: string): Promise<Inb
   }
 
   const openai = new OpenAI({ apiKey });
-  console.log("[inbox/process] OpenAI request start", { rawContentLength: rawContent.length });
+  const projectList = args.existingProjectNames.slice(0, 40);
+  const projectCatalogText =
+    projectList.length > 0 ? `Existing projects:\n- ${projectList.join("\n- ")}` : "Existing projects: none";
+  const streamContextText = args.streamContextName
+    ? `Selected stream context: ${args.streamContextName}`
+    : "Selected stream context: none";
+
+  console.log("[inbox/process] OpenAI request start", { rawContentLength: args.rawContent.length });
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     temperature: 0.2,
@@ -335,11 +667,11 @@ async function requestStructuredInboxProcessing(rawContent: string): Promise<Inb
       {
         role: "system",
         content:
-          "You transform inbox captures into operational tasks/projects/waiting-ons. Return strict JSON only. Be conservative. Prefer tasks over creating new projects unless project intent is explicit. Create waiting_ons only for explicit dependency/follow-up states: awaiting response, blocked by someone, pending external action, waiting for approval/pricing/callback/review/feedback.",
+          "You transform inbox captures into operational tasks/projects/waiting-ons. Return strict JSON only. Be conservative. Prefer tasks over creating new projects unless project intent is explicit. For project_title on tasks, prefer exact reuse of an existing project name when there is any strong textual overlap (for example: 'Return Wedding Shoes' should map to project title 'Wedding'). Create waiting_ons only for explicit dependency/follow-up states: awaiting response, blocked by someone, pending external action, waiting for approval/pricing/callback/review/feedback.",
       },
       {
         role: "user",
-        content: `Process this inbox item:\n\n${rawContent}`,
+        content: `Process this inbox item.\n\n${streamContextText}\n\n${projectCatalogText}\n\nInbox item:\n${args.rawContent}`,
       },
     ],
   });
@@ -356,7 +688,15 @@ export async function processSingleInboxItemWithAi(
   rawContent: string,
 ): Promise<ProcessInboxWithAiResult> {
   console.log("[inbox/process] single-item processing start", { ownerUserId, inboxItemId });
-  const ai = await requestStructuredInboxProcessing(rawContent);
+  const { content: rawContentWithoutStreamContext, streamName: streamContextName } =
+    stripInboxStreamContext(rawContent);
+  const existingProjects = await fetchActiveProjectsForUserId(ownerUserId);
+  const existingStreams = await fetchActiveStreamsForUser(ownerUserId);
+  const ai = await requestStructuredInboxProcessing({
+    rawContent: rawContentWithoutStreamContext,
+    streamContextName,
+    existingProjectNames: existingProjects.map((project) => project.name),
+  });
   if (!ai) {
     return { ok: false, error: "Unable to parse structured AI output." };
   }
@@ -367,43 +707,49 @@ export async function processSingleInboxItemWithAi(
     waitingOnCount: ai.waitingOns.length,
   });
 
-  const existingProjects = await fetchActiveProjectsForUserId(ownerUserId);
-  const projectIdsByNameKey = new Map<string, string>();
-  for (const project of existingProjects) {
-    projectIdsByNameKey.set(normalizeNameKey(project.name), project.id);
-  }
-
+  const matchingProjects: MatchingProject[] = existingProjects.map((project) => ({
+    id: project.id,
+    streamId: project.streamId,
+    nameKey: normalizeNameKey(project.name),
+    tokens: tokenize(project.name),
+  }));
+  const matchingStreams: MatchingStream[] = existingStreams.map((stream) => ({
+    id: stream.id,
+    nameKey: normalizeNameKey(stream.name),
+    tokens: tokenize(stream.name),
+  }));
   const createdProjectIds: string[] = [];
-  for (const suggestion of ai.projects) {
-    const key = normalizeNameKey(suggestion.name);
-    if (projectIdsByNameKey.has(key)) continue;
-    if (!shouldCreateProjectFromInbox(rawContent, suggestion.name)) continue;
-
-    const created = await createProjectAction({
-      name: suggestion.name,
-      description: suggestion.description,
-    });
-    if (created.ok) {
-      projectIdsByNameKey.set(key, created.project.id);
-      createdProjectIds.push(created.project.id);
-    }
-  }
   console.log("[inbox/process] project creation pass complete", {
     createdProjectCount: createdProjectIds.length,
   });
 
+  const activeTasks = await fetchActiveTasksForUserId(ownerUserId);
+  const existingActiveTaskTitleKeys = new Set<string>();
+  for (const task of activeTasks) {
+    const key = normalizeTaskTitleKey(task.title);
+    if (key) existingActiveTaskTitleKeys.add(key);
+  }
+
   const createdTaskIds: string[] = [];
   for (const taskDraft of ai.tasks) {
-    let description = taskDraft.notes;
-    let projectId: string | null = null;
-    const projectTitle = taskDraft.projectTitle ? normalizeNameKey(taskDraft.projectTitle) : null;
+    const taskTitleKey = normalizeTaskTitleKey(taskDraft.title);
+    if (!taskTitleKey) continue;
+    if (existingActiveTaskTitleKeys.has(taskTitleKey)) {
+      continue;
+    }
 
-    if (projectTitle) {
-      projectId = projectIdsByNameKey.get(projectTitle) ?? null;
-      if (!projectId) {
+    let description = taskDraft.notes;
+    const resolvedLink = resolveOperationalLink({
+      itemText: `${taskDraft.title}\n${taskDraft.notes ?? ""}`,
+      rawContentText: rawContentWithoutStreamContext,
+      hintedProjectTitle: taskDraft.projectTitle,
+      streamContextName,
+      projects: matchingProjects,
+      streams: matchingStreams,
+    });
+    if (!resolvedLink.projectId && taskDraft.projectTitle) {
         const projectHint = `Possible project: ${taskDraft.projectTitle}`;
         description = description ? `${description}\n\n${projectHint}` : projectHint;
-      }
     }
 
     const created = await createTaskAction({
@@ -411,24 +757,33 @@ export async function processSingleInboxItemWithAi(
       description,
       priorityLevel: taskDraft.priority,
       dueAt: taskDraft.dueDate ? `${taskDraft.dueDate}T00:00:00.000Z` : null,
-      projectId,
+      projectId: resolvedLink.projectId,
+      streamId: resolvedLink.streamId,
       sourceInboxItemId: inboxItemId,
     });
     if (created.ok) {
       createdTaskIds.push(created.task.id);
+      existingActiveTaskTitleKeys.add(taskTitleKey);
     }
   }
   console.log("[inbox/process] task creation pass complete", {
     createdTaskCount: createdTaskIds.length,
   });
 
-  const obviousProjectId = resolveObviousProjectForWaitingOn(rawContent, projectIdsByNameKey);
   const createdWaitingOnIds: string[] = [];
   for (const waitingOnDraft of ai.waitingOns) {
     const alreadyExists = await waitingOnAlreadyExists(ownerUserId, inboxItemId, waitingOnDraft.title);
     if (alreadyExists) {
       continue;
     }
+
+    const resolvedLink = resolveOperationalLink({
+      itemText: `${waitingOnDraft.title}\n${waitingOnDraft.description ?? ""}\n${waitingOnDraft.waitingOnName ?? ""}`,
+      rawContentText: rawContentWithoutStreamContext,
+      streamContextName,
+      projects: matchingProjects,
+      streams: matchingStreams,
+    });
 
     const createdId = await createWaitingOnFromInbox({
       ownerUserId,
@@ -437,7 +792,8 @@ export async function processSingleInboxItemWithAi(
       description: waitingOnDraft.description,
       waitingOnName: waitingOnDraft.waitingOnName,
       priority: waitingOnDraft.priority || "medium",
-      projectId: obviousProjectId,
+      projectId: resolvedLink.projectId,
+      streamId: resolvedLink.streamId,
     });
 
     if (createdId) {

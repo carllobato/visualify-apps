@@ -1,5 +1,6 @@
 import "server-only";
 
+import { stripInboxStreamContext } from "@/lib/os/inbox-stream-context";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const OS_INBOX_PROCESSING_STATUS = {
@@ -65,9 +66,10 @@ type OsLinkedWaitingOnRow = {
 };
 
 function mapInboxItemRow(row: OsInboxItemRow): OsInboxItem {
+  const cleaned = stripInboxStreamContext(row.raw_content);
   return {
     id: row.id,
-    rawContent: row.raw_content,
+    rawContent: cleaned.content,
     processingStatus: row.processing_status,
     aiSummary: row.ai_summary,
     createdAt: row.created_at,

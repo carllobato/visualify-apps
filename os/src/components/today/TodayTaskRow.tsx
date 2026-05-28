@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { taskPriorityLabel } from "@/components/projects/task-display";
-import type { TodayTask } from "@/lib/today-data";
+import type { TodayTask, TodayTaskReason } from "@/lib/today-data";
 import { osProjectDetailPath } from "@/lib/os-routes";
 import {
   completeTaskFromFormAction,
@@ -14,9 +14,25 @@ import {
 type TodayTaskRowProps = {
   task: TodayTask;
   projectName: string | null;
+  reason?: TodayTaskReason;
 };
 
-export function TodayTaskRow({ task, projectName }: TodayTaskRowProps) {
+function todayReasonLabel(reason: TodayTaskReason | undefined): string | null {
+  switch (reason) {
+    case "overdue":
+      return "Overdue";
+    case "due_today":
+      return "Due today";
+    case "critical":
+      return "Critical";
+    case "high_priority":
+      return "High priority";
+    default:
+      return null;
+  }
+}
+
+export function TodayTaskRow({ task, projectName, reason }: TodayTaskRowProps) {
   const router = useRouter();
   const priority = taskPriorityLabel(task.priorityLevel);
   const projectId = task.projectId?.trim() || null;
@@ -35,8 +51,9 @@ export function TodayTaskRow({ task, projectName }: TodayTaskRowProps) {
 
   const metaParts: string[] = [];
   if (projectName) metaParts.push(projectName);
-  if (priority) metaParts.push(priority);
-  metaParts.push("Due today");
+  const reasonLabel = todayReasonLabel(reason);
+  if (reasonLabel) metaParts.push(reasonLabel);
+  if (priority && priority !== reasonLabel) metaParts.push(priority);
 
   const body = (
     <>
@@ -90,9 +107,12 @@ export function TodayTaskRow({ task, projectName }: TodayTaskRowProps) {
             type="submit"
             disabled={completePending}
             className="os-today-task-row__complete"
-            aria-label={`Mark “${task.title}” complete`}
+            aria-label={`Mark task complete: ${task.title}`}
           >
-            {completePending ? "…" : "Done"}
+            <span className="os-today-task-row__check" aria-hidden>
+              {completePending ? "…" : "✓"}
+            </span>
+            <span className="sr-only">Mark task complete</span>
           </button>
         </form>
       </div>

@@ -2,22 +2,31 @@
 
 import { useMemo } from "react";
 import { ProjectTaskBoardCard } from "@/components/projects/ProjectTaskBoardCard";
+import { ProjectWaitingOnBoardCard } from "@/components/projects/ProjectWaitingOnBoardCard";
 import { groupTasksForProjectBoard } from "@/components/projects/project-task-board";
 import type { OsTask } from "@/lib/os/tasks-data";
+import type { OsWaitingOn } from "@/lib/os/waiting-ons-data";
 
 type ProjectTaskBoardProps = {
   tasks: OsTask[];
-  loadFailed?: boolean;
+  waitingOns: OsWaitingOn[];
+  tasksLoadFailed?: boolean;
+  waitingOnsLoadFailed?: boolean;
 };
 
-export function ProjectTaskBoard({ tasks, loadFailed = false }: ProjectTaskBoardProps) {
+export function ProjectTaskBoard({
+  tasks,
+  waitingOns,
+  tasksLoadFailed = false,
+  waitingOnsLoadFailed = false,
+}: ProjectTaskBoardProps) {
   const columns = useMemo(() => groupTasksForProjectBoard(tasks), [tasks]);
 
-  if (loadFailed) {
+  if (tasksLoadFailed || waitingOnsLoadFailed) {
     return (
       <div className="os-projects-empty os-projects-empty--error" role="alert">
         <p className="os-projects-empty__title text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
-          Couldn&apos;t load tasks
+          Couldn&apos;t load project work
         </p>
         <p className="os-projects-empty__hint text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
           Refresh the page to try again.
@@ -26,11 +35,11 @@ export function ProjectTaskBoard({ tasks, loadFailed = false }: ProjectTaskBoard
     );
   }
 
-  if (tasks.length === 0) {
+  if (tasks.length === 0 && waitingOns.length === 0) {
     return (
       <div className="os-projects-empty">
         <p className="os-projects-empty__title text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
-          No tasks yet
+          No project work yet
         </p>
         <p className="os-projects-empty__hint text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
           Add a task to track work for this project.
@@ -70,6 +79,33 @@ export function ProjectTaskBoard({ tasks, loadFailed = false }: ProjectTaskBoard
             </div>
           </section>
         ))}
+        <section
+          className="os-projects-board__column os-projects-board__column--blocked"
+          aria-labelledby="os-projects-board-blocked-heading"
+        >
+          <header className="os-projects-board__column-header">
+            <h3 id="os-projects-board-blocked-heading" className="os-projects-board__column-title">
+              Blocked
+            </h3>
+            <span
+              className="os-projects-board__column-count"
+              aria-label={`${waitingOns.length} blocked items`}
+            >
+              {waitingOns.length}
+            </span>
+          </header>
+          <div className="os-projects-board__cards">
+            {waitingOns.length === 0 ? (
+              <div className="os-projects-board__column-empty-wrap">
+                <p className="os-projects-board__column-empty">No blocked items in this column</p>
+              </div>
+            ) : (
+              waitingOns.map((waitingOn) => (
+                <ProjectWaitingOnBoardCard key={waitingOn.id} waitingOn={waitingOn} />
+              ))
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

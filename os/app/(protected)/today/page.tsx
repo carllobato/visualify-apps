@@ -1,15 +1,17 @@
-import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
-import { TodayBriefingHero } from "@/components/today/TodayBriefingHero";
+import { MorningBriefVoice } from "@/components/today/MorningBriefVoice";
 import { TodayStreamFilterBar } from "@/components/today/TodayStreamFilter";
-import { TodayTaskRow } from "@/components/today/TodayTaskRow";
+import { TodayTasksSection } from "@/components/today/TodayTasksSection";
+import { TodayWeatherChip } from "@/components/today/TodayWeatherChip";
+import { TodayWaitingOnsCard } from "@/components/today/TodayWaitingOnsCard";
 import {
   fetchTodayPageData,
-  filterTasksForTodaySurface,
   normalizeTodayPageData,
-  type TodayTask,
+  selectTasksForTodaySurface,
+  type TodaySurfaceTask,
 } from "@/lib/today-data";
 import {
+  filterWaitingOnsByTodayStream,
   filterTasksByTodayStream,
   resolveTodayStreamFilter,
   type TodayStreamFilter,
@@ -19,14 +21,7 @@ import "./today-mobile.css";
 
 export const dynamic = "force-dynamic";
 
-const BRIEFING_PREVIEW_MAX_CHARS = 480;
-
-function formatDateLabel(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
+const WAITING_ONS_VISIBLE_LIMIT = 4;
 
 function formatTodayHeading(): string {
   return new Date().toLocaleDateString(undefined, {
@@ -36,96 +31,75 @@ function formatTodayHeading(): string {
   });
 }
 
-/** Humanize enum/snake values for read-only display (e.g. `high` → `High`, `daily` → `Daily`). */
-function formatDisplayLabel(value: string | null | undefined): string | null {
-  if (!value?.trim()) return null;
-  const normalized = value.trim().replace(/_/g, " ");
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
-
-function splitBriefingContent(content: string): { preview: string; remainder: string | null } {
-  const trimmed = content.trim();
-  if (!trimmed) return { preview: "", remainder: null };
-
-  const paragraphs = trimmed.split(/\n\n+/);
-  const firstParagraph = paragraphs[0] ?? trimmed;
-
-  if (paragraphs.length > 1 && firstParagraph.length <= BRIEFING_PREVIEW_MAX_CHARS) {
-    const remainder = paragraphs.slice(1).join("\n\n").trim();
-    return { preview: firstParagraph, remainder: remainder || null };
+function formatTodayLede(streamFilter: TodayStreamFilter): string {
+  if (streamFilter.kind === "stream") {
+    return `Priorities and follow-ups for ${streamFilter.stream.name}.`;
   }
+  return "Priorities and follow-ups across your active streams.";
+}
 
-  if (trimmed.length <= BRIEFING_PREVIEW_MAX_CHARS) {
-    return { preview: trimmed, remainder: null };
+function formatWeekday(): string {
+  return new Date().toLocaleDateString(undefined, { weekday: "long" });
+}
+
+function dedupe(values: string[]): string[] {
+  const seen = new Set<string>();
+  const output: string[] = [];
+  for (const value of values) {
+    const key = value.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    output.push(value.trim());
   }
-
-  const slice = trimmed.slice(0, BRIEFING_PREVIEW_MAX_CHARS);
-  const lastSpace = slice.lastIndexOf(" ");
-  const preview = (lastSpace > 280 ? slice.slice(0, lastSpace) : slice).trim();
-  const remainder = trimmed.slice(preview.length).trim();
-  return { preview, remainder: remainder || null };
+  return output;
 }
 
-function TaskList({ children }: { children: ReactNode }) {
-  return (
-    <ul className="flex flex-col divide-y divide-[color-mix(in_oklab,var(--ds-border)_55%,transparent)] max-md:divide-y-0">
-      {children}
-    </ul>
-  );
+function isSeededOrTestBriefing(briefing: { title: string; content: string } | null): boolean {
+  if (!briefing) return false;
+
+  const haystack = `${briefing.title}\n${briefing.content}`.toLowerCase();
+  const seededPhrases = [
+    "seeded for layout check",
+    "existing vectors and projects should list unchanged",
+    "ship os today validation",
+  ];
+
+  return seededPhrases.some((phrase) => haystack.includes(phrase));
 }
 
-function TodayTasksCard({
-  tasks,
-  streamFilter,
-  projectNamesById,
-}: {
-  tasks: TodayTask[];
+function buildFallbackSpokenBrief(input: {
+  topTask: TodaySurfaceTask | null;
+  surfacedTasks: TodaySurfaceTask[];
+  topWaitingOn: { title: string; waitingOnName: string | null; projectName: string | null } | null;
+  weatherOpener: string | null;
   streamFilter: TodayStreamFilter;
-  projectNamesById: Record<string, string>;
-}) {
-  const focused = streamFilter.kind === "stream";
+}): string {
+  const { topTask, surfacedTasks, topWaitingOn, weatherOpener, streamFilter } = input;
+  const weekday = formatWeekday();
+  const openerCore = weatherOpener?.trim()
+    ? `It's ${weatherOpener.trim()} on ${weekday}.`
+    : `It's ${weekday} morning.`;
+  const intro =
+    streamFilter.kind === "stream"
+      ? `${openerCore} In ${streamFilter.stream.name}, keep today focused.`
+      : `${openerCore} Keep today focused and steady.`;
 
-  return (
-    <section className="os-today-block os-today-tasks flex flex-col gap-2.5">
-      <h2 className="os-today-block__label text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">
-        {focused ? "Tasks in focus" : "Today\u2019s tasks"}
-      </h2>
-      <div className="os-today-block__surface">
-        {tasks.length > 0 ? (
-          <TaskList>
-            {tasks.map((task) => {
-              const projectId = task.projectId?.trim();
-              const projectName =
-                projectId && projectNamesById[projectId]
-                  ? projectNamesById[projectId]
-                  : null;
+  const overdueCount = surfacedTasks.filter((task) => task.reason === "overdue").length;
+  const criticalCount = surfacedTasks.filter((task) => task.reason === "critical").length;
+  const focusLine =
+    overdueCount > 0
+      ? "The key move is to clear overdue pressure early and protect momentum."
+      : criticalCount > 0
+        ? "The day is about steady progress on your highest-priority work."
+        : topTask
+          ? "The day is mostly about keeping momentum on your active priorities."
+          : "The day looks open enough to make calm progress.";
 
-              return (
-                <TodayTaskRow
-                  key={task.id}
-                  task={task}
-                  projectName={projectName}
-                />
-              );
-            })}
-          </TaskList>
-        ) : (
-          <div className="os-today-empty-state">
-            <p className="os-today-empty-state__title text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]">
-              {focused
-                ? "Nothing due in this stream today"
-                : "Nothing scheduled for today"}
-            </p>
-            <p className="os-today-empty-state__hint text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
-              {focused
-                ? "Try another focus, or capture something in Inbox."
-                : "Use Inbox to capture anything new."}
-            </p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
+  const blockerLine = topWaitingOn
+    ? "One dependency is still pending, but it should not block execution."
+    : "Keep one dependency visible, then return to execution.";
+
+  return `Good morning. ${intro} ${focusLine} ${blockerLine} Focus on clearing one meaningful priority early, then keep the day steady.`;
 }
 
 type TodayPageProps = {
@@ -144,50 +118,85 @@ export default async function TodayPage({ searchParams }: TodayPageProps) {
 
   const { stream: streamParam } = await searchParams;
   const pageData = normalizeTodayPageData(await fetchTodayPageData(user.id));
-  const { tasks, streams, projects, latestBriefing } = pageData;
+  const { tasks, waitingOns, streams, projects, latestBriefing } = pageData;
 
   const streamFilter = resolveTodayStreamFilter(streamParam, streams);
-  const todaysTasks = filterTasksByTodayStream(
-    filterTasksForTodaySurface(tasks),
-    streamFilter,
-    projects,
-  );
+  const streamFilteredTasks = filterTasksByTodayStream(tasks, streamFilter, projects);
+  const todaysTasks = selectTasksForTodaySurface(streamFilteredTasks);
+  const filteredWaitingOns = filterWaitingOnsByTodayStream(waitingOns, streamFilter, projects);
   const projectNamesById = Object.fromEntries(
     projects.map((project) => [project.id, project.name]),
   );
+  const streamNamesById = Object.fromEntries(streams.map((stream) => [stream.id, stream.name]));
 
-  const { preview, remainder } = latestBriefing
-    ? splitBriefingContent(latestBriefing.content)
-    : { preview: "", remainder: null };
+  const topTask =
+    todaysTasks.find((task) => task.reason === "overdue" || task.reason === "critical") ??
+    todaysTasks[0] ??
+    null;
+  const topWaitingOn =
+    filteredWaitingOns.find((item) => item.expectedResponseAt) ??
+    filteredWaitingOns[0] ??
+    null;
+  const topWaitingOnProjectName =
+    topWaitingOn?.projectId && projectNamesById[topWaitingOn.projectId]
+      ? projectNamesById[topWaitingOn.projectId]
+      : null;
+  const fallbackSpokenBrief = buildFallbackSpokenBrief({
+    topTask,
+    surfacedTasks: todaysTasks,
+    topWaitingOn: topWaitingOn
+      ? {
+          title: topWaitingOn.title,
+          waitingOnName: topWaitingOn.waitingOnName,
+          projectName: topWaitingOnProjectName,
+        }
+      : null,
+    weatherOpener: null,
+    streamFilter,
+  });
 
-  const dateLabel = latestBriefing ? formatDateLabel(latestBriefing.briefingDate) : null;
-  const typeLabel = latestBriefing ? formatDisplayLabel(latestBriefing.briefingType) : null;
-  const metaLine = [dateLabel, typeLabel].filter(Boolean).join(" · ") || null;
-
-  const heroTitle = latestBriefing?.title ?? formatTodayHeading();
+  const effectiveBriefing = isSeededOrTestBriefing(latestBriefing) ? null : latestBriefing;
+  const spokenBriefText = effectiveBriefing?.content?.trim() || fallbackSpokenBrief;
+  const heading = formatTodayHeading();
+  const lede = formatTodayLede(streamFilter);
 
   return (
-    <main className="os-today-page mx-auto flex w-full min-w-0 max-w-2xl flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
-      <p className="text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)] max-md:hidden">
-        Today
-      </p>
+    <main className="os-today-page flex w-full min-w-0 flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
+      <header className="os-today-page__intro">
+        <p className="os-today-page__eyebrow">Today</p>
+        <h1 className="os-today-page__title">{heading}</h1>
+        <p className="os-today-page__lede">{lede}</p>
+      </header>
 
       <div className="os-today-feed mt-5 flex flex-col gap-6 sm:gap-7 max-md:mt-0 max-md:gap-2.5">
         <TodayStreamFilterBar streams={streams} activeFilter={streamFilter} />
 
-        <TodayBriefingHero
-          briefing={latestBriefing}
-          title={heroTitle}
-          metaLine={metaLine}
-          previewBody={preview || null}
-          previewRemainder={remainder}
-        />
+        <section className="os-today-header">
+          <div className="os-today-header__title-row">
+            <h2 className="os-today-header__title">Plan for now</h2>
+            <MorningBriefVoice text={spokenBriefText} className="shrink-0" />
+          </div>
+          <div className="os-today-header__meta-row">
+            <TodayWeatherChip />
+          </div>
+        </section>
 
-        <TodayTasksCard
-          tasks={todaysTasks}
-          streamFilter={streamFilter}
-          projectNamesById={projectNamesById}
-        />
+        <section className="os-today-unified-surface">
+          <TodayTasksSection
+            tasks={todaysTasks}
+            focused={streamFilter.kind === "stream"}
+            projectNamesById={projectNamesById}
+          />
+
+          <TodayWaitingOnsCard
+            waitingOns={filteredWaitingOns}
+            visibleLimit={WAITING_ONS_VISIBLE_LIMIT}
+            streamFilter={streamFilter}
+            projectNamesById={projectNamesById}
+            streamNamesById={streamNamesById}
+            embedded
+          />
+        </section>
       </div>
     </main>
   );

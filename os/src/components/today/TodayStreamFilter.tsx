@@ -15,9 +15,6 @@ export function TodayStreamFilterBar({ streams, activeFilter }: TodayStreamFilte
 
   return (
     <section className="os-today-focus" aria-label="Stream focus">
-      <p className="os-today-focus__eyebrow text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)] max-md:sr-only">
-        Focus
-      </p>
       <div className="os-today-focus__scroll">
         <div className="os-today-focus__chips" role="list">
           <Link
@@ -59,13 +56,6 @@ export function TodayStreamFilterBar({ streams, activeFilter }: TodayStreamFilte
           })}
         </div>
       </div>
-      {activeFilter.kind === "stream" ? (
-        <p className="os-today-focus__active text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]">
-          Showing tasks due today in{" "}
-          <span className="font-medium text-[var(--ds-text-secondary)]">{activeFilter.stream.name}</span>
-          <span className="sr-only"> Daily briefing is not filtered by stream.</span>
-        </p>
-      ) : null}
     </section>
   );
 }

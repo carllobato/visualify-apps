@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { resolveAuthenticatedOsUserId } from "@/lib/os/auth";
 import { processSingleInboxItemWithAi } from "@/lib/os/inbox-processing";
 import { OS_INBOX_PROCESSING_STATUS } from "@/lib/os/inbox-data";
+import {
+  appendInboxStreamContext,
+  normalizeInboxStreamContextName,
+} from "@/lib/os/inbox-stream-context";
 import { OS_ROUTES } from "@/lib/os-routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -36,7 +40,10 @@ function revalidateInboxPath(): void {
   revalidatePath(OS_ROUTES.inbox);
 }
 
-export async function createInboxItemAction(rawContent: string): Promise<InboxActionResult> {
+export async function createInboxItemAction(
+  rawContent: string,
+  streamContextName?: string | null,
+): Promise<InboxActionResult> {
   const userId = await resolveAuthenticatedOsUserId();
   if (!userId) {
     return { ok: false, error: "Unauthorized" };
@@ -46,16 +53,30 @@ export async function createInboxItemAction(rawContent: string): Promise<InboxAc
   if (!content) {
     return { ok: false, error: "Capture cannot be empty." };
   }
+  const normalizedStreamContext = normalizeInboxStreamContextName(streamContextName);
+  const persistedContent = appendInboxStreamContext(content, normalizedStreamContext);
 
   const supabase = await supabaseServerClient();
-  const { error } = await supabase.from("os_inbox_items").insert({
-    owner_user_id: userId,
-    raw_content: content,
-  });
+  const { data: inserted, error } = await supabase
+    .from("os_inbox_items")
+    .insert({
+      owner_user_id: userId,
+      raw_content: persistedContent,
+    })
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     console.error("createInboxItemAction os_inbox_items:", error.message);
     return { ok: false, error: "Unable to save capture." };
+  }
+  if (!inserted?.id) {
+    return { ok: false, error: "Unable to save capture." };
+  }
+
+  const processingResult = await processInboxItemWithAiAction(inserted.id);
+  if (!processingResult.ok) {
+    console.error("createInboxItemAction auto-process:", processingResult.error);
   }
 
   revalidateInboxPath();
@@ -281,7 +302,11 @@ export async function createInboxItemFromFormAction(
   formData: FormData,
 ): Promise<InboxCaptureFormState> {
   const rawContent = formData.get("rawContent");
-  const result = await createInboxItemAction(typeof rawContent === "string" ? rawContent : "");
+  const streamContextName = formData.get("streamContextName");
+  const result = await createInboxItemAction(
+    typeof rawContent === "string" ? rawContent : "",
+    typeof streamContextName === "string" ? streamContextName : null,
+  );
 
   if (!result.ok) {
     return { error: result.error };

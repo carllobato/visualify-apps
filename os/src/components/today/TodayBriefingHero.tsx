@@ -11,6 +11,8 @@ export type TodayBriefingHeroProps = {
   previewRemainder: string | null;
   metaLine: string | null;
   title: string;
+  focusItems: string[];
+  blockerSummary: string | null;
 };
 
 export function TodayBriefingHero({
@@ -20,8 +22,10 @@ export function TodayBriefingHero({
   previewRemainder,
   metaLine,
   title,
+  focusItems,
+  blockerSummary,
 }: TodayBriefingHeroProps) {
-  const hasWrittenBrief = briefing != null && (previewBody != null || metaLine != null);
+  const hasSavedBriefExcerpt = briefing != null && (previewBody != null || previewRemainder != null);
 
   return (
     <article className="os-today-hero os-today-card flex flex-col gap-3 sm:gap-4">
@@ -40,32 +44,45 @@ export function TodayBriefingHero({
             <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
               {metaLine}
             </p>
-          ) : !hasWrittenBrief ? (
-            <p className="os-today-hero__meta text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
-              No written briefing yet.
-            </p>
           ) : null}
           <TodayWeatherChip />
         </div>
       </div>
 
-      {previewBody ? (
-        <div className="flex flex-col gap-3">
-          <p className="os-today-hero__body whitespace-pre-wrap break-words text-[length:var(--ds-text-base)] leading-relaxed text-[var(--ds-text-primary)]">
-            {previewBody}
+      <div className="os-today-hero__ops flex flex-col gap-2.5">
+        <div className="os-today-hero__section">
+          <p className="os-today-hero__section-label text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-muted)]">
+            Focus
           </p>
-          {previewRemainder ? (
-            <details className="os-today-hero__more group">
-              <summary className="cursor-pointer list-none text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)] marker:content-none [&::-webkit-details-marker]:hidden">
-                <span>Read full briefing</span>
-              </summary>
-              <p className="mt-3 whitespace-pre-wrap break-words text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-primary)]">
-                {previewRemainder}
-              </p>
-            </details>
-          ) : null}
+          <ul className="os-today-hero__list">
+            {focusItems.map((item) => (
+              <li key={item} className="os-today-hero__list-item text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]">
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
-      ) : null}
+
+        {blockerSummary ? (
+          <p className="os-today-hero__blocker text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
+            {blockerSummary}
+          </p>
+        ) : null}
+
+        {hasSavedBriefExcerpt ? (
+          <details className="os-today-hero__saved-note group">
+            <summary className="cursor-pointer list-none text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)] marker:content-none [&::-webkit-details-marker]:hidden">
+              Saved note
+            </summary>
+            {previewBody ? (
+              <p className="mt-2 whitespace-pre-wrap break-words text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-secondary)]">
+                {previewBody}
+                {previewRemainder ? " ..." : ""}
+              </p>
+            ) : null}
+          </details>
+        ) : null}
+      </div>
     </article>
   );
 }

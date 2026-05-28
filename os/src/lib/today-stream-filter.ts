@@ -1,4 +1,4 @@
-import type { TodayProject, TodayStream, TodayTask } from "@/lib/today-data";
+import type { TodayProject, TodayStream, TodayTask, TodayWaitingOn } from "@/lib/today-data";
 import { itemBelongsToStream, projectIdsSetForStream } from "@/lib/os/stream-linkage";
 import { OS_ROUTES } from "@/lib/os-routes";
 
@@ -40,6 +40,19 @@ export function filterTasksByTodayStream(
 
   const projectIds = projectIdsSetForStream(projects, filter.streamId);
   return tasks.filter((task) => itemBelongsToStream(task, filter.streamId, projectIds));
+}
+
+export function filterWaitingOnsByTodayStream(
+  waitingOns: TodayWaitingOn[],
+  filter: TodayStreamFilter,
+  projects: readonly TodayProject[] = [],
+): TodayWaitingOn[] {
+  if (filter.kind === "all") {
+    return waitingOns;
+  }
+
+  const projectIds = projectIdsSetForStream(projects, filter.streamId);
+  return waitingOns.filter((item) => itemBelongsToStream(item, filter.streamId, projectIds));
 }
 
 /** Canonical Today URL for a stream focus chip. */

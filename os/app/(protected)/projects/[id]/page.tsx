@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArchiveProjectForm } from "@/components/projects/ArchiveProjectForm";
 import { EditProjectForm } from "@/components/projects/EditProjectForm";
 import { ProjectDetailHeader } from "@/components/projects/ProjectDetailHeader";
+import { ProjectDetailTabs } from "@/components/projects/ProjectDetailTabs";
 import { ProjectLinkedStream } from "@/components/projects/ProjectLinkedStream";
 import { ProjectTasksSection } from "@/components/projects/ProjectTasksSection";
 import { resolveAuthenticatedOsUserId } from "@/lib/os/auth";
@@ -11,6 +12,7 @@ import {
   fetchProjectByIdForUserId,
 } from "@/lib/os/projects-data";
 import { fetchActiveTasksForProjectForUserId } from "@/lib/os/tasks-data";
+import { fetchActiveWaitingOnsForProjectForUserId } from "@/lib/os/waiting-ons-data";
 import {
   fetchActiveStreamsForUser,
   fetchStreamByIdForUserId,
@@ -40,16 +42,22 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
     redirect(OS_ROUTES.projects);
   }
 
-  const [stream, streams, { tasks, loadFailed: tasksLoadFailed }] = await Promise.all([
+  const [
+    stream,
+    streams,
+    { tasks, loadFailed: tasksLoadFailed },
+    { waitingOns, loadFailed: waitingOnsLoadFailed },
+  ] = await Promise.all([
     project.streamId != null
       ? fetchStreamByIdForUserId(userId, project.streamId)
       : Promise.resolve(null),
     fetchActiveStreamsForUser(userId),
     fetchActiveTasksForProjectForUserId(userId, project.id),
+    fetchActiveWaitingOnsForProjectForUserId(userId, project.id),
   ]);
 
   return (
-    <main className="os-projects-page mx-auto flex w-full min-w-0 max-w-2xl flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
+    <main className="os-projects-page flex w-full min-w-0 max-w-none flex-col px-4 py-5 sm:px-6 sm:py-7 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
       <Link
         href={OS_ROUTES.projects}
         className="os-projects-back text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)] max-md:mx-3 max-md:mt-2 max-md:mb-0"
@@ -60,19 +68,40 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
       <div className="os-projects-feed mt-4 flex flex-col gap-5 sm:gap-6 max-md:mt-2 max-md:gap-2.5">
         <ProjectDetailHeader project={project} />
 
-        {stream ? <ProjectLinkedStream stream={stream} /> : null}
-
-        <ProjectTasksSection
-          projectId={project.id}
-          streamId={project.streamId}
-          tasks={tasks}
-          loadFailed={tasksLoadFailed}
+        <ProjectDetailTabs
+          workPanel={
+            <>
+              {stream ? <ProjectLinkedStream stream={stream} /> : null}
+              <ProjectTasksSection
+                projectId={project.id}
+                streamId={project.streamId}
+                tasks={tasks}
+                waitingOns={waitingOns}
+                tasksLoadFailed={tasksLoadFailed}
+                waitingOnsLoadFailed={waitingOnsLoadFailed}
+              />
+            </>
+          }
+          kanbanPanel={
+            <ProjectTasksSection
+              projectId={project.id}
+              streamId={project.streamId}
+              tasks={tasks}
+              waitingOns={waitingOns}
+              tasksLoadFailed={tasksLoadFailed}
+              waitingOnsLoadFailed={waitingOnsLoadFailed}
+              initialViewMode="board"
+              hideViewToggle
+              boardFirstLayout
+            />
+          }
+          managePanel={
+            <div className="os-projects-manage flex flex-col gap-4 max-md:gap-3">
+              <EditProjectForm project={project} streams={streams} />
+              <ArchiveProjectForm projectId={project.id} projectName={project.name} />
+            </div>
+          }
         />
-
-        <div className="os-projects-manage flex flex-col gap-4 max-md:gap-3">
-          <EditProjectForm project={project} streams={streams} />
-          <ArchiveProjectForm projectId={project.id} projectName={project.name} />
-        </div>
       </div>
     </main>
   );

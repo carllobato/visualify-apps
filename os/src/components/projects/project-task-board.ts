@@ -3,7 +3,7 @@ import type { OsTask } from "@/lib/os/tasks-data";
 /** Matches `OS_TASK_STATUS.active` in tasks-data (client-safe literal). */
 const ACTIVE_TASK_STATUS = "active";
 
-export type ProjectTaskBoardColumnId = "overdue" | "due_today" | "upcoming";
+export type ProjectTaskBoardColumnId = "upcoming" | "working";
 
 export type ProjectTaskBoardColumn = {
   id: ProjectTaskBoardColumnId;
@@ -53,36 +53,31 @@ function compareBoardTasks(a: OsTask, b: OsTask): number {
 }
 
 /**
- * Groups active project tasks into board columns using `due_at` only.
- * Overdue → Due Today → Upcoming / Open (no due or future due).
+ * Groups active project tasks into Kanban buckets.
+ * Working = overdue + due today, Upcoming = future/no due.
  */
 export function groupTasksForProjectBoard(
   tasks: readonly OsTask[],
   now: Date = new Date(),
 ): ProjectTaskBoardColumn[] {
-  const overdue: OsTask[] = [];
-  const dueToday: OsTask[] = [];
+  const working: OsTask[] = [];
   const upcoming: OsTask[] = [];
 
   for (const task of tasks) {
     if (task.status !== ACTIVE_TASK_STATUS) continue;
 
-    if (isTaskOverdueByDueAt(task.dueAt, now)) {
-      overdue.push(task);
-    } else if (isTaskDueOnLocalDay(task.dueAt, now)) {
-      dueToday.push(task);
+    if (isTaskOverdueByDueAt(task.dueAt, now) || isTaskDueOnLocalDay(task.dueAt, now)) {
+      working.push(task);
     } else {
       upcoming.push(task);
     }
   }
 
-  overdue.sort(compareBoardTasks);
-  dueToday.sort(compareBoardTasks);
+  working.sort(compareBoardTasks);
   upcoming.sort(compareBoardTasks);
 
   return [
-    { id: "overdue", label: "Overdue", tasks: overdue },
-    { id: "due_today", label: "Due Today", tasks: dueToday },
-    { id: "upcoming", label: "Upcoming / Open", tasks: upcoming },
+    { id: "upcoming", label: "Upcoming", tasks: upcoming },
+    { id: "working", label: "Working", tasks: working },
   ];
 }

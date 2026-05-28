@@ -66,6 +66,57 @@
   white-space: nowrap;
 }
 
+.os-today-hero__ops {
+  gap: 0.5rem;
+}
+
+.os-today-hero__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.os-today-hero__section-label {
+  margin: 0;
+  text-transform: none;
+}
+
+.os-today-hero__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.os-today-hero__list-item {
+  line-height: 1.4;
+}
+
+.os-today-hero__list-item::before {
+  content: "\2022";
+  color: color-mix(in oklab, var(--ds-text-muted) 75%, transparent);
+  margin-right: 0.4rem;
+}
+
+.os-today-hero__guidance {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.os-today-hero__blocker {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.os-today-hero__saved-note summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.4rem;
+  padding: 0;
+}
+
 /* Stream focus chips — all breakpoints */
 .os-today-focus {
   display: flex;
@@ -101,13 +152,14 @@
   flex-shrink: 0;
   align-items: center;
   gap: 0.375rem;
-  min-height: 2.75rem;
-  padding: 0.5rem 0.875rem;
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0.4rem 0.75rem;
   border-radius: 9999px;
   border: 1px solid color-mix(in oklab, var(--ds-border) 55%, transparent);
   background: color-mix(in oklab, var(--ds-surface) 92%, var(--ds-bg) 8%);
   text-decoration: none;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.2;
   color: var(--ds-text-secondary);
@@ -151,11 +203,223 @@
   white-space: nowrap;
 }
 
+.os-today-page__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.os-today-page__eyebrow {
+  margin: 0;
+  font-size: var(--ds-text-xs, 0.75rem);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ds-text-muted);
+}
+
+.os-today-page__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ds-text-primary);
+}
+
+.os-today-page__lede {
+  margin: 0;
+  max-width: 28rem;
+  font-size: var(--ds-text-sm, 0.875rem);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ds-text-secondary);
+}
+
 .os-today-focus__active {
   margin: 0;
   padding: 0 0.125rem;
   line-height: 1.4;
 }
+
+.os-today-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0 0.125rem;
+}
+
+.os-today-header__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.os-today-header__title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ds-text-primary);
+}
+
+.os-today-header__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1rem;
+}
+
+.os-today-header .os-today-hero__weather {
+  color: var(--ds-text-secondary);
+}
+
+.os-today-unified-surface {
+  overflow: hidden;
+  border-radius: 0.9rem;
+  border: 1px solid color-mix(in oklab, var(--ds-border) 28%, transparent);
+  background: var(--ds-surface);
+}
+
+.os-today-primary {
+  padding: 0.8rem 0.95rem 0.7rem;
+}
+
+.os-today-primary__label {
+  margin: 0;
+}
+
+.os-today-primary__list {
+  margin-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.os-today-primary__expansion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.05rem 0.2rem;
+}
+
+.os-today-primary__expansion-meta {
+  margin: 0;
+  font-size: var(--ds-text-xs, 0.75rem);
+  color: var(--ds-text-muted);
+  line-height: 1.35;
+}
+
+.os-today-primary__more {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  padding: 0.1rem 0.05rem;
+  font-size: var(--ds-text-xs, 0.75rem);
+  font-weight: 500;
+  color: var(--ds-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.os-today-secondary {
+  border-top: 1px solid color-mix(in oklab, var(--ds-border) 35%, transparent);
+  padding: 0.75rem 0.95rem 0.45rem;
+}
+
+.os-today-secondary__label {
+  margin: 0 0 0.125rem;
+}
+
+.os-today-secondary__body {
+  overflow: hidden;
+}
+
+.os-today-waiting-row .os-today-row__meta {
+  color: color-mix(in oklab, var(--ds-text-secondary) 90%, var(--ds-text-muted));
+}
+
+.os-today-waiting__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.os-today-waiting__summary-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.os-today-waiting__summary {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.os-today-waiting__summary-meta {
+  margin: 0.2rem 0 0;
+  line-height: 1.4;
+}
+
+.os-today-waiting__summary-item {
+  color: var(--ds-text-secondary);
+}
+
+.os-today-waiting__toggle {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  padding: 0.125rem 0.125rem;
+  font-size: var(--ds-text-xs, 0.75rem);
+  font-weight: 500;
+  color: var(--ds-primary);
+  cursor: pointer;
+}
+
+.os-today-task-row__complete-form {
+  flex-shrink: 0;
+  margin: 0;
+  padding-top: 0;
+}
+
+.os-today-task-row__complete {
+  display: inline-flex;
+  min-height: 1.55rem;
+  width: 1.55rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--ds-border) 58%, transparent);
+  background: color-mix(in oklab, var(--ds-surface) 94%, var(--ds-bg) 6%);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: color-mix(in oklab, var(--ds-text-muted) 85%, var(--ds-text-secondary));
+  -webkit-tap-highlight-color: transparent;
+}
+
+.os-today-task-row__complete:hover {
+  color: var(--ds-text-secondary);
+  border-color: color-mix(in oklab, var(--ds-border) 75%, transparent);
+}
+
+.os-today-task-row__complete:disabled {
+  opacity: 0.55;
+}
+
+.os-today-task-row__check {
+  line-height: 1;
+}
+
+.os-today-task-row__inner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 
 @media (max-width: 767px) {
   .vf-app-shell-outer-canvas .vf-app-shell-scroll-region:has(> .os-today-page) {
@@ -249,8 +513,8 @@
   .os-today-hero {
     display: flex;
     flex-direction: column;
-    gap: 0.625rem;
-    padding: 0.875rem 0.875rem 0.9375rem;
+    gap: 0.5rem;
+    padding: 0.75rem 0.875rem 0.8125rem;
   }
 
   .os-today-hero__eyebrow {
@@ -297,11 +561,15 @@
   }
 
   .os-today-hero__header {
-    gap: 0.375rem;
+    gap: 0.25rem;
   }
 
   .os-today-hero__title-row {
     gap: 0.5rem;
+  }
+
+  .os-today-hero__ops {
+    gap: 0.45rem;
   }
 
   .os-today-hero__listen {
@@ -311,7 +579,7 @@
 
   .os-today-row {
     display: block;
-    padding: 0.6875rem 0.875rem;
+    padding: 0.78rem 0.9rem;
     border-bottom: 0.5px solid color-mix(in oklab, var(--ds-border) 18%, transparent);
   }
 
@@ -323,6 +591,14 @@
     display: flex;
     align-items: flex-start;
     gap: 0.625rem;
+  }
+
+  .os-today-waiting-row .os-today-row__meta {
+    margin-top: 0.2rem;
+  }
+
+  .os-today-waiting__summary-row {
+    padding: 0.82rem 0.9rem 0.95rem;
   }
 
   .os-today-task-row__main {
@@ -373,17 +649,18 @@
 
   .os-today-task-row__complete {
     display: inline-flex;
-    min-height: 2rem;
+    min-height: 1.8rem;
+    width: 1.8rem;
     align-items: center;
     justify-content: center;
-    padding: 0.3125rem 0.625rem;
-    border-radius: 0.5rem;
+    padding: 0;
+    border-radius: 9999px;
     border: 0.5px solid color-mix(in oklab, var(--ds-primary) 22%, var(--ds-border));
     background: color-mix(in oklab, var(--ds-surface-muted) 35%, var(--ds-surface));
-    font-size: 0.75rem;
-    font-weight: 500;
+    font-size: 0.78rem;
+    font-weight: 600;
     line-height: 1.2;
-    color: color-mix(in oklab, var(--ds-primary) 85%, var(--ds-text-primary));
+    color: color-mix(in oklab, var(--ds-primary) 65%, var(--ds-text-secondary));
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -421,5 +698,40 @@
 
   .os-today-focus-chip:active {
     background: color-mix(in oklab, var(--ds-surface-muted) 45%, var(--ds-surface));
+  }
+
+  .os-today-header {
+    padding: 0.125rem 0 0;
+  }
+
+  .os-today-header__title {
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .os-today-page__intro {
+    display: flex;
+    padding: 0.125rem 0 0;
+    gap: 0.35rem;
+  }
+
+  .os-today-page__title {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+
+  .os-today-unified-surface {
+    border: 1px solid color-mix(in oklab, var(--ds-border) 24%, transparent);
+    border-radius: 0.9rem;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--ds-text-primary) 3%, transparent);
+  }
+
+  .os-today-primary {
+    padding: 0.7rem 0.9rem 0.6rem;
+  }
+
+  .os-today-secondary {
+    padding: 0.65rem 0.9rem 0.35rem;
   }
 }
