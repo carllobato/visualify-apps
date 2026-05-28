@@ -3,9 +3,11 @@ import { InboxCaptureForm } from "@/components/inbox/InboxCaptureForm";
 import {
   archiveInboxItemAction,
   createInboxItemAction,
+  processInboxItemWithAiAction,
 } from "@/lib/os/inbox-actions";
 import {
   fetchInboxItemsForCurrentUser,
+  fetchLinkedOperationalItemsByInboxId,
   OS_INBOX_PROCESSING_STATUS,
   type OsInboxItem,
 } from "@/lib/os/inbox-data";
@@ -44,6 +46,11 @@ function statusClassName(item: OsInboxItem): string {
   }
 }
 
+function hasLinkedItems(linked: { tasks: { id: string }[]; waitingOns: { id: string }[] } | undefined): boolean {
+  if (!linked) return false;
+  return linked.tasks.length > 0 || linked.waitingOns.length > 0;
+}
+
 async function createInboxItemFormAction(formData: FormData): Promise<void> {
   "use server";
   const rawContent = formData.get("rawContent");
@@ -56,6 +63,16 @@ async function archiveInboxItemFormAction(formData: FormData): Promise<void> {
   await archiveInboxItemAction(typeof id === "string" ? id : "");
 }
 
+async function processInboxItemFormAction(formData: FormData): Promise<void> {
+  "use server";
+  const id = formData.get("id");
+  console.log("[inbox/process] form action invoked", {
+    idType: typeof id,
+    hasId: typeof id === "string" && id.trim().length > 0,
+  });
+  await processInboxItemWithAiAction(typeof id === "string" ? id : "");
+}
+
 export default async function InboxPage() {
   const userId = await resolveAuthenticatedOsUserId();
   if (!userId) {
@@ -63,6 +80,10 @@ export default async function InboxPage() {
   }
 
   const items = await fetchInboxItemsForCurrentUser();
+  const linkedByInboxId = await fetchLinkedOperationalItemsByInboxId(
+    userId,
+    items.map((item) => item.id),
+  );
 
   return (
     <main className="os-inbox-page mx-auto flex w-full min-w-0 flex-col px-4 py-5 sm:px-6 sm:py-6 max-md:mx-0 max-md:max-w-none max-md:flex-1 max-md:min-h-full max-md:px-0 max-md:py-0">
@@ -104,6 +125,37 @@ export default async function InboxPage() {
                         <time className="os-inbox-item__time" dateTime={item.createdAt}>
                           {formatRelativeDate(item.createdAt)}
                         </time>
+                        {item.processingStatus === OS_INBOX_PROCESSING_STATUS.queued ? (
+                          <>
+                            <span className="os-inbox-item__meta-sep" aria-hidden="true">
+                              ·
+                            </span>
+                            <form
+                              action={processInboxItemFormAction}
+                              className="os-inbox-item__archive-form"
+                            >
+                              <input type="hidden" name="id" value={item.id} />
+                              <button type="submit" className="os-inbox-item__archive-button">
+                                Process
+                              </button>
+                            </form>
+                          </>
+                        ) : null}
+                        {item.processingStatus === OS_INBOX_PROCESSING_STATUS.processing ? (
+                          <>
+                            <span className="os-inbox-item__meta-sep" aria-hidden="true">
+                              ·
+                            </span>
+                            <button
+                              type="button"
+                              className="os-inbox-item__archive-button"
+                              disabled
+                              aria-disabled="true"
+                            >
+                              Processing…
+                            </button>
+                          </>
+                        ) : null}
                         <span className="os-inbox-item__meta-sep" aria-hidden="true">
                           ·
                         </span>
@@ -121,6 +173,35 @@ export default async function InboxPage() {
                     <p className="os-inbox-item__content">{item.rawContent}</p>
                     {item.aiSummary?.trim() ? (
                       <p className="os-inbox-item__summary">{item.aiSummary}</p>
+                    ) : null}
+                    {item.processingStatus === OS_INBOX_PROCESSING_STATUS.processed &&
+                    hasLinkedItems(linkedByInboxId[item.id]) ? (
+                      <section className="os-inbox-item__linked" aria-label="AI created operational items">
+                        {linkedByInboxId[item.id].tasks.length > 0 ? (
+                          <div className="os-inbox-item__linked-group">
+                            <p className="os-inbox-item__linked-label">Tasks</p>
+                            <ul className="os-inbox-item__linked-list">
+                              {linkedByInboxId[item.id].tasks.map((task) => (
+                                <li key={task.id} className="os-inbox-item__linked-pill">
+                                  {task.title}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                        {linkedByInboxId[item.id].waitingOns.length > 0 ? (
+                          <div className="os-inbox-item__linked-group">
+                            <p className="os-inbox-item__linked-label">Waiting On</p>
+                            <ul className="os-inbox-item__linked-list">
+                              {linkedByInboxId[item.id].waitingOns.map((waitingOn) => (
+                                <li key={waitingOn.id} className="os-inbox-item__linked-pill">
+                                  {waitingOn.title}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </section>
                     ) : null}
                   </article>
                 </li>
