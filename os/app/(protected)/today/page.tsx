@@ -1,12 +1,18 @@
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { TodayBriefingHero } from "@/components/today/TodayBriefingHero";
+import { TodayStreamFilterBar } from "@/components/today/TodayStreamFilter";
 import {
   fetchTodayPageData,
   filterTasksForTodaySurface,
   normalizeTodayPageData,
   type TodayTask,
 } from "@/lib/today-data";
+import {
+  filterTasksByTodayStream,
+  resolveTodayStreamFilter,
+  type TodayStreamFilter,
+} from "@/lib/today-stream-filter";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import "./today-mobile.css";
 
@@ -79,11 +85,19 @@ function TaskList({ children }: { children: ReactNode }) {
   );
 }
 
-function TodayTasksCard({ tasks }: { tasks: TodayTask[] }) {
+function TodayTasksCard({
+  tasks,
+  streamFilter,
+}: {
+  tasks: TodayTask[];
+  streamFilter: TodayStreamFilter;
+}) {
+  const focused = streamFilter.kind === "stream";
+
   return (
     <section className="os-today-block os-today-tasks flex flex-col gap-2.5">
       <h2 className="os-today-block__label text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">
-        Today&apos;s tasks
+        {focused ? "Tasks in focus" : "Today\u2019s tasks"}
       </h2>
       <div className="os-today-block__surface">
         {tasks.length > 0 ? (
@@ -95,10 +109,14 @@ function TodayTasksCard({ tasks }: { tasks: TodayTask[] }) {
         ) : (
           <div className="os-today-empty-state">
             <p className="os-today-empty-state__title text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]">
-              Nothing scheduled for today
+              {focused
+                ? "Nothing due in this stream today"
+                : "Nothing scheduled for today"}
             </p>
             <p className="os-today-empty-state__hint text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">
-              Use Inbox to capture anything new.
+              {focused
+                ? "Try another focus, or capture something in Inbox."
+                : "Use Inbox to capture anything new."}
             </p>
           </div>
         )}
@@ -107,7 +125,11 @@ function TodayTasksCard({ tasks }: { tasks: TodayTask[] }) {
   );
 }
 
-export default async function TodayPage() {
+type TodayPageProps = {
+  searchParams: Promise<{ stream?: string | string[] }>;
+};
+
+export default async function TodayPage({ searchParams }: TodayPageProps) {
   const supabase = await supabaseServerClient();
   const {
     data: { user },
@@ -117,8 +139,16 @@ export default async function TodayPage() {
     redirect("/login");
   }
 
-  const { tasks, latestBriefing } = normalizeTodayPageData(await fetchTodayPageData(user.id));
-  const todaysTasks = filterTasksForTodaySurface(tasks);
+  const { stream: streamParam } = await searchParams;
+  const pageData = normalizeTodayPageData(await fetchTodayPageData(user.id));
+  const { tasks, streams, projects, latestBriefing } = pageData;
+
+  const streamFilter = resolveTodayStreamFilter(streamParam, streams);
+  const todaysTasks = filterTasksByTodayStream(
+    filterTasksForTodaySurface(tasks),
+    streamFilter,
+    projects,
+  );
 
   const { preview, remainder } = latestBriefing
     ? splitBriefingContent(latestBriefing.content)
@@ -137,6 +167,8 @@ export default async function TodayPage() {
       </p>
 
       <div className="os-today-feed mt-5 flex flex-col gap-6 sm:gap-7 max-md:mt-0 max-md:gap-2.5">
+        <TodayStreamFilterBar streams={streams} activeFilter={streamFilter} />
+
         <TodayBriefingHero
           briefing={latestBriefing}
           title={heroTitle}
@@ -145,7 +177,7 @@ export default async function TodayPage() {
           previewRemainder={remainder}
         />
 
-        <TodayTasksCard tasks={todaysTasks} />
+        <TodayTasksCard tasks={todaysTasks} streamFilter={streamFilter} />
       </div>
     </main>
   );

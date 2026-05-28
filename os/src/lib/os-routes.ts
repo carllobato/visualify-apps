@@ -13,6 +13,10 @@ export const OS_ROUTES = {
 
 export const OS_DEFAULT_ROUTE = OS_ROUTES.today;
 
+export function osStreamDetailPath(streamId: string): string {
+  return `${OS_ROUTES.streams}/${encodeURIComponent(streamId.trim())}`;
+}
+
 export type OsRoutePath = (typeof OS_ROUTES)[keyof typeof OS_ROUTES];
 
 export const OS_PRIMARY_NAV: readonly {
