@@ -8,6 +8,7 @@
     --os-mobile-canvas: color-mix(in oklab, var(--ds-bg) 80%, var(--ds-surface-muted) 20%);
     --os-mobile-shell-bg: color-mix(in oklab, var(--os-mobile-canvas) 92%, var(--ds-surface) 8%);
     --os-today-canvas: var(--os-mobile-shell-bg);
+    --os-inbox-canvas: var(--os-mobile-shell-bg);
     --os-streams-canvas: var(--os-mobile-shell-bg);
     --os-projects-canvas: var(--os-mobile-shell-bg);
   }
