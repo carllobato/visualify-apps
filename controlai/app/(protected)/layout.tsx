@@ -4,10 +4,23 @@ import { AppShellOuterCanvas } from "@visualify/app-shell";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
-import { CONTROLAI_DEFAULT_ROUTE } from "@/lib/controlai-routes";
+import { CONTROLAI_DEFAULT_ROUTE, CONTROLAI_ROUTES } from "@/lib/controlai-routes";
+import { resolveActiveWorkspaceContext } from "@/lib/workspace/resolveActiveWorkspace";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { ControlAiAppShellRail } from "@/components/layout/ControlAiAppShellRail";
 import { ControlAiProtectedDocument } from "@/components/layout/ControlAiProtectedDocument";
+
+function isSelectWorkspacePath(pathname: string): boolean {
+  return (
+    pathname === CONTROLAI_ROUTES.selectWorkspace ||
+    pathname.startsWith(`${CONTROLAI_ROUTES.selectWorkspace}/`)
+  );
+}
+
+function buildSelectWorkspaceRedirectUrl(returnPath: string): string {
+  const next = encodeURIComponent(returnPath);
+  return `${CONTROLAI_ROUTES.selectWorkspace}?next=${next}`;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +47,18 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(productConfig.HQ_APPS_URL);
   }
 
+  const workspaceContext = await resolveActiveWorkspaceContext(supabase, user.id);
+
+  if (workspaceContext.needsSelection && !isSelectWorkspacePath(pathname)) {
+    redirect(buildSelectWorkspaceRedirectUrl(pathname));
+  }
+
   return (
     <AppShellOuterCanvas mobileHeaderExpected>
-      <ControlAiAppShellRail />
+      <ControlAiAppShellRail
+        workspaces={workspaceContext.workspaces}
+        selectedWorkspaceId={workspaceContext.selectedWorkspaceId}
+      />
       <ControlAiProtectedDocument>{children}</ControlAiProtectedDocument>
     </AppShellOuterCanvas>
   );

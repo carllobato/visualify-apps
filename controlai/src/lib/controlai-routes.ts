@@ -7,6 +7,7 @@ export const CONTROLAI_ROUTES = {
   projects: "/projects",
   settings: "/settings",
   account: "/account",
+  selectWorkspace: "/select-workspace",
 } as const;
 
 export const CONTROLAI_PRIMARY_NAV = [

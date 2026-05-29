@@ -19,7 +19,9 @@ import {
   CONTROLAI_PRIMARY_NAV,
   CONTROLAI_ROUTES,
 } from "@/lib/controlai-routes";
+import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 import { ControlAiRailAccountMenu } from "./ControlAiRailAccountMenu";
+import { ControlAiWorkspaceRailList } from "./ControlAiWorkspaceRailList";
 
 const CONTROLAI_RAIL_PINNED_KEY = "controlai-platform-rail-pinned";
 
@@ -92,7 +94,15 @@ function navIcon(href: string) {
   }
 }
 
-export function ControlAiAppShellRail() {
+type ControlAiAppShellRailProps = {
+  workspaces: EntitledWorkspace[];
+  selectedWorkspaceId: string | null;
+};
+
+export function ControlAiAppShellRail({
+  workspaces,
+  selectedWorkspaceId,
+}: ControlAiAppShellRailProps) {
   const pathname = usePathname();
   const accountRailActive = appShellNavHrefActive(pathname, CONTROLAI_ROUTES.account);
 
@@ -105,6 +115,13 @@ export function ControlAiAppShellRail() {
             currentAppName="Visualify ControlAI"
             catalog={CONTROLAI_APP_SHELL_CATALOG}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+          />
+
+          <AppShellRailSeparator />
+
+          <ControlAiWorkspaceRailList
+            workspaces={workspaces}
+            selectedWorkspaceId={selectedWorkspaceId}
           />
 
           <AppShellRailSeparator />
