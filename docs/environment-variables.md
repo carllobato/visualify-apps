@@ -15,6 +15,8 @@ Operational contract for all Visualify Next.js apps, Vercel projects, and Supaba
 | **Website** | `https://visualify.com.au` | Website | Marketing, early access, contact forms |
 | **HQ** | `https://hq.visualify.com.au` | HQ | Customer home base, workspaces, app launcher |
 | **RiskAI** | `https://riskai.visualify.com.au` *(target)* | RiskAI | Authenticated risk product |
+| **OS** | `https://os.visualify.com.au` | OS | Personal operating system |
+| **ControlAI** | `https://controlai.visualify.com.au` *(target)* | ControlAI | Control and governance product |
 | **Template App** | Same origin as RiskAI path or dedicated host *(per deploy)* | Optional | Internal / scaffold product |
 
 **Deprecated host:** `https://app.visualify.com.au` — do not use in new env values. Legacy env names and code fallbacks remain until DNS and production cutover are complete; do not remove them yet.
@@ -29,7 +31,7 @@ All apps that read or write platform data **must** use the **same** Supabase pro
 
 | Variable | Rule |
 |----------|------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Identical on HQ, RiskAI, Website, Template App |
+| `NEXT_PUBLIC_SUPABASE_URL` | Identical on HQ, RiskAI, Website, OS, ControlAI, Template App |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Identical everywhere |
 | `SUPABASE_SERVICE_ROLE_KEY` | Same project’s `service_role` secret on every server that needs admin APIs |
 
@@ -112,6 +114,25 @@ Website does **not** need OpenAI, Upstash, or HQ cookie-sharing flags unless beh
 
 Add app-specific secrets (e.g. third-party APIs) only on that app’s Vercel project.
 
+### ControlAI (`controlai/`)
+
+| Variable | Required | Notes |
+|----------|:--------:|-------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✓ | Same project as HQ/RiskAI |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✓ | |
+| `NEXT_PUBLIC_CONTROLAI_ORIGIN` | ✓ on Vercel | Production: `https://controlai.visualify.com.au` (no trailing slash) |
+| `NEXT_PUBLIC_HQ_ORIGIN` | ✓ | No-entitlement redirect / cross-nav |
+| `NEXT_PUBLIC_RISKAI_ORIGIN` | Recommended | App switcher / cross-links |
+| `NEXT_PUBLIC_WEBSITE_ORIGIN` | Recommended | |
+| `NEXT_PUBLIC_VISUALIFY_PRODUCT_KEY` | Optional | Default `controlai`; must match `visualify_products.key` |
+| `NEXT_PUBLIC_HQ_APPS_URL` | Optional | No-entitlement redirect target |
+| `NEXT_PUBLIC_SUPABASE_COOKIE_DOMAIN` | Optional | With share flag only |
+| `NEXT_PUBLIC_HQ_SHARE_AUTH_COOKIE_DOMAIN` | Optional | Must match HQ/RiskAI if enabled |
+| `SUPABASE_AUTH_COOKIE_SYNC_MS` | Optional | Default `15` |
+| `SUPABASE_AUTH_DEBUG` | Optional | Proxy debug, non-prod |
+
+**Local dev:** set `NEXT_PUBLIC_CONTROLAI_ORIGIN=http://localhost:3004` in `controlai/.env.local` (dev server uses port `3004`). Registry default is production host when unset.
+
 ---
 
 ## 4. Must match across all apps
@@ -129,6 +150,7 @@ Align for correct cross-navigation and emails:
 NEXT_PUBLIC_HQ_ORIGIN
 NEXT_PUBLIC_RISKAI_ORIGIN
 NEXT_PUBLIC_WEBSITE_ORIGIN
+NEXT_PUBLIC_CONTROLAI_ORIGIN   # when ControlAI is deployed or cross-linked
 ```
 
 If shared auth cookies are enabled, **every** authenticated app must use the same pair:
@@ -212,6 +234,15 @@ https://app.visualify.com.au/auth/confirm**
 http://localhost:<riskai-port>/**
 ```
 
+**ControlAI** (`controlai.visualify.com.au`):
+
+```
+https://controlai.visualify.com.au/**
+https://controlai.visualify.com.au/auth/callback**
+http://localhost:3004/**
+http://localhost:3004/auth/callback**
+```
+
 **Website** (if using Supabase auth on marketing — otherwise forms-only):
 
 ```
@@ -229,7 +260,7 @@ http://localhost:<website-port>/**
 
 Copy into each Vercel project **Production** environment. Replace `<…>` placeholders.
 
-### All authenticated apps (HQ, RiskAI, Template App)
+### All authenticated apps (HQ, RiskAI, OS, ControlAI, Template App)
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
@@ -237,6 +268,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 NEXT_PUBLIC_HQ_ORIGIN=https://hq.visualify.com.au
 NEXT_PUBLIC_RISKAI_ORIGIN=https://riskai.visualify.com.au
 NEXT_PUBLIC_WEBSITE_ORIGIN=https://visualify.com.au
+```
+
+### ControlAI Vercel project (add)
+
+```bash
+NEXT_PUBLIC_CONTROLAI_ORIGIN=https://controlai.visualify.com.au
+NEXT_PUBLIC_VISUALIFY_PRODUCT_KEY=controlai
 ```
 
 ### HQ (add)

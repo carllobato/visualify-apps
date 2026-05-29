@@ -41,6 +41,12 @@ export const VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG: readonly AccountSettingsApp
     href: getProductDashboardUrl("os"),
   },
   {
+    id: "controlai",
+    name: "ControlAI",
+    description: "Control and governance for your programmes.",
+    href: getProductDashboardUrl("controlai"),
+  },
+  {
     id: "riskai",
     name: "RiskAI",
     description: "Risk management, simulations and reporting.",

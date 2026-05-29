@@ -40,6 +40,7 @@ import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext"
 import { ProjectReadOnlyNotice } from "@/components/project/ProjectReadOnlyNotice";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import { AccountSettingsTabsShell } from "@visualify/app-shell";
 import {
   Button,
   Card,
@@ -47,6 +48,8 @@ import {
   Callout,
   FieldError,
   Input,
+  Tab,
+  Tabs,
 } from "@visualify/design-system";
 import { NeutralRiskaiLoading } from "@/components/NeutralRiskaiLoading";
 const FOCUS_HIGHLIGHT_CLASS = "risk-focus-highlight";
@@ -194,6 +197,7 @@ function riskMatchesRegisterSearch(risk: Risk, rawQuery: string): boolean {
 }
 
 export type RiskRegisterContentProps = { projectId?: string | null };
+type RiskRegisterContentTab = "risks" | "simulation" | "time" | "settings";
 
 /** Tighter top padding under the shell page header; avoids stacking with a large margin below an empty in-page header row. */
 const RISK_REGISTER_MAIN_CLASS = "min-w-0 px-6 pb-6 pt-3 text-[var(--ds-text-primary)]";
@@ -232,6 +236,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const [detailInitialRiskId, setDetailInitialRiskId] = useState<string | null>(null);
   const [showCreateRiskFileModal, setShowCreateRiskFileModal] = useState(false);
   const [showCreateRiskAIModal, setShowCreateRiskAIModal] = useState(false);
+  const [activeContentTab, setActiveContentTab] = useState<RiskRegisterContentTab>("risks");
   const [columnFilters, setColumnFilters] = useState<ColumnFilters>({});
   const [registerSearchQuery, setRegisterSearchQuery] = useState("");
   const [risksLoadError, setRisksLoadError] = useState<string | null>(null);
@@ -859,116 +864,156 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
           <FieldError className="mt-2">Save failed: {saveToServerError}</FieldError>
         )}
       </div>
-      {risks.length === 0 ? (
+      <AccountSettingsTabsShell className="mb-4">
+        <Tabs>
+          <Tab active={activeContentTab === "risks"} onClick={() => setActiveContentTab("risks")}>
+            Risks
+          </Tab>
+          <Tab
+            active={activeContentTab === "simulation"}
+            onClick={() => setActiveContentTab("simulation")}
+          >
+            Simulation
+          </Tab>
+          <Tab active={activeContentTab === "time"} onClick={() => setActiveContentTab("time")}>
+            Time
+          </Tab>
+          <Tab active={activeContentTab === "settings"} onClick={() => setActiveContentTab("settings")}>
+            Settings
+          </Tab>
+        </Tabs>
+      </AccountSettingsTabsShell>
+      {activeContentTab === "risks" ? (
+        risks.length === 0 ? (
+          <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
+            <CardContent className="py-[var(--ds-space-6)]">
+              <p className="ds-dashboard-empty-title">No risks in this project</p>
+              <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                {contentReadOnly
+                  ? "You have view-only access to this project."
+                  : "Add a risk manually, from file, or with AI to get started."}
+              </p>
+              {!contentReadOnly && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="mt-5"
+                  onClick={() => setShowAddNewRiskChoiceModal(true)}
+                >
+                  Add risk
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="w-full min-w-0">
+              <Input
+                type="search"
+                value={registerSearchQuery}
+                onChange={(e) => setRegisterSearchQuery(e.target.value)}
+                placeholder="Search risks..."
+                aria-label="Search risks across all fields"
+                className="w-full min-w-0"
+                autoComplete="off"
+              />
+            </div>
+            <RiskRegisterTable
+              risks={filteredRisks}
+              risksForFilterOptions={risksForFilterOptions}
+              emptyListMessage={
+                risks.length > 0 && filteredRisks.length === 0
+                  ? "No risks match your search or column filters. Archived risks stay hidden unless you include Archived in the Status filter."
+                  : undefined
+              }
+              decisionById={decisionById}
+              scoreDeltaByRiskId={scoreDeltaByRiskId}
+              onRiskClick={(risk) => {
+                setDetailInitialRiskId(risk.id);
+                setShowDetailModal(true);
+              }}
+              onAddNewClick={!contentReadOnly ? () => setShowAddNewRiskChoiceModal(true) : undefined}
+              sortState={tableSortState}
+              onSortByColumn={(column: SortColumn) => {
+                setTableSortState((prev) => {
+                  if (prev?.column === column) {
+                    return prev.direction === "asc"
+                      ? { column, direction: "desc" as const }
+                      : null;
+                  }
+                  return { column, direction: "asc" as const };
+                });
+              }}
+              columnFilters={columnFilters}
+              onColumnFilterChange={(column, values) => {
+                setColumnFilters((prev) => ({
+                  ...prev,
+                  [column]: values.length > 0 ? values : undefined,
+                }));
+              }}
+            />
+            <RiskDetailModal
+              key={`${showDetailModal}-${detailInitialRiskId ?? ""}`}
+              open={showDetailModal}
+              risks={risksForDetailModal}
+              initialRiskId={detailInitialRiskId}
+              readOnly={contentReadOnly}
+              onClose={() => {
+                setShowDetailModal(false);
+                setDetailInitialRiskId(null);
+              }}
+              onSave={handleDetailModalSave}
+              onReviewOpen={!contentReadOnly ? handleRiskReviewOpen : undefined}
+              onRestoreRisk={!contentReadOnly ? (id) => restoreArchivedRisk(id) : undefined}
+              onAddNew={
+                contentReadOnly
+                  ? undefined
+                  : () => {
+                      setShowDetailModal(false);
+                      setDetailInitialRiskId(null);
+                      setShowAddRiskModal(true);
+                    }
+              }
+              onAddNewWithFile={
+                contentReadOnly
+                  ? undefined
+                  : () => {
+                      setShowDetailModal(false);
+                      setDetailInitialRiskId(null);
+                      setShowCreateRiskFileModal(true);
+                    }
+              }
+              onAddNewWithAI={
+                contentReadOnly
+                  ? undefined
+                  : () => {
+                      setShowDetailModal(false);
+                      setDetailInitialRiskId(null);
+                      setShowAddNewRiskChoiceModal(true);
+                    }
+              }
+            />
+          </>
+        )
+      ) : (
         <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
           <CardContent className="py-[var(--ds-space-6)]">
-            <p className="ds-dashboard-empty-title">No risks in this project</p>
-            <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-              {contentReadOnly
-                ? "You have view-only access to this project."
-                : "Add a risk manually, from file, or with AI to get started."}
+            <p className="ds-dashboard-empty-title">
+              {activeContentTab === "simulation"
+                ? "Simulation view coming soon"
+                : activeContentTab === "time"
+                  ? "Time view coming soon"
+                  : "Settings view coming soon"}
             </p>
-            {!contentReadOnly && (
-              <Button
-                type="button"
-                variant="primary"
-                className="mt-5"
-                onClick={() => setShowAddNewRiskChoiceModal(true)}
-              >
-                Add risk
-              </Button>
-            )}
+            <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+              {activeContentTab === "simulation"
+                ? "Simulation tab is not wired yet."
+                : activeContentTab === "time"
+                  ? "Time analysis tab is not wired yet."
+                  : "Settings tab is not wired yet."}
+            </p>
           </CardContent>
         </Card>
-      ) : (
-        <>
-          <div className="w-full min-w-0">
-            <Input
-              type="search"
-              value={registerSearchQuery}
-              onChange={(e) => setRegisterSearchQuery(e.target.value)}
-              placeholder="Search risks..."
-              aria-label="Search risks across all fields"
-              className="w-full min-w-0"
-              autoComplete="off"
-            />
-          </div>
-          <RiskRegisterTable
-            risks={filteredRisks}
-            risksForFilterOptions={risksForFilterOptions}
-            emptyListMessage={
-              risks.length > 0 && filteredRisks.length === 0
-                ? "No risks match your search or column filters. Archived risks stay hidden unless you include Archived in the Status filter."
-                : undefined
-            }
-            decisionById={decisionById}
-            scoreDeltaByRiskId={scoreDeltaByRiskId}
-            onRiskClick={(risk) => {
-              setDetailInitialRiskId(risk.id);
-              setShowDetailModal(true);
-            }}
-            onAddNewClick={!contentReadOnly ? () => setShowAddNewRiskChoiceModal(true) : undefined}
-            sortState={tableSortState}
-            onSortByColumn={(column: SortColumn) => {
-              setTableSortState((prev) => {
-                if (prev?.column === column) {
-                  return prev.direction === "asc"
-                    ? { column, direction: "desc" as const }
-                    : null;
-                }
-                return { column, direction: "asc" as const };
-              });
-            }}
-            columnFilters={columnFilters}
-            onColumnFilterChange={(column, values) => {
-              setColumnFilters((prev) => ({
-                ...prev,
-                [column]: values.length > 0 ? values : undefined,
-              }));
-            }}
-          />
-          <RiskDetailModal
-            key={`${showDetailModal}-${detailInitialRiskId ?? ""}`}
-            open={showDetailModal}
-            risks={risksForDetailModal}
-            initialRiskId={detailInitialRiskId}
-            readOnly={contentReadOnly}
-            onClose={() => {
-              setShowDetailModal(false);
-              setDetailInitialRiskId(null);
-            }}
-            onSave={handleDetailModalSave}
-            onReviewOpen={!contentReadOnly ? handleRiskReviewOpen : undefined}
-            onRestoreRisk={!contentReadOnly ? (id) => restoreArchivedRisk(id) : undefined}
-            onAddNew={
-              contentReadOnly
-                ? undefined
-                : () => {
-                    setShowDetailModal(false);
-                    setDetailInitialRiskId(null);
-                    setShowAddRiskModal(true);
-                  }
-            }
-            onAddNewWithFile={
-              contentReadOnly
-                ? undefined
-                : () => {
-                    setShowDetailModal(false);
-                    setDetailInitialRiskId(null);
-                    setShowCreateRiskFileModal(true);
-                  }
-            }
-            onAddNewWithAI={
-              contentReadOnly
-                ? undefined
-                : () => {
-                    setShowDetailModal(false);
-                    setDetailInitialRiskId(null);
-                    setShowAddNewRiskChoiceModal(true);
-                  }
-            }
-          />
-        </>
       )}
       <AddNewRiskChoiceModal
         open={showAddNewRiskChoiceModal}

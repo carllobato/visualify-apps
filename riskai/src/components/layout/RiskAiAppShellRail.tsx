@@ -333,12 +333,12 @@ export function RiskAiAppShellRail() {
   const accountRailActive = isAccountSettingsRouteActive(pathname);
 
   return (
-    <AppShellRail ariaLabel="RiskAI navigation" pinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}>
+    <AppShellRail ariaLabel="ControlsAI navigation" pinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}>
       <AppShellRailBody>
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
-            appShortName="RiskAI"
-            currentAppName="Visualify RiskAI"
+            appShortName="ControlsAI"
+            currentAppName="Visualify ControlsAI"
             catalog={RISKAI_APP_SHELL_CATALOG}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />
@@ -409,6 +409,12 @@ export function RiskAiAppShellRail() {
                     <IconSimulation />
                   </AppShellRailNavLink>
                 ) : null}
+                <AppShellRailNavLink href="#" active={false} label="Cost">
+                  <IconProjectsList />
+                </AppShellRailNavLink>
+                <AppShellRailNavLink href="#" active={false} label="Time">
+                  <IconProjectsList />
+                </AppShellRailNavLink>
                 {projectSettingsHref != null ? (
                   <AppShellRailNavLink
                     href={projectSettingsHref}
