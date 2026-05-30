@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import { HqAppShellProviders } from "@/components/hq-app-shell-providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppShellLegalDocumentProvider>{children}</AppShellLegalDocumentProvider>
+        <AppShellLegalDocumentProvider>
+          <HqAppShellProviders>{children}</HqAppShellProviders>
+        </AppShellLegalDocumentProvider>
       </body>
     </html>
   );

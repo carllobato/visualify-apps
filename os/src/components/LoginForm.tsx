@@ -7,6 +7,7 @@ import {
   AppLoginFormError,
   AppLoginPasswordField,
   appLoginFormClassName,
+  AppLoginStandardLegalFooter,
   AppLoginSubmitRow,
   AppLoginTrustLine,
 } from "@visualify/app-shell";
@@ -91,6 +92,8 @@ export function LoginForm() {
         <AppLoginSubmitRow pending={pending} />
 
         <AppLoginTrustLine />
+
+        <AppLoginStandardLegalFooter />
       </form>
     </>
   );

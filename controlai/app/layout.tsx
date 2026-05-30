@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import { ControlAiAppShellProviders } from "@/components/layout/ControlAiAppShellProviders";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AppShellLegalDocumentProvider>{children}</AppShellLegalDocumentProvider>
+        <AppShellLegalDocumentProvider>
+          <ControlAiAppShellProviders>{children}</ControlAiAppShellProviders>
+        </AppShellLegalDocumentProvider>
       </body>
     </html>
   );

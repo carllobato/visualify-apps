@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { appLoginCardHeaderClassName, appLoginCardTitleClassName } from "./classes";
+import { appLoginCardHeaderClassName, appLoginCardHeaderMarkClassName, appLoginCardTitleClassName } from "./classes";
 import { mergeClass } from "../account-settings/merge-class";
 
 export type AppLoginCardHeaderProps = {
@@ -16,7 +16,7 @@ export function AppLoginCardHeader({
 }: AppLoginCardHeaderProps) {
   return (
     <header className={mergeClass(appLoginCardHeaderClassName, className)}>
-      {brandMark != null ? <div className="mb-3 flex justify-center">{brandMark}</div> : null}
+      {brandMark != null ? <div className={appLoginCardHeaderMarkClassName}>{brandMark}</div> : null}
       <h1 className={appLoginCardTitleClassName}>{title}</h1>
     </header>
   );

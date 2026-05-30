@@ -1,14 +1,15 @@
 "use client";
 
-import { AppShellRailHelpFeedback } from "@visualify/app-shell";
+import { AppShellHelpFeedbackSupabaseProvider } from "@visualify/app-shell";
 import { authDisabledStubUser, isAuthDisabled } from "@/lib/auth/auth-disabled";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
-/** HQ rail footer Help & Feedback (issue / feature / question modal). */
-export function HqRailFooterHelp() {
+/** HQ app-shell providers (Help & Feedback in rail footer). */
+export function HqAppShellProviders({ children }: { children: React.ReactNode }) {
   return (
-    <AppShellRailHelpFeedback
+    <AppShellHelpFeedbackSupabaseProvider
       source="hq-help-modal"
+      getSupabaseClient={() => supabaseBrowserClient()}
       getSignedInUser={async () => {
         if (isAuthDisabled()) {
           return authDisabledStubUser();
@@ -18,6 +19,8 @@ export function HqRailFooterHelp() {
         } = await supabaseBrowserClient().auth.getUser();
         return user;
       }}
-    />
+    >
+      {children}
+    </AppShellHelpFeedbackSupabaseProvider>
   );
 }

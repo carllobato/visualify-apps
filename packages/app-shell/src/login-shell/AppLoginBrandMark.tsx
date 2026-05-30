@@ -1,3 +1,7 @@
+import {
+  appLoginBrandMarkCardClassName,
+  appLoginBrandMarkRailClassName,
+} from "./classes";
 import { mergeClass } from "../account-settings/merge-class";
 
 export type AppLoginBrandMarkProps = {
@@ -21,7 +25,7 @@ export function AppLoginBrandMark({
   className,
 }: AppLoginBrandMarkProps) {
   const px = sizePx[variant];
-  const sizeClass = variant === "rail" ? "size-10" : "size-12";
+  const sizeClass = variant === "rail" ? appLoginBrandMarkRailClassName : appLoginBrandMarkCardClassName;
 
   return (
     <img
@@ -29,7 +33,7 @@ export function AppLoginBrandMark({
       alt={alt}
       width={px}
       height={px}
-      className={mergeClass(`${sizeClass} shrink-0 object-contain`, className)}
+      className={mergeClass(sizeClass, className)}
     />
   );
 }

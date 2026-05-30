@@ -14,7 +14,6 @@ import {
   appShellRailPrimaryNavClassName,
 } from "@visualify/app-shell";
 import { DashboardAccountMenu } from "./(hq)/dashboard/dashboard-account-menu";
-import { HqRailFooterHelp } from "@/components/hq-rail-footer-help";
 import { WorkspaceRailList } from "./entity-rail-list";
 import type { EntityRailWorkspace } from "@/lib/entity-rail-grouping";
 import type { VisualifyAppDefinition } from "@/lib/visualify-apps";
@@ -83,7 +82,6 @@ export function PlatformRail({
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>
-          <HqRailFooterHelp />
           <AppShellRailFooterAccount>
             <DashboardAccountMenu variant="rail" railPageActive={accountRailActive} />
           </AppShellRailFooterAccount>

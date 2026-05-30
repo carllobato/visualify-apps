@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Card } from "@visualify/design-system";
 import { appLoginCardClassName, appLoginCardContentClassName } from "./classes";
 import { mergeClass } from "../account-settings/merge-class";
 
@@ -20,8 +19,8 @@ export type AppLoginCardProps = {
  */
 export function AppLoginCard({ children, className, contentClassName }: AppLoginCardProps) {
   return (
-    <Card variant="default" className={mergeClass(appLoginCardClassName, className)}>
+    <div className={mergeClass(appLoginCardClassName, className)}>
       <div className={mergeClass(appLoginCardContentClassName, contentClassName)}>{children}</div>
-    </Card>
+    </div>
   );
 }

@@ -2,11 +2,9 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { DASHBOARD_PATH } from "@/lib/routes";
-import { RiskAiLoggedOutLoginScreen } from "./login/RiskAiLoggedOutLoginScreen";
 
-/**
- * Root host entry: login when signed out; signed-in users go to dashboard.
- */
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   await headers();
   const supabase = await supabaseServerClient();
@@ -17,5 +15,5 @@ export default async function HomePage() {
     redirect(DASHBOARD_PATH);
   }
 
-  return <RiskAiLoggedOutLoginScreen />;
+  redirect("/login");
 }

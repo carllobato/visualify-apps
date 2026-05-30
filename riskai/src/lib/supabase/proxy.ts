@@ -54,13 +54,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL(pathname + search, SITE_ORIGIN));
   }
 
-  // App host: /login is an alias for / (login UI lives at /)
-  if (isAppHost(host) && pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
-
   const headers = new Headers(request.headers);
   headers.set("x-pathname", pathname);
   /** Query string including `?`, for client components that avoid `useSearchParams` Suspense on soft navigation. */

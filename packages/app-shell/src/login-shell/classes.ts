@@ -1,61 +1,60 @@
-/** Login card surface — matches HQ / RiskAI auth card chrome. */
-export const appLoginCardClassName =
-  "w-full [border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
+/** Login card surface — borderless tile; edge reads from elevation (matches design-system Card default). */
+export const appLoginCardClassName = "vf-app-login-card";
 
-export const appLoginCardContentClassName = "px-5 py-5";
+export const appLoginCardContentClassName = "vf-app-login-card-content";
 
-export const appLoginTabsRowClassName = "flex justify-center";
+export const appLoginTabsSectionClassName = "vf-app-login-tabs-section";
 
-export const appLoginTabsDividerClassName = "h-px w-full bg-[var(--ds-border)]";
+export const appLoginTabsRowClassName = "vf-app-login-tabs-row";
+
+export const appLoginTabsRowSkeletonClassName = "vf-app-login-tabs-row--skeleton";
+
+export const appLoginTabsDividerClassName = "vf-app-login-tabs-divider";
 
 /** Stable min-height for login Suspense fallbacks (avoids vertical jump on hydrate). */
-export const appLoginFormSkeletonMinHeightClassName = "min-h-[17.5rem] w-full";
+export const appLoginFormSkeletonMinHeightClassName = "vf-app-login-form-skeleton";
 
-export const appLoginCardHeaderClassName = "mb-4 text-center";
+export const appLoginCardHeaderClassName = "vf-app-login-card-header";
 
-export const appLoginCardTitleClassName =
-  "m-0 text-[length:var(--ds-text-xl)] font-semibold tracking-tight text-[var(--ds-text-primary)]";
+export const appLoginCardHeaderMarkClassName = "vf-app-login-card-header-mark";
+
+export const appLoginCardTitleClassName = "vf-app-login-card-title";
 
 /** Vertical rhythm between fields, error, submit, trust line (login forms). */
-export const appLoginFormClassName = "space-y-3";
+export const appLoginFormClassName = "vf-app-login-form";
 
-export const appLoginFormErrorStackClassName = "space-y-1.5 text-center";
+export const appLoginFormErrorStackClassName = "vf-app-login-form-error-stack";
 
-export const appLoginFormErrorClassName =
-  "text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-danger)]";
+export const appLoginFormErrorClassName = "vf-app-login-form-error";
 
-export const appLoginSubmitRowClassName = "flex justify-center pt-1";
+export const appLoginSubmitRowClassName = "vf-app-login-submit-row";
 
-export const appLoginSubmitButtonClassName = "max-w-full min-w-0 whitespace-normal text-center";
+export const appLoginSubmitButtonClassName = "vf-app-login-submit-button";
 
-export const appLoginTrustLineClassName =
-  "mt-2 text-center text-[length:var(--ds-text-xs)] leading-relaxed text-[var(--ds-text-muted)]";
+export const appLoginTrustLineClassName = "vf-app-login-trust-line";
 
-export const appLoginCardLegalFooterClassName = "mt-6 border-t border-[var(--ds-border)] pt-4";
+export const appLoginCardLegalFooterClassName = "vf-app-login-legal-footer";
 
-export const appLoginCardLegalNavClassName =
-  "flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center";
+export const appLoginCardLegalNavClassName = "vf-app-login-legal-nav";
 
-export const appLoginCardLegalLinkClassName = "ds-text-link-muted text-[length:var(--ds-text-xs)]";
+export const appLoginCardLegalLinkClassName = "ds-text-link-muted vf-app-login-legal-link";
 
-export const appLoginCardLegalSepClassName =
-  "select-none text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
+export const appLoginCardLegalSepClassName = "vf-app-login-legal-sep";
 
-export const appLoginPageMainClassName = "w-full max-w-md shrink-0 px-4 py-2";
+export const appLoginPageMainClassName = "vf-app-login-page-main";
 
-export const appLoginCopyrightClassName =
-  "mt-4 text-center text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]";
+export const appLoginCopyrightClassName = "vf-app-login-copyright";
 
 /** Collapsed brand rail on signed-out framed login (matches HQ public shell). */
-export const appLoginFramedRailAsideClassName =
-  "relative z-30 flex w-[68px] shrink-0 flex-col self-stretch overflow-visible rounded-br-[var(--ds-radius-lg)] rounded-tr-[var(--ds-radius-lg)] bg-transparent";
+export const appLoginFramedRailAsideClassName = "vf-app-login-rail-aside";
 
-export const appLoginFramedRailBrandLinkClassName =
-  "flex h-10 w-full min-w-0 items-center justify-center rounded-[var(--ds-radius-md)] no-underline " +
-  "transition-colors duration-[400ms] ease-out " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]";
+export const appLoginFramedRailBrandLinkClassName = "vf-app-login-rail-brand-link";
 
-export const appLoginFramedRailStackClassName = "flex flex-col gap-2.5 px-[14px] pt-5";
+export const appLoginFramedRailStackClassName = "vf-app-login-rail-stack";
 
 /** Default path for {@link AppLoginBrandMark} in consuming apps' `public/` folder. */
 export const APP_LOGIN_DEFAULT_BRAND_MARK_SRC = "/visualify-brand-mark.png";
+
+export const appLoginBrandMarkRailClassName = "vf-app-login-brand-mark--rail";
+
+export const appLoginBrandMarkCardClassName = "vf-app-login-brand-mark--card";

@@ -24,6 +24,8 @@ import {
   appShellRailFooterAccountOuterClassName,
   appShellRailFooterAccountStripClassName,
 } from "./layout-classes";
+import { useAppShellHelpFeedbackConfig } from "./AppShellHelpFeedbackProvider";
+import { AppShellRailHelpFeedback } from "./AppShellRailHelpFeedback";
 import { AppShellRailPinCollapse } from "./AppShellRailPinCollapse";
 import { useAppShellMobileHeaderPresent } from "./app-shell-mobile-header-context";
 import { shouldCloseMobileDrawerForRailButton } from "./rail-mobile-nav-action";
@@ -190,6 +192,7 @@ export function AppShellRailFooter({
   className,
 }: AppShellRailFooterProps) {
   const { pinned, togglePinned } = useAppShellRailContext();
+  const helpFeedback = useAppShellHelpFeedbackConfig();
 
   return (
     <div className={mergeClass(appShellRailFooterClassName, className)}>
@@ -198,6 +201,7 @@ export function AppShellRailFooter({
           <AppShellRailPinCollapse pinned={pinned} onToggle={togglePinned} />
         </div>
       ) : null}
+      {helpFeedback ? <AppShellRailHelpFeedback {...helpFeedback} /> : null}
       {children}
     </div>
   );

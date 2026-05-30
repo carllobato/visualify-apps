@@ -6,6 +6,8 @@
  */
 export {
   APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
+  appLoginBrandMarkCardClassName,
+  appLoginBrandMarkRailClassName,
   appLoginCardClassName,
   appLoginCardContentClassName,
   appLoginCardHeaderClassName,
@@ -67,6 +69,8 @@ export type { AppLoginTrustLineProps } from "./AppLoginTrustLine";
 
 export { AppLoginCardLegalFooter } from "./AppLoginCardLegalFooter";
 export type { AppLoginCardLegalFooterProps } from "./AppLoginCardLegalFooter";
+
+export { AppLoginStandardLegalFooter } from "./AppLoginStandardLegalFooter";
 
 export { AppLoginCopyright } from "./AppLoginCopyright";
 export type { AppLoginCopyrightProps } from "./AppLoginCopyright";

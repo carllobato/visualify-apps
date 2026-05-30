@@ -22,7 +22,6 @@ import {
   stripLegacyRiskAiPrefix,
 } from "@/lib/routes";
 import { RiskAiRailAccountMenu } from "@/components/layout/RiskAiRailAccountMenu";
-import { RiskAiRailFooterHelp } from "@/components/layout/RiskAiRailFooterHelp";
 import { useResolvedPortfolioId } from "@/hooks/useResolvedPortfolioId";
 
 const RISKAI_APP_SHELL_RAIL_PINNED_KEY = "riskai-app-shell-rail-pinned";
@@ -430,7 +429,6 @@ export function RiskAiAppShellRail() {
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>
-          <RiskAiRailFooterHelp />
           <AppShellRailFooterAccount>
             <RiskAiRailAccountMenu railPageActive={accountRailActive} />
           </AppShellRailFooterAccount>

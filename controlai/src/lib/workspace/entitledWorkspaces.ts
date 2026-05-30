@@ -33,7 +33,7 @@ export async function getControlAIEntitledWorkspaces(
   const slugs = [...bySlug.keys()];
   const { data, error } = await supabase
     .from("visualify_workspaces")
-    .select("id, name, slug")
+    .select("id, name, slug, website_url, logo_url")
     .in("slug", slugs);
 
   if (error) {
@@ -50,6 +50,8 @@ export async function getControlAIEntitledWorkspaces(
       id,
       name: typeof row.name === "string" && row.name.trim() ? row.name.trim() : bySlug.get(slug) ?? slug,
       slug,
+      website_url: typeof row.website_url === "string" && row.website_url.trim() ? row.website_url.trim() : null,
+      logo_url: typeof row.logo_url === "string" && row.logo_url.trim() ? row.logo_url.trim() : null,
     });
   }
 

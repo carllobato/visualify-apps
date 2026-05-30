@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { OS_DEFAULT_ROUTE } from "@/lib/os-routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
@@ -15,20 +14,5 @@ export default async function HomePage() {
     redirect(OS_DEFAULT_ROUTE);
   }
 
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 p-8">
-      <p className="text-[length:var(--ds-text-lg)] font-semibold tracking-tight text-[var(--ds-text-primary)]">
-        Visualify OS
-      </p>
-      <p className="max-w-sm text-center text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-        Personal operating system — calm, operational, high-signal.
-      </p>
-      <Link
-        href="/login"
-        className="rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]"
-      >
-        Sign in
-      </Link>
-    </main>
-  );
+  redirect("/login");
 }

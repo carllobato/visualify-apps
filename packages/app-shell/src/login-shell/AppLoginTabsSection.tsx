@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { appLoginTabsDividerClassName, appLoginTabsRowClassName } from "./classes";
+import { appLoginTabsDividerClassName, appLoginTabsRowClassName, appLoginTabsSectionClassName } from "./classes";
 
 export type AppLoginTabsSectionProps = {
   children: ReactNode;
@@ -9,7 +9,7 @@ export type AppLoginTabsSectionProps = {
 /** Sign in / Sign up tab row + divider (shared across product login cards). */
 export function AppLoginTabsSection({ children, className }: AppLoginTabsSectionProps) {
   return (
-    <div className={className ?? "mb-4 w-full"}>
+    <div className={className ?? appLoginTabsSectionClassName}>
       <div className={appLoginTabsRowClassName}>{children}</div>
       <div className={appLoginTabsDividerClassName} aria-hidden />
     </div>

@@ -6,6 +6,7 @@ import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ProjectionScenarioProvider } from "@/context/ProjectionScenarioContext";
 import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import { RiskAiAppShellProviders } from "@/components/layout/RiskAiAppShellProviders";
 import { RiskRegisterProvider } from "@/store/risk-register.store";
 import { InactivityGuard } from "@/components/InactivityGuard";
 import { SingleSessionGuard } from "@/components/SingleSessionGuard";
@@ -88,9 +89,11 @@ export default function RootLayout({
           <ProjectionScenarioProvider>
             <RiskRegisterProvider>
               <AppShellLegalDocumentProvider>
-                {children}
-                <InactivityGuard />
-                {singleSessionGuardEnabled ? <SingleSessionGuard /> : null}
+                <RiskAiAppShellProviders>
+                  {children}
+                  <InactivityGuard />
+                  {singleSessionGuardEnabled ? <SingleSessionGuard /> : null}
+                </RiskAiAppShellProviders>
               </AppShellLegalDocumentProvider>
             </RiskRegisterProvider>
           </ProjectionScenarioProvider>

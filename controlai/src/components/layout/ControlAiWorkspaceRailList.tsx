@@ -14,6 +14,7 @@ const RAIL_MOBILE_OPEN_ROW_GAP = "max-md:group-data-[mobile-open=true]:gap-2";
 const RAIL_MOBILE_OPEN_FLEX_REVEAL = "max-md:group-data-[mobile-open=true]:flex";
 import { setControlAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
 import { CONTROLAI_ROUTES } from "@/lib/controlai-routes";
+import { WorkspaceAvatar } from "@/components/workspace/WorkspaceAvatar.client";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 
 const RAIL_MINI_LINK_CLASS =
@@ -23,17 +24,17 @@ function workspaceInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0] ?? ""}${parts[1]![0] ?? ""}`.toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
 }
 
-function WorkspaceInitialAvatar({ name }: { name: string }) {
+function WorkspaceRailAvatar({ workspace }: { workspace: EntitledWorkspace }) {
   return (
-    <span
-      className="flex size-[25px] shrink-0 items-center justify-center rounded-[var(--ds-radius-sm)] bg-[var(--ds-surface-muted)] text-[length:var(--ds-text-xs)] font-semibold text-[var(--ds-text-secondary)]"
-      aria-hidden
-    >
-      {workspaceInitials(name)}
-    </span>
+    <WorkspaceAvatar
+      size="rail"
+      websiteUrl={workspace.website_url}
+      logoUrl={workspace.logo_url}
+      avatarInitials={workspaceInitials(workspace.name)}
+    />
   );
 }
 
@@ -156,7 +157,7 @@ export function ControlAiWorkspaceRailList({
           title={only.name}
         >
           <span className={appShellRailIconWellClassName}>
-            <WorkspaceInitialAvatar name={only.name} />
+            <WorkspaceRailAvatar workspace={only} />
           </span>
           <span className={RAIL_BRAND_ROW_LABEL_CLASS}>
             <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">
@@ -186,7 +187,16 @@ export function ControlAiWorkspaceRailList({
         {...appShellRailNavActionButtonProps}
       >
         <span className={appShellRailIconWellClassName}>
-          <WorkspaceInitialAvatar name={triggerLabel} />
+          {selectedWorkspace ? (
+            <WorkspaceRailAvatar workspace={selectedWorkspace} />
+          ) : (
+            <WorkspaceAvatar
+              size="rail"
+              websiteUrl={null}
+              logoUrl={null}
+              avatarInitials={workspaceInitials(triggerLabel)}
+            />
+          )}
         </span>
         <span className={RAIL_BRAND_ROW_LABEL_CLASS}>
           <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">

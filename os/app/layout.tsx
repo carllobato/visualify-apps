@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import { OsAppShellProviders } from "@/components/layout/OsAppShellProviders";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <AppShellLegalDocumentProvider>{children}</AppShellLegalDocumentProvider>
+        <AppShellLegalDocumentProvider>
+          <OsAppShellProviders>{children}</OsAppShellProviders>
+        </AppShellLegalDocumentProvider>
       </body>
     </html>
   );

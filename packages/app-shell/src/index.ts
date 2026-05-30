@@ -196,6 +196,16 @@ export { AppShellRailHelpFeedback } from "./AppShellRailHelpFeedback";
 export type { AppShellRailHelpFeedbackProps } from "./AppShellRailHelpFeedback";
 
 export {
+  AppShellHelpFeedbackProvider,
+  AppShellHelpFeedbackSupabaseProvider,
+  useAppShellHelpFeedbackConfig,
+} from "./AppShellHelpFeedbackProvider";
+export type {
+  AppShellHelpFeedbackProviderProps,
+  AppShellHelpFeedbackSupabaseProviderProps,
+} from "./AppShellHelpFeedbackProvider";
+
+export {
   listFactorsIndicatesVerifiedTotp,
   totpFactorsFromListFactors,
 } from "./account-security/mfa";
@@ -275,6 +285,7 @@ export {
   AppLoginCardSuspense,
   AppLoginCardHeader,
   AppLoginCardLegalFooter,
+  AppLoginStandardLegalFooter,
   AppLoginCopyright,
   AppLoginFormError,
   AppLoginPasswordField,
@@ -286,6 +297,8 @@ export {
   AppLoginSubmitRow,
   appLoginSubmitLabelsForMode,
   AppLoginTrustLine,
+  appLoginBrandMarkCardClassName,
+  appLoginBrandMarkRailClassName,
   appLoginCardClassName,
   appLoginCardContentClassName,
   appLoginCardHeaderClassName,

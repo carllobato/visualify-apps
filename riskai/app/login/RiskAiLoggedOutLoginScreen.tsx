@@ -2,7 +2,7 @@ import { AppLoginCardSuspense, AppLoginScreen } from "@visualify/app-shell";
 import { LoginClient } from "./LoginClient";
 
 /**
- * Canonical logged-out login UI for RiskAI (app-host `/` and website `/login`).
+ * Canonical logged-out login UI for RiskAI (`/login`).
  */
 export function RiskAiLoggedOutLoginScreen() {
   return (

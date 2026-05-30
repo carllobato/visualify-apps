@@ -2,6 +2,8 @@ import {
   appLoginFormSkeletonMinHeightClassName,
   appLoginTabsDividerClassName,
   appLoginTabsRowClassName,
+  appLoginTabsRowSkeletonClassName,
+  appLoginTabsSectionClassName,
 } from "./classes";
 import { AppLoginCardHeader } from "./AppLoginCardHeader";
 
@@ -10,8 +12,8 @@ export function AppLoginSuspenseFallback({ label = "Loading sign-in" }: { label?
   return (
     <>
       <AppLoginCardHeader />
-      <div className="mb-4 w-full" aria-hidden>
-        <div className={`${appLoginTabsRowClassName} min-h-[2.5rem]`} />
+      <div className={appLoginTabsSectionClassName} aria-hidden>
+        <div className={`${appLoginTabsRowClassName} ${appLoginTabsRowSkeletonClassName}`} />
         <div className={appLoginTabsDividerClassName} />
       </div>
       <div
