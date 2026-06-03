@@ -12,8 +12,8 @@ export default async function ProjectOverviewPage({
   return (
     <ProjectPageLayout project={project}>
       <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-        Project overview for this workspace. Open Cost, Time, Risk, or Settings from the project
-        navigation in the left rail.
+        Project overview for this workspace. Open Cost, Time, Risk, Report, or Settings from the
+        project navigation in the left rail.
       </p>
     </ProjectPageLayout>
   );

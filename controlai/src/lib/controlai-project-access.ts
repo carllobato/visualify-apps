@@ -11,13 +11,13 @@ import { resolveActiveWorkspaceContext } from "@/lib/workspace/resolveActiveWork
 
 /**
  * Server-only: resolves a ControlAI project the user may access in the active workspace.
- * Calls `notFound()` when the project is missing or inaccessible.
+ * Returns null when the project is missing or inaccessible.
  */
-export async function requireAccessibleControlAIProject(
+export async function resolveAccessibleControlAIProject(
   supabase: SupabaseClient,
   userId: string,
   projectId: string,
-): Promise<AccessibleProject> {
+): Promise<AccessibleProject | null> {
   const workspaceContext = await resolveActiveWorkspaceContext(supabase, userId);
 
   const portfoliosResult = await getAccessibleControlAIPortfolios(
@@ -26,7 +26,7 @@ export async function requireAccessibleControlAIProject(
     workspaceContext.selectedWorkspaceId,
   );
   if (!portfoliosResult.ok) {
-    notFound();
+    return null;
   }
 
   const portfolioIds = portfoliosResult.portfolios.map((p) => p.id);
@@ -37,10 +37,22 @@ export async function requireAccessibleControlAIProject(
     workspaceContext.selectedWorkspaceId,
   );
   if (!projectsResult.ok) {
-    notFound();
+    return null;
   }
 
-  const project = projectsResult.projects.find((p) => p.id === projectId);
+  return projectsResult.projects.find((p) => p.id === projectId) ?? null;
+}
+
+/**
+ * Server-only: resolves a ControlAI project the user may access in the active workspace.
+ * Calls `notFound()` when the project is missing or inaccessible.
+ */
+export async function requireAccessibleControlAIProject(
+  supabase: SupabaseClient,
+  userId: string,
+  projectId: string,
+): Promise<AccessibleProject> {
+  const project = await resolveAccessibleControlAIProject(supabase, userId, projectId);
   if (!project) {
     notFound();
   }

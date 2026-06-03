@@ -42,6 +42,7 @@ type RailPrimaryNavKey =
   | "projectCost"
   | "projectTime"
   | "projectRisk"
+  | "projectReport"
   | "projectSettings";
 
 /** Single stroke weight for all rail glyphs (workspace + project). */
@@ -132,6 +133,19 @@ function IconRisk() {
   );
 }
 
+function IconReport() {
+  return (
+    <svg {...railIconSvgProps}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h2" />
+      <path d="M8 17h2" />
+      <path d="M12 13h4" />
+      <path d="M12 17h4" />
+    </svg>
+  );
+}
+
 function projectNavIcon(segment: ControlAIProjectNavSegment | null) {
   switch (segment) {
     case null:
@@ -142,6 +156,8 @@ function projectNavIcon(segment: ControlAIProjectNavSegment | null) {
       return <IconTime />;
     case "risk":
       return <IconRisk />;
+    case "report":
+      return <IconReport />;
     case "settings":
       return <IconSettings />;
     default:
@@ -165,6 +181,7 @@ function navIcon(href: string) {
 function resolveActivePrimaryNav(pathname: string, projectId: string | null): RailPrimaryNavKey | null {
   if (projectId) {
     if (isControlAIProjectSegmentPath(pathname, projectId, "settings")) return "projectSettings";
+    if (isControlAIProjectSegmentPath(pathname, projectId, "report")) return "projectReport";
     if (isControlAIProjectSegmentPath(pathname, projectId, "risk")) return "projectRisk";
     if (isControlAIProjectSegmentPath(pathname, projectId, "time")) return "projectTime";
     if (isControlAIProjectSegmentPath(pathname, projectId, "cost")) return "projectCost";
@@ -183,6 +200,7 @@ const PROJECT_NAV_ITEMS: { segment: ControlAIProjectNavSegment | null; label: st
     { segment: "cost", label: "Cost", key: "projectCost" },
     { segment: "time", label: "Time", key: "projectTime" },
     { segment: "risk", label: "Risk", key: "projectRisk" },
+    { segment: "report", label: "Report", key: "projectReport" },
     { segment: "settings", label: "Settings", key: "projectSettings" },
   ];
 

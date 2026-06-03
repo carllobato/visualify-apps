@@ -17,7 +17,7 @@ export const CONTROLAI_PRIMARY_NAV = [
   { href: CONTROLAI_ROUTES.settings, label: "Settings" },
 ] as const;
 
-export type ControlAIProjectNavSegment = "cost" | "time" | "risk" | "settings";
+export type ControlAIProjectNavSegment = "cost" | "time" | "risk" | "report" | "settings";
 
 function pathSegments(pathname: string | null): string[] {
   if (!pathname) return [];
