@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -466,55 +467,56 @@ function AddBudgetRowDrawer({
   onCancel,
 }: AddBudgetRowDrawerProps) {
   const wbsBlurTimeoutRef = useRef<number | null>(null);
+  const drawerWasOpenRef = useRef(open);
   const [wbsDropdownOpen, setWbsDropdownOpen] = useState(false);
-  const [drawerMounted, setDrawerMounted] = useState(open);
   const [drawerVisible, setDrawerVisible] = useState(false);
+  const [exitHold, setExitHold] = useState(open);
+
+  const drawerMounted = open || exitHold;
 
   const wbsDropdownOptions = useMemo(() => {
     const source = selectedWbs || !wbsSearch.trim() ? wbsOptions : wbsMatches;
     return [...source].sort(compareWbsOptions);
   }, [selectedWbs, wbsSearch, wbsOptions, wbsMatches]);
 
-  const showWbsDropdown = wbsDropdownOpen && wbsOptions.length > 0;
+  const showWbsDropdown = open && wbsDropdownOpen && wbsOptions.length > 0;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const wasOpen = drawerWasOpenRef.current;
+    drawerWasOpenRef.current = open;
+
     if (open) {
-      setDrawerMounted(true);
-    } else {
-      setDrawerVisible(false);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || !drawerMounted) return;
-
-    const enterFrame = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        setDrawerVisible(true);
+      let cancelled = false;
+      const frame = window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        setExitHold(true);
+        setWbsDropdownOpen(false);
+        window.requestAnimationFrame(() => {
+          if (!cancelled) setDrawerVisible(true);
+        });
       });
+
+      return () => {
+        cancelled = true;
+        window.cancelAnimationFrame(frame);
+      };
+    }
+
+    if (!wasOpen) return undefined;
+
+    let cancelled = false;
+    const hideFrame = window.requestAnimationFrame(() => {
+      if (!cancelled) setDrawerVisible(false);
     });
-
-    return () => {
-      window.cancelAnimationFrame(enterFrame);
-    };
-  }, [open, drawerMounted]);
-
-  useEffect(() => {
-    if (open || !drawerMounted) return;
-
     const unmountTimer = window.setTimeout(() => {
-      setDrawerMounted(false);
+      if (!cancelled) setExitHold(false);
     }, ADD_BUDGET_DRAWER_TRANSITION_MS);
 
     return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(hideFrame);
       window.clearTimeout(unmountTimer);
     };
-  }, [open, drawerMounted]);
-
-  useEffect(() => {
-    if (!open) {
-      setWbsDropdownOpen(false);
-    }
   }, [open]);
 
   useEffect(() => {
@@ -889,11 +891,15 @@ export function CostModuleBudgetBody({
     setFormError(null);
   }
 
-  function openAddForm() {
+  const openAddForm = useCallback(() => {
     if (!hasWbs) return;
-    resetAddForm();
+    setWbsSearch("");
+    setSelectedWbs(null);
+    setDraftAmount("");
+    setDraftNotes("");
+    setFormError(null);
     setAddingRow(true);
-  }
+  }, [hasWbs]);
 
   function cancelAddForm() {
     setAddingRow(false);
@@ -1023,7 +1029,7 @@ export function CostModuleBudgetBody({
         </Button>
       </div>
     ),
-    [hasWbs],
+    [hasWbs, openAddForm],
   );
 
   useLayoutEffect(() => {

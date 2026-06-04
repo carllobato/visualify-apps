@@ -3,7 +3,6 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   readVisualifyActiveWorkspaceIdFromCookie,
-  writeVisualifyActiveWorkspaceIdCookie,
 } from "@/lib/workspace/activeWorkspaceCookie";
 import { getControlAIEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
@@ -17,7 +16,7 @@ export type ActiveWorkspaceContext = {
 
 /**
  * Resolves ControlAI active workspace from entitled workspaces and `visualify_active_workspace_id`.
- * Auto-persists the cookie when exactly one workspace is entitled.
+ * Cookie writes belong in server actions (e.g. workspace switcher), not during layout render.
  */
 export async function resolveActiveWorkspaceContext(
   supabase: SupabaseClient,
@@ -42,11 +41,9 @@ export async function resolveActiveWorkspaceContext(
   }
 
   if (workspaces.length === 1) {
-    const id = workspaces[0]!.id;
-    await writeVisualifyActiveWorkspaceIdCookie(id);
     return {
       workspaces,
-      selectedWorkspaceId: id,
+      selectedWorkspaceId: workspaces[0]!.id,
       needsSelection: false,
     };
   }
