@@ -4,7 +4,7 @@ import { PlatformRail } from "./platform-rail";
 import { HqSignedInDocument } from "./hq-signed-in-document";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import {
-  fetchManageableWorkspacesForRail,
+  fetchVisibleWorkspacesForRail,
   readVisualifyActiveWorkspaceIdFromCookie,
   type WorkspaceRailEntry,
 } from "@/lib/workspace-settings-data";
@@ -24,14 +24,13 @@ export async function HqSignedInShell({ children }: { children: React.ReactNode 
   if (user) {
     const supabase = await supabaseServerClient();
     const [railWorkspaces, cookieWorkspaceId, workspaceEntitledProductKeys] = await Promise.all([
-      fetchManageableWorkspacesForRail(user.id),
+      fetchVisibleWorkspacesForRail(user.id),
       readVisualifyActiveWorkspaceIdFromCookie(),
       fetchWorkspaceEntitledProductKeysForUser(supabase, user.id),
     ]);
     workspaces = railWorkspaces;
     appCatalog = buildEntitledAppShellCatalogForUser(workspaceEntitledProductKeys, user.email);
-    // Validate against the rail list already loaded above — same rule as
-    // resolveSelectedWorkspaceIdForRail without a second fetchManageableWorkspacesInternal call.
+    // Validate against the visible rail list already loaded above.
     selectedWorkspaceId =
       cookieWorkspaceId && workspaces.some((w) => w.id === cookieWorkspaceId)
         ? cookieWorkspaceId

@@ -2,7 +2,7 @@
 
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import {
-  fetchManageableWorkspacesForRail,
+  fetchVisibleWorkspacesForRail,
   writeVisualifyActiveWorkspaceIdCookie,
 } from "@/lib/workspace-settings-data";
 
@@ -17,8 +17,8 @@ export async function setVisualifyActiveWorkspaceIdAction(
   const user = await resolveAuthenticatedUser();
   if (!user) return { ok: false, reason: "forbidden" };
 
-  const manageable = await fetchManageableWorkspacesForRail(user.id);
-  if (!manageable.some((w) => w.id === id)) return { ok: false, reason: "forbidden" };
+  const visible = await fetchVisibleWorkspacesForRail(user.id);
+  if (!visible.some((w) => w.id === id)) return { ok: false, reason: "forbidden" };
 
   await writeVisualifyActiveWorkspaceIdCookie(id);
 

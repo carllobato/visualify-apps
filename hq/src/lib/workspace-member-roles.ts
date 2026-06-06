@@ -1,6 +1,7 @@
 import {
   WORKSPACE_ROLES,
   canAssignWorkspaceRole,
+  isWorkspaceRoleAtLeast,
   normalizeWorkspaceRole,
   workspaceRoleRank,
   type WorkspaceRole,
@@ -18,7 +19,13 @@ export type WorkspaceMemberRole = WorkspaceRole;
 
 export const normalizeWorkspaceMemberRole = normalizeWorkspaceRole;
 
-export { workspaceRoleRank as workspaceMemberRoleRank };
+export { workspaceRoleRank as workspaceMemberRoleRank, isWorkspaceRoleAtLeast };
+
+/** Owner/admin — may open HQ workspace administration (billing, invites, settings). */
+export function canManageWorkspaceInHq(roleRaw: string | null | undefined): boolean {
+  const role = normalizeWorkspaceRole(roleRaw);
+  return role != null && isWorkspaceRoleAtLeast(role, "admin");
+}
 
 /**
  * Invite roles the inviter may assign: their own level or lower (cannot assign above themselves).

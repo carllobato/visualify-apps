@@ -108,6 +108,16 @@ export async function fetchManageableWorkspaceSummariesForUser(
   }));
 }
 
+/** Active workspace membership for rail/dashboard (all roles). Same shape as manageable summary. */
+export type VisibleWorkspaceSummary = ManageableWorkspaceSummary;
+
+type WorkspaceInternalRow = ManageableWorkspaceSummary & {
+  productCount: number;
+  logo_url: string | null;
+  website_url: string | null;
+  owner_user_id: string | null;
+};
+
 export type WorkspaceRailEntry = {
   id: string;
   name: string;
@@ -115,6 +125,7 @@ export type WorkspaceRailEntry = {
   website_url: string | null;
   logo_url: string | null;
   avatarInitials: string | null;
+  memberRole: string;
 };
 
 export type WorkspaceDashboardEntry = {
@@ -151,19 +162,11 @@ async function fetchWorkspaceMemberCountsByIds(workspaceIds: string[]): Promise<
   return counts;
 }
 
-async function fetchManageableWorkspacesInternalImpl(
+async function fetchUserWorkspacesInternalImpl(
   userId: string,
+  options: { adminOnly: boolean },
   supabaseClient?: SupabaseClient,
-): Promise<
-  Array<
-    ManageableWorkspaceSummary & {
-      productCount: number;
-      logo_url: string | null;
-      website_url: string | null;
-      owner_user_id: string | null;
-    }
-  >
-> {
+): Promise<WorkspaceInternalRow[]> {
   const supabase = supabaseClient ?? (await supabaseServerClient());
 
   const { data: memberRows, error: memberErr } = await supabase
@@ -172,7 +175,14 @@ async function fetchManageableWorkspacesInternalImpl(
     .eq("user_id", userId);
 
   if (memberErr || !memberRows?.length) {
-    if (memberErr) console.error("fetchManageableWorkspacesInternal members:", memberErr.message);
+    if (memberErr) {
+      console.error(
+        options.adminOnly
+          ? "fetchManageableWorkspacesInternal members:"
+          : "fetchVisibleWorkspacesInternal members:",
+        memberErr.message,
+      );
+    }
     return [];
   }
 
@@ -198,24 +208,24 @@ async function fetchManageableWorkspacesInternalImpl(
     .in("id", workspaceIds);
 
   if (wsErr || !workspaceRows) {
-    if (wsErr) console.error("fetchManageableWorkspacesInternal workspaces:", wsErr.message);
+    if (wsErr) {
+      console.error(
+        options.adminOnly
+          ? "fetchManageableWorkspacesInternal workspaces:"
+          : "fetchVisibleWorkspacesInternal workspaces:",
+        wsErr.message,
+      );
+    }
     return [];
   }
 
   const byId = new Map((workspaceRows as WorkspaceRow[]).map((w) => [w.id, w]));
 
-  const out: Array<
-    ManageableWorkspaceSummary & {
-      productCount: number;
-      logo_url: string | null;
-      website_url: string | null;
-      owner_user_id: string | null;
-    }
-  > = [];
+  const out: WorkspaceInternalRow[] = [];
 
   for (const m of members) {
     if (!isActiveStatus(m.status)) continue;
-    if (!isAdminRole(m.role)) continue;
+    if (options.adminOnly && !isAdminRole(m.role)) continue;
 
     const ws = byId.get(m.workspace_id);
     if (!ws || !isActiveStatus(ws.status)) continue;
@@ -239,11 +249,25 @@ async function fetchManageableWorkspacesInternalImpl(
     });
   }
 
-  const dedup = new Map<string, (typeof out)[0]>();
+  const dedup = new Map<string, WorkspaceInternalRow>();
   for (const row of out) {
     dedup.set(row.id, row);
   }
   return [...dedup.values()];
+}
+
+async function fetchManageableWorkspacesInternalImpl(
+  userId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<WorkspaceInternalRow[]> {
+  return fetchUserWorkspacesInternalImpl(userId, { adminOnly: true }, supabaseClient);
+}
+
+async function fetchVisibleWorkspacesInternalImpl(
+  userId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<WorkspaceInternalRow[]> {
+  return fetchUserWorkspacesInternalImpl(userId, { adminOnly: false }, supabaseClient);
 }
 
 /** Per-request dedup when layout and page loaders both need manageable workspaces. */
@@ -251,23 +275,62 @@ const fetchManageableWorkspacesInternalCached = cache((userId: string) =>
   fetchManageableWorkspacesInternalImpl(userId),
 );
 
+/** Per-request dedup when layout and page loaders both need visible member workspaces. */
+const fetchVisibleWorkspacesInternalCached = cache((userId: string) =>
+  fetchVisibleWorkspacesInternalImpl(userId),
+);
+
 async function fetchManageableWorkspacesInternal(
   userId: string,
   supabaseClient?: SupabaseClient,
-): Promise<
-  Array<
-    ManageableWorkspaceSummary & {
-      productCount: number;
-      logo_url: string | null;
-      website_url: string | null;
-      owner_user_id: string | null;
-    }
-  >
-> {
+): Promise<WorkspaceInternalRow[]> {
   if (supabaseClient) {
     return fetchManageableWorkspacesInternalImpl(userId, supabaseClient);
   }
   return fetchManageableWorkspacesInternalCached(userId);
+}
+
+async function fetchVisibleWorkspacesInternal(
+  userId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<WorkspaceInternalRow[]> {
+  if (supabaseClient) {
+    return fetchVisibleWorkspacesInternalImpl(userId, supabaseClient);
+  }
+  return fetchVisibleWorkspacesInternalCached(userId);
+}
+
+async function internalRowsToRailEntries(rows: WorkspaceInternalRow[]): Promise<WorkspaceRailEntry[]> {
+  const avatarInitialsById = await fetchAvatarInitialsByWorkspaceId(rows);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    workspace_type: r.workspace_type,
+    website_url: r.website_url,
+    logo_url: r.logo_url,
+    avatarInitials: avatarInitialsById.get(r.id) ?? null,
+    memberRole: r.memberRole,
+  }));
+}
+
+async function internalRowsToDashboardEntries(
+  rows: WorkspaceInternalRow[],
+): Promise<WorkspaceDashboardEntry[]> {
+  const [memberCounts, avatarInitialsById] = await Promise.all([
+    fetchWorkspaceMemberCountsByIds(rows.map((r) => r.id)),
+    fetchAvatarInitialsByWorkspaceId(rows),
+  ]);
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    website_url: r.website_url,
+    logo_url: r.logo_url,
+    avatarInitials: avatarInitialsById.get(r.id) ?? null,
+    memberRole: r.memberRole,
+    memberCount: memberCounts.get(r.id) ?? 0,
+    productCount: r.productCount,
+  }));
 }
 
 async function fetchAvatarInitialsByWorkspaceId(
@@ -305,36 +368,28 @@ async function fetchAvatarInitialsByWorkspaceId(
 
 export async function fetchManageableWorkspacesForRail(userId: string): Promise<WorkspaceRailEntry[]> {
   const rows = await fetchManageableWorkspacesInternal(userId);
-  const avatarInitialsById = await fetchAvatarInitialsByWorkspaceId(rows);
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    workspace_type: r.workspace_type,
-    website_url: r.website_url,
-    logo_url: r.logo_url,
-    avatarInitials: avatarInitialsById.get(r.id) ?? null,
-  }));
+  return internalRowsToRailEntries(rows);
+}
+
+/** Active memberships (all roles) for the HQ rail and workspace switcher. */
+export async function fetchVisibleWorkspacesForRail(userId: string): Promise<WorkspaceRailEntry[]> {
+  const rows = await fetchVisibleWorkspacesInternal(userId);
+  return internalRowsToRailEntries(rows);
 }
 
 export async function fetchManageableWorkspacesForDashboard(
   userId: string,
 ): Promise<WorkspaceDashboardEntry[]> {
   const rows = await fetchManageableWorkspacesInternal(userId);
-  const [memberCounts, avatarInitialsById] = await Promise.all([
-    fetchWorkspaceMemberCountsByIds(rows.map((r) => r.id)),
-    fetchAvatarInitialsByWorkspaceId(rows),
-  ]);
+  return internalRowsToDashboardEntries(rows);
+}
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    website_url: r.website_url,
-    logo_url: r.logo_url,
-    avatarInitials: avatarInitialsById.get(r.id) ?? null,
-    memberRole: r.memberRole,
-    memberCount: memberCounts.get(r.id) ?? 0,
-    productCount: r.productCount,
-  }));
+/** Active memberships (all roles) for the HQ dashboard launcher. */
+export async function fetchVisibleWorkspacesForDashboard(
+  userId: string,
+): Promise<WorkspaceDashboardEntry[]> {
+  const rows = await fetchVisibleWorkspacesInternal(userId);
+  return internalRowsToDashboardEntries(rows);
 }
 
 export async function readVisualifyActiveWorkspaceIdFromCookie(): Promise<string | null> {
@@ -369,8 +424,8 @@ export async function clearVisualifyActiveWorkspaceIdCookieIfMatches(workspaceId
 export async function resolveSelectedWorkspaceIdForRail(userId: string): Promise<string | null> {
   const cookieId = await readVisualifyActiveWorkspaceIdFromCookie();
   if (!cookieId) return null;
-  const manageable = await fetchManageableWorkspacesInternal(userId);
-  const ok = manageable.some((w) => w.id === cookieId);
+  const visible = await fetchVisibleWorkspacesInternal(userId);
+  const ok = visible.some((w) => w.id === cookieId);
   return ok ? cookieId : null;
 }
 

@@ -17,7 +17,7 @@ export function DashboardWorkspacesSection({
       <section aria-label="Workspaces" className="min-w-0">
         <div className="ds-document-tile-panel ds-hq-workspace-launcher-empty">
           <p className="m-0 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-            You don&apos;t administer any workspaces yet. Create one to enable apps and billing, or join an
+            You aren&apos;t a member of any workspaces yet. Create one to enable apps and billing, or join an
             existing workspace when an admin invites you.
           </p>
           <Link

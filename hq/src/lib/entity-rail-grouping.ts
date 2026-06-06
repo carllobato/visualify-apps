@@ -5,6 +5,7 @@ export type EntityRailWorkspace = {
   website_url: string | null;
   logo_url: string | null;
   avatarInitials: string | null;
+  memberRole: string;
 };
 
 function normType(t: string): string {

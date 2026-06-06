@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { setVisualifyActiveWorkspaceIdAction } from "./workspace-switcher-actions";
 import { groupEntitiesForRail, workspaceTypeDisplayLabel, type EntityRailWorkspace } from "@/lib/entity-rail-grouping";
+import { canManageWorkspaceInHq } from "@/lib/workspace-member-roles";
 import { WorkspaceAvatar } from "@/components/workspace-avatar.client";
 import {
   AppShellRailNavSection,
@@ -97,14 +98,25 @@ export function WorkspaceRailList({
 
   const workspaceChromeActive = pathnameShowsWorkspaceRowActiveChrome(pathname);
 
-  async function selectWorkspace(id: string) {
+  async function selectWorkspace(id: string, memberRole: string) {
     if (busyId) return;
     setBusyId(id);
-    const result = await setVisualifyActiveWorkspaceIdAction(id);
-    setBusyId(null);
-    if (result.ok) {
-      router.push(`/workspaces/${id}?tab=apps`);
-      router.refresh();
+    try {
+      const result = await setVisualifyActiveWorkspaceIdAction(id);
+      if (!result.ok) return;
+
+      if (canManageWorkspaceInHq(memberRole)) {
+        router.push(`/workspaces/${id}?tab=apps`);
+        return;
+      }
+
+      if (pathname === "/dashboard") {
+        router.refresh();
+      } else {
+        router.push("/dashboard");
+      }
+    } finally {
+      setBusyId(null);
     }
   }
 
@@ -123,7 +135,7 @@ export function WorkspaceRailList({
           isSelected={isSelected}
           usesActiveChrome={workspaceChromeActive && isSelected}
           disabled={busyId !== null}
-          onSelect={selectWorkspace}
+          onSelect={() => selectWorkspace(w.id, w.memberRole)}
         />
       );
     });
@@ -133,7 +145,7 @@ export function WorkspaceRailList({
     return (
       <AppShellRailNavSection label="WORKSPACES">
         <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-tertiary)]">
-          No workspaces to manage yet.
+          No workspaces yet.
         </p>
         <Link href="/account" className={RAIL_MINI_LINK_CLASS}>
           Join Workspace

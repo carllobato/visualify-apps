@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import type { WorkspaceDashboardEntry } from "@/lib/workspace-settings-data";
-import { workspaceMemberRoleLabel } from "@/lib/workspace-member-roles";
+import { workspaceMemberRoleLabel, canManageWorkspaceInHq } from "@/lib/workspace-member-roles";
 import { WorkspaceAvatar } from "@/components/workspace-avatar.client";
 import { useDashboardOpenWorkspace } from "./dashboard-workspaces-open.client";
 
@@ -60,6 +60,7 @@ export function DashboardWorkspaceTile({
 }) {
   const { busyId, tilesDisabled, openWorkspace } = useDashboardOpenWorkspace();
   const pending = busyId === workspace.id;
+  const canManage = canManageWorkspaceInHq(workspace.memberRole);
   const settingsHref = `/workspaces/${workspace.id}?tab=details`;
   const openLabel = pending ? `Opening ${workspace.name}` : `Open ${workspace.name}`;
 
@@ -68,7 +69,7 @@ export function DashboardWorkspaceTile({
       <button
         type="button"
         disabled={tilesDisabled}
-        onClick={() => openWorkspace(workspace.id)}
+        onClick={() => openWorkspace(workspace.id, canManage)}
         className="ds-hq-workspace-launcher-tile__open"
         aria-label={openLabel}
         aria-busy={pending || undefined}
@@ -86,15 +87,17 @@ export function DashboardWorkspaceTile({
         </span>
       </button>
 
-      <Link
-        href={settingsHref}
-        className="ds-hq-workspace-launcher-tile__settings"
-        aria-label={`Settings for ${workspace.name}`}
-        onClick={stopLauncherEventPropagation}
-        onPointerDown={stopLauncherEventPropagation}
-      >
-        <IconSettings />
-      </Link>
+      {canManage ? (
+        <Link
+          href={settingsHref}
+          className="ds-hq-workspace-launcher-tile__settings"
+          aria-label={`Settings for ${workspace.name}`}
+          onClick={stopLauncherEventPropagation}
+          onPointerDown={stopLauncherEventPropagation}
+        >
+          <IconSettings />
+        </Link>
+      ) : null}
 
       {appShortcuts}
     </article>

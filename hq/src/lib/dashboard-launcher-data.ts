@@ -4,8 +4,8 @@ import { cache } from "react";
 import { getProductDashboardUrl } from "@visualify/urls";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import {
-  fetchManageableWorkspacesForDashboard,
-  fetchManageableWorkspacesForRail,
+  fetchVisibleWorkspacesForDashboard,
+  fetchVisibleWorkspacesForRail,
   type WorkspaceDashboardEntry,
 } from "@/lib/workspace-settings-data";
 import {
@@ -218,7 +218,7 @@ function buildWorkspaceAppNav(
 export async function fetchDashboardLauncherCriticalData(
   userId: string,
 ): Promise<WorkspaceDashboardEntry[]> {
-  return fetchManageableWorkspacesForDashboard(userId);
+  return fetchVisibleWorkspacesForDashboard(userId);
 }
 
 /**
@@ -228,7 +228,7 @@ export async function fetchDashboardLauncherCriticalData(
 export const fetchDashboardWorkspaceAppsEnrichment = cache(
   async (userId: string): Promise<Map<string, WorkspaceAppNav[]>> => {
     try {
-      const workspaces = await fetchManageableWorkspacesForRail(userId);
+      const workspaces = await fetchVisibleWorkspacesForRail(userId);
       const workspaceIds = workspaces.map((w) => w.id);
       if (workspaceIds.length === 0) return new Map();
 
