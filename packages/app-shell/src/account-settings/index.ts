@@ -45,7 +45,9 @@ export {
 export type { AccountSettingsAppCatalogEntry } from "./visualify-account-app-catalog";
 
 export {
+  buildEntitledAppShellCatalogForUser,
   buildVisualifyAccountAppCatalogForUser,
+  filterAppShellCatalogForEntitlements,
   resolveAccountSettingsEntitledProductKeys,
 } from "./resolve-account-settings-entitlements";
 

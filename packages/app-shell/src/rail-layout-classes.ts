@@ -9,10 +9,12 @@ export const APP_SHELL_RAIL_COLLAPSED_WIDTH_PX = 68;
 /** Horizontal padding for a 68px collapsed rail with a 40px icon column. */
 export const appShellRailPadXClassName = "px-[14px]";
 
-/** Width transition: collapsed 68px → expanded up to 240px on hover (desktop only). */
+/** Delay before the collapsible rail expands on pointer enter (desktop). */
+export const APP_SHELL_RAIL_HOVER_EXPAND_DELAY_MS = 300;
+
+/** Width transition: collapsed 68px → expanded via app-shell-frame.css hover-expand rules (desktop). */
 export const appShellRailExpandedWidthClassName =
-  "w-[68px] hover:w-[min(240px,calc(100vw-16px))] max-md:hover:w-[68px] " +
-  "max-md:data-[mobile-open=true]:w-[min(240px,calc(100vw-16px))]";
+  "w-[68px] max-md:data-[mobile-open=true]:w-[min(240px,calc(100vw-16px))]";
 
 /** Pinned-open rail width (matches hover max). */
 export const appShellRailPinnedWidthClassName = "w-[min(240px,calc(100vw-16px))]";
@@ -44,17 +46,16 @@ export const appShellRailFooterClassName = "vf-app-shell-rail-footer";
 
 /** Collapsed-rail horizontal rule — 40px wide, `--ds-border-subtle`, expands with rail on hover/pin. */
 export const appShellRailRuleClassName =
-  "h-px w-full max-w-10 shrink-0 bg-[var(--ds-border-subtle)] transition-[max-width] duration-[400ms] ease-out " +
-  "group-hover:max-w-none group-data-[pinned=true]:max-w-none max-md:group-data-[mobile-open=true]:max-w-none";
+  "vf-app-shell-rail-expand-rule h-px w-full max-w-10 shrink-0 bg-[var(--ds-border-subtle)] transition-[max-width] duration-[400ms] ease-out " +
+  "group-data-[pinned=true]:max-w-none max-md:group-data-[mobile-open=true]:max-w-none";
 
 /** Divider between brand and nav — expands with rail width. */
 export const appShellRailSeparatorClassName = appShellRailRuleClassName;
 
-/** Pin/collapse row reveal container (visible when pinned or on rail hover). */
+/** Pin/collapse row reveal container (visible when pinned or after hover expand delay). */
 export const appShellRailPinRevealClassName =
-  "overflow-hidden transition-[max-height,opacity,margin-bottom] duration-[400ms] ease-out " +
+  "vf-app-shell-rail-expand-pin overflow-hidden transition-[max-height,opacity,margin-bottom] duration-[400ms] ease-out " +
   "pointer-events-none max-h-0 opacity-0 " +
-  "group-hover:pointer-events-auto group-hover:max-h-20 group-hover:opacity-100 " +
   "group-data-[pinned=true]:pointer-events-auto group-data-[pinned=true]:max-h-20 group-data-[pinned=true]:opacity-100 " +
   "max-md:group-data-[mobile-open=true]:pointer-events-auto max-md:group-data-[mobile-open=true]:max-h-20 max-md:group-data-[mobile-open=true]:opacity-100";
 
@@ -65,8 +66,8 @@ export const appShellRailPinRevealPinnedClassName =
 
 /** Footer help row outer — icon width when collapsed; full width on hover or pin. */
 export const appShellRailFooterRowOuterTailwindClassName =
-  "w-full max-w-10 shrink-0 transition-[max-width] duration-[400ms] ease-out " +
-  "group-hover:max-w-none group-data-[pinned=true]:max-w-none max-md:group-data-[mobile-open=true]:max-w-none";
+  "vf-app-shell-rail-expand-rule w-full max-w-10 shrink-0 transition-[max-width] duration-[400ms] ease-out " +
+  "group-data-[pinned=true]:max-w-none max-md:group-data-[mobile-open=true]:max-w-none";
 
 /** @deprecated Use {@link appShellRailFooterRowOuterTailwindClassName} */
 export const appShellRailFooterAccountOuterTailwindClassName = appShellRailFooterRowOuterTailwindClassName;

@@ -14,8 +14,8 @@ import {
   AppShellRailSeparator,
   appShellNavHrefActive,
   appShellRailPrimaryNavClassName,
+  type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
-import { CONTROLAI_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import {
   CONTROLAI_PRIMARY_NAV,
   CONTROLAI_ROUTES,
@@ -207,11 +207,13 @@ const PROJECT_NAV_ITEMS: { segment: ControlAIProjectNavSegment | null; label: st
 type ControlAiAppShellRailProps = {
   workspaces: EntitledWorkspace[];
   selectedWorkspaceId: string | null;
+  appCatalog: readonly AppShellRailAppCatalogEntry[];
 };
 
 export function ControlAiAppShellRail({
   workspaces,
   selectedWorkspaceId,
+  appCatalog,
 }: ControlAiAppShellRailProps) {
   const pathname = usePathname();
   const projectIdInUrl = projectIdFromPathname(pathname);
@@ -225,7 +227,7 @@ export function ControlAiAppShellRail({
           <AppShellRailBrandAppMenu
             appShortName="ControlAI"
             currentAppName="Visualify ControlAI"
-            catalog={CONTROLAI_APP_SHELL_CATALOG}
+            catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />
 

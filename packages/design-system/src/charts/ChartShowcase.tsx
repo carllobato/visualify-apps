@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useId, useState, type MouseEvent, type ReactNode } from "react";
 
 type ChartStatus = "positive" | "negative" | "neutral";
 type ChartState = "default" | "highlight" | "muted";
@@ -175,6 +177,20 @@ function normalizedIndex(index: number, length: number) {
   return index / (length - 1);
 }
 
+const MULTI_LINE_VIEW_WIDTH = 100;
+const MULTI_LINE_VIEW_HEIGHT = 88;
+const MULTI_LINE_VIEW_PAD = 4;
+const MULTI_LINE_MIN_POINT_WIDTH_PX = 40;
+
+function multiLinePlotX(index: number, count: number) {
+  if (count <= 1) return MULTI_LINE_VIEW_PAD;
+  return MULTI_LINE_VIEW_PAD + normalizedIndex(index, count) * (MULTI_LINE_VIEW_WIDTH - MULTI_LINE_VIEW_PAD * 2);
+}
+
+function multiLinePlotXPercent(index: number, count: number) {
+  return (multiLinePlotX(index, count) / MULTI_LINE_VIEW_WIDTH) * 100;
+}
+
 function ChartFrame({
   title,
   insight,
@@ -182,20 +198,34 @@ function ChartFrame({
   showDelta = false,
   delta,
   hoverCard,
+  embedded = false,
   children,
 }: {
   title: string;
-  insight: string;
+  insight?: string;
   status?: ChartStatus;
   showDelta?: boolean;
   delta?: string;
   hoverCard?: BaseChartProps<unknown>["hoverCard"];
+  embedded?: boolean;
   children: ReactNode;
 }) {
   const hoverStatus = hoverCard?.status ?? "neutral";
   return (
-    <div className="rounded-[var(--ds-radius-md)] border border-[var(--ds-chart-panel-border)] bg-[var(--ds-chart-panel)]/95 p-[var(--ds-chart-panel-padding)]">
-      <div className="mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3">
+    <div
+      className={
+        embedded
+          ? "flex h-full w-full min-w-0 flex-col"
+          : "rounded-[var(--ds-radius-md)] border border-[var(--ds-chart-panel-border)] bg-[var(--ds-chart-panel)]/95 p-[var(--ds-chart-panel-padding)]"
+      }
+    >
+      <div
+        className={
+          embedded
+            ? "mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3 px-4 pt-3"
+            : "mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3"
+        }
+      >
         <div className="flex items-baseline gap-2">
           <h3 className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-card-foreground)]">{title}</h3>
           {showDelta && delta ? (
@@ -207,14 +237,16 @@ function ChartFrame({
             </span>
           ) : null}
         </div>
-        <span
-          className="text-[length:var(--ds-chart-annotation-size)] font-semibold uppercase tracking-[0.045em]"
-          style={{ color: STATUS_COLOR_VAR[status], opacity: 0.94 }}
-        >
-          {insight}
-        </span>
+        {insight ? (
+          <span
+            className="text-[length:var(--ds-chart-annotation-size)] font-semibold uppercase tracking-[0.045em]"
+            style={{ color: STATUS_COLOR_VAR[status], opacity: 0.94 }}
+          >
+            {insight}
+          </span>
+        ) : null}
       </div>
-      <div className="relative">
+      <div className={embedded ? "relative min-h-0 flex-1" : "relative"}>
         {children}
         {hoverCard ? (
           <div className="pointer-events-none absolute right-2 top-2 min-w-[120px] rounded-[var(--ds-radius-sm)] border border-[var(--ds-chart-panel-border)] bg-[color-mix(in_oklab,var(--ds-chart-panel)_88%,var(--ds-background))] px-2.5 py-2 shadow-[var(--ds-shadow-sm)]">
@@ -644,6 +676,419 @@ export function BarChartPrimitive({
             </div>
           );
         })}
+      </div>
+    </ChartFrame>
+  );
+}
+
+type LineSeries = {
+  label: string;
+  data: PointDatum[];
+  forecastFromIndex?: number;
+  color?: string;
+  fillUnder?: boolean;
+};
+
+function buildMultiLineAreaPath(
+  data: PointDatum[],
+  fromIndex: number,
+  toIndex: number,
+  count: number,
+  plotY: (value: number) => number,
+  viewHeight: number,
+  viewPad: number,
+) {
+  const linePath = buildMultiLineSmoothPath(data, fromIndex, toIndex, count, plotY);
+  if (!linePath) return "";
+
+  const firstX = multiLinePlotX(fromIndex, count);
+  const lastX = multiLinePlotX(toIndex, count);
+  const baselineY = viewHeight - viewPad;
+
+  return `${linePath} L ${lastX.toFixed(2)} ${baselineY.toFixed(2)} L ${firstX.toFixed(2)} ${baselineY.toFixed(2)} Z`;
+}
+
+function buildMultiLineSmoothPath(
+  data: PointDatum[],
+  fromIndex: number,
+  toIndex: number,
+  count: number,
+  plotY: (value: number) => number,
+) {
+  return data
+    .slice(fromIndex, toIndex + 1)
+    .map((point, offset) => {
+      const index = fromIndex + offset;
+      const x = multiLinePlotX(index, count);
+      const y = plotY(point.value);
+      return `${offset === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+function buildMultiLineSegments(
+  data: PointDatum[],
+  count: number,
+  plotY: (value: number) => number,
+  forecastFromIndex?: number,
+) {
+  const lastIndex = data.length - 1;
+
+  if (forecastFromIndex === undefined || forecastFromIndex <= 0 || forecastFromIndex > lastIndex) {
+    return [{ d: buildMultiLineSmoothPath(data, 0, lastIndex, count, plotY), dashed: false }];
+  }
+
+  return [
+    { d: buildMultiLineSmoothPath(data, 0, forecastFromIndex, count, plotY), dashed: false },
+    { d: buildMultiLineSmoothPath(data, forecastFromIndex, lastIndex, count, plotY), dashed: true },
+  ];
+}
+
+function getMultiLineNiceDomainMax(maxValue: number, step = 50_000_000) {
+  return Math.max(step, Math.ceil(maxValue / step) * step);
+}
+
+function getNearestMultiLinePointIndex(pointerRatio: number, count: number) {
+  if (count <= 1) return 0;
+
+  let nearestIndex = 0;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+
+  for (let index = 0; index < count; index += 1) {
+    const pointRatio = multiLinePlotXPercent(index, count) / 100;
+    const distance = Math.abs(pointerRatio - pointRatio);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestIndex = index;
+    }
+  }
+
+  return nearestIndex;
+}
+
+function MultiLineChartHoverCallout({
+  monthLabel,
+  rows,
+  anchorPercent,
+  flipLeft,
+}: {
+  monthLabel: string;
+  rows: { label: string; value: string; color: string; muted?: boolean }[];
+  anchorPercent: number;
+  flipLeft: boolean;
+}) {
+  return (
+    <div
+      className="pointer-events-none absolute top-2 z-[4] min-w-[156px] rounded-[var(--ds-radius-sm)] border border-[var(--ds-chart-panel-border)] bg-[color-mix(in_oklab,var(--ds-chart-panel)_88%,var(--ds-background))] px-2.5 py-2 shadow-[var(--ds-shadow-sm)]"
+      style={{
+        left: `${anchorPercent}%`,
+        transform: flipLeft ? "translateX(calc(-100% - 8px))" : "translateX(8px)",
+      }}
+    >
+      <p className="text-[length:var(--ds-chart-annotation-size)] font-semibold uppercase tracking-[0.05em] text-[var(--ds-chart-axis)]">
+        {monthLabel}
+      </p>
+      <div className="mt-1.5 flex flex-col gap-1">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+              <span
+                className="truncate text-[length:var(--ds-chart-label-size)] text-[var(--ds-chart-axis)]"
+                style={{ opacity: row.muted ? 0.72 : 0.92 }}
+              >
+                {row.label}
+              </span>
+            </div>
+            <span
+              className="shrink-0 text-[length:var(--ds-chart-label-size)] font-semibold tabular-nums text-[var(--ds-card-foreground)]"
+              style={{ opacity: row.muted ? 0.82 : 1 }}
+            >
+              {row.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function MultiLineChartPrimitive({
+  title,
+  series,
+  insight,
+  status = "neutral",
+  showDelta = false,
+  delta,
+  hoverCard,
+  colorMode = "categorical",
+  domainMax: domainMaxProp,
+  yAxisStep = 50_000_000,
+  formatYLabel,
+  showAllXLabels = false,
+  todayIndex,
+  forecastDasharray = "4 4",
+  embedded = false,
+}: {
+  title: string;
+  series: LineSeries[];
+  insight?: string;
+  status?: ChartStatus;
+  showDelta?: boolean;
+  delta?: string;
+  hoverCard?: BaseChartProps<unknown>["hoverCard"];
+  colorMode?: ChartColorMode;
+  domainMax?: number;
+  yAxisStep?: number;
+  formatYLabel?: (value: number) => string;
+  showAllXLabels?: boolean;
+  todayIndex?: number;
+  forecastDasharray?: string;
+  embedded?: boolean;
+}) {
+  const w = MULTI_LINE_VIEW_WIDTH;
+  const h = MULTI_LINE_VIEW_HEIGHT;
+  const pad = MULTI_LINE_VIEW_PAD;
+  const n = series[0]?.data.length ?? 0;
+  const dataMax = Math.max(1, ...series.flatMap((line) => line.data.map((point) => point.value)));
+  const domainMax = domainMaxProp ?? getMultiLineNiceDomainMax(dataMax * 1.02, yAxisStep);
+  const plotMinWidth = Math.max(n * MULTI_LINE_MIN_POINT_WIDTH_PX, 280);
+  const yTicks = Array.from({ length: domainMax / yAxisStep + 1 }, (_, index) => index * yAxisStep);
+  const formatTick = formatYLabel ?? ((value: number) => String(value));
+
+  function plotY(value: number) {
+    return h - pad - (value / domainMax) * (h - pad * 2);
+  }
+
+  function plotYPercent(value: number) {
+    return (plotY(value) / h) * 100;
+  }
+
+  function seriesColor(line: LineSeries, index: number) {
+    return line.color ?? dataColor({ index, state: "default", colorMode, status });
+  }
+
+  const xLabels = series[0]?.data.map((pt) => pt.key) ?? [];
+  const maxLabels = 8;
+  const labelStep = n <= maxLabels ? 1 : Math.ceil(n / maxLabels);
+  const gradientPrefix = useId().replace(/:/g, "");
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const formatPointValue = formatYLabel ?? ((value: number) => String(value));
+
+  function handlePlotMouseMove(event: MouseEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (bounds.width <= 0 || n <= 0) return;
+
+    const pointerRatio = (event.clientX - bounds.left) / bounds.width;
+    setHoveredIndex(getNearestMultiLinePointIndex(pointerRatio, n));
+  }
+
+  function handlePlotMouseLeave() {
+    setHoveredIndex(null);
+  }
+
+  const hoveredMonthLabel = hoveredIndex !== null ? xLabels[hoveredIndex] : null;
+  const hoveredAnchorPercent = hoveredIndex !== null ? multiLinePlotXPercent(hoveredIndex, n) : 0;
+  const flipHoverCalloutLeft = hoveredIndex !== null && hoveredIndex > n / 2;
+
+  return (
+    <ChartFrame
+      title={title}
+      insight={insight}
+      status={status}
+      showDelta={showDelta}
+      delta={delta}
+      hoverCard={hoverCard}
+      embedded={embedded}
+    >
+      <div
+        className={
+          embedded
+            ? "flex min-h-0 flex-1 flex-col px-4 pb-3"
+            : "rounded-[var(--ds-radius-sm)] bg-[var(--ds-chart-surface)] px-[var(--ds-space-2)] pb-[var(--ds-space-2)] pt-[var(--ds-space-1)]"
+        }
+      >
+        <div className="flex min-h-0 min-w-0 flex-1">
+          <div className="relative mr-2 w-14 shrink-0 self-stretch">
+            {yTicks.map((tick) => (
+              <span
+                key={tick}
+                className="absolute right-0 -translate-y-1/2 text-right text-[length:var(--ds-chart-label-size)] tabular-nums text-[var(--ds-chart-axis)] opacity-[0.88]"
+                style={{ top: `${plotYPercent(tick)}%` }}
+              >
+                {formatTick(tick)}
+              </span>
+            ))}
+          </div>
+          <div className="min-h-0 min-w-0 flex-1 overflow-x-auto">
+            <div className="flex min-h-0 flex-col" style={{ minWidth: plotMinWidth }}>
+              <div
+                className={
+                  embedded
+                    ? "relative min-h-64 flex-1 border-b border-[var(--ds-chart-grid)] px-0.5 pb-2"
+                    : "relative h-64 border-b border-[var(--ds-chart-grid)] px-0.5 pb-2"
+                }
+                onMouseMove={handlePlotMouseMove}
+                onMouseLeave={handlePlotMouseLeave}
+              >
+                {todayIndex !== undefined && todayIndex >= 0 && todayIndex < n ? (
+                  <span
+                    className="pointer-events-none absolute inset-y-0 z-[1] border-l border-[var(--ds-chart-axis)]"
+                    style={{
+                      left: `${multiLinePlotXPercent(todayIndex, n)}%`,
+                      opacity: 0.28,
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+                {hoveredIndex !== null && hoveredIndex !== todayIndex ? (
+                  <span
+                    className="pointer-events-none absolute inset-y-0 z-[2] border-l border-[var(--ds-chart-axis)]"
+                    style={{
+                      left: `${multiLinePlotXPercent(hoveredIndex, n)}%`,
+                      opacity: 0.16,
+                    }}
+                    aria-hidden
+                  />
+                ) : null}
+                {yTicks.slice(1).map((tick) => (
+                  <span
+                    key={tick}
+                    className="pointer-events-none absolute inset-x-0 border-t border-[var(--ds-chart-grid)]"
+                    style={{ top: `${plotYPercent(tick)}%`, opacity: "var(--ds-chart-grid-opacity)" }}
+                    aria-hidden
+                  />
+                ))}
+                <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 h-full w-full overflow-visible" aria-hidden preserveAspectRatio="none">
+                  <defs>
+                    {series.map((line, lineIndex) => {
+                      if (!line.fillUnder) return null;
+
+                      const fillColor = seriesColor(line, lineIndex);
+                      const gradientId = `${gradientPrefix}-fill-${lineIndex}`;
+
+                      return (
+                        <linearGradient key={gradientId} id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={fillColor} stopOpacity="0.2" />
+                          <stop offset="100%" stopColor={fillColor} stopOpacity="0.02" />
+                        </linearGradient>
+                      );
+                    })}
+                  </defs>
+                  {series.map((line, lineIndex) => {
+                    if (!line.fillUnder) return null;
+
+                    const gradientId = `${gradientPrefix}-fill-${lineIndex}`;
+                    const areaPath = buildMultiLineAreaPath(line.data, 0, n - 1, n, plotY, h, pad);
+
+                    return (
+                      <path
+                        key={`${line.label}-fill`}
+                        d={areaPath}
+                        fill={`url(#${gradientId})`}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    );
+                  })}
+                  {series.map((line, lineIndex) => {
+                    const stroke = seriesColor(line, lineIndex);
+                    const segments = buildMultiLineSegments(
+                      line.data,
+                      n,
+                      plotY,
+                      line.forecastFromIndex,
+                    );
+
+                    return segments.map((segment, segmentIndex) => (
+                      <path
+                        key={`${line.label}-${segmentIndex}`}
+                        d={segment.d}
+                        fill="none"
+                        stroke={stroke}
+                        strokeWidth="var(--ds-chart-line-width)"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeDasharray={segment.dashed ? forecastDasharray : undefined}
+                        opacity={segment.dashed ? "0.72" : "var(--ds-chart-opacity-default)"}
+                        vectorEffect="non-scaling-stroke"
+                      />
+                    ));
+                  })}
+                </svg>
+                <div className="pointer-events-none absolute inset-0" aria-hidden>
+                  {series.map((line, lineIndex) =>
+                    line.data.map((point, pointIndex) => {
+                      const isHovered = pointIndex === hoveredIndex;
+                      const isForecast =
+                        line.forecastFromIndex !== undefined && pointIndex > line.forecastFromIndex;
+
+                      return (
+                        <span
+                          key={`${line.label}-${point.key}-${pointIndex}`}
+                          className={
+                            isHovered
+                              ? "absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ds-background)] shadow-[var(--ds-shadow-sm)]"
+                              : "absolute h-[5px] w-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--ds-chart-panel)]"
+                          }
+                          style={{
+                            left: `${multiLinePlotXPercent(pointIndex, n)}%`,
+                            top: `${plotYPercent(point.value)}%`,
+                            backgroundColor: seriesColor(line, lineIndex),
+                            opacity: isHovered ? 1 : isForecast ? "0.72" : STATE_OPACITY_VAR.default,
+                          }}
+                        />
+                      );
+                    }),
+                  )}
+                </div>
+                {hoveredIndex !== null && hoveredMonthLabel ? (
+                  <MultiLineChartHoverCallout
+                    monthLabel={hoveredMonthLabel}
+                    anchorPercent={hoveredAnchorPercent}
+                    flipLeft={flipHoverCalloutLeft}
+                    rows={series.map((line, lineIndex) => ({
+                      label: line.label,
+                      value: formatPointValue(line.data[hoveredIndex]?.value ?? 0),
+                      color: seriesColor(line, lineIndex),
+                      muted:
+                        line.forecastFromIndex !== undefined && hoveredIndex > line.forecastFromIndex,
+                    }))}
+                  />
+                ) : null}
+              </div>
+              <div className="relative mt-1.5 h-4 px-0.5">
+                {xLabels.map((label, i) => {
+                  if (!showAllXLabels && i !== 0 && i !== n - 1 && i % labelStep !== 0) return null;
+
+                  return (
+                    <span
+                      key={`${label}-${i}`}
+                      className="absolute top-0 max-w-[4.5rem] -translate-x-1/2 truncate text-center text-[length:var(--ds-chart-label-size)] text-[var(--ds-chart-axis)] opacity-[0.88]"
+                      style={{ left: `${multiLinePlotXPercent(i, n)}%` }}
+                    >
+                      {label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 flex min-w-0 justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            {series.map((line, i) => (
+              <div key={line.label} className="flex items-center gap-1.5">
+                <span
+                  className="h-0.5 w-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: seriesColor(line, i) }}
+                />
+                <span className="text-[length:var(--ds-chart-label-size)] text-[var(--ds-chart-axis)] opacity-[0.88]">
+                  {line.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </ChartFrame>
   );

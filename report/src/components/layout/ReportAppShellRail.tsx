@@ -11,8 +11,8 @@ import {
   AppShellRailHeader,
   AppShellRailSeparator,
   appShellNavHrefActive,
+  type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
-import { REPORT_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import { REPORT_ROUTES } from "@/lib/report-routes";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
@@ -28,6 +28,7 @@ type ReportAppShellRailProps = {
   workspaces: EntitledWorkspace[];
   selectedWorkspaceId: string | null;
   projects: ReportProjectListItem[];
+  appCatalog: readonly AppShellRailAppCatalogEntry[];
 };
 
 /**
@@ -37,6 +38,7 @@ export function ReportAppShellRail({
   workspaces,
   selectedWorkspaceId,
   projects,
+  appCatalog,
 }: ReportAppShellRailProps) {
   const pathname = usePathname();
   const accountRailActive = appShellNavHrefActive(pathname, REPORT_ROUTES.account);
@@ -48,7 +50,7 @@ export function ReportAppShellRail({
           <AppShellRailBrandAppMenu
             appShortName="Report"
             currentAppName="Visualify Report"
-            catalog={REPORT_APP_SHELL_CATALOG}
+            catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />
 

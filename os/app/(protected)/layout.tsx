@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { AppShellOuterCanvas } from "@visualify/app-shell";
+import { AppShellOuterCanvas, buildEntitledAppShellCatalogForUser, type AppShellRailAppCatalogEntry } from "@visualify/app-shell";
+import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
@@ -43,9 +44,15 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(productConfig.HQ_APPS_URL);
   }
 
+  const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
+  const appCatalog: readonly AppShellRailAppCatalogEntry[] = buildEntitledAppShellCatalogForUser(
+    workspaceEntitledProductKeys,
+    user.email,
+  );
+
   return (
     <AppShellOuterCanvas mobileHeaderExpected>
-      <OsAppShellRail />
+      <OsAppShellRail appCatalog={appCatalog} />
       <OsProtectedDocument>{children}</OsProtectedDocument>
     </AppShellOuterCanvas>
   );

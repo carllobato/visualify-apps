@@ -13,6 +13,8 @@ export { DashboardTileStatus } from "./components/DashboardTileStatus";
 export type { DashboardTileStatusProps, DashboardTileStatusTone } from "./components/DashboardTileStatus";
 export { DashboardTileDelta } from "./components/DashboardTileDelta";
 export type { DashboardTileDeltaProps, DashboardTileDeltaTone } from "./components/DashboardTileDelta";
+export { Trend } from "./components/Trend";
+export type { TrendProps, TrendSentiment, TrendTooltipPlacement, TrendVariant } from "./components/Trend";
 export { StatBlock } from "./components/StatBlock";
 export type { StatBlockProps } from "./components/StatBlock";
 export { StatusBlock } from "./components/StatusBlock";
@@ -51,6 +53,7 @@ export {
   HalfDonutChartGlyph,
   HalfDonutChartPrimitive,
   LineChartPrimitive,
+  MultiLineChartPrimitive,
   PieChartPrimitive,
   chartShowcaseBarData,
   chartShowcaseColumnData,

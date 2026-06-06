@@ -9,6 +9,7 @@ import {
   AppShellOuterCanvas,
   AppShellRailBrandMark,
   AppShellScrollRegion,
+  type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
 import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
 import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
@@ -21,11 +22,13 @@ type ProtectedShellProps = {
   children: React.ReactNode;
   /** From server cookie so sidebar SSR matches saved rail width. */
   initialSideNavPinned?: boolean;
+  appCatalog: readonly AppShellRailAppCatalogEntry[];
 };
 
 export function ProtectedShell({
   children,
   initialSideNavPinned = true,
+  appCatalog,
 }: ProtectedShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -34,7 +37,7 @@ export function ProtectedShell({
       <>
         <OnboardingHost />
         <AppShellOuterCanvas mobileHeaderExpected>
-          <RiskAiAppShellRail />
+          <RiskAiAppShellRail appCatalog={appCatalog} />
           <AppShellMainColumn>
             <AppShellMobileHeader
               appName="Risk AI"

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
+import { buildEntitledAppShellCatalogForUser, type AppShellRailAppCatalogEntry } from "@visualify/app-shell";
+import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 import { isDevAuthBypassEnabled } from "@/lib/dev/devAuthBypass";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { supabaseServerClient } from "@/lib/supabase/server";
@@ -26,11 +28,16 @@ export default async function ProtectedLayout({
     redirect(await buildLoginRedirectUrl(pathname));
   }
 
+  let appCatalog: readonly AppShellRailAppCatalogEntry[] = [];
+
   if (user) {
     const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
     if (!entitled) {
       redirect(productConfig.HQ_APPS_URL);
     }
+
+    const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
+    appCatalog = buildEntitledAppShellCatalogForUser(workspaceEntitledProductKeys, user.email);
   }
 
   const cookieStore = await cookies();
@@ -39,6 +46,8 @@ export default async function ProtectedLayout({
   );
   const initialSideNavPinned = pinnedFromCookie ?? true;
   return (
-    <ProtectedShell initialSideNavPinned={initialSideNavPinned}>{children}</ProtectedShell>
+    <ProtectedShell initialSideNavPinned={initialSideNavPinned} appCatalog={appCatalog}>
+      {children}
+    </ProtectedShell>
   );
 }

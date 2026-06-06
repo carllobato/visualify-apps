@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { AppShellOuterCanvas } from "@visualify/app-shell";
+import { AppShellOuterCanvas, buildEntitledAppShellCatalogForUser, type AppShellRailAppCatalogEntry } from "@visualify/app-shell";
+import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { getReportWorkspaceProjects } from "@/lib/projects/report-projects-server";
@@ -42,6 +43,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   const workspaceContext = await resolveActiveReportWorkspaceContext(supabase, user.id);
+  const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
+  const appCatalog: readonly AppShellRailAppCatalogEntry[] = buildEntitledAppShellCatalogForUser(
+    workspaceEntitledProductKeys,
+    user.email,
+  );
 
   if (workspaceContext.needsSelection && !isSelectWorkspacePath(pathname)) {
     redirect(buildSelectWorkspaceRedirectUrl(pathname));
@@ -60,6 +66,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         workspaces={workspaceContext.workspaces}
         selectedWorkspaceId={workspaceContext.selectedWorkspaceId}
         projects={projects}
+        appCatalog={appCatalog}
       />
       <ReportProtectedDocument projects={projects}>{children}</ReportProtectedDocument>
     </AppShellOuterCanvas>

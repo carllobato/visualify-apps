@@ -1,24 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Card, CardContent, Tab, Tabs } from "@visualify/design-system";
+import { ReportProjectPageLayout } from "@/components/project/ReportProjectPageLayout";
 import { ReportProjectBudgetCard } from "@/components/project/report/ReportProjectBudgetCard";
+import { ReportProjectCostTabContent } from "@/components/project/report/ReportProjectCostTabContent";
+import { ReportProjectTabContent } from "@/components/project/report/ReportProjectTabContent";
+import { ReportProjectSafetyCard } from "@/components/project/report/ReportProjectSafetyCard";
 import { ReportProjectScheduleCard } from "@/components/project/report/ReportProjectScheduleCard";
-import { ReportProjectKeyCategoriesCard } from "@/components/project/report/ReportProjectKeyCategoriesCard";
 import { ReportProjectKeyMetricsCard } from "@/components/project/report/ReportProjectKeyMetricsCard";
 import { ReportProjectModuleStatusCard } from "@/components/project/report/ReportProjectModuleStatusCard";
-import { ReportProjectSafetyStatsCard } from "@/components/project/report/ReportProjectSafetyStatsCard";
 import { ReportProjectSettingsForm } from "@/components/project/report/ReportProjectSettingsForm";
 import { ReportProjectStageStepper } from "@/components/project/report/ReportProjectStageStepper";
+import { ReportProjectTopRisksCard } from "@/components/project/report/ReportProjectTopRisksCard";
 import { REPORT_PROJECT_BUDGET_PLACEHOLDER } from "@/lib/projects/report-project-budget";
-import { REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER } from "@/lib/projects/report-project-category-rows";
+import { REPORT_PROJECT_COST_PLACEHOLDER } from "@/lib/projects/report-project-cost";
 import { REPORT_PROJECT_KEY_METRICS_PLACEHOLDER } from "@/lib/projects/report-project-key-metrics";
 import { REPORT_PROJECT_MODULE_STATUS_PLACEHOLDER } from "@/lib/projects/report-project-module-status";
-import { REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER } from "@/lib/projects/report-project-safety-stats";
+import { REPORT_PROJECT_TOP_RISKS_PLACEHOLDER } from "@/lib/projects/report-project-top-risks";
 import {
   REPORT_MODULE_TABS,
+  reportModuleTabShowsStageStepper,
   type ReportModuleTabId,
 } from "@/components/project/report/report-module-tabs";
+import {
+  getReportOverviewModuleLinkId,
+  getReportOverviewModuleTabId,
+  getReportOverviewNavigateLabel,
+  type ReportOverviewModuleLinkId,
+} from "@/lib/projects/report-project-overview-link";
+import {
+  getLatestReportProjectReportingPeriod,
+  REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
+  resolveReportProjectReportingPeriod,
+} from "@/lib/projects/report-project-reporting-date";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
 
 function ReportModuleTabPlaceholder({ tabLabel }: { tabLabel: string }) {
@@ -38,18 +54,137 @@ function ReportModuleTabPlaceholder({ tabLabel }: { tabLabel: string }) {
 
 type ReportProjectReportPageContentProps = {
   project: ReportProjectListItem;
+  periodParam?: string | null;
 };
 
-export function ReportProjectReportPageContent({ project }: ReportProjectReportPageContentProps) {
+export function ReportProjectReportPageContent({
+  project,
+  periodParam = null,
+}: ReportProjectReportPageContentProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [activeTab, setActiveTab] = useState<ReportModuleTabId>("page-1");
+  const [hoveredOverviewModule, setHoveredOverviewModule] =
+    useState<ReportOverviewModuleLinkId | null>(null);
+  const reportingPeriods = REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER;
+  const selectedReportingPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
+
+  useEffect(() => {
+    const latestPeriod = getLatestReportProjectReportingPeriod(reportingPeriods);
+    const resolvedPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
+
+    if (periodParam !== resolvedPeriod.isoDate) {
+      router.replace(`${pathname}?period=${latestPeriod.isoDate}`, { scroll: false });
+    }
+  }, [pathname, periodParam, reportingPeriods, router]);
+
+  function handleReportingDateChange(isoDate: string) {
+    router.replace(`${pathname}?period=${isoDate}`, { scroll: false });
+  }
+
+  function handleOverviewModuleNavigate(linkId: ReportOverviewModuleLinkId) {
+    const tabId = getReportOverviewModuleTabId(linkId);
+    if (tabId != null) {
+      setActiveTab(tabId);
+    }
+  }
+
+  function handleModuleStatusHover(label: string) {
+    const linkId = getReportOverviewModuleLinkId(label);
+    setHoveredOverviewModule(linkId ?? null);
+  }
+
+  function handleModuleStatusLeave() {
+    setHoveredOverviewModule(null);
+  }
 
   const activeTabLabel =
     REPORT_MODULE_TABS.find((tab) => tab.id === activeTab)?.label ?? "Overview";
 
+  function renderActiveTabContent() {
+    if (activeTab === "page-2") {
+      return <ReportProjectCostTabContent cost={REPORT_PROJECT_COST_PLACEHOLDER} />;
+    }
+
+    if (activeTab === "project") {
+      return <ReportProjectTabContent project={project} />;
+    }
+
+    if (activeTab === "schedule") {
+      return <ReportProjectScheduleCard />;
+    }
+
+    if (activeTab === "page-1") {
+      const moduleStatus = REPORT_PROJECT_MODULE_STATUS_PLACEHOLDER;
+      const projectMetrics = REPORT_PROJECT_KEY_METRICS_PLACEHOLDER;
+
+      return (
+        <>
+          <ReportProjectModuleStatusCard
+            items={moduleStatus}
+            projectStatus={projectMetrics}
+            onItemNavigate={setActiveTab}
+            onItemHover={handleModuleStatusHover}
+            onItemLeave={handleModuleStatusLeave}
+          />
+          <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:items-stretch">
+            <div className="flex min-w-0 flex-col lg:w-1/2">
+              <ReportProjectKeyMetricsCard
+                metrics={projectMetrics}
+                highlighted={hoveredOverviewModule === "overall"}
+                onNavigate={() => handleOverviewModuleNavigate("overall")}
+                navigateLabel={getReportOverviewNavigateLabel("overall")}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col lg:w-1/2">
+              <ReportProjectTopRisksCard
+                risks={REPORT_PROJECT_TOP_RISKS_PLACEHOLDER}
+                highlighted={hoveredOverviewModule === "risk"}
+                onNavigate={() => handleOverviewModuleNavigate("risk")}
+                navigateLabel={getReportOverviewNavigateLabel("risk")}
+              />
+            </div>
+          </div>
+          <div className="flex min-w-0 w-full flex-col gap-3 lg:flex-row lg:items-stretch">
+            <div className="flex min-w-0 flex-col lg:w-1/3">
+              <ReportProjectSafetyCard
+                highlighted={hoveredOverviewModule === "safety"}
+                onNavigate={() => handleOverviewModuleNavigate("safety")}
+                navigateLabel={getReportOverviewNavigateLabel("safety")}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col lg:w-1/3">
+              <ReportProjectScheduleCard
+                highlighted={hoveredOverviewModule === "schedule"}
+                onNavigate={() => handleOverviewModuleNavigate("schedule")}
+                navigateLabel={getReportOverviewNavigateLabel("schedule")}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col lg:w-1/3">
+              <ReportProjectBudgetCard
+                budget={REPORT_PROJECT_BUDGET_PLACEHOLDER}
+                highlighted={hoveredOverviewModule === "cost"}
+                onNavigate={() => handleOverviewModuleNavigate("cost")}
+                navigateLabel={getReportOverviewNavigateLabel("cost")}
+              />
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    return <ReportModuleTabPlaceholder tabLabel={activeTabLabel} />;
+  }
+
   return (
-    <div className="flex min-w-0 w-full flex-col">
-      <header className="shrink-0 border-b border-[var(--ds-border-subtle)] pb-2">
-        <Tabs className="-mb-px w-full" aria-label="Report module views">
+    <ReportProjectPageLayout
+      project={project}
+      contentFullWidth
+      reportingDate={selectedReportingPeriod.isoDate}
+      reportingPeriods={reportingPeriods}
+      onReportingDateChange={handleReportingDateChange}
+      headerTrailing={
+        <Tabs className="h-10 !items-center" aria-label="Report module views">
           {REPORT_MODULE_TABS.map((tab) => (
             <Tab
               key={tab.id}
@@ -60,46 +195,20 @@ export function ReportProjectReportPageContent({ project }: ReportProjectReportP
             </Tab>
           ))}
         </Tabs>
-      </header>
-
+      }
+    >
       <div className="min-w-0 w-full pt-4">
         {activeTab === "settings" ? (
           <ReportProjectSettingsForm project={project} />
-        ) : activeTab === "page-1" ? (
-          <div className="flex min-w-0 w-full flex-col gap-3">
-            <ReportProjectStageStepper stage={project.stage} />
-            <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:items-stretch">
-              <div className="flex min-w-0 flex-col">
-                <ReportProjectKeyMetricsCard metrics={REPORT_PROJECT_KEY_METRICS_PLACEHOLDER} />
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <ReportProjectModuleStatusCard items={REPORT_PROJECT_MODULE_STATUS_PLACEHOLDER} />
-              </div>
-            </div>
-            <div className="flex min-w-0 w-full flex-col gap-3 lg:flex-row lg:items-stretch">
-              <div className="flex min-w-0 flex-col lg:w-2/3">
-                <ReportProjectKeyCategoriesCard categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER} />
-              </div>
-              <div className="flex min-w-0 flex-col lg:w-1/3">
-                <ReportProjectSafetyStatsCard
-                  stats={REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER}
-                  alignedRowCount={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER.length}
-                />
-              </div>
-            </div>
-            <div className="flex min-w-0 w-full flex-col gap-3 lg:flex-row lg:items-stretch">
-              <div className="flex min-w-0 flex-col lg:w-1/2">
-                <ReportProjectBudgetCard budget={REPORT_PROJECT_BUDGET_PLACEHOLDER} />
-              </div>
-              <div className="flex min-w-0 flex-col lg:w-1/2">
-                <ReportProjectScheduleCard />
-              </div>
-            </div>
-          </div>
         ) : (
-          <ReportModuleTabPlaceholder tabLabel={activeTabLabel} />
+          <div className="flex min-w-0 w-full flex-col gap-3">
+            {reportModuleTabShowsStageStepper(activeTab) ? (
+              <ReportProjectStageStepper stage={project.stage} />
+            ) : null}
+            {renderActiveTabContent()}
+          </div>
         )}
       </div>
-    </div>
+    </ReportProjectPageLayout>
   );
 }

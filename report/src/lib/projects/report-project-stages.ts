@@ -3,7 +3,7 @@ export const REPORT_PROJECT_STAGES = [
   "Due Diligence",
   "Development",
   "Delivery",
-  "Operations",
+  "Operation",
 ] as const;
 
 export type ReportProjectStage = (typeof REPORT_PROJECT_STAGES)[number];

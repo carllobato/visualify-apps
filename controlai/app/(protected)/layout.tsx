@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { AppShellOuterCanvas } from "@visualify/app-shell";
+import { AppShellOuterCanvas, buildEntitledAppShellCatalogForUser, type AppShellRailAppCatalogEntry } from "@visualify/app-shell";
+import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
@@ -48,6 +49,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   const workspaceContext = await resolveActiveWorkspaceContext(supabase, user.id);
+  const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
+  const appCatalog: readonly AppShellRailAppCatalogEntry[] = buildEntitledAppShellCatalogForUser(
+    workspaceEntitledProductKeys,
+    user.email,
+  );
 
   if (workspaceContext.needsSelection && !isSelectWorkspacePath(pathname)) {
     redirect(buildSelectWorkspaceRedirectUrl(pathname));
@@ -58,6 +64,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <ControlAiAppShellRail
         workspaces={workspaceContext.workspaces}
         selectedWorkspaceId={workspaceContext.selectedWorkspaceId}
+        appCatalog={appCatalog}
       />
       <ControlAiProtectedDocument>{children}</ControlAiProtectedDocument>
     </AppShellOuterCanvas>

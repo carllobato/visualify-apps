@@ -3,42 +3,39 @@ import { ReportProjectOverviewCardHeader } from "@/components/project/report/Rep
 import { ReportProjectOverviewInteractiveCard } from "@/components/project/report/ReportProjectOverviewInteractiveCard";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
 import {
-  formatReportBudgetAmount,
-  formatReportBudgetMovementSinceLastReport,
-  formatReportBudgetVarianceAmount,
-  formatReportBudgetVariancePercent,
-  getReportBudgetMovementSinceLastReport,
-  getReportBudgetRagStatus,
-  getReportBudgetVarianceAmount,
-  getReportBudgetVariancePercent,
-  getReportBudgetVarianceToneClass,
-  type ReportProjectBudget,
-} from "@/lib/projects/report-project-budget";
+  formatReportSafetyLtifr,
+  formatReportSafetyLtifrVariance,
+  formatReportSafetyMovementSinceLastReport,
+  getReportSafetyLtifrVariance,
+  getReportSafetyMovementSinceLastReport,
+  getReportSafetyRagStatus,
+  getReportSafetyVarianceToneClass,
+  REPORT_PROJECT_SAFETY_OVERVIEW_PLACEHOLDER,
+  type ReportProjectSafetyOverview,
+} from "@/lib/projects/report-project-safety-overview";
 import { getReportTrendToneClass } from "@/lib/projects/report-project-trend";
 
-type ReportProjectBudgetCardProps = {
-  budget: ReportProjectBudget;
+type ReportProjectSafetyCardProps = {
+  safety?: ReportProjectSafetyOverview;
   highlighted?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
 };
 
-const BUDGET_ROW_CLASS =
+const SAFETY_ROW_CLASS =
   "flex min-h-10 shrink-0 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
 
-export function ReportProjectBudgetCard({
-  budget,
+export function ReportProjectSafetyCard({
+  safety = REPORT_PROJECT_SAFETY_OVERVIEW_PLACEHOLDER,
   highlighted = false,
   onNavigate,
   navigateLabel,
-}: ReportProjectBudgetCardProps) {
-  const currencySymbol = budget.currencySymbol ?? "$";
-  const varianceAmount = getReportBudgetVarianceAmount(budget);
-  const variancePercent = getReportBudgetVariancePercent(budget);
-  const movementSinceLastReport = getReportBudgetMovementSinceLastReport(budget);
-  const ragStatus = getReportBudgetRagStatus(budget);
-  const varianceToneClass = getReportBudgetVarianceToneClass(budget);
-  const movementToneClass = getReportTrendToneClass(budget.trend.sentiment);
+}: ReportProjectSafetyCardProps) {
+  const ltifrVariance = getReportSafetyLtifrVariance(safety);
+  const movementSinceLastReport = getReportSafetyMovementSinceLastReport(safety);
+  const ragStatus = getReportSafetyRagStatus(safety);
+  const varianceToneClass = getReportSafetyVarianceToneClass(safety);
+  const movementToneClass = getReportTrendToneClass(safety.trend.sentiment);
 
   return (
     <ReportProjectOverviewInteractiveCard
@@ -46,37 +43,36 @@ export function ReportProjectBudgetCard({
       onNavigate={onNavigate}
       navigateLabel={navigateLabel}
     >
-      <ReportProjectOverviewCardHeader title="Cost" />
+      <ReportProjectOverviewCardHeader title="Safety" />
       <div className="flex min-h-0 flex-1 flex-col">
         <dl className="m-0 flex shrink-0 flex-col divide-y divide-[var(--ds-border-subtle)]">
-          <div className={BUDGET_ROW_CLASS}>
-            <dt className="m-0 text-[var(--ds-text-secondary)]">Target Budget</dt>
+          <div className={SAFETY_ROW_CLASS}>
+            <dt className="m-0 text-[var(--ds-text-secondary)]">Target LTIFR</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
-              {formatReportBudgetAmount(budget.approvedBudget, currencySymbol)}
+              {formatReportSafetyLtifr(safety.targetLtifr)}
             </dd>
           </div>
-          <div className={BUDGET_ROW_CLASS}>
-            <dt className="m-0 text-[var(--ds-text-secondary)]">Current Forecast</dt>
+          <div className={SAFETY_ROW_CLASS}>
+            <dt className="m-0 text-[var(--ds-text-secondary)]">Current LTIFR</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
-              {formatReportBudgetAmount(budget.currentForecast, currencySymbol)}
+              {formatReportSafetyLtifr(safety.currentLtifr)}
             </dd>
           </div>
-          <div className={BUDGET_ROW_CLASS}>
+          <div className={SAFETY_ROW_CLASS}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
             <dd className="m-0 inline-flex items-center gap-2">
               <ReportRagStatusDot status={ragStatus} />
               <span className={`font-semibold tabular-nums ${varianceToneClass}`}>
-                {formatReportBudgetVarianceAmount(varianceAmount, currencySymbol)}{" "}
-                ({formatReportBudgetVariancePercent(variancePercent)})
+                {formatReportSafetyLtifrVariance(ltifrVariance)}
               </span>
             </dd>
           </div>
-          <div className={BUDGET_ROW_CLASS}>
+          <div className={SAFETY_ROW_CLASS}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
             <dd className="m-0 inline-flex min-w-0 items-center justify-end gap-1.5">
-              <Trend sentiment={budget.trend.sentiment}>{budget.trend.text}</Trend>
+              <Trend sentiment={safety.trend.sentiment}>{safety.trend.text}</Trend>
               <span className={`font-semibold tabular-nums ${movementToneClass}`}>
-                {formatReportBudgetMovementSinceLastReport(movementSinceLastReport, currencySymbol)}
+                {formatReportSafetyMovementSinceLastReport(movementSinceLastReport)}
               </span>
             </dd>
           </div>

@@ -53,19 +53,19 @@ function IconChevronDownSubtle() {
 }
 
 const RAIL_BRAND_ROW_WRAP_CLASS =
-  "relative flex h-10 w-full min-w-0 shrink-0 items-center gap-0 rounded-[var(--ds-radius-md)] transition-[gap] duration-[400ms] ease-out group-hover:gap-2 group-data-[pinned=true]:gap-2 " +
+  "relative vf-app-shell-rail-expand-row flex h-10 w-full min-w-0 shrink-0 items-center gap-0 rounded-[var(--ds-radius-md)] transition-[gap] duration-[400ms] ease-out group-data-[pinned=true]:gap-2 " +
   RAIL_MOBILE_OPEN_ROW_GAP;
 
 const RAIL_BRAND_ROW_TRIGGER_CLASS =
-  "relative flex h-10 min-h-0 min-w-0 flex-1 items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
+  "vf-app-shell-rail-expand-row relative flex h-10 min-h-0 min-w-0 flex-1 items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
   "transition-[color,gap] duration-[400ms] ease-out " +
-  "group-hover:gap-2 group-data-[pinned=true]:gap-2 " +
+  "group-data-[pinned=true]:gap-2 " +
   RAIL_MOBILE_OPEN_ROW_GAP +
   " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]";
 
 const RAIL_BRAND_ROW_LABEL_CLASS =
-  `hidden min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
-  "group-hover:flex group-data-[pinned=true]:flex " +
+  `hidden vf-app-shell-rail-expand-flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
+  "group-data-[pinned=true]:flex " +
   RAIL_MOBILE_OPEN_FLEX_REVEAL;
 
 export function ControlAiWorkspaceRailList({

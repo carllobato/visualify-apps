@@ -13,16 +13,15 @@ type AppShellRailNavSectionProps = {
 };
 
 const sectionHeadingRevealClass =
-  "relative z-10 block min-w-0 overflow-hidden whitespace-nowrap " +
+  "vf-app-shell-rail-expand-section-heading relative z-10 block min-w-0 overflow-hidden whitespace-nowrap " +
   "w-0 max-w-0 opacity-0 transition-[max-width,opacity] duration-[400ms] ease-out " +
-  "group-hover:max-w-[11rem] group-hover:w-auto group-hover:opacity-100 " +
   "group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:w-auto group-data-[pinned=true]:opacity-100 " +
   appShellRailMobileOpenSectionHeadingRevealClassName;
 
 const sectionHeadingLineClass =
-  `pointer-events-none absolute left-0 top-1/2 z-0 -translate-y-1/2 ${appShellRailRuleClassName} ` +
+  `vf-app-shell-rail-expand-section-rule pointer-events-none absolute left-0 top-1/2 z-0 -translate-y-1/2 ${appShellRailRuleClassName} ` +
   "opacity-100 transition-[max-width,opacity] duration-[400ms] ease-out " +
-  "group-hover:opacity-0 group-data-[pinned=true]:opacity-0 " +
+  "group-data-[pinned=true]:opacity-0 " +
   appShellRailMobileOpenSectionRuleHideClassName;
 
 /**

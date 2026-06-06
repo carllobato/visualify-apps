@@ -1,5 +1,6 @@
 "use client";
 
+import { Card, CardContent } from "@visualify/design-system";
 import { Fragment, type ReactNode } from "react";
 import {
   REPORT_PROJECT_STAGES,
@@ -78,7 +79,7 @@ const STAGE_ICONS: Record<ReportProjectStage, ReactNode> = {
       <circle cx={17.5} cy={18.5} r={1.75} stroke="currentColor" strokeWidth={1.75} />
     </StageIcon>
   ),
-  Operations: (
+  Operation: (
     <StageIcon>
       <circle cx={12} cy={12} r={2.75} stroke="currentColor" strokeWidth={1.75} />
       <path
@@ -153,53 +154,54 @@ export function ReportProjectStageStepper({
   const total = REPORT_PROJECT_STAGES.length;
 
   return (
-    <nav
-      aria-label="Project stage"
-      className={`w-full min-w-0 overflow-x-auto py-0.5 ${className}`.trim()}
-    >
-      <ol className="m-0 flex min-w-max list-none items-center p-0 sm:min-w-0 sm:w-full">
-        {REPORT_PROJECT_STAGES.map((stageLabel, index) => {
-          const status = getReportProjectStageStatus(index, currentIndex);
-          const isCurrent = status === "current";
+    <Card className={`w-full min-w-0 ${className}`.trim()}>
+      <CardContent className="px-4 py-3">
+        <nav aria-label="Project stage" className="w-full min-w-0 overflow-x-auto">
+          <ol className="m-0 flex min-w-max list-none items-center p-0 sm:min-w-0 sm:w-full">
+            {REPORT_PROJECT_STAGES.map((stageLabel, index) => {
+              const status = getReportProjectStageStatus(index, currentIndex);
+              const isCurrent = status === "current";
 
-          return (
-            <Fragment key={stageLabel}>
-              {index > 0 ? (
-                <StageConnector
-                  reached={index <= currentIndex}
-                  leadsToCurrent={index === currentIndex}
-                />
-              ) : null}
+              return (
+                <Fragment key={stageLabel}>
+                  {index > 0 ? (
+                    <StageConnector
+                      reached={index <= currentIndex}
+                      leadsToCurrent={index === currentIndex}
+                    />
+                  ) : null}
 
-              <li
-                className="flex shrink-0 items-center gap-1.5 sm:gap-2"
-                aria-current={isCurrent ? "step" : undefined}
-              >
-                <span
-                  className={[
-                    "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
-                    stageIconWellClassName(status),
-                  ].join(" ")}
-                >
-                  {STAGE_ICONS[stageLabel]}
-                </span>
-                <span
-                  className={[
-                    "whitespace-nowrap text-[length:var(--ds-text-xs)] leading-none sm:text-[length:var(--ds-text-sm)]",
-                    stageLabelClassName(status),
-                  ].join(" ")}
-                >
-                  {stageLabel}
-                </span>
-              </li>
-            </Fragment>
-          );
-        })}
-      </ol>
+                  <li
+                    className="flex shrink-0 items-center gap-1.5 sm:gap-2"
+                    aria-current={isCurrent ? "step" : undefined}
+                  >
+                    <span
+                      className={[
+                        "inline-flex size-7 shrink-0 items-center justify-center rounded-full",
+                        stageIconWellClassName(status),
+                      ].join(" ")}
+                    >
+                      {STAGE_ICONS[stageLabel]}
+                    </span>
+                    <span
+                      className={[
+                        "whitespace-nowrap text-[length:var(--ds-text-xs)] leading-none sm:text-[length:var(--ds-text-sm)]",
+                        stageLabelClassName(status),
+                      ].join(" ")}
+                    >
+                      {stageLabel}
+                    </span>
+                  </li>
+                </Fragment>
+              );
+            })}
+          </ol>
 
-      <p className="sr-only">
-        Current project stage: {currentStage}. {currentIndex + 1} of {total} stages.
-      </p>
-    </nav>
+          <p className="sr-only">
+            Current project stage: {currentStage}. {currentIndex + 1} of {total} stages.
+          </p>
+        </nav>
+      </CardContent>
+    </Card>
   );
 }

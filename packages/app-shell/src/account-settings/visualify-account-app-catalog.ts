@@ -23,6 +23,11 @@ function resolveTemplateAppLaunchUrl(): string {
   return `${getProductOrigin("riskai")}/template-app`;
 }
 
+function resolveReportDashboardUrl(): string | undefined {
+  const origin = readPublicEnv("NEXT_PUBLIC_REPORT_ORIGIN")?.replace(/\/$/, "");
+  return origin ? `${origin}/projects` : undefined;
+}
+
 /**
  * Platform catalog for Account → Apps and HQ app surfaces. Catalog `id` matches `visualify_products.key`
  * for workspace entitlement checks.
@@ -53,9 +58,10 @@ export const VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG: readonly AccountSettingsApp
     href: resolveRiskAiDashboardUrl(),
   },
   {
-    id: "reportai",
-    name: "ReportAI",
+    id: "report",
+    name: "Report",
     description: "Reporting, dashboards and portfolio visibility.",
+    href: resolveReportDashboardUrl(),
   },
   {
     id: "costai",
@@ -78,7 +84,7 @@ export const VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG: readonly AccountSettingsApp
 /** Internal scaffold — shown only for `@visualify.com.au` staff in account and app switcher surfaces. */
 export const VISUALIFY_STAFF_ONLY_ACCOUNT_APP_CATALOG: readonly AccountSettingsAppCatalogEntry[] = [
   {
-    id: "template",
+    id: "template-app",
     name: "Template App",
     description: "Internal product scaffold and integration reference for Visualify staff.",
     href: resolveTemplateAppLaunchUrl(),

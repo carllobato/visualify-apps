@@ -13,8 +13,8 @@ import {
   AppShellRailSeparator,
   appShellNavHrefActive,
   appShellRailPrimaryNavClassName,
+  type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
-import { OS_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import { OsNavIcon } from "@/lib/os-nav-icons";
 import { OS_PRIMARY_NAV, OS_ROUTES } from "@/lib/os-routes";
 import { OsRailAccountMenu } from "./OsRailAccountMenu";
@@ -24,7 +24,7 @@ const OS_RAIL_PINNED_KEY = "os-platform-rail-pinned";
 /** Same asset path as HQ and RiskAI (`public/visualify-brand-mark.png`). */
 const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
 
-export function OsAppShellRail() {
+export function OsAppShellRail({ appCatalog }: { appCatalog: readonly AppShellRailAppCatalogEntry[] }) {
   const pathname = usePathname();
   const accountRailActive =
     appShellNavHrefActive(pathname, OS_ROUTES.account) ||
@@ -37,7 +37,7 @@ export function OsAppShellRail() {
           <AppShellRailBrandAppMenu
             appShortName="OS"
             currentAppName="Visualify OS"
-            catalog={OS_APP_SHELL_CATALOG}
+            catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />
 

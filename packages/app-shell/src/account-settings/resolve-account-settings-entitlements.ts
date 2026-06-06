@@ -34,3 +34,27 @@ export function resolveAccountSettingsEntitledProductKeys(
   }
   return [...keys].sort((a, b) => a.localeCompare(b));
 }
+
+/** App-shell rail switcher — only apps the user can open from workspace entitlements (staff see full catalog). */
+export function filterAppShellCatalogForEntitlements(
+  appCatalog: readonly AccountSettingsAppCatalogEntry[],
+  workspaceEntitledProductKeys: readonly string[],
+  userEmail: string | null | undefined,
+): readonly AccountSettingsAppCatalogEntry[] {
+  const effectiveEntitledKeys = resolveAccountSettingsEntitledProductKeys(
+    workspaceEntitledProductKeys,
+    userEmail,
+    appCatalog,
+  );
+  const entitledSet = new Set(effectiveEntitledKeys);
+  return appCatalog.filter((app) => entitledSet.has(app.id));
+}
+
+/** Full platform catalog filtered to apps the signed-in user can switch to in the rail menu. */
+export function buildEntitledAppShellCatalogForUser(
+  workspaceEntitledProductKeys: readonly string[],
+  userEmail: string | null | undefined,
+): readonly AccountSettingsAppCatalogEntry[] {
+  const appCatalog = buildVisualifyAccountAppCatalogForUser(userEmail);
+  return filterAppShellCatalogForEntitlements(appCatalog, workspaceEntitledProductKeys, userEmail);
+}

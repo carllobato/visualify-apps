@@ -11,8 +11,8 @@ import {
   AppShellRailSeparator,
   AppShellRailNavLink,
   appShellRailPrimaryNavClassName,
+  type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
-import { TEMPLATE_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import { TemplateRailAccountMenu } from "./TemplateRailAccountMenu";
 
 const TEMPLATE_RAIL_PINNED_KEY = "template-app-platform-rail-pinned";
@@ -50,7 +50,11 @@ function BrandMonogramMark() {
  * Template App platform rail — `@visualify/app-shell` compounds (HQ-aligned).
  * Intentionally minimal: app menu, dashboard nav, account menu (no workspace list).
  */
-export function TemplateAppShellRail() {
+export function TemplateAppShellRail({
+  appCatalog,
+}: {
+  appCatalog: readonly AppShellRailAppCatalogEntry[];
+}) {
   const pathname = usePathname();
   const accountRailActive = railNavHrefActive(pathname, "/account");
 
@@ -61,7 +65,7 @@ export function TemplateAppShellRail() {
           <AppShellRailBrandAppMenu
             appShortName="Template App"
             currentAppName="Visualify Template App"
-            catalog={TEMPLATE_APP_SHELL_CATALOG}
+            catalog={appCatalog}
             brandIcon={<BrandMonogramMark />}
           />
 

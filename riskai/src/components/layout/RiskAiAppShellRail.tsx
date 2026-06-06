@@ -13,8 +13,8 @@ import {
   AppShellRailNavSection,
   AppShellRailSeparator,
   appShellRailPrimaryNavClassName,
+  type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
-import { RISKAI_APP_SHELL_CATALOG } from "@/lib/visualify-app-catalog";
 import {
   DASHBOARD_PATH,
   projectIdFromAppPathname,
@@ -303,7 +303,11 @@ function IconSimulation() {
  * RiskAI platform rail — compound `@visualify/app-shell` layout (HQ-aligned) with RiskAI nav destinations.
  * Shown when `NEXT_PUBLIC_RISKAI_ENABLE_APP_SHELL=1` via `ProtectedShell`.
  */
-export function RiskAiAppShellRail() {
+export function RiskAiAppShellRail({
+  appCatalog,
+}: {
+  appCatalog: readonly AppShellRailAppCatalogEntry[];
+}) {
   const pathname = usePathname();
   const portfolioId = useResolvedPortfolioId(pathname);
   const projectIdInUrl = projectIdFromAppPathname(pathname);
@@ -338,7 +342,7 @@ export function RiskAiAppShellRail() {
           <AppShellRailBrandAppMenu
             appShortName="ControlsAI"
             currentAppName="Visualify ControlsAI"
-            catalog={RISKAI_APP_SHELL_CATALOG}
+            catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />
 

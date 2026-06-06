@@ -464,3 +464,54 @@ html:has(.vf-app-shell-outer-canvas) body {
     display: none;
   }
 }
+
+/* Collapsible rail — delayed hover expand (see AppShellRail + APP_SHELL_RAIL_HOVER_EXPAND_DELAY_MS). */
+@media (min-width: 768px) {
+  .vf-app-shell-rail-aside[data-hover-expanded="true"]:not([data-pinned="true"]) {
+    width: min(240px, calc(100vw - 16px));
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-label,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-label {
+    width: auto;
+    flex: 1 1 0%;
+    max-width: 11rem;
+    opacity: 1;
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-row,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-row {
+    gap: 0.5rem;
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-flex,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-flex {
+    display: flex;
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-rule,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-rule,
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-footer-account-outer,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-footer-account-outer {
+    max-width: none;
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-pin,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-pin {
+    pointer-events: auto;
+    max-height: 5rem;
+    opacity: 1;
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-section-heading,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-section-heading {
+    max-width: 11rem;
+    width: auto;
+    opacity: 1;
+  }
+
+  .vf-app-shell-rail-aside[data-hover-expanded="true"] .vf-app-shell-rail-expand-section-rule,
+  .vf-app-shell-rail-aside[data-pinned="true"] .vf-app-shell-rail-expand-section-rule {
+    opacity: 0;
+  }
+}

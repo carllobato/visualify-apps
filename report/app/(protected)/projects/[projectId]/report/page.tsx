@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { ReportProjectPageLayout } from "@/components/project/ReportProjectPageLayout";
 import { ReportProjectReportPageContent } from "@/components/project/report/ReportProjectReportPageContent";
 import { getReportWorkspaceProjectById } from "@/lib/projects/report-projects-server";
 import { resolveActiveReportWorkspaceContext } from "@/lib/workspace/resolveActiveReportWorkspaceContext";
@@ -9,10 +8,13 @@ export const dynamic = "force-dynamic";
 
 export default async function ProjectReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ period?: string }>;
 }) {
   const { projectId } = await params;
+  const { period } = await searchParams;
   const supabase = await supabaseServerClient();
   const {
     data: { user },
@@ -34,9 +36,5 @@ export default async function ProjectReportPage({
     notFound();
   }
 
-  return (
-    <ReportProjectPageLayout project={project} contentFullWidth>
-      <ReportProjectReportPageContent project={project} />
-    </ReportProjectPageLayout>
-  );
+  return <ReportProjectReportPageContent project={project} periodParam={period ?? null} />;
 }

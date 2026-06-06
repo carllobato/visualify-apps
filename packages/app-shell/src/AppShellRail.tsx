@@ -13,6 +13,7 @@ import {
   appShellRailFooterAccountOuterTailwindClassName,
   appShellRailFooterClassName,
   appShellRailHeaderClassName,
+  APP_SHELL_RAIL_HOVER_EXPAND_DELAY_MS,
   appShellRailHoverTimingClassName,
   appShellRailPadXClassName,
   appShellRailPinRevealClassName,
@@ -81,8 +82,34 @@ export function AppShellRail({
   className,
 }: AppShellRailProps) {
   const [pinned, setPinned] = useState(false);
+  const [hoverExpanded, setHoverExpanded] = useState(false);
   const skipInitialPersist = useRef(true);
+  const hoverExpandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pinnedRef = useRef(false);
   const { mobileOpen, closeMobile } = useAppShellRailMobileNav();
+
+  pinnedRef.current = pinned;
+
+  const clearHoverExpandTimer = () => {
+    if (hoverExpandTimerRef.current != null) {
+      clearTimeout(hoverExpandTimerRef.current);
+      hoverExpandTimerRef.current = null;
+    }
+  };
+
+  const collapseHoverExpanded = () => {
+    clearHoverExpandTimer();
+    setHoverExpanded(false);
+  };
+
+  const scheduleHoverExpanded = () => {
+    if (pinnedRef.current) return;
+    clearHoverExpandTimer();
+    hoverExpandTimerRef.current = setTimeout(() => {
+      hoverExpandTimerRef.current = null;
+      if (!pinnedRef.current) setHoverExpanded(true);
+    }, APP_SHELL_RAIL_HOVER_EXPAND_DELAY_MS);
+  };
 
   useEffect(() => {
     if (!pinnedStorageKey) return;
@@ -107,6 +134,12 @@ export function AppShellRail({
       /* ignore */
     }
   }, [pinned, pinnedStorageKey]);
+
+  useEffect(() => {
+    if (pinned) collapseHoverExpanded();
+  }, [pinned]);
+
+  useEffect(() => () => clearHoverExpandTimer(), []);
 
   const mobileHeaderPresent = useAppShellMobileHeaderPresent();
   const showFloatingMobileTrigger =
@@ -140,11 +173,14 @@ export function AppShellRail({
         id="vf-app-shell-rail"
         data-pinned={pinned ? "true" : undefined}
         data-mobile-open={mobileOpen ? "true" : undefined}
+        data-hover-expanded={!pinned && hoverExpanded ? "true" : undefined}
         className={mergeClass(
           `${appShellRailAsideClassName} ${widthClass} transition-[width,transform] ${appShellRailHoverTimingClassName}`,
           className,
         )}
         aria-label={ariaLabel}
+        onMouseEnter={scheduleHoverExpanded}
+        onMouseLeave={collapseHoverExpanded}
         onClickCapture={handleRailClickCapture}
       >
         {children}
