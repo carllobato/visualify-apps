@@ -1,0 +1,25 @@
+import type { Metadata } from "next";
+import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import { ReportAppShellProviders } from "@/components/layout/ReportAppShellProviders";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: visualifyAppDocumentTitle("Report"),
+  description: "Visualify Report — standalone reporting product",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body>
+        <AppShellLegalDocumentProvider>
+          <ReportAppShellProviders>{children}</ReportAppShellProviders>
+        </AppShellLegalDocumentProvider>
+      </body>
+    </html>
+  );
+}

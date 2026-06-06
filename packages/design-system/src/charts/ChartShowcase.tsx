@@ -346,6 +346,213 @@ export function DonutChartPrimitive({
   );
 }
 
+const DONUT_REMAINING_FILL =
+  "color-mix(in oklab, var(--ds-border) 30%, var(--ds-surface-muted))";
+
+export type DonutChartGlyphProps = {
+  /** Share complete on a 0–1 scale. */
+  completedRatio: number;
+  centerLabel: string;
+  centerSubLabel?: string;
+  status?: ChartStatus;
+  colorMode?: ChartColorMode;
+  className?: string;
+  ariaLabel?: string;
+};
+
+export function DonutChartGlyph({
+  completedRatio,
+  centerLabel,
+  centerSubLabel,
+  status = "neutral",
+  colorMode = "monochrome",
+  className = "",
+  ariaLabel,
+}: DonutChartGlyphProps) {
+  const cx = 50;
+  const cy = 50;
+  const rOuter = 40;
+  const rInner = 25;
+  const offset = -Math.PI / 2;
+  const ratio = Math.min(1, Math.max(0, completedRatio));
+  const completedEnd = offset + ratio * 2 * Math.PI;
+  const fullCircleEnd = offset + 2 * Math.PI;
+
+  const segments: { start: number; end: number; index: number; state: ChartState }[] = [];
+  if (ratio > 0) {
+    segments.push({ start: offset, end: completedEnd, index: 0, state: "highlight" });
+  }
+  if (ratio < 1) {
+    segments.push({
+      start: ratio > 0 ? completedEnd : offset,
+      end: fullCircleEnd,
+      index: 1,
+      state: "default",
+    });
+  }
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className={`mx-auto aspect-square w-full max-w-[200px] ${className}`.trim()}
+      role="img"
+      aria-label={ariaLabel ?? `${centerLabel} complete`}
+    >
+      {segments.map((segment) => {
+        const isRemaining = segment.index === 1;
+        return (
+          <path
+            key={`${segment.index}-${segment.start}`}
+            d={donutArcPath(cx, cy, rOuter, rInner, segment.start, segment.end)}
+            fill={
+              isRemaining
+                ? DONUT_REMAINING_FILL
+                : dataColor({ index: segment.index, state: segment.state, colorMode, status })
+            }
+            fillOpacity={isRemaining ? "1" : STATE_OPACITY_VAR[segment.state]}
+            stroke={isRemaining ? "var(--ds-border-subtle)" : "var(--ds-chart-panel)"}
+            strokeWidth="var(--ds-chart-stroke-width-default)"
+            vectorEffect="non-scaling-stroke"
+          />
+        );
+      })}
+      <text
+        x={cx}
+        y={49}
+        textAnchor="middle"
+        className="fill-[var(--ds-card-foreground)]"
+        style={{ fontSize: "13px", fontWeight: 600 }}
+      >
+        {centerLabel}
+      </text>
+      {centerSubLabel ? (
+        <text
+          x={cx}
+          y={60}
+          textAnchor="middle"
+          className="fill-[var(--ds-chart-axis)]"
+          style={{ fontSize: "8px" }}
+        >
+          {centerSubLabel}
+        </text>
+      ) : null}
+    </svg>
+  );
+}
+
+export type HalfDonutChartGlyphProps = DonutChartGlyphProps;
+
+export function HalfDonutChartGlyph({
+  completedRatio,
+  centerLabel,
+  centerSubLabel,
+  status = "neutral",
+  colorMode = "monochrome",
+  className = "",
+  ariaLabel,
+}: HalfDonutChartGlyphProps) {
+  const cx = 50;
+  const cy = 58;
+  const rOuter = 40;
+  const rInner = 25;
+  const start = Math.PI;
+  const end = 2 * Math.PI;
+  const ratio = Math.min(1, Math.max(0, completedRatio));
+  const completedEnd = start + ratio * Math.PI;
+
+  const segments: { start: number; end: number; index: number; state: ChartState }[] = [];
+  if (ratio > 0) {
+    segments.push({ start, end: completedEnd, index: 0, state: "highlight" });
+  }
+  if (ratio < 1) {
+    segments.push({ start: ratio > 0 ? completedEnd : start, end, index: 1, state: "default" });
+  }
+
+  return (
+    <svg
+      viewBox="0 0 100 80"
+      className={`mx-auto aspect-[100/80] w-full min-h-[128px] max-w-[200px] ${className}`.trim()}
+      role="img"
+      aria-label={ariaLabel ?? `${centerLabel} complete`}
+    >
+      {segments.map((segment) => {
+        const isRemaining = segment.index === 1;
+        return (
+          <path
+            key={`${segment.index}-${segment.start}`}
+            d={donutArcPath(cx, cy, rOuter, rInner, segment.start, segment.end)}
+            fill={
+              isRemaining
+                ? DONUT_REMAINING_FILL
+                : dataColor({ index: segment.index, state: segment.state, colorMode, status })
+            }
+            fillOpacity={isRemaining ? "1" : STATE_OPACITY_VAR[segment.state]}
+            stroke={isRemaining ? "var(--ds-border-subtle)" : "var(--ds-chart-panel)"}
+            strokeWidth="var(--ds-chart-stroke-width-default)"
+            vectorEffect="non-scaling-stroke"
+          />
+        );
+      })}
+      <text
+        x={cx}
+        y={44}
+        textAnchor="middle"
+        className="fill-[var(--ds-card-foreground)]"
+        style={{ fontSize: "13px", fontWeight: 600 }}
+      >
+        {centerLabel}
+      </text>
+      {centerSubLabel ? (
+        <text
+          x={cx}
+          y={54}
+          textAnchor="middle"
+          className="fill-[var(--ds-chart-axis)]"
+          style={{ fontSize: "8px" }}
+        >
+          {centerSubLabel}
+        </text>
+      ) : null}
+    </svg>
+  );
+}
+
+export function HalfDonutChartPrimitive({
+  title,
+  insight,
+  completedRatio,
+  centerLabel,
+  centerSubLabel,
+  status = "neutral",
+  showDelta = false,
+  delta,
+  hoverCard,
+  colorMode = "monochrome",
+}: {
+  title: string;
+  insight: string;
+  completedRatio: number;
+  centerLabel: string;
+  centerSubLabel?: string;
+  status?: ChartStatus;
+  showDelta?: boolean;
+  delta?: string;
+  hoverCard?: BaseChartProps<unknown>["hoverCard"];
+  colorMode?: ChartColorMode;
+}) {
+  return (
+    <ChartFrame title={title} insight={insight} status={status} showDelta={showDelta} delta={delta} hoverCard={hoverCard}>
+      <HalfDonutChartGlyph
+        completedRatio={completedRatio}
+        centerLabel={centerLabel}
+        centerSubLabel={centerSubLabel}
+        status={status}
+        colorMode={colorMode}
+      />
+    </ChartFrame>
+  );
+}
+
 export function ColumnChartPrimitive({
   title,
   data,
