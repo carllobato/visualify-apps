@@ -23,6 +23,7 @@ import { ReportWorkspaceRailList } from "./ReportWorkspaceRailList";
 const REPORT_RAIL_PINNED_KEY = "report-platform-rail-pinned";
 
 type ReportAppShellRailProps = {
+  workspaces: EntitledWorkspace[];
   selectedWorkspaceId: string | null;
   projects: ReportProjectListItem[];
   appCatalog: readonly AppShellRailAppCatalogEntry[];
