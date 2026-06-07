@@ -8,11 +8,23 @@ import {
   hqWorkspacesPathActive,
 } from "@/lib/hq-routes";
 
-export function buildHqMobileBottomNavItems(pathname: string): AppShellMobileBottomNavItem[] {
+type BuildHqMobileBottomNavItemsOptions = {
+  moreOnPress?: () => void;
+  morePressed?: boolean;
+};
+
+export function buildHqMobileBottomNavItems(
+  pathname: string,
+  options: BuildHqMobileBottomNavItemsOptions = {},
+): AppShellMobileBottomNavItem[] {
   const items = buildAppShellMobileBottomNavItems({
     pathname,
     links: HQ_MOBILE_BOTTOM_NAV_LINKS,
     renderIcon: (link) => <HqNavIcon href={link.href} />,
+    more: {
+      onPress: options.moreOnPress,
+      pressed: options.morePressed,
+    },
   });
 
   return items.map((item) => {

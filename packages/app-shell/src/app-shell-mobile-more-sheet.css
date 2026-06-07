@@ -1,9 +1,10 @@
 /**
- * Report mobile More menu — drop-up sheet above the bottom tab bar (max-width 767px).
+ * Mobile More menu — drop-up sheet above the bottom tab bar (max-width 767px).
+ * Pair with {@link AppShellMobileBottomNav} `kind: "more"` when `onPress` opens a product menu.
  */
 
 @media (max-width: 767px) {
-  .report-mobile-more-sheet__backdrop {
+  .vf-app-shell-mobile-more-sheet__backdrop {
     position: fixed;
     inset: 0;
     z-index: 44;
@@ -15,7 +16,7 @@
     backdrop-filter: blur(2px);
   }
 
-  .report-mobile-more-sheet {
+  .vf-app-shell-mobile-more-sheet {
     position: fixed;
     left: max(0.75rem, env(safe-area-inset-left, 0px));
     right: max(0.75rem, env(safe-area-inset-right, 0px));
@@ -34,7 +35,7 @@
     box-shadow: var(--ds-elevation-popover);
   }
 
-  .report-mobile-more-sheet__list {
+  .vf-app-shell-mobile-more-sheet__list {
     display: flex;
     flex-direction: column;
     margin: 0;
@@ -42,7 +43,7 @@
     list-style: none;
   }
 
-  .report-mobile-more-sheet__item {
+  .vf-app-shell-mobile-more-sheet__item {
     display: block;
     width: 100%;
     border: 0;

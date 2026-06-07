@@ -1,0 +1,16 @@
+/**
+ * HQ signed-in routes — mobile shell polish (max-width 767px).
+ * Pairs with {@link HqMobileHeader}; does not alter app-shell header colours or spacing.
+ */
+
+@media (max-width: 767px) {
+  .hq-mobile-header__identity-link {
+    color: inherit;
+    text-decoration: none;
+    outline-offset: 2px;
+  }
+
+  .hq-mobile-header__identity-link:focus-visible {
+    outline: 2px solid var(--ds-primary);
+  }
+}

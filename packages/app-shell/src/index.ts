@@ -128,6 +128,14 @@ export { AppShellMobileHeader } from "./AppShellMobileHeader";
 export type { AppShellMobileHeaderProps } from "./AppShellMobileHeader";
 
 export {
+  AppShellMobileMoreSheet,
+  AppShellMobileMoreSheetList,
+  AppShellMobileMoreSheetListItem,
+  appShellMobileMoreSheetItemClassName,
+} from "./AppShellMobileMoreSheet";
+export type { AppShellMobileMoreSheetProps } from "./AppShellMobileMoreSheet";
+
+export {
   AppShellMobileHeaderPresenceProvider,
   useAppShellMobileHeaderPresent,
 } from "./app-shell-mobile-header-context";

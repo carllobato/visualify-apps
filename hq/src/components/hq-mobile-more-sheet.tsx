@@ -10,15 +10,36 @@ import {
   appShellMobileMoreSheetItemClassName,
   useAppShellHelpFeedbackConfig,
 } from "@visualify/app-shell";
-import { getReportHqAccountSettingsUrl } from "@/lib/report-hq-urls";
-import { REPORT_ROUTES } from "@/lib/report-routes";
+import { isAuthDisabled } from "@/lib/auth/auth-disabled";
+import { HQ_ROUTES } from "@/lib/hq-routes";
+import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
-type ReportMobileMoreSheetProps = {
+type HqMobileMoreSheetProps = {
   open: boolean;
   onClose: () => void;
 };
 
-export function ReportMobileMoreSheet({ open, onClose }: ReportMobileMoreSheetProps) {
+async function signOutFromHq(): Promise<void> {
+  if (isAuthDisabled()) {
+    window.location.assign(HQ_ROUTES.dashboard);
+    return;
+  }
+  try {
+    const res = await fetch("/auth/sign-out", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (!res.ok) {
+      await supabaseBrowserClient().auth.signOut({ scope: "global" });
+    }
+  } catch {
+    await supabaseBrowserClient().auth.signOut({ scope: "global" });
+  } finally {
+    window.location.assign("/login");
+  }
+}
+
+export function HqMobileMoreSheet({ open, onClose }: HqMobileMoreSheetProps) {
   const helpConfig = useAppShellHelpFeedbackConfig();
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -28,23 +49,13 @@ export function ReportMobileMoreSheet({ open, onClose }: ReportMobileMoreSheetPr
         <AppShellMobileMoreSheetList>
           <AppShellMobileMoreSheetListItem>
             <Link
-              href={REPORT_ROUTES.home}
+              href={HQ_ROUTES.account}
               role="menuitem"
               className={`${appShellMobileMoreSheetItemClassName} block`}
               onClick={onClose}
             >
-              Change workspace
+              User settings
             </Link>
-          </AppShellMobileMoreSheetListItem>
-          <AppShellMobileMoreSheetListItem>
-            <a
-              href={getReportHqAccountSettingsUrl()}
-              role="menuitem"
-              className={`${appShellMobileMoreSheetItemClassName} block`}
-              onClick={onClose}
-            >
-              Account settings
-            </a>
           </AppShellMobileMoreSheetListItem>
           <AppShellMobileMoreSheetListItem>
             <button
@@ -57,6 +68,19 @@ export function ReportMobileMoreSheet({ open, onClose }: ReportMobileMoreSheetPr
               }}
             >
               Help &amp; feedback
+            </button>
+          </AppShellMobileMoreSheetListItem>
+          <AppShellMobileMoreSheetListItem>
+            <button
+              type="button"
+              role="menuitem"
+              className={appShellMobileMoreSheetItemClassName}
+              onClick={() => {
+                onClose();
+                void signOutFromHq();
+              }}
+            >
+              Sign out
             </button>
           </AppShellMobileMoreSheetListItem>
         </AppShellMobileMoreSheetList>

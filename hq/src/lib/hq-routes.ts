@@ -1,5 +1,3 @@
-import { appShellNavHrefActive } from "@visualify/app-shell";
-
 export const HQ_ROUTES = {
   dashboard: "/dashboard",
   workspaceSettings: "/workspace-settings",
@@ -27,30 +25,4 @@ export function hqWorkspacesPathActive(pathname: string): boolean {
   return HQ_WORKSPACE_PATH_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
-}
-
-/** Sticky mobile header page context from the current pathname. */
-export function hqMobilePageTitle(pathname: string): string {
-  if (appShellNavHrefActive(pathname, HQ_ROUTES.dashboard)) {
-    return "Dashboard";
-  }
-  if (hqWorkspacesPathActive(pathname)) {
-    return "Workspaces";
-  }
-  if (pathname === "/organisation" || pathname.startsWith("/organisation/")) {
-    return "Organisation";
-  }
-  if (appShellNavHrefActive(pathname, HQ_ROUTES.apps)) {
-    return "Apps";
-  }
-  if (appShellNavHrefActive(pathname, HQ_ROUTES.billing)) {
-    return "Billing";
-  }
-  if (appShellNavHrefActive(pathname, HQ_ROUTES.account)) {
-    return "Account";
-  }
-  if (pathname === "/invite" || pathname.startsWith("/invite/")) {
-    return "Invite";
-  }
-  return "HQ";
 }
