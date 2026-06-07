@@ -1,5 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import {
+  AppShellLegalDocumentProvider,
+  VisualifyAppLaunchBrandMarkPreload,
+  VisualifyAppLaunchController,
+  VisualifyAppLaunchCriticalStyles,
+  visualifyAppDocumentTitle,
+} from "@visualify/app-shell";
 import { OsAppShellProviders } from "@/components/layout/OsAppShellProviders";
 import "./globals.css";
 
@@ -24,10 +30,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <VisualifyAppLaunchCriticalStyles />
+        <VisualifyAppLaunchBrandMarkPreload />
+      </head>
       <body suppressHydrationWarning>
-        <AppShellLegalDocumentProvider>
-          <OsAppShellProviders>{children}</OsAppShellProviders>
-        </AppShellLegalDocumentProvider>
+        <VisualifyAppLaunchController>
+          <AppShellLegalDocumentProvider>
+            <OsAppShellProviders>{children}</OsAppShellProviders>
+          </AppShellLegalDocumentProvider>
+        </VisualifyAppLaunchController>
       </body>
     </html>
   );

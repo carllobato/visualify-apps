@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { ReportProjectReportPageContent } from "@/components/project/report/ReportProjectReportPageContent";
 import { getReportWorkspaceProjectById } from "@/lib/projects/report-projects-server";
+import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import { resolveActiveReportWorkspaceContext } from "@/lib/workspace/resolveActiveReportWorkspaceContext";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -15,16 +16,15 @@ export default async function ProjectReportPage({
 }) {
   const { projectId } = await params;
   const { period } = await searchParams;
-  const supabase = await supabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await resolveAuthenticatedUser();
 
   if (!user) {
     notFound();
   }
 
-  const workspaceContext = await resolveActiveReportWorkspaceContext(supabase, user.id);
+  const supabase = await supabaseServerClient();
+
+  const workspaceContext = await resolveActiveReportWorkspaceContext(user.id);
   const project = await getReportWorkspaceProjectById(
     supabase,
     user.id,

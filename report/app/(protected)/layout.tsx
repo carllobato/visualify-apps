@@ -4,6 +4,7 @@ import { AppShellOuterCanvas, buildEntitledAppShellCatalogForUser, type AppShell
 import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
+import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import { getReportWorkspaceProjects } from "@/lib/projects/report-projects-server";
 import { productConfig } from "@/lib/product-config";
 import {
@@ -25,22 +26,21 @@ function buildHomeRedirectUrl(returnPath: string): string {
 export const dynamic = "force-dynamic";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await supabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await resolveAuthenticatedUser();
   const pathname = (await headers()).get("x-pathname") ?? REPORT_DEFAULT_ROUTE;
 
   if (!user) {
     redirect(buildLoginRedirectUrl(pathname));
   }
 
+  const supabase = await supabaseServerClient();
+
   const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
   if (!entitled) {
     redirect(productConfig.HQ_APPS_URL);
   }
 
-  const workspaceContext = await resolveActiveReportWorkspaceContext(supabase, user.id);
+  const workspaceContext = await resolveActiveReportWorkspaceContext(user.id);
   const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
   const appCatalog: readonly AppShellRailAppCatalogEntry[] = buildEntitledAppShellCatalogForUser(
     workspaceEntitledProductKeys,
@@ -55,7 +55,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const projectsResult =
     onHome || !workspaceContext.selectedWorkspaceId
       ? null
-      : await getReportWorkspaceProjects(supabase, user.id, workspaceContext.selectedWorkspaceId);
+      : await getReportWorkspaceProjects(user.id, workspaceContext.selectedWorkspaceId);
   const projects = projectsResult?.ok ? projectsResult.projects : [];
 
   return (

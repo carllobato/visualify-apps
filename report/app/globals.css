@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "../../packages/design-system/src/styles/globals.css";
 @import "../../packages/app-shell/src/app-shell-app-menu.css";
+@import "../../packages/app-shell/src/app-shell-login-screen.css";
 
 /* Workspace packages */
 @source "../../packages/design-system/src";

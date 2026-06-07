@@ -1,3 +1,4 @@
+import "../app-shell-login-screen.css";
 import type { ReactNode } from "react";
 import { AppLoginFramedShell } from "./AppLoginFramedShell";
 import type { AppLoginFramedShellProps } from "./AppLoginFramedShell";

@@ -104,9 +104,23 @@
 }
 
 .vf-app-login-card-header-mark {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  width: 100%;
+  justify-items: center;
   margin-bottom: 0.75rem;
+}
+
+/* Wordmark: grid-centered in the card header (all breakpoints). */
+.vf-app-login-card-header-mark .vf-visualify-wordmark {
+  display: block;
+  width: max-content;
+  max-width: 15rem;
+  margin-inline: auto;
+}
+
+.vf-app-login-card-header-mark .vf-visualify-wordmark img {
+  display: block;
+  margin-inline: auto;
 }
 
 .vf-app-login-tabs-row {
@@ -191,4 +205,19 @@
   user-select: none;
   font-size: var(--ds-text-xs);
   color: var(--ds-text-muted);
+}
+
+/* ——— Mobile login (below md) — full-width column; rail hidden like signed-in shell ——— */
+@media (max-width: 767px) {
+  .vf-app-login-framed-shell .vf-app-login-rail-aside {
+    display: none;
+  }
+
+  /*
+   * Login has no mobile hamburger — skip the 3.25rem clearance reserved for
+   * `.vf-app-shell-mobile-nav-trigger` in `app-shell-frame.css`.
+   */
+  .vf-app-login-framed-shell .vf-app-shell-scroll-region {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
 }

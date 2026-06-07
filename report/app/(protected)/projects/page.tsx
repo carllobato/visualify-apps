@@ -2,26 +2,23 @@ import { notFound } from "next/navigation";
 import { Callout } from "@visualify/design-system";
 import { ProjectsPageContent } from "@/components/projects/ProjectsPageContent";
 import { getReportWorkspaceProjects } from "@/lib/projects/report-projects-server";
+import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import { resolveActiveReportWorkspaceContext } from "@/lib/workspace/resolveActiveReportWorkspaceContext";
-import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
-  const supabase = await supabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await resolveAuthenticatedUser();
 
   if (!user) {
     notFound();
   }
 
-  const workspaceContext = await resolveActiveReportWorkspaceContext(supabase, user.id);
+  const workspaceContext = await resolveActiveReportWorkspaceContext(user.id);
   const activeWorkspaceId = workspaceContext.selectedWorkspaceId;
   const hasActiveWorkspace = Boolean(activeWorkspaceId?.trim());
 
-  const result = await getReportWorkspaceProjects(supabase, user.id, activeWorkspaceId);
+  const result = await getReportWorkspaceProjects(user.id, activeWorkspaceId);
 
   if (!result.ok) {
     return (

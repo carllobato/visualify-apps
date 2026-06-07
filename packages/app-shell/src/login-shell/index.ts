@@ -44,6 +44,12 @@ export type { AppLoginScreenProps } from "./AppLoginScreen";
 export { AppLoginTabsSection } from "./AppLoginTabsSection";
 export type { AppLoginTabsSectionProps } from "./AppLoginTabsSection";
 
+export { AppLoginSignInSignUpTabs } from "./AppLoginSignInSignUpTabs";
+export type { AppLoginSignInSignUpTabsProps, AppLoginTabId } from "./AppLoginSignInSignUpTabs";
+
+export { AppLoginSignUpAwaitingEmailPanel } from "./AppLoginSignUpAwaitingEmailPanel";
+export type { AppLoginSignUpAwaitingEmailPanelProps } from "./AppLoginSignUpAwaitingEmailPanel";
+
 export { AppLoginSuspenseFallback } from "./AppLoginSuspenseFallback";
 
 export { AppLoginBrandMark } from "./AppLoginBrandMark";

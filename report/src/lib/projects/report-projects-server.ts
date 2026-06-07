@@ -1,6 +1,8 @@
 import "server-only";
 
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseServerClient } from "@/lib/supabase/server";
 import { REPORT_LEGACY_EXCLUDED_PROJECT_ID } from "@/lib/projects/report-project-filters";
 import {
   parseReportProjectStage,
@@ -178,11 +180,7 @@ function parseReportProjectMetadataInput(input: {
   };
 }
 
-/**
- * Lists projects in the active Report workspace (excludes known legacy RiskAI project).
- * Uses the authenticated Supabase client (RLS applies).
- */
-export async function getReportWorkspaceProjects(
+async function getReportWorkspaceProjectsImpl(
   supabase: SupabaseClient,
   userId: string,
   workspaceId: string | null,
@@ -206,6 +204,22 @@ export async function getReportWorkspaceProjects(
   const projects = sortReportProjectsByName(mapProjectRows(rows));
   return { ok: true, projects };
 }
+
+async function getReportWorkspaceProjectsForUser(
+  userId: string,
+  workspaceId: string | null,
+): Promise<GetReportWorkspaceProjectsResult> {
+  const supabase = await supabaseServerClient();
+  return getReportWorkspaceProjectsImpl(supabase, userId, workspaceId);
+}
+
+/**
+ * Lists projects in the active Report workspace (excludes known legacy RiskAI project).
+ * Uses the authenticated Supabase client (RLS applies).
+ *
+ * Wrapped in `cache()` so layout + page loaders in the same request share one project list query.
+ */
+export const getReportWorkspaceProjects = cache(getReportWorkspaceProjectsForUser);
 
 export function sortReportProjectsByName(
   projects: ReportProjectListItem[],

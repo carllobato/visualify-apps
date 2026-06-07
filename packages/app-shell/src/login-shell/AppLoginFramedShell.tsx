@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import "../app-login-shell.css";
 import {
   AppShellFrameGutter,
   AppShellFramedSurface,
@@ -12,8 +11,10 @@ import { AppLoginBrandMark } from "./AppLoginBrandMark";
 import {
   appLoginFramedRailAsideClassName,
   appLoginFramedRailBrandLinkClassName,
+  appLoginFramedShellClassName,
   appLoginFramedRailStackClassName,
 } from "./classes";
+import { mergeClass } from "../account-settings/merge-class";
 
 export type AppLoginFramedShellProps = {
   children: ReactNode;
@@ -50,7 +51,7 @@ export function AppLoginFramedShell({
   const railLabel = brandAriaLabel ?? brandTitle;
 
   return (
-    <AppShellOuterCanvas className={className}>
+    <AppShellOuterCanvas className={mergeClass(appLoginFramedShellClassName, className)}>
       <aside className={appLoginFramedRailAsideClassName} aria-label="Visualify platform">
         <div className={appLoginFramedRailStackClassName}>
           <a

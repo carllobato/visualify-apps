@@ -45,6 +45,9 @@ export const appLoginPageMainClassName = "vf-app-login-page-main";
 
 export const appLoginCopyrightClassName = "vf-app-login-copyright";
 
+/** Root canvas modifier — scopes mobile login layout overrides in `app-login-shell.css`. */
+export const appLoginFramedShellClassName = "vf-app-login-framed-shell";
+
 /** Collapsed brand rail on signed-out framed login (matches HQ public shell). */
 export const appLoginFramedRailAsideClassName = "vf-app-login-rail-aside";
 

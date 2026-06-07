@@ -1,6 +1,32 @@
 export { visualifyAppDocumentTitle } from "./visualify-document-title";
 
 export {
+  VISUALIFY_APP_LAUNCH_CANVAS,
+  VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS,
+  VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS,
+  VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS,
+  VISUALIFY_APP_LAUNCH_CONTENT_REVEAL_DELAY_MS,
+  VISUALIFY_APP_LAUNCH_CONTENT_REVEAL_MS,
+  VISUALIFY_APP_LAUNCH_EXIT_MS,
+  VISUALIFY_APP_LAUNCH_HOLD_MS,
+  VISUALIFY_APP_LAUNCH_INTRO_DELAY_MS,
+  VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS,
+  VISUALIFY_APP_LAUNCH_INTRO_MS,
+  VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS,
+  VISUALIFY_APP_LAUNCH_SPLASH_BG,
+  VISUALIFY_APP_LAUNCH_SPLASH_ID,
+  VISUALIFY_APP_LAUNCH_WORDMARK_CLASS,
+  visualifyAppLaunchCriticalCss,
+} from "./app-launch-splash";
+
+export {
+  VisualifyAppLaunchAppRoot,
+  VisualifyAppLaunchBrandMarkPreload,
+  VisualifyAppLaunchController,
+  VisualifyAppLaunchCriticalStyles,
+} from "./VisualifyAppLaunchSplash";
+
+export {
   appShellRailEntitySectionClassName,
   appShellRailIconWellClassName,
   appShellRailFooterIconWellClassName,
@@ -333,6 +359,8 @@ export {
   AppLoginPage,
   AppLoginSuspenseFallback,
   AppLoginTabsSection,
+  AppLoginSignInSignUpTabs,
+  AppLoginSignUpAwaitingEmailPanel,
   AppLoginSubmitRow,
   appLoginSubmitLabelsForMode,
   AppLoginTrustLine,
@@ -374,6 +402,9 @@ export type {
   AppLoginScreenProps,
   AppLoginPageProps,
   AppLoginTabsSectionProps,
+  AppLoginSignInSignUpTabsProps,
+  AppLoginSignUpAwaitingEmailPanelProps,
+  AppLoginTabId,
   AppLoginSubmitRowProps,
   AppLoginTrustLineProps,
 } from "./login-shell";

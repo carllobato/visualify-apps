@@ -1,6 +1,8 @@
 import "server-only";
 
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabaseServerClient } from "@/lib/supabase/server";
 import { readVisualifyActiveWorkspaceIdFromCookie } from "@/lib/workspace/activeWorkspaceCookie";
 import { getReportEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
@@ -12,11 +14,7 @@ export type ActiveReportWorkspaceContext = {
   needsSelection: boolean;
 };
 
-/**
- * Resolves Report active workspace from entitled workspaces and `visualify_active_workspace_id`.
- * Cookie writes belong in server actions (e.g. workspace switcher), not during layout render.
- */
-export async function resolveActiveReportWorkspaceContext(
+async function resolveActiveReportWorkspaceContextImpl(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<ActiveReportWorkspaceContext> {
@@ -52,3 +50,18 @@ export async function resolveActiveReportWorkspaceContext(
     needsSelection: true,
   };
 }
+
+async function resolveActiveReportWorkspaceContextForUser(
+  userId: string,
+): Promise<ActiveReportWorkspaceContext> {
+  const supabase = await supabaseServerClient();
+  return resolveActiveReportWorkspaceContextImpl(supabase, userId);
+}
+
+/**
+ * Resolves Report active workspace from entitled workspaces and `visualify_active_workspace_id`.
+ * Cookie writes belong in server actions (e.g. workspace switcher), not during layout render.
+ *
+ * Wrapped in `cache()` so layout + page loaders in the same request share one workspace resolution.
+ */
+export const resolveActiveReportWorkspaceContext = cache(resolveActiveReportWorkspaceContextForUser);

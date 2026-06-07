@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: CACHE_HEADERS });
   }
 
-  const workspaceContext = await resolveActiveReportWorkspaceContext(supabase, user.id);
+  const workspaceContext = await resolveActiveReportWorkspaceContext(user.id);
   const activeWorkspaceId = workspaceContext.selectedWorkspaceId;
 
   let body: unknown;

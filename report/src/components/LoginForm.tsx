@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AppLoginCardHeader,
   AppLoginFormError,
   AppLoginPasswordField,
   appLoginFormClassName,
+  AppLoginSignInSignUpTabs,
+  type AppLoginTabId,
+  AppLoginSignUpAwaitingEmailPanel,
   AppLoginStandardLegalFooter,
   AppLoginSubmitRow,
+  appLoginSubmitLabelsForMode,
   AppLoginTrustLine,
 } from "@visualify/app-shell";
 import { Input, Label } from "@visualify/design-system";
@@ -22,16 +26,36 @@ function safeNextPath(next: string | null): string {
   return next;
 }
 
-export function LoginForm() {
+function authConfirmUrl(): string {
+  return new URL("/auth/confirm", window.location.origin).toString();
+}
+
+function formatAuthError(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) {
+    return err.message;
+  }
+  return "Something went wrong. Please try again.";
+}
+
+export function LoginForm({ serverError }: { serverError?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [tab, setTab] = useState<AppLoginTabId>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [signUpAwaitingEmail, setSignUpAwaitingEmail] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  function resetTabState(nextTab: AppLoginTabId) {
+    setError(null);
+    setSignUpAwaitingEmail(false);
+    setShowPassword(false);
+    setTab(nextTab);
+  }
+
+  async function onSignIn(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setPending(true);
@@ -42,59 +66,147 @@ export function LoginForm() {
         password,
       });
       if (signError) {
-        setError(signError.message);
+        setError(formatAuthError(signError));
         return;
       }
       router.push(safeNextPath(searchParams.get("next")));
       router.refresh();
+    } catch (err) {
+      setError(formatAuthError(err));
     } finally {
       setPending(false);
     }
   }
 
+  async function onSignUp(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSignUpAwaitingEmail(false);
+    setPending(true);
+    try {
+      const { data, error: signUpError } = await supabaseBrowserClient().auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: authConfirmUrl(),
+        },
+      });
+      if (signUpError) {
+        setError(formatAuthError(signUpError));
+        return;
+      }
+      if (data.session) {
+        router.push(safeNextPath(searchParams.get("next")));
+        router.refresh();
+        return;
+      }
+      setSignUpAwaitingEmail(true);
+    } catch (err) {
+      setError(formatAuthError(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  const legalFooter = <AppLoginStandardLegalFooter />;
+
   return (
     <>
       <AppLoginCardHeader />
 
-      <form onSubmit={onSubmit} className={appLoginFormClassName} autoComplete="on">
-        <div>
-          <Label htmlFor="report-login-email">Email</Label>
-          <Input
-            id="report-login-email"
-            name="email"
-            type="email"
-            inputMode="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="username"
-            autoCapitalize="off"
-            autoCorrect="off"
+      <AppLoginSignInSignUpTabs activeTab={tab} onTabChange={resetTabState} />
+
+      {tab === "signup" && signUpAwaitingEmail ? (
+        <AppLoginSignUpAwaitingEmailPanel
+          email={email}
+          onUseDifferentEmail={() => {
+            setSignUpAwaitingEmail(false);
+            setPassword("");
+          }}
+          onBackToSignIn={() => resetTabState("signin")}
+        />
+      ) : tab === "signin" ? (
+        <form onSubmit={onSignIn} className={appLoginFormClassName} autoComplete="on">
+          <div>
+            <Label htmlFor="report-login-email">Email</Label>
+            <Input
+              id="report-login-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="username"
+              autoCapitalize="off"
+              autoCorrect="off"
+              required
+              disabled={pending}
+            />
+          </div>
+
+          <AppLoginPasswordField
+            id="report-login-password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            autoComplete="current-password"
             required
             disabled={pending}
           />
-        </div>
 
-        <AppLoginPasswordField
-          id="report-login-password"
-          name="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          visible={showPassword}
-          onToggleVisible={() => setShowPassword((v) => !v)}
-          autoComplete="current-password"
-          required
-          disabled={pending}
-        />
+          <AppLoginFormError message={serverError ?? error} />
 
-        <AppLoginFormError message={error} />
+          <AppLoginSubmitRow pending={pending} />
 
-        <AppLoginSubmitRow pending={pending} />
+          <AppLoginTrustLine />
 
-        <AppLoginTrustLine />
+          {legalFooter}
+        </form>
+      ) : (
+        <form onSubmit={onSignUp} className={appLoginFormClassName} autoComplete="on">
+          <div>
+            <Label htmlFor="report-signup-email">Email</Label>
+            <Input
+              id="report-signup-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              required
+              disabled={pending}
+            />
+          </div>
 
-        <AppLoginStandardLegalFooter />
-      </form>
+          <AppLoginPasswordField
+            id="report-signup-password"
+            name="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            autoComplete="new-password"
+            required
+            minLength={6}
+            disabled={pending}
+          />
+
+          <AppLoginFormError message={error} />
+
+          <AppLoginSubmitRow pending={pending} {...appLoginSubmitLabelsForMode("signup")} />
+
+          <AppLoginTrustLine>Secure sign up | Your data is protected</AppLoginTrustLine>
+
+          {legalFooter}
+        </form>
+      )}
     </>
   );
 }

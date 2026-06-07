@@ -1,0 +1,9 @@
+/**
+ * Signed-out login screen chrome — frame layout, login card, Visualify wordmark.
+ *
+ * Import from {@link AppLoginScreen} and each product app's `globals.css` so login
+ * styles are always present (workspace package CSS can be missed by dev HMR otherwise).
+ */
+@import "./app-shell-frame.css";
+@import "./app-login-shell.css";
+@import "./visualify-brand.css";

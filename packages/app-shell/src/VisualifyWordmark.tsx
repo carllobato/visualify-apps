@@ -1,3 +1,4 @@
+import "./visualify-brand.css";
 import { mergeClass } from "./account-settings/merge-class";
 import {
   VISUALIFY_LOGO_DARK_SRC,

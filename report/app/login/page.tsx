@@ -6,7 +6,11 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; next?: string }>;
+}) {
   const supabase = await supabaseServerClient();
   const {
     data: { user },
@@ -15,6 +19,11 @@ export default async function LoginPage() {
     redirect(REPORT_DEFAULT_ROUTE);
   }
 
+  const params = await searchParams;
+  const errorParam = params.error;
+  const serverError =
+    typeof errorParam === "string" && errorParam.trim() ? errorParam.trim() : undefined;
+
   return (
     <AppLoginScreen
       brandHref="/"
@@ -22,7 +31,7 @@ export default async function LoginPage() {
       brandAriaLabel="Visualify Report"
     >
       <AppLoginCardSuspense>
-        <LoginForm />
+        <LoginForm serverError={serverError} />
       </AppLoginCardSuspense>
     </AppLoginScreen>
   );
