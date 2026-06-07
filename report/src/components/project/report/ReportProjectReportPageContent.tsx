@@ -31,7 +31,6 @@ import {
   type ReportOverviewModuleLinkId,
 } from "@/lib/projects/report-project-overview-link";
 import {
-  getLatestReportProjectReportingPeriod,
   REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
   resolveReportProjectReportingPeriod,
 } from "@/lib/projects/report-project-reporting-date";
@@ -73,11 +72,15 @@ export function ReportProjectReportPageContent({
   const selectedReportingPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
 
   useEffect(() => {
-    const latestPeriod = getLatestReportProjectReportingPeriod(reportingPeriods);
+    const normalizedPeriodParam = periodParam?.trim() ?? "";
+    if (!normalizedPeriodParam) {
+      return;
+    }
+
     const resolvedPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
 
-    if (periodParam !== resolvedPeriod.isoDate) {
-      router.replace(`${pathname}?period=${latestPeriod.isoDate}`, { scroll: false });
+    if (normalizedPeriodParam !== resolvedPeriod.isoDate) {
+      router.replace(`${pathname}?period=${resolvedPeriod.isoDate}`, { scroll: false });
     }
   }, [pathname, periodParam, reportingPeriods, router]);
 

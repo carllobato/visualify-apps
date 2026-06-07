@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, Trend } from "@visualify/design-system";
 import { Fragment } from "react";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
@@ -9,6 +11,7 @@ import {
   type ReportProjectModuleStatusItem,
 } from "@/lib/projects/report-project-module-status";
 import { REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS } from "@/lib/projects/report-project-overview-link";
+import { useReportSmMinWidth } from "@/lib/useReportSmMinWidth";
 
 type ReportProjectModuleStatusCardProps = {
   items: ReportProjectModuleStatusItem[];
@@ -153,9 +156,15 @@ function MobileOverallStatusHero({
   );
 }
 
-function StatusModuleDivider() {
+function StatusModuleDivider({ cssHiddenFallback = false }: { cssHiddenFallback?: boolean }) {
   return (
-    <div aria-hidden className="hidden shrink-0 self-stretch py-3 sm:flex sm:flex-col sm:py-4">
+    <div
+      aria-hidden
+      className={[
+        "shrink-0 self-stretch py-3 sm:flex sm:flex-col sm:py-4",
+        cssHiddenFallback ? "hidden" : "flex flex-col",
+      ].join(" ")}
+    >
       <div className="w-px flex-1 bg-[var(--ds-border-subtle)]" />
     </div>
   );
@@ -222,6 +231,127 @@ function StatusModuleColumn({
   );
 }
 
+type ModuleStatusLayoutProps = Pick<
+  ReportProjectModuleStatusCardProps,
+  "items" | "projectStatus" | "onItemNavigate" | "onItemHover" | "onItemLeave"
+>;
+
+function ModuleStatusMobileGrid({
+  items,
+  projectStatus,
+  onItemNavigate,
+  onItemHover,
+  onItemLeave,
+}: ModuleStatusLayoutProps) {
+  return (
+    <>
+      <MobileOverallStatusHero
+        status={projectStatus.status}
+        trend={projectStatus.statusTrend}
+        highlightClassName={overallStatusHighlightClass(projectStatus.status)}
+        onItemHover={onItemHover}
+        onItemLeave={onItemLeave}
+      />
+      {items.map((row) => {
+        const tabId = getReportModuleStatusTabId(row.label);
+        const tabLabel = REPORT_MODULE_TABS.find((tab) => tab.id === tabId)?.label ?? "tab";
+
+        return (
+          <MobileSupportingStatusCard
+            key={row.label}
+            label={row.label}
+            status={row.status}
+            trend={row.trend}
+            tabId={tabId}
+            tabLabel={tabLabel}
+            onItemNavigate={onItemNavigate}
+            onItemHover={onItemHover}
+            onItemLeave={onItemLeave}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+function ModuleStatusDesktopRow({
+  items,
+  projectStatus,
+  onItemNavigate,
+  onItemHover,
+  onItemLeave,
+  cssHiddenFallback = false,
+}: ModuleStatusLayoutProps & { cssHiddenFallback?: boolean }) {
+  return (
+    <>
+      {items.map((row, index) => {
+        const tabId = getReportModuleStatusTabId(row.label);
+        const tabLabel = REPORT_MODULE_TABS.find((tab) => tab.id === tabId)?.label ?? "tab";
+
+        return (
+          <Fragment key={row.label}>
+            {index > 0 ? <StatusModuleDivider cssHiddenFallback={cssHiddenFallback} /> : null}
+            <StatusModuleColumn
+              label={row.label}
+              status={row.status}
+              trend={row.trend}
+              tabId={tabId}
+              tabLabel={tabLabel}
+              onItemNavigate={onItemNavigate}
+              onItemHover={onItemHover}
+              onItemLeave={onItemLeave}
+            />
+          </Fragment>
+        );
+      })}
+      <StatusModuleDivider cssHiddenFallback={cssHiddenFallback} />
+      <StatusModuleColumn
+        label="Overall Status"
+        status={projectStatus.status}
+        trend={projectStatus.statusTrend}
+        highlightClassName={overallStatusHighlightClass(projectStatus.status)}
+        onItemHover={onItemHover}
+        onItemLeave={onItemLeave}
+      />
+    </>
+  );
+}
+
+function ModuleStatusCardContent({
+  layoutProps,
+  isSmMinWidth,
+}: {
+  layoutProps: ModuleStatusLayoutProps;
+  isSmMinWidth: boolean | null;
+}) {
+  if (isSmMinWidth === null) {
+    return (
+      <>
+        <div className="grid min-h-0 flex-1 min-w-0 grid-cols-2 gap-x-2 gap-y-2 sm:hidden">
+          <ModuleStatusMobileGrid {...layoutProps} />
+        </div>
+        <div className="hidden min-h-0 flex-1 min-w-0 items-stretch sm:flex">
+          <ModuleStatusDesktopRow {...layoutProps} cssHiddenFallback />
+        </div>
+      </>
+    );
+  }
+
+  if (isSmMinWidth) {
+    return (
+      <div className="flex min-h-0 flex-1 min-w-0 items-stretch">
+        <ModuleStatusDesktopRow {...layoutProps} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid min-h-0 flex-1 min-w-0 grid-cols-2 gap-x-2 gap-y-2">
+      <ModuleStatusMobileGrid {...layoutProps} />
+    </div>
+  );
+}
+
 export function ReportProjectModuleStatusCard({
   items,
   projectStatus,
@@ -229,6 +359,15 @@ export function ReportProjectModuleStatusCard({
   onItemHover,
   onItemLeave,
 }: ReportProjectModuleStatusCardProps) {
+  const isSmMinWidth = useReportSmMinWidth();
+  const layoutProps: ModuleStatusLayoutProps = {
+    items,
+    projectStatus,
+    onItemNavigate,
+    onItemHover,
+    onItemLeave,
+  };
+
   return (
     <Card
       className={[
@@ -237,65 +376,7 @@ export function ReportProjectModuleStatusCard({
       ].join(" ")}
     >
       <CardContent className="flex flex-1 flex-col px-0 py-3 sm:p-0">
-        <div className="grid min-h-0 flex-1 min-w-0 grid-cols-2 gap-x-2 gap-y-2 sm:hidden">
-          <MobileOverallStatusHero
-            status={projectStatus.status}
-            trend={projectStatus.statusTrend}
-            highlightClassName={overallStatusHighlightClass(projectStatus.status)}
-            onItemHover={onItemHover}
-            onItemLeave={onItemLeave}
-          />
-          {items.map((row) => {
-            const tabId = getReportModuleStatusTabId(row.label);
-            const tabLabel = REPORT_MODULE_TABS.find((tab) => tab.id === tabId)?.label ?? "tab";
-
-            return (
-              <MobileSupportingStatusCard
-                key={row.label}
-                label={row.label}
-                status={row.status}
-                trend={row.trend}
-                tabId={tabId}
-                tabLabel={tabLabel}
-                onItemNavigate={onItemNavigate}
-                onItemHover={onItemHover}
-                onItemLeave={onItemLeave}
-              />
-            );
-          })}
-        </div>
-
-        <div className="hidden min-h-0 flex-1 min-w-0 items-stretch sm:flex">
-          {items.map((row, index) => {
-            const tabId = getReportModuleStatusTabId(row.label);
-            const tabLabel = REPORT_MODULE_TABS.find((tab) => tab.id === tabId)?.label ?? "tab";
-
-            return (
-              <Fragment key={row.label}>
-                {index > 0 ? <StatusModuleDivider /> : null}
-                <StatusModuleColumn
-                  label={row.label}
-                  status={row.status}
-                  trend={row.trend}
-                  tabId={tabId}
-                  tabLabel={tabLabel}
-                  onItemNavigate={onItemNavigate}
-                  onItemHover={onItemHover}
-                  onItemLeave={onItemLeave}
-                />
-              </Fragment>
-            );
-          })}
-          <StatusModuleDivider />
-          <StatusModuleColumn
-            label="Overall Status"
-            status={projectStatus.status}
-            trend={projectStatus.statusTrend}
-            highlightClassName={overallStatusHighlightClass(projectStatus.status)}
-            onItemHover={onItemHover}
-            onItemLeave={onItemLeave}
-          />
-        </div>
+        <ModuleStatusCardContent layoutProps={layoutProps} isSmMinWidth={isSmMinWidth} />
       </CardContent>
     </Card>
   );
