@@ -69,7 +69,7 @@ export function DashboardWorkspaceTile({
       <button
         type="button"
         disabled={tilesDisabled}
-        onClick={() => openWorkspace(workspace.id, canManage)}
+        onClick={() => openWorkspace(workspace.id)}
         className="ds-hq-workspace-launcher-tile__open"
         aria-label={openLabel}
         aria-busy={pending || undefined}

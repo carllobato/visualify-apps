@@ -7,7 +7,7 @@ import { appShellRailMobileOpenLabelRevealClassName, appShellRailMobileOpenRowGa
 
 /** Typography for a rail brand / title row — pair with {@link shellPageHeaderRailRowClassName} on page headers. */
 export const railBrandTitleClass =
-  "text-[length:var(--ds-text-lg)] font-medium leading-tight tracking-tight";
+  "text-[length:var(--ds-text-base)] font-medium leading-tight tracking-tight";
 
 /** 40px row height for vertical alignment between rail controls and the main document column. */
 export const shellPageHeaderRailRowClassName =
@@ -37,6 +37,13 @@ export const appShellRailEntitySectionClassName =
 /** Label revealed when the rail is hovered or pinned (width/opacity transition). */
 export const railLabelClass =
   "vf-app-shell-rail-expand-label min-w-0 shrink truncate text-left text-[length:var(--ds-text-sm)] font-medium leading-none " +
+  "w-0 overflow-hidden opacity-0 transition-[width,max-width,opacity] duration-[400ms] ease-out " +
+  "group-data-[pinned=true]:w-auto group-data-[pinned=true]:flex-1 group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:opacity-100 " +
+  appShellRailMobileOpenLabelRevealClassName;
+
+/** Nested rail label — smaller type for sub-items under a parent row (e.g. projects under a workspace). */
+export const railSubLabelClass =
+  "vf-app-shell-rail-expand-label min-w-0 shrink truncate text-left text-[length:var(--ds-text-xs)] font-normal leading-snug " +
   "w-0 overflow-hidden opacity-0 transition-[width,max-width,opacity] duration-[400ms] ease-out " +
   "group-data-[pinned=true]:w-auto group-data-[pinned=true]:flex-1 group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:opacity-100 " +
   appShellRailMobileOpenLabelRevealClassName;

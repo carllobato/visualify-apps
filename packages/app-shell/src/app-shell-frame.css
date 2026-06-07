@@ -138,6 +138,7 @@ html:has(.vf-app-shell-outer-canvas) body {
   gap: 2px;
   padding-top: 1rem;
   padding-bottom: var(--vf-app-shell-frame-edge-inset);
+  overflow: visible;
 }
 
 /* Account row — 40px band aligns with `.vf-app-shell-legal-footer-bar`. */
@@ -462,6 +463,19 @@ html:has(.vf-app-shell-outer-canvas) body {
 @media (min-width: 768px) {
   .vf-app-shell-mobile-nav-trigger--in-header {
     display: none;
+  }
+}
+
+/*
+ * Account menu in a collapsed rail — footer icon column is 40px; panel keeps nav min-width
+ * and extends into the main column (see AppShellRailAccountTrigger).
+ */
+@media (min-width: 768px) {
+  .vf-app-shell-rail-aside:not([data-pinned="true"]):not([data-hover-expanded="true"])
+    .vf-app-shell-rail-footer-account-outer
+    .ds-app-menu-dropdown {
+    width: 200px;
+    min-width: 200px;
   }
 }
 

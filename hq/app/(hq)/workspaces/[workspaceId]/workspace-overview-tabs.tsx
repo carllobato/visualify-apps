@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -17,6 +16,10 @@ import {
   dsNativeSelectFieldClassName,
 } from "@visualify/design-system";
 import {
+  canInviteToWorkspace,
+  canManageWorkspaceInHq,
+  canViewWorkspaceBillingInHq,
+  canViewWorkspaceSettingsInHq,
   defaultWorkspaceInviteRole,
   getAssignableWorkspaceInviteRoles,
 } from "@/lib/workspace-member-roles";
@@ -25,7 +28,10 @@ import {
   type WorkspacePendingInvitationRow,
   isWorkspaceInviteRole,
 } from "@/types/workspace-invitations";
-import { RISKAI_DASHBOARD_URL } from "@/lib/visualify-apps";
+import {
+  isActiveWorkspaceProductSubscription,
+  resolveVisualifyAppLaunchHref,
+} from "@/lib/visualify-apps";
 import type { WorkspaceCreateType } from "@/types/workspace-create";
 import type { WorkspaceOverviewTab } from "@/lib/workspace-overview-tab";
 import { WorkspaceDetailsForm } from "./workspace-details-form";
@@ -45,23 +51,58 @@ export type WorkspaceOverviewUserRow = {
   status: string | null;
 };
 
-type RoleBadgeKey = "owner" | "admin" | "member" | "viewer" | "other";
-type StatusBadgeKey = "active" | "invited" | "inactive";
+function workspaceUserDisplayName(row: WorkspaceOverviewUserRow): string {
+  return row.displayName?.trim() || row.email?.trim() || "—";
+}
 
-function workspaceRoleBadgeKey(raw: string | null | undefined): RoleBadgeKey {
+function workspaceUserMetaLine(row: WorkspaceOverviewUserRow): string {
+  const parts: string[] = [];
+  if (row.displayName?.trim() && row.email?.trim()) {
+    parts.push(row.email.trim());
+  }
+  parts.push(workspaceMembershipStatusLabel(row.status));
+  return parts.join(" · ");
+}
+
+function workspaceRoleBadgeStatus(
+  raw: string | null | undefined,
+): "neutral" | "info" | "warning" {
   const s = (raw ?? "").trim().toLowerCase();
-  if (s === "owner" || s === "admin" || s === "member" || s === "viewer") return s;
-  return "other";
+  if (s === "owner") return "warning";
+  if (s === "admin") return "info";
+  return "neutral";
+}
+
+function WorkspaceUsersInviteItem({ onInvite }: { onInvite: () => void }) {
+  return (
+    <li className="border-t border-dashed border-[var(--ds-border-subtle)]">
+      <button
+        type="button"
+        onClick={onInvite}
+        className="group flex w-full items-center gap-1.5 py-3 text-left text-[length:var(--ds-text-sm)] font-normal text-[var(--ds-text-muted)] transition-colors hover:text-[var(--ds-text-secondary)]"
+      >
+        <span
+          className="text-[var(--ds-text-tertiary)] transition-colors group-hover:text-[var(--ds-text-secondary)]"
+          aria-hidden
+        >
+          +
+        </span>
+        Invite user
+      </button>
+    </li>
+  );
 }
 
 function workspaceRoleLabel(raw: string | null | undefined): string {
-  const key = workspaceRoleBadgeKey(raw);
-  if (key !== "other") return key.charAt(0).toUpperCase() + key.slice(1);
+  const s = (raw ?? "").trim().toLowerCase();
+  if (s === "owner" || s === "admin" || s === "member" || s === "viewer") {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
   const t = raw?.trim();
   return t && t.length > 0 ? t : "Member";
 }
 
-function workspaceMembershipStatusKey(raw: string | null | undefined): StatusBadgeKey {
+function workspaceMembershipStatusKey(raw: string | null | undefined): "active" | "invited" | "inactive" {
   const s = (raw ?? "").trim().toLowerCase();
   if (!s || s === "active") return "active";
   if (s === "invited" || s === "pending" || s.includes("invit")) return "invited";
@@ -74,42 +115,46 @@ function workspaceMembershipStatusLabel(raw: string | null | undefined): string 
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
-function roleBadgeStatus(key: RoleBadgeKey): "neutral" | "info" | "warning" {
-  if (key === "owner") return "warning";
-  if (key === "admin") return "info";
-  return "neutral";
-}
+function WorkspaceAppOpenControl({
+  productKey,
+  subscriptionStatus,
+}: {
+  productKey: string;
+  subscriptionStatus: string;
+}) {
+  const launchHref = resolveVisualifyAppLaunchHref(productKey);
+  const isActive = isActiveWorkspaceProductSubscription(subscriptionStatus);
+  const canOpen = isActive && Boolean(launchHref);
 
-function statusBadgeStatus(key: StatusBadgeKey): "success" | "warning" | "neutral" {
-  if (key === "active") return "success";
-  if (key === "invited") return "warning";
-  return "neutral";
-}
+  if (canOpen && launchHref) {
+    return (
+      <a
+        href={launchHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="ds-outline-btn shrink-0 self-start no-underline sm:self-center"
+      >
+        Open app
+      </a>
+    );
+  }
 
-function WorkspaceUsersInviteRow({ onInvite }: { onInvite: () => void }) {
   return (
-    <tr className="border-t border-dashed border-[var(--ds-border-subtle)] bg-transparent">
-      <td colSpan={4} className="p-0">
-        <button
-          type="button"
-          onClick={onInvite}
-          className="group flex w-full items-center gap-1.5 px-3 py-2 text-left text-[length:var(--ds-text-sm)] font-normal text-[var(--ds-text-muted)] transition-colors hover:bg-[var(--ds-surface-hover)] hover:text-[var(--ds-text-secondary)]"
-        >
-          <span
-            className="text-[var(--ds-text-tertiary)] transition-colors group-hover:text-[var(--ds-text-secondary)]"
-            aria-hidden
-          >
-            +
-          </span>
-          Invite user
-        </button>
-      </td>
-    </tr>
+    <Button
+      type="button"
+      variant="secondary"
+      disabled
+      className="shrink-0 self-start opacity-60 sm:self-center"
+      aria-disabled
+    >
+      Open app
+    </Button>
   );
 }
 
 const cardClass =
   "[border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
+
 
 const summaryCardClass =
   "[border-width:var(--ds-border-width)] border-[var(--ds-border)] bg-[var(--ds-surface-elevated)]";
@@ -145,11 +190,6 @@ function WorkspaceOverviewSummaryCard({
   );
 }
 
-function isRiskAiProductKey(key: string): boolean {
-  return key.trim().toLowerCase() === "riskai";
-}
-
-/** Internal-only product; omit from workspace entitlement list for non-staff HQ viewers. */
 function isHiddenTemplateAppEntitlementRow(row: WorkspaceOverviewProductRow): boolean {
   return (
     row.productKey.trim().toLowerCase() === "template" ||
@@ -170,7 +210,7 @@ export function WorkspaceOverviewTabs({
   pendingWorkspaceInvitations,
   viewerMemberRole,
   viewerIsVisualifyStaff,
-  initialTab = "apps",
+  initialTab = "details",
 }: {
   workspaceId: string;
   workspaceName: string;
@@ -188,10 +228,23 @@ export function WorkspaceOverviewTabs({
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<WorkspaceOverviewTab>(initialTab);
+  const canManage = canManageWorkspaceInHq(viewerMemberRole);
+  const canInvite = canInviteToWorkspace(viewerMemberRole);
+  const canViewBilling = canViewWorkspaceBillingInHq(viewerMemberRole);
+  const canViewSettings = canViewWorkspaceSettingsInHq(viewerMemberRole);
 
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (activeTab === "billing" && !canViewBilling) {
+      setActiveTab("details");
+    } else if (activeTab === "settings" && !canViewSettings) {
+      setActiveTab("details");
+    }
+  }, [activeTab, canViewBilling, canViewSettings]);
+
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceInviteRole>("member");
@@ -352,7 +405,9 @@ export function WorkspaceOverviewTabs({
 
   return (
     <>
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div
+        className={`mb-6 grid grid-cols-1 gap-3 ${canViewBilling ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+      >
         <WorkspaceOverviewSummaryCard
           label="Active Apps"
           value={
@@ -367,50 +422,74 @@ export function WorkspaceOverviewTabs({
           }
           onSelect={() => setActiveTab("workspace_users")}
         />
-        <WorkspaceOverviewSummaryCard
-          label="Billing Status"
-          value={
-            <p className="m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums">{billingStatusLabel}</p>
-          }
-          onSelect={() => setActiveTab("billing")}
-        />
+        {canViewBilling ? (
+          <WorkspaceOverviewSummaryCard
+            label="Billing Status"
+            value={
+              <p className="m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums">{billingStatusLabel}</p>
+            }
+            onSelect={() => setActiveTab("billing")}
+          />
+        ) : null}
       </div>
 
       <div className="mb-4 border-b border-[var(--ds-border)]">
         <Tabs>
-          <Tab active={activeTab === "apps"} onClick={() => setActiveTab("apps")}>
-            Apps
-          </Tab>
           <Tab active={activeTab === "details"} onClick={() => setActiveTab("details")}>
             Details
+          </Tab>
+          <Tab active={activeTab === "apps"} onClick={() => setActiveTab("apps")}>
+            Apps
           </Tab>
           <Tab active={activeTab === "workspace_users"} onClick={() => setActiveTab("workspace_users")}>
             Workspace Users
           </Tab>
-          <Tab active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>
-            Billing
-          </Tab>
-          <Tab active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
-            Settings
-          </Tab>
+          {canViewBilling ? (
+            <Tab active={activeTab === "billing"} onClick={() => setActiveTab("billing")}>
+              Billing
+            </Tab>
+          ) : null}
+          {canViewSettings ? (
+            <Tab active={activeTab === "settings"} onClick={() => setActiveTab("settings")}>
+              Settings
+            </Tab>
+          ) : null}
         </Tabs>
       </div>
 
       {activeTab === "details" ? (
-        <Card variant="default" className={cardClass}>
-          <CardHeader className="!px-4 !py-2.5">
-            <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Details</h2>
-          </CardHeader>
-          <CardContent className="!px-4 !py-3">
-            <WorkspaceDetailsForm
-              key={`${workspaceName}-${workspaceType}-${websiteUrl}`}
-              workspaceId={workspaceId}
-              initialName={workspaceName}
-              initialWorkspaceType={workspaceType}
-              initialWebsiteUrl={websiteUrl}
-            />
-          </CardContent>
-        </Card>
+        canManage ? (
+          <Card variant="default" className={cardClass}>
+            <CardHeader className="!px-4 !py-2.5">
+              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Details</h2>
+            </CardHeader>
+            <CardContent className="!px-4 !py-3">
+              <WorkspaceDetailsForm
+                key={`${workspaceName}-${workspaceType}-${websiteUrl}`}
+                workspaceId={workspaceId}
+                initialName={workspaceName}
+                initialWorkspaceType={workspaceType}
+                initialWebsiteUrl={websiteUrl}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card variant="default" className={cardClass}>
+            <CardHeader className="!px-4 !py-2.5">
+              <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Details</h2>
+            </CardHeader>
+            <CardContent className="!px-4 !py-3">
+              <WorkspaceDetailsForm
+                key={`${workspaceName}-${workspaceType}-${websiteUrl}-readonly`}
+                workspaceId={workspaceId}
+                initialName={workspaceName}
+                initialWorkspaceType={workspaceType}
+                initialWebsiteUrl={websiteUrl}
+                readOnly
+              />
+            </CardContent>
+          </Card>
+        )
       ) : null}
 
       {activeTab === "apps" ? (
@@ -434,16 +513,10 @@ export function WorkspaceOverviewTabs({
                         {row.plan ? ` · ${row.plan}` : ""}
                       </p>
                     </div>
-                    {isRiskAiProductKey(row.productKey) ? (
-                      <a
-                        href={RISKAI_DASHBOARD_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ds-outline-btn shrink-0 self-start no-underline sm:self-center"
-                      >
-                        Open RiskAI
-                      </a>
-                    ) : null}
+                    <WorkspaceAppOpenControl
+                      productKey={row.productKey}
+                      subscriptionStatus={row.subscriptionStatus}
+                    />
                   </li>
                 ))}
               </ul>
@@ -454,61 +527,37 @@ export function WorkspaceOverviewTabs({
 
       {activeTab === "workspace_users" ? (
         <Card variant="default" className={cardClass}>
-          <CardHeader className="flex flex-col gap-3 !px-4 !py-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <CardHeader className="!px-4 !py-2.5">
             <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Workspace Users</h2>
-            <Button type="button" size="sm" variant="secondary" onClick={openInviteModal}>
-              Invite User
-            </Button>
           </CardHeader>
           <CardContent className="!px-4 !py-3">
-            <div className="overflow-x-auto rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]">
-                <table className="w-full min-w-[520px] border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
-                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Name</th>
-                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Email</th>
-                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Role</th>
-                      <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {workspaceUsers.length === 0 ? (
-                      <tr className="border-b border-[var(--ds-border)]">
-                        <td
-                          colSpan={4}
-                          className="px-3 py-6 text-center text-sm text-[var(--ds-text-secondary)]"
-                        >
-                          No workspace users yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      workspaceUsers.map((row) => {
-                        const rk = workspaceRoleBadgeKey(row.role);
-                        const sk = workspaceMembershipStatusKey(row.status);
-                        return (
-                          <tr key={row.userId} className="border-b border-[var(--ds-border)]">
-                            <td className="px-3 py-2.5 font-medium text-[var(--ds-text-primary)]">
-                              {row.displayName?.trim() || "—"}
-                            </td>
-                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{row.email?.trim() || "—"}</td>
-                            <td className="px-3 py-2.5">
-                              <Badge variant="subtle" status={roleBadgeStatus(rk)}>
-                                {workspaceRoleLabel(row.role)}
-                              </Badge>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <Badge variant="subtle" status={statusBadgeStatus(sk)}>
-                                {workspaceMembershipStatusLabel(row.status)}
-                              </Badge>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                    <WorkspaceUsersInviteRow onInvite={openInviteModal} />
-                  </tbody>
-                </table>
-              </div>
+            {workspaceUsers.length === 0 && !canInvite ? (
+              <p className="m-0 text-sm text-[var(--ds-text-secondary)]">No workspace users yet.</p>
+            ) : (
+              <ul className="m-0 list-none space-y-0 divide-y divide-[var(--ds-border)] p-0">
+                {workspaceUsers.map((row) => (
+                  <li
+                    key={row.userId}
+                    className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="m-0 text-sm font-medium text-[var(--ds-text-primary)]">
+                          {workspaceUserDisplayName(row)}
+                        </p>
+                        <Badge variant="subtle" status={workspaceRoleBadgeStatus(row.role)}>
+                          {workspaceRoleLabel(row.role)}
+                        </Badge>
+                      </div>
+                      <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+                        {workspaceUserMetaLine(row)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+                {canInvite ? <WorkspaceUsersInviteItem onInvite={openInviteModal} /> : null}
+              </ul>
+            )}
 
             <div className="mt-8 border-t border-[var(--ds-border)] pt-6">
               <h3 className="m-0 mb-3 text-sm font-semibold text-[var(--ds-text-primary)]">Pending Invitations</h3>
@@ -520,61 +569,52 @@ export function WorkspaceOverviewTabs({
               {pendingWorkspaceInvitations.length === 0 ? (
                 <p className="m-0 text-sm text-[var(--ds-text-secondary)]">No pending invitations.</p>
               ) : (
-                <div className="overflow-x-auto rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)]">
-                  <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-[var(--ds-border)] bg-[var(--ds-surface-default)]">
-                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Email</th>
-                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Role</th>
-                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Created</th>
-                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">Status</th>
-                        <th className="px-3 py-2.5 font-medium text-[var(--ds-text-secondary)]">
-                          <span className="sr-only">Actions</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingWorkspaceInvitations.map((inv) => {
-                        const created =
-                          inv.createdAt && !Number.isNaN(Date.parse(inv.createdAt))
-                            ? new Date(inv.createdAt).toLocaleString(undefined, {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              })
-                            : "—";
-                        const cancelling = cancellingInvitationId === inv.id;
-                        const actionsDisabled = cancellingInvitationId !== null;
-                        return (
-                          <tr key={inv.id} className="border-b border-[var(--ds-border)] last:border-b-0">
-                            <td className="px-3 py-2.5 text-[var(--ds-text-primary)]">{inv.email || "—"}</td>
-                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">
-                              {workspaceRoleLabel(inv.role)}
-                            </td>
-                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{created}</td>
-                            <td className="px-3 py-2.5 text-[var(--ds-text-secondary)]">{inv.status || "—"}</td>
-                            <td className="px-3 py-2.5 text-right">
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                disabled={actionsDisabled}
-                                onClick={() => void cancelWorkspaceInvitation(inv.id)}
-                              >
-                                {cancelling ? "Cancelling…" : "Cancel"}
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <ul className="m-0 list-none space-y-0 divide-y divide-[var(--ds-border)] p-0">
+                  {pendingWorkspaceInvitations.map((inv) => {
+                    const created =
+                      inv.createdAt && !Number.isNaN(Date.parse(inv.createdAt))
+                        ? new Date(inv.createdAt).toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          })
+                        : "—";
+                    const cancelling = cancellingInvitationId === inv.id;
+                    const actionsDisabled = cancellingInvitationId !== null;
+                    return (
+                      <li
+                        key={inv.id}
+                        className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <p className="m-0 text-sm font-medium text-[var(--ds-text-primary)]">
+                            {inv.email || "—"}
+                          </p>
+                          <p className="mt-0.5 m-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-secondary)]">
+                            {[workspaceRoleLabel(inv.role), created, inv.status || "—"].join(" · ")}
+                          </p>
+                        </div>
+                        {canManage ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={actionsDisabled}
+                            className="shrink-0 self-start sm:self-center"
+                            onClick={() => void cancelWorkspaceInvitation(inv.id)}
+                          >
+                            {cancelling ? "Cancelling…" : "Cancel"}
+                          </Button>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </div>
           </CardContent>
         </Card>
       ) : null}
 
-      {inviteModalOpen ? (
+      {inviteModalOpen && canInvite ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
           role="presentation"
@@ -656,23 +696,18 @@ export function WorkspaceOverviewTabs({
         </div>
       ) : null}
 
-      {activeTab === "billing" ? (
+      {activeTab === "billing" && canViewBilling ? (
         <Card variant="default" className={cardClass}>
           <CardHeader className="!px-4 !py-2.5">
             <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Billing</h2>
           </CardHeader>
           <CardContent className="!px-4 !py-3">
-            <p className="mb-4 text-sm text-[var(--ds-text-secondary)]">
-              Review subscriptions, payment method, and invoices for this workspace.
-            </p>
-            <Link href="/billing" className="ds-outline-btn no-underline">
-              Go to Billing
-            </Link>
+            <p className="m-0 text-sm text-[var(--ds-text-secondary)]">Free version</p>
           </CardContent>
         </Card>
       ) : null}
 
-      {activeTab === "settings" ? (
+      {activeTab === "settings" && canViewSettings ? (
         <Card variant="default" className={cardClass}>
           <CardHeader className="!px-4 !py-2.5">
             <h2 className="m-0 text-sm font-semibold text-[var(--ds-text-primary)]">Settings</h2>
@@ -686,15 +721,28 @@ export function WorkspaceOverviewTabs({
               <p className="mt-2 mb-4 text-sm text-[var(--ds-text-secondary)]">
                 This removes the workspace from normal use but keeps it recoverable by Visualify support.
               </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="border-[var(--ds-color-danger-fg,#b42318)]/50 text-[var(--ds-color-danger-fg,#b42318)] hover:bg-[var(--ds-surface-hover)]"
-                onClick={() => setArchiveModalOpen(true)}
-              >
-                Archive workspace
-              </Button>
+              {canManage ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="border-[var(--ds-color-danger-fg,#b42318)]/50 text-[var(--ds-color-danger-fg,#b42318)] hover:bg-[var(--ds-surface-hover)]"
+                  onClick={() => setArchiveModalOpen(true)}
+                >
+                  Archive workspace
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled
+                  className="border-[var(--ds-color-danger-fg,#b42318)]/50 text-[var(--ds-color-danger-fg,#b42318)] opacity-60"
+                  aria-disabled
+                >
+                  Archive workspace
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

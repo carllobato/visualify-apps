@@ -17,13 +17,26 @@ export type AppShellRailAppCatalogEntry = {
 export type AppShellRailBrandAppMenuProps = {
   /** App name when the rail is expanded (e.g. “HQ”, “Risk AI”). */
   appShortName: string;
-  /** Full name in the app menu header (e.g. “Visualify HQ”). */
-  currentAppName: string;
+  /** Catalog entry id for the active app (e.g. `hq`, `controlai`). */
+  currentAppId: string;
   catalog: readonly AppShellRailAppCatalogEntry[];
   /** Brand mark in the collapsed rail slot (40×40). */
   brandIcon: ReactNode;
   brandLabel?: string;
 };
+
+function AppMenuCurrentPill() {
+  return <span className="ds-app-menu-dropdown__current-pill">Current</span>;
+}
+
+function AppMenuItemLabel({ name, trailing }: { name: string; trailing?: ReactNode }) {
+  return (
+    <span className="ds-app-menu-dropdown__item-row">
+      <span className="min-w-0 flex-1 truncate">{name}</span>
+      {trailing}
+    </span>
+  );
+}
 
 function IconChevronDownSubtle() {
   return (
@@ -52,7 +65,7 @@ function IconChevronDownSubtle() {
  */
 export function AppShellRailBrandAppMenu({
   appShortName,
-  currentAppName,
+  currentAppId,
   catalog,
   brandIcon,
   brandLabel = "Choose Visualify app",
@@ -143,51 +156,54 @@ export function AppShellRailBrandAppMenu({
           onMouseEnter={cancelScheduledClose}
           onMouseLeave={scheduleClose}
         >
-          <div
-            className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
-            role="presentation"
-          >
-            <div className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
-              Apps
-            </div>
-            <div
-              className="mt-[var(--ds-space-1)] truncate text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]"
-              aria-current="page"
-            >
-              {currentAppName}
-            </div>
-            <div className="mt-0.5 text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
-              Current app
-            </div>
-          </div>
+          {catalog.map((app) => {
+            const isCurrent = app.id === currentAppId;
 
-          {catalog.map((app) =>
-            app.href ? (
-              <a
-                key={app.id}
-                href={app.href}
-                role="menuitem"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ds-app-menu-dropdown__item block text-left no-underline"
-                title={app.description}
-              >
-                {app.name}
-              </a>
-            ) : (
+            if (isCurrent) {
+              return (
+                <div
+                  key={app.id}
+                  role="menuitem"
+                  aria-current="page"
+                  className="ds-app-menu-dropdown__item ds-app-menu-dropdown__item--current"
+                >
+                  <AppMenuItemLabel name={app.name} trailing={<AppMenuCurrentPill />} />
+                </div>
+              );
+            }
+
+            if (app.href) {
+              return (
+                <a
+                  key={app.id}
+                  href={app.href}
+                  role="menuitem"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ds-app-menu-dropdown__item text-left no-underline"
+                  title={app.description}
+                >
+                  <AppMenuItemLabel name={app.name} />
+                </a>
+              );
+            }
+
+            return (
               <div
                 key={app.id}
                 role="menuitem"
                 aria-disabled
                 className="ds-app-menu-dropdown__item ds-app-menu-dropdown__item--coming-soon"
               >
-                {app.name}
-                <span className="ds-app-menu-dropdown__coming-soon-label mt-0.5 block text-[length:var(--ds-text-xs)] font-normal leading-snug">
-                  Coming soon
-                </span>
+                <AppMenuItemLabel
+                  name={app.name}
+                  trailing={
+                    <span className="ds-app-menu-dropdown__coming-soon-label shrink-0">Coming soon</span>
+                  }
+                />
               </div>
-            ),
-          )}
+            );
+          })}
         </div>
       ) : null}
     </div>

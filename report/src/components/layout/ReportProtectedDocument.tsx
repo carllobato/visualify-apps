@@ -37,7 +37,10 @@ function reportMobilePageTitle(pathname: string, projects: ReportProjectListItem
   if (appShellNavHrefActive(pathname, REPORT_ROUTES.account)) {
     return "Account";
   }
-  if (appShellNavHrefActive(pathname, REPORT_ROUTES.selectWorkspace)) {
+  if (
+    appShellNavHrefActive(pathname, REPORT_ROUTES.home) ||
+    appShellNavHrefActive(pathname, REPORT_ROUTES.selectWorkspace)
+  ) {
     return "Workspace";
   }
   return "Report";

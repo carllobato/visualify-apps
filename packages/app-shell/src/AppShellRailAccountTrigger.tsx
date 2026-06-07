@@ -19,7 +19,7 @@ export type AppShellRailAccountTriggerProps = {
 
 /** Dropdown panel anchored above the rail account row. */
 export const appShellRailAccountMenuClassName =
-  "absolute inset-x-0 bottom-full z-[100] mb-[var(--ds-space-1)] w-full min-w-0 ds-app-menu-dropdown";
+  "absolute left-0 bottom-full z-[100] mb-[var(--ds-space-1)] ds-app-menu-dropdown ds-app-menu-dropdown--min-w-nav";
 
 /**
  * Presentational account row in a collapsible rail (icon + label + dropdown anchor).

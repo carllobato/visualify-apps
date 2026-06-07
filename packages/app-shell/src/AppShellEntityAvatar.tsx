@@ -9,12 +9,12 @@ const AVATAR_STYLES: Record<
   { frame: string; image: string; content: string; initials: string; imgPx: number; iconPx: number }
 > = {
   rail: {
-    frame: "flex size-5 shrink-0 overflow-hidden rounded-[var(--ds-radius-sm)]",
+    frame: "flex size-8 shrink-0 overflow-hidden rounded-[var(--ds-radius-sm)]",
     image: "items-center justify-center object-contain",
     content: "items-center justify-center",
-    initials: "text-sm font-semibold leading-none tracking-tight text-[var(--ds-text-primary)]",
-    imgPx: 20,
-    iconPx: 20,
+    initials: "text-xs font-semibold leading-none tracking-tight text-[var(--ds-text-primary)]",
+    imgPx: 32,
+    iconPx: 18,
   },
   tile: {
     frame: "flex size-8 shrink-0 overflow-hidden rounded-[var(--ds-radius-sm)]",

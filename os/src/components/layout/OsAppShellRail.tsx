@@ -36,7 +36,7 @@ export function OsAppShellRail({ appCatalog }: { appCatalog: readonly AppShellRa
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="OS"
-            currentAppName="Visualify OS"
+            currentAppId="os"
             catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />

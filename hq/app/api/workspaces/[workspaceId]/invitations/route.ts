@@ -5,9 +5,9 @@ import {
   fetchPendingWorkspaceInvitations,
   normalizeWorkspaceInviteEmail,
 } from "@/lib/workspace-invitations";
-import { canAssignWorkspaceInviteRole } from "@/lib/workspace-member-roles";
+import { canAssignWorkspaceInviteRole, canInviteToWorkspace } from "@/lib/workspace-member-roles";
 import { isWorkspaceInviteRole } from "@/types/workspace-invitations";
-import { fetchManageableWorkspaceById } from "@/lib/workspace-settings-data";
+import { fetchVisibleWorkspaceById } from "@/lib/workspace-settings-data";
 import { awaitSupabaseCookieSync } from "@/lib/supabase/await-supabase-cookie-sync";
 import { createRouteRequestSupabase } from "@/lib/supabase/route-handler-client";
 
@@ -39,12 +39,12 @@ export async function GET(
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Workspace ID required" }, { status: 400 });
   }
 
-  const manageable = await fetchManageableWorkspaceById(user.id, workspaceId.trim(), sb);
-  if (!manageable) {
+  const workspace = await fetchVisibleWorkspaceById(user.id, workspaceId.trim(), sb);
+  if (!workspace) {
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Forbidden" }, { status: 403 });
   }
 
-  const invitations = await fetchPendingWorkspaceInvitations(manageable.id);
+  const invitations = await fetchPendingWorkspaceInvitations(workspace.id);
   return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { invitations });
 }
 
@@ -63,9 +63,19 @@ export async function POST(
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Workspace ID required" }, { status: 400 });
   }
 
-  const manageable = await fetchManageableWorkspaceById(user.id, workspaceId.trim(), sb);
-  if (!manageable) {
+  const workspace = await fetchVisibleWorkspaceById(user.id, workspaceId.trim(), sb);
+  if (!workspace) {
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Forbidden" }, { status: 403 });
+  }
+  if (!canInviteToWorkspace(workspace.memberRole)) {
+    return jsonWithRouteSupabaseCookies(
+      applySupabaseAuthCookies,
+      {
+        error: "FORBIDDEN",
+        message: "You do not have permission to invite users to this workspace.",
+      },
+      { status: 403 },
+    );
   }
 
   let body: { email?: unknown; role?: unknown };
@@ -82,7 +92,7 @@ export async function POST(
   if (typeof body.role !== "string" || !isWorkspaceInviteRole(body.role)) {
     return jsonWithRouteSupabaseCookies(applySupabaseAuthCookies, { error: "Invalid role" }, { status: 400 });
   }
-  if (!canAssignWorkspaceInviteRole(manageable.memberRole, body.role)) {
+  if (!canAssignWorkspaceInviteRole(workspace.memberRole, body.role)) {
     return jsonWithRouteSupabaseCookies(
       applySupabaseAuthCookies,
       {
@@ -95,7 +105,7 @@ export async function POST(
 
   const result = await createPendingWorkspaceInvitation({
     actingUserId: user.id,
-    workspaceId: manageable.id,
+    workspaceId: workspace.id,
     email: normalizeWorkspaceInviteEmail(email),
     role: body.role,
   });

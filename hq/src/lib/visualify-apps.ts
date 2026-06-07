@@ -4,10 +4,33 @@ import {
   buildVisualifyAccountAppCatalogForUser,
   type AccountSettingsAppCatalogEntry,
 } from "@visualify/app-shell";
-import { getProductDashboardUrl, getProductOrigin } from "@visualify/urls";
+import { getProductDashboardUrl, getProductOrigin, readPublicEnv } from "@visualify/urls";
 
 /** RiskAI entry point (same as dashboard). */
 export const RISKAI_DASHBOARD_URL = getProductDashboardUrl("riskai");
+
+const REPORT_DEFAULT_ORIGIN = "https://report.visualify.com.au";
+
+/** Same resolver as Account → Apps catalog ({@link VISUALIFY_ACCOUNT_SETTINGS_APP_CATALOG}), evaluated at call time. */
+function resolveReportLaunchHref(): string | null {
+  const origin = (readPublicEnv("NEXT_PUBLIC_REPORT_ORIGIN") ?? REPORT_DEFAULT_ORIGIN).replace(/\/$/, "");
+  return origin ? `${origin}/projects` : null;
+}
+
+export function resolveVisualifyAppLaunchHref(productKey: string): string | null {
+  const id = productKey.trim().toLowerCase();
+  if (id === "report") {
+    return resolveReportLaunchHref();
+  }
+  const entry = VISUALIFY_APP_CATALOG.find((a) => a.id === id);
+  return entry?.href?.trim() || null;
+}
+
+export function isActiveWorkspaceProductSubscription(status: string | null | undefined): boolean {
+  if (status == null || status === "") return false;
+  const v = status.toLowerCase();
+  return v === "active" || v === "trial";
+}
 
 /** Host for app routes shared with RiskAI (legal pages, etc.). */
 export const VISUALIFY_APP_ORIGIN = getProductOrigin("riskai");

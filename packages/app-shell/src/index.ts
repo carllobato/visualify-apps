@@ -9,6 +9,7 @@ export {
   appShellRailPrimaryNavClassName,
   railBrandTitleClass,
   railLabelClass,
+  railSubLabelClass,
   RAIL_ROW_ACTIVE_CLASS,
   RAIL_ROW_INACTIVE_CLASS,
   RAIL_ROW_SHELL_CLASS,

@@ -4,6 +4,9 @@ import {
   WORKSPACE_ROLE_RANK,
   WORKSPACE_ROLES,
   canAssignWorkspaceRole,
+  canInviteToWorkspace,
+  getAssignableWorkspaceInviteRoles,
+  isWorkspaceOwner,
   isWorkspaceRoleAtLeast,
   normalizeWorkspaceRole,
   workspaceRoleRank,
@@ -29,6 +32,30 @@ describe("workspaceRoles", () => {
     assert.equal(canAssignWorkspaceRole("admin", "owner"), false);
     assert.equal(canAssignWorkspaceRole("viewer", "viewer"), true);
     assert.equal(canAssignWorkspaceRole("viewer", "member"), false);
+  });
+
+  it("getAssignableWorkspaceInviteRoles respects invite hierarchy", () => {
+    assert.deepEqual(getAssignableWorkspaceInviteRoles("owner"), [
+      "owner",
+      "admin",
+      "member",
+      "viewer",
+    ]);
+    assert.deepEqual(getAssignableWorkspaceInviteRoles("admin"), ["admin", "member", "viewer"]);
+    assert.deepEqual(getAssignableWorkspaceInviteRoles("member"), ["member", "viewer"]);
+    assert.deepEqual(getAssignableWorkspaceInviteRoles("viewer"), []);
+  });
+
+  it("canInviteToWorkspace excludes viewer inviters", () => {
+    assert.equal(canInviteToWorkspace("owner"), true);
+    assert.equal(canInviteToWorkspace("member"), true);
+    assert.equal(canInviteToWorkspace("viewer"), false);
+  });
+
+  it("isWorkspaceOwner identifies owner only", () => {
+    assert.equal(isWorkspaceOwner("owner"), true);
+    assert.equal(isWorkspaceOwner("admin"), false);
+    assert.equal(isWorkspaceOwner(" Owner "), true);
   });
 
   it("normalizeWorkspaceRole trims and lowercases", () => {

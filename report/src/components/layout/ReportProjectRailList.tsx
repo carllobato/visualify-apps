@@ -1,22 +1,47 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AppShellRailNavLink, appShellRailPrimaryNavClassName } from "@visualify/app-shell";
+import { AppShellRailNavLink, appShellRailPrimaryNavClassName, railSubLabelClass } from "@visualify/app-shell";
 import { reportProjectReportPath, reportProjectIdFromPathname } from "@/lib/report-routes";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
 
-function IconReport() {
+/** Lucide file-bar-chart — outline when inactive, filled when active. */
+function IconReport({ active }: { active: boolean }) {
+  if (active) {
+    return (
+      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0 text-[var(--ds-text-primary)]">
+        <path
+          d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
+          fill="currentColor"
+          stroke="none"
+        />
+        <path d="M14 2v4a2 2 0 0 0 2 2h4" fill="currentColor" stroke="none" />
+        <path
+          d="M8 18v-2M12 18v-4M16 18v-6"
+          stroke="var(--ds-surface)"
+          strokeWidth={2}
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0 text-current">
       <path
-        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+        d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"
         stroke="currentColor"
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <path d="M14 2v6h6" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8 13h2M8 17h2M12 13h4M12 17h4" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" />
+      <path
+        d="M14 2v4a2 2 0 0 0 2 2h4M8 18v-2M12 18v-4M16 18v-6"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -31,16 +56,20 @@ export function ReportProjectRailList({ projects }: ReportProjectRailListProps) 
 
   return (
     <nav className={appShellRailPrimaryNavClassName} aria-label="Projects">
-      {projects.map((project) => (
-        <AppShellRailNavLink
-          key={project.id}
-          href={reportProjectReportPath(project.id)}
-          active={activeProjectId === project.id}
-          label={project.name}
-        >
-          <IconReport />
-        </AppShellRailNavLink>
-      ))}
+      {projects.map((project) => {
+        const active = activeProjectId === project.id;
+        return (
+          <AppShellRailNavLink
+            key={project.id}
+            href={reportProjectReportPath(project.id)}
+            active={active}
+            label={project.name}
+            labelClassName={railSubLabelClass}
+          >
+            <IconReport active={active} />
+          </AppShellRailNavLink>
+        );
+      })}
     </nav>
   );
 }

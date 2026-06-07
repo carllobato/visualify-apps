@@ -6,12 +6,19 @@ import { useEffect, useRef, useState } from "react";
 import {
   appShellRailIconWellClassName,
   appShellRailNavActionButtonProps,
+  appShellRailNavRowClass,
   railBrandTitleClass,
 } from "@visualify/app-shell";
 
 /** Matches {@link AppShellRailBrandAppMenu} — not exported from app-shell package. */
 const RAIL_MOBILE_OPEN_ROW_GAP = "max-md:group-data-[mobile-open=true]:gap-2";
-const RAIL_MOBILE_OPEN_FLEX_REVEAL = "max-md:group-data-[mobile-open=true]:flex";
+
+/** Workspace name — larger type than project rows; matches rail brand title weight. */
+const RAIL_WORKSPACE_LABEL_CLASS =
+  `vf-app-shell-rail-expand-label min-w-0 shrink truncate text-left ${railBrandTitleClass} ` +
+  "w-0 overflow-hidden opacity-0 transition-[width,max-width,opacity] duration-[400ms] ease-out " +
+  "group-data-[pinned=true]:w-auto group-data-[pinned=true]:flex-1 group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:opacity-100 " +
+  "max-md:group-data-[mobile-open=true]:w-auto max-md:group-data-[mobile-open=true]:flex-1 max-md:group-data-[mobile-open=true]:max-w-[11rem] max-md:group-data-[mobile-open=true]:opacity-100";
 import { setReportActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
 import { REPORT_ROUTES } from "@/lib/report-routes";
 import { WorkspaceAvatar } from "@/components/workspace/WorkspaceAvatar.client";
@@ -56,22 +63,8 @@ const RAIL_BRAND_ROW_WRAP_CLASS =
   "relative vf-app-shell-rail-expand-row flex h-10 w-full min-w-0 shrink-0 items-center gap-0 rounded-[var(--ds-radius-md)] transition-[gap] duration-[400ms] ease-out group-data-[pinned=true]:gap-2 " +
   RAIL_MOBILE_OPEN_ROW_GAP;
 
-const RAIL_BRAND_ROW_TRIGGER_CLASS =
-  "vf-app-shell-rail-expand-row relative flex h-10 min-h-0 min-w-0 flex-1 items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
-  "transition-[color,gap] duration-[400ms] ease-out " +
-  "group-data-[pinned=true]:gap-2 " +
-  RAIL_MOBILE_OPEN_ROW_GAP +
-  " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]";
-
-const RAIL_BRAND_ROW_LABEL_CLASS =
-  `hidden vf-app-shell-rail-expand-flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
-  "group-data-[pinned=true]:flex " +
-  RAIL_MOBILE_OPEN_FLEX_REVEAL;
-
-const RAIL_WORKSPACE_HOME_LINK_CLASS =
-  RAIL_BRAND_ROW_TRIGGER_CLASS +
-  " min-w-0 flex-1 no-underline text-[var(--ds-text-primary)] " +
-  "hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_5%,var(--ds-canvas))] hover:text-[var(--ds-text-primary)]";
+const RAIL_WORKSPACE_HOME_LINK_CLASS = (active: boolean) =>
+  appShellRailNavRowClass(active) + " min-w-0 flex-1 no-underline";
 
 const RAIL_WORKSPACE_MENU_BUTTON_CLASS =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 " +
@@ -167,25 +160,20 @@ export function ReportWorkspaceRailList({
 
   if (workspaces.length === 1) {
     const only = workspaces[0]!;
+    const homeActive = workspaceHomeActive();
     return (
-      <div className={RAIL_BRAND_ROW_WRAP_CLASS}>
-        <Link
-          href={REPORT_ROUTES.projects}
-          className={RAIL_WORKSPACE_HOME_LINK_CLASS}
-          aria-label={`${only.name}, workspace home`}
-          aria-current={workspaceHomeActive() ? "page" : undefined}
-          title={only.name}
-        >
-          <span className={appShellRailIconWellClassName}>
-            <WorkspaceRailAvatar workspace={only} />
-          </span>
-          <span className={RAIL_BRAND_ROW_LABEL_CLASS}>
-            <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">
-              {only.name}
-            </span>
-          </span>
-        </Link>
-      </div>
+      <Link
+        href={REPORT_ROUTES.projects}
+        className={RAIL_WORKSPACE_HOME_LINK_CLASS(homeActive)}
+        aria-label={`${only.name}, workspace home`}
+        aria-current={homeActive ? "page" : undefined}
+        title={only.name}
+      >
+        <span className={appShellRailIconWellClassName}>
+          <WorkspaceRailAvatar workspace={only} />
+        </span>
+        <span className={RAIL_WORKSPACE_LABEL_CLASS}>{only.name}</span>
+      </Link>
     );
   }
 
@@ -197,7 +185,9 @@ export function ReportWorkspaceRailList({
     >
       <Link
         href={REPORT_ROUTES.projects}
-        className={RAIL_WORKSPACE_HOME_LINK_CLASS + (busyId ? " pointer-events-none opacity-60" : "")}
+        className={
+          RAIL_WORKSPACE_HOME_LINK_CLASS(workspaceHomeActive()) + (busyId ? " pointer-events-none opacity-60" : "")
+        }
         aria-label={`${triggerLabel}, workspace home`}
         aria-current={workspaceHomeActive() ? "page" : undefined}
         title={triggerLabel}
@@ -215,11 +205,7 @@ export function ReportWorkspaceRailList({
             />
           )}
         </span>
-        <span className={RAIL_BRAND_ROW_LABEL_CLASS}>
-          <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">
-            {triggerLabel}
-          </span>
-        </span>
+        <span className={RAIL_WORKSPACE_LABEL_CLASS}>{triggerLabel}</span>
       </Link>
 
       <button

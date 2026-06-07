@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { setVisualifyActiveWorkspaceIdAction } from "./workspace-switcher-actions";
 import { groupEntitiesForRail, workspaceTypeDisplayLabel, type EntityRailWorkspace } from "@/lib/entity-rail-grouping";
-import { canManageWorkspaceInHq } from "@/lib/workspace-member-roles";
 import { WorkspaceAvatar } from "@/components/workspace-avatar.client";
 import {
   AppShellRailNavSection,
@@ -98,23 +97,14 @@ export function WorkspaceRailList({
 
   const workspaceChromeActive = pathnameShowsWorkspaceRowActiveChrome(pathname);
 
-  async function selectWorkspace(id: string, memberRole: string) {
+  async function selectWorkspace(id: string) {
     if (busyId) return;
     setBusyId(id);
     try {
       const result = await setVisualifyActiveWorkspaceIdAction(id);
       if (!result.ok) return;
 
-      if (canManageWorkspaceInHq(memberRole)) {
-        router.push(`/workspaces/${id}?tab=apps`);
-        return;
-      }
-
-      if (pathname === "/dashboard") {
-        router.refresh();
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(`/workspaces/${id}`);
     } finally {
       setBusyId(null);
     }
@@ -135,7 +125,7 @@ export function WorkspaceRailList({
           isSelected={isSelected}
           usesActiveChrome={workspaceChromeActive && isSelected}
           disabled={busyId !== null}
-          onSelect={() => selectWorkspace(w.id, w.memberRole)}
+          onSelect={() => selectWorkspace(w.id)}
         />
       );
     });

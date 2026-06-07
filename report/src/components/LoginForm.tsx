@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AppLoginCardHeader,
   AppLoginFormError,
@@ -12,11 +12,19 @@ import {
   AppLoginTrustLine,
 } from "@visualify/app-shell";
 import { Input, Label } from "@visualify/design-system";
-import { REPORT_ROUTES } from "@/lib/report-routes";
+import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+
+function safeNextPath(next: string | null): string {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return REPORT_DEFAULT_ROUTE;
+  }
+  return next;
+}
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +45,7 @@ export function LoginForm() {
         setError(signError.message);
         return;
       }
-      router.push(REPORT_ROUTES.projects);
+      router.push(safeNextPath(searchParams.get("next")));
       router.refresh();
     } finally {
       setPending(false);

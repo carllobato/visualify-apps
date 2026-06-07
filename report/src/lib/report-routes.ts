@@ -1,13 +1,29 @@
-/** Default signed-in landing route for Report. */
-export const REPORT_DEFAULT_ROUTE = "/projects";
+/** Default signed-in landing route for Report (workspace picker when needed). */
+export const REPORT_DEFAULT_ROUTE = "/home";
 
 export const REPORT_ROUTES = {
+  home: "/home",
   /** Legacy path — redirects to `/projects`. */
   dashboard: "/dashboard",
   projects: "/projects",
   account: "/account",
+  /** Legacy path — redirects to `/home`. */
   selectWorkspace: "/select-workspace",
 } as const;
+
+export function isReportHomePath(pathname: string | null): boolean {
+  const normalized = (pathname ?? "").replace(/\/+$/, "");
+  return normalized === REPORT_ROUTES.home;
+}
+
+export function isReportWorkspaceSelectionPath(pathname: string | null): boolean {
+  const normalized = (pathname ?? "").replace(/\/+$/, "");
+  return (
+    normalized === REPORT_ROUTES.home ||
+    normalized === REPORT_ROUTES.selectWorkspace ||
+    (pathname ?? "").startsWith(`${REPORT_ROUTES.selectWorkspace}/`)
+  );
+}
 
 export function reportProjectReportPath(projectId: string): string {
   return `${REPORT_ROUTES.projects}/${projectId}/report`;

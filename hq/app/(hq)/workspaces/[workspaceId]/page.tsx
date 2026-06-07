@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
 import { isVisualifyStaffEmail } from "@/lib/auth/visualifyStaff";
 import { fetchPendingWorkspaceInvitations } from "@/lib/workspace-invitations";
+import { canViewWorkspaceBillingInHq, canViewWorkspaceSettingsInHq } from "@/lib/workspace-member-roles";
 import {
-  fetchManageableWorkspaceByRouteParam,
+  fetchVisibleWorkspaceByRouteParam,
   fetchWorkspaceMemberCount,
   fetchWorkspaceMembersForAdmin,
   fetchWorkspaceWebsiteUrl,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/workspace-apps-data";
 import { ActiveWorkspaceCookieSync } from "./active-workspace-cookie-sync";
 import { WorkspacePageHeader } from "./workspace-page-header";
-import { parseWorkspaceOverviewTab } from "@/lib/workspace-overview-tab";
+import { parseWorkspaceOverviewTab, resolveWorkspaceOverviewInitialTab } from "@/lib/workspace-overview-tab";
 import { WorkspaceOverviewTabs } from "./workspace-overview-tabs";
 
 export const dynamic = "force-dynamic";
@@ -68,39 +69,45 @@ export default async function HqWorkspacePage({
 
   const { workspaceId: routeWorkspaceId } = await params;
   const { tab: tabParam } = await searchParams;
-  const initialTab = parseWorkspaceOverviewTab(tabParam) ?? "apps";
-  const manageable = await fetchManageableWorkspaceByRouteParam(user.id, routeWorkspaceId);
+  const workspace = await fetchVisibleWorkspaceByRouteParam(user.id, routeWorkspaceId);
 
-  if (!manageable) {
+  if (!workspace) {
     return noAccessMain(
       "Workspace",
-      "This workspace is not available for administration. Choose another workspace from the rail.",
+      "This workspace is not available. Choose another workspace from the rail.",
     );
   }
 
-  const attached = await fetchAttachedWorkspaceProducts(manageable.id);
+  const canViewBilling = canViewWorkspaceBillingInHq(workspace.memberRole);
+  const canViewSettings = canViewWorkspaceSettingsInHq(workspace.memberRole);
+  const initialTab = resolveWorkspaceOverviewInitialTab(tabParam, {
+    canViewBilling,
+    canViewSettings,
+  });
+
+  const attached = await fetchAttachedWorkspaceProducts(workspace.id);
   const deduped = dedupeAttachedProducts(attached);
-  const memberCount = await fetchWorkspaceMemberCount(manageable.id);
-  const workspaceUsers = await fetchWorkspaceMembersForAdmin(manageable.id);
-  const pendingWorkspaceInvitations = await fetchPendingWorkspaceInvitations(manageable.id);
+  const memberCount = await fetchWorkspaceMemberCount(workspace.id);
+  const workspaceUsers = await fetchWorkspaceMembersForAdmin(workspace.id);
+  const pendingWorkspaceInvitations = await fetchPendingWorkspaceInvitations(workspace.id);
   const { active } = partitionWorkspaceProductsForAppsPage(attached);
-  const websiteUrl = (await fetchWorkspaceWebsiteUrl(manageable.id)) ?? "";
+  const websiteUrl = (await fetchWorkspaceWebsiteUrl(workspace.id)) ?? "";
 
   return (
     <main className="w-full min-w-0 px-0 pb-4">
-      <ActiveWorkspaceCookieSync workspaceId={manageable.id} />
+      <ActiveWorkspaceCookieSync workspaceId={workspace.id} />
       <WorkspacePageHeader
-        workspaceName={manageable.name}
+        workspaceName={workspace.name}
         websiteUrl={websiteUrl || null}
-        workspaceType={manageable.workspace_type}
-        logoUrl={manageable.logo_url}
+        workspaceType={workspace.workspace_type}
+        logoUrl={workspace.logo_url}
       />
 
       <WorkspaceOverviewTabs
         initialTab={initialTab}
-        workspaceId={manageable.id}
-        workspaceName={manageable.name}
-        workspaceType={initialWorkspaceType(manageable.workspace_type)}
+        workspaceId={workspace.id}
+        workspaceName={workspace.name}
+        workspaceType={initialWorkspaceType(workspace.workspace_type)}
         websiteUrl={websiteUrl}
         activeAppsCount={active.length}
         memberCount={memberCount}
@@ -108,7 +115,7 @@ export default async function HqWorkspacePage({
         attachedProducts={deduped}
         workspaceUsers={workspaceUsers}
         pendingWorkspaceInvitations={pendingWorkspaceInvitations}
-        viewerMemberRole={manageable.memberRole}
+        viewerMemberRole={workspace.memberRole}
         viewerIsVisualifyStaff={isVisualifyStaffEmail(user.email)}
       />
     </main>

@@ -36,7 +36,7 @@ export function ProjectsPageContent({ projects, hasActiveWorkspace }: ProjectsPa
       {!hasActiveWorkspace ? (
         <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
           <Link
-            href={REPORT_ROUTES.selectWorkspace}
+            href={REPORT_ROUTES.home}
             className="text-[var(--ds-text-primary)] underline-offset-2 hover:underline"
           >
             Select a workspace

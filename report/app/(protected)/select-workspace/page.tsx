@@ -1,35 +1,17 @@
-import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { SelectWorkspacePageContent } from "@/components/workspace/SelectWorkspacePageContent";
-import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
-import { resolveActiveReportWorkspaceContext } from "@/lib/workspace/resolveActiveReportWorkspaceContext";
-import { supabaseServerClient } from "@/lib/supabase/server";
+import { REPORT_ROUTES } from "@/lib/report-routes";
 
 export const dynamic = "force-dynamic";
 
-export default async function SelectWorkspacePage() {
-  const supabase = await supabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+type SelectWorkspacePageProps = {
+  searchParams: Promise<{ next?: string }>;
+};
 
-  if (!user) {
-    redirect("/login");
+/** Legacy route — workspace selection lives on `/home`. */
+export default async function SelectWorkspacePage({ searchParams }: SelectWorkspacePageProps) {
+  const { next } = await searchParams;
+  if (next) {
+    redirect(`${REPORT_ROUTES.home}?next=${encodeURIComponent(next)}`);
   }
-
-  const context = await resolveActiveReportWorkspaceContext(supabase, user.id);
-
-  if (!context.needsSelection && context.selectedWorkspaceId) {
-    redirect(REPORT_DEFAULT_ROUTE);
-  }
-
-  if (context.workspaces.length <= 1) {
-    redirect(REPORT_DEFAULT_ROUTE);
-  }
-
-  return (
-    <Suspense fallback={null}>
-      <SelectWorkspacePageContent workspaces={context.workspaces} />
-    </Suspense>
-  );
+  redirect(REPORT_ROUTES.home);
 }

@@ -226,7 +226,7 @@ export function ControlAiAppShellRail({
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="ControlAI"
-            currentAppName="Visualify ControlAI"
+            currentAppId="controlai"
             catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />

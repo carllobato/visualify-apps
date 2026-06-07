@@ -21,7 +21,6 @@ export function ReportProjectSettingsForm({ project }: ReportProjectSettingsForm
   const [stage, setStage] = useState<ReportProjectStage>(
     project.stage ?? REPORT_PROJECT_STAGE_DEFAULT,
   );
-  const [code, setCode] = useState(project.code ?? "");
   const [location, setLocation] = useState(project.location ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +29,6 @@ export function ReportProjectSettingsForm({ project }: ReportProjectSettingsForm
   useEffect(() => {
     setName(project.name);
     setStage(project.stage ?? REPORT_PROJECT_STAGE_DEFAULT);
-    setCode(project.code ?? "");
     setLocation(project.location ?? "");
     setSaved(false);
     setError(null);
@@ -56,7 +54,7 @@ export function ReportProjectSettingsForm({ project }: ReportProjectSettingsForm
         body: JSON.stringify({
           name: trimmedName,
           stage,
-          code: code.trim(),
+          code: (project.code ?? "").trim(),
           location: location.trim(),
         }),
       });
@@ -66,8 +64,8 @@ export function ReportProjectSettingsForm({ project }: ReportProjectSettingsForm
         redirectTo?: string;
       };
 
-      if (response.status === 400 && json.redirectTo === REPORT_ROUTES.selectWorkspace) {
-        router.push(REPORT_ROUTES.selectWorkspace);
+      if (response.status === 400 && json.redirectTo === REPORT_ROUTES.home) {
+        router.push(REPORT_ROUTES.home);
         return;
       }
 
@@ -104,29 +102,6 @@ export function ReportProjectSettingsForm({ project }: ReportProjectSettingsForm
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="report-settings-project-stage">Stage</Label>
-        <ReportProjectStageSelect
-          id="report-settings-project-stage"
-          value={stage}
-          onChange={setStage}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="report-settings-project-code">
-          Project code <span className="font-normal text-[var(--ds-text-secondary)]">(optional)</span>
-        </Label>
-        <Input
-          id="report-settings-project-code"
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-          placeholder="e.g. SYD1"
-          disabled={loading}
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
         <Label htmlFor="report-settings-project-location">
           Project location{" "}
           <span className="font-normal text-[var(--ds-text-secondary)]">(optional)</span>
@@ -136,6 +111,16 @@ export function ReportProjectSettingsForm({ project }: ReportProjectSettingsForm
           value={location}
           onChange={(event) => setLocation(event.target.value)}
           placeholder="e.g. Sydney"
+          disabled={loading}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="report-settings-project-stage">Stage</Label>
+        <ReportProjectStageSelect
+          id="report-settings-project-stage"
+          value={stage}
+          onChange={setStage}
           disabled={loading}
         />
       </div>

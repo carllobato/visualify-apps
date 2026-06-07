@@ -20,11 +20,13 @@ export function WorkspaceDetailsForm({
   initialName,
   initialWorkspaceType,
   initialWebsiteUrl,
+  readOnly = false,
 }: {
   workspaceId: string;
   initialName: string;
   initialWorkspaceType: WorkspaceCreateType;
   initialWebsiteUrl: string;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -38,6 +40,7 @@ export function WorkspaceDetailsForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (readOnly) return;
     setFormError(null);
     setSuccessMessage(null);
 
@@ -99,7 +102,7 @@ export function WorkspaceDetailsForm({
           }}
           placeholder="Acme Ltd"
           autoComplete="organization"
-          disabled={submitting}
+          disabled={submitting || readOnly}
           aria-invalid={Boolean(nameError)}
           aria-describedby={nameError ? "hq-workspace-details-name-err" : undefined}
         />
@@ -117,7 +120,7 @@ export function WorkspaceDetailsForm({
             const v = e.target.value;
             if (isWorkspaceCreateType(v)) setWorkspaceType(v);
           }}
-          disabled={submitting}
+          disabled={submitting || readOnly}
         >
           {WORKSPACE_CREATE_TYPE_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -141,7 +144,7 @@ export function WorkspaceDetailsForm({
           }}
           placeholder="https://example.com"
           autoComplete="url"
-          disabled={submitting}
+          disabled={submitting || readOnly}
           aria-invalid={Boolean(websiteError)}
           aria-describedby={websiteError ? "hq-workspace-details-website-err" : undefined}
         />
@@ -161,9 +164,11 @@ export function WorkspaceDetailsForm({
         </p>
       ) : null}
 
-      <Button type="submit" variant="primary" disabled={submitting}>
-        {submitting ? "Saving…" : "Save changes"}
-      </Button>
+      {!readOnly ? (
+        <Button type="submit" variant="primary" disabled={submitting}>
+          {submitting ? "Saving…" : "Save changes"}
+        </Button>
+      ) : null}
     </form>
   );
 }

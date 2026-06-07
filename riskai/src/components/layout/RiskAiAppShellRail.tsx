@@ -341,7 +341,7 @@ export function RiskAiAppShellRail({
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="ControlsAI"
-            currentAppName="Visualify ControlsAI"
+            currentAppId="riskai"
             catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />

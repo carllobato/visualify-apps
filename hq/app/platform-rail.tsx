@@ -61,7 +61,7 @@ export function PlatformRail({
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="HQ"
-            currentAppName="HQ"
+            currentAppId="hq"
             catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} />}
           />

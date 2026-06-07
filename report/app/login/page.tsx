@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AppLoginCardSuspense, AppLoginScreen } from "@visualify/app-shell";
 import { LoginForm } from "@/components/LoginForm";
-import { REPORT_ROUTES } from "@/lib/report-routes";
+import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export default async function LoginPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (user) {
-    redirect(REPORT_ROUTES.projects);
+    redirect(REPORT_DEFAULT_ROUTE);
   }
 
   return (

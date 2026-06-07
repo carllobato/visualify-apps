@@ -13,7 +13,7 @@ import {
   appShellNavHrefActive,
   type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
-import { REPORT_ROUTES } from "@/lib/report-routes";
+import { isReportHomePath, REPORT_ROUTES } from "@/lib/report-routes";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 import { ReportProjectRailList } from "./ReportProjectRailList";
@@ -29,6 +29,8 @@ type ReportAppShellRailProps = {
   selectedWorkspaceId: string | null;
   projects: ReportProjectListItem[];
   appCatalog: readonly AppShellRailAppCatalogEntry[];
+  /** Hide workspace and project nav (home screen). */
+  emptyPrimaryNav?: boolean;
 };
 
 /**
@@ -39,9 +41,11 @@ export function ReportAppShellRail({
   selectedWorkspaceId,
   projects,
   appCatalog,
+  emptyPrimaryNav: emptyPrimaryNavProp,
 }: ReportAppShellRailProps) {
   const pathname = usePathname();
   const accountRailActive = appShellNavHrefActive(pathname, REPORT_ROUTES.account);
+  const emptyPrimaryNav = emptyPrimaryNavProp ?? isReportHomePath(pathname);
 
   return (
     <AppShellRail ariaLabel="Report navigation" pinnedStorageKey={REPORT_RAIL_PINNED_KEY}>
@@ -49,21 +53,23 @@ export function ReportAppShellRail({
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="Report"
-            currentAppName="Visualify Report"
+            currentAppId="report"
             catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
           />
 
-          <AppShellRailSeparator />
+          {emptyPrimaryNav ? null : (
+            <>
+              <AppShellRailSeparator />
 
-          <ReportWorkspaceRailList
-            workspaces={workspaces}
-            selectedWorkspaceId={selectedWorkspaceId}
-          />
+              <ReportWorkspaceRailList
+                workspaces={workspaces}
+                selectedWorkspaceId={selectedWorkspaceId}
+              />
 
-          <AppShellRailSeparator />
-
-          <ReportProjectRailList projects={projects} />
+              <ReportProjectRailList projects={projects} />
+            </>
+          )}
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

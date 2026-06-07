@@ -64,7 +64,7 @@ export function TemplateAppShellRail({
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
             appShortName="Template App"
-            currentAppName="Visualify Template App"
+            currentAppId="template-app"
             catalog={appCatalog}
             brandIcon={<BrandMonogramMark />}
           />

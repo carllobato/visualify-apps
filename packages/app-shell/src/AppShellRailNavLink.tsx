@@ -15,10 +15,17 @@ export type AppShellRailNavLinkProps = {
   label: string;
   active: boolean;
   children: ReactNode;
+  labelClassName?: string;
 };
 
 /** Primary rail nav link — 40px row, 25px icon slot, shared gap/spacing with entity rows. */
-export function AppShellRailNavLink({ href, label, active, children }: AppShellRailNavLinkProps) {
+export function AppShellRailNavLink({
+  href,
+  label,
+  active,
+  children,
+  labelClassName = railLabelClass,
+}: AppShellRailNavLinkProps) {
   const { closeMobile } = useAppShellRailMobileNav();
 
   return (
@@ -32,7 +39,7 @@ export function AppShellRailNavLink({ href, label, active, children }: AppShellR
       <span className={appShellRailIconWellClassName}>
         <span className={appShellRailNavIconSlotClassName}>{children}</span>
       </span>
-      <span className={railLabelClass}>{label}</span>
+      <span className={`${labelClassName}${active ? " font-medium" : ""}`}>{label}</span>
     </Link>
   );
 }

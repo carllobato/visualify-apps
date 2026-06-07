@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: result.message,
-          redirectTo: REPORT_ROUTES.selectWorkspace,
+          redirectTo: REPORT_ROUTES.home,
         },
         { status: 400, headers: CACHE_HEADERS },
       );

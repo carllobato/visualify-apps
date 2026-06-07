@@ -1,16 +1,16 @@
 import {
   WORKSPACE_ROLES,
   canAssignWorkspaceRole,
+  canInviteToWorkspace,
+  getAssignableWorkspaceInviteRoles,
+  isWorkspaceOwner,
   isWorkspaceRoleAtLeast,
   normalizeWorkspaceRole,
   workspaceRoleRank,
   type WorkspaceRole,
 } from "@visualify/workspace-product-access";
-import {
-  WORKSPACE_INVITE_ROLES,
-  type WorkspaceInviteRole,
-  isWorkspaceInviteRole,
-} from "@/types/workspace-invitations";
+import type { WorkspaceInviteRole } from "@/types/workspace-invitations";
+import { isWorkspaceInviteRole } from "@/types/workspace-invitations";
 
 /** `visualify_workspace_members.role` values (highest privilege first). */
 export const WORKSPACE_MEMBER_ROLES = WORKSPACE_ROLES;
@@ -21,25 +21,23 @@ export const normalizeWorkspaceMemberRole = normalizeWorkspaceRole;
 
 export { workspaceRoleRank as workspaceMemberRoleRank, isWorkspaceRoleAtLeast };
 
-/** Owner/admin — may open HQ workspace administration (billing, invites, settings). */
+/** Owner/admin — may edit workspace settings and cancel invitations. */
 export function canManageWorkspaceInHq(roleRaw: string | null | undefined): boolean {
   const role = normalizeWorkspaceRole(roleRaw);
   return role != null && isWorkspaceRoleAtLeast(role, "admin");
 }
 
-/**
- * Invite roles the inviter may assign: their own level or lower (cannot assign above themselves).
- */
-export function getAssignableWorkspaceInviteRoles(
-  inviterRoleRaw: string | null | undefined,
-): WorkspaceInviteRole[] {
-  const inviter = normalizeWorkspaceRole(inviterRoleRaw);
-  if (!inviter) return [];
-  const inviterRank = workspaceRoleRank(inviter);
-  return WORKSPACE_INVITE_ROLES.filter(
-    (role) => workspaceRoleRank(role) >= inviterRank,
-  );
+/** Owner only — may view the workspace Billing tab in HQ. */
+export function canViewWorkspaceBillingInHq(roleRaw: string | null | undefined): boolean {
+  return isWorkspaceOwner(roleRaw);
 }
+
+/** Owner only — may view the workspace Settings tab in HQ. */
+export function canViewWorkspaceSettingsInHq(roleRaw: string | null | undefined): boolean {
+  return isWorkspaceOwner(roleRaw);
+}
+
+export { canInviteToWorkspace, getAssignableWorkspaceInviteRoles, isWorkspaceOwner };
 
 export function canAssignWorkspaceInviteRole(
   inviterRoleRaw: string | null | undefined,
@@ -66,5 +64,5 @@ export function defaultWorkspaceInviteRole(
   inviterRoleRaw: string | null | undefined,
 ): WorkspaceInviteRole {
   const assignable = getAssignableWorkspaceInviteRoles(inviterRoleRaw);
-  return assignable[assignable.length - 1] ?? "member";
+  return assignable[assignable.length - 1] ?? "viewer";
 }

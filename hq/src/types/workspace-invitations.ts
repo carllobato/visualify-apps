@@ -1,14 +1,19 @@
+import {
+  WORKSPACE_ROLES,
+  isWorkspaceRole,
+  type WorkspaceRole,
+} from "@visualify/workspace-product-access";
+
 /**
  * Roles allowed on `visualify_invitations` when `resource_type = 'workspace'`.
- * Subset of workspace member roles: DB constraint allows owner/admin/member only
- * (see migration 20260516120000_workspace_invitations_owner_role.sql).
+ * Matches `visualify_workspace_members.role` (owner/admin/member/viewer).
  */
-export const WORKSPACE_INVITE_ROLES = ["owner", "admin", "member"] as const;
+export const WORKSPACE_INVITE_ROLES = WORKSPACE_ROLES;
 
-export type WorkspaceInviteRole = (typeof WORKSPACE_INVITE_ROLES)[number];
+export type WorkspaceInviteRole = WorkspaceRole;
 
 export function isWorkspaceInviteRole(value: string): value is WorkspaceInviteRole {
-  return (WORKSPACE_INVITE_ROLES as readonly string[]).includes(value);
+  return isWorkspaceRole(value);
 }
 
 export type WorkspacePendingInvitationRow = {

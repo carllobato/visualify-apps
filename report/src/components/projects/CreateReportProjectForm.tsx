@@ -54,8 +54,8 @@ export function CreateReportProjectForm({ onCancel }: CreateReportProjectFormPro
         project?: { id: string };
       };
 
-      if (response.status === 400 && json.redirectTo === REPORT_ROUTES.selectWorkspace) {
-        router.push(REPORT_ROUTES.selectWorkspace);
+      if (response.status === 400 && json.redirectTo === REPORT_ROUTES.home) {
+        router.push(REPORT_ROUTES.home);
         return;
       }
 

@@ -429,14 +429,9 @@ export async function resolveSelectedWorkspaceIdForRail(userId: string): Promise
   return ok ? cookieId : null;
 }
 
-export async function fetchManageableWorkspaceById(
-  userId: string,
-  workspaceId: string,
-  supabaseClient?: SupabaseClient,
-): Promise<ManageableWorkspaceSummary | null> {
-  const rows = await fetchManageableWorkspacesInternal(userId, supabaseClient);
-  const hit = rows.find((w) => w.id === workspaceId);
-  if (!hit) return null;
+function workspaceSummaryFromInternalRow(
+  hit: WorkspaceInternalRow,
+): ManageableWorkspaceSummary {
   return {
     id: hit.id,
     name: hit.name,
@@ -447,6 +442,27 @@ export async function fetchManageableWorkspaceById(
     membershipStatus: hit.membershipStatus,
     logo_url: hit.logo_url,
   };
+}
+
+export async function fetchManageableWorkspaceById(
+  userId: string,
+  workspaceId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<ManageableWorkspaceSummary | null> {
+  const rows = await fetchManageableWorkspacesInternal(userId, supabaseClient);
+  const hit = rows.find((w) => w.id === workspaceId);
+  return hit ? workspaceSummaryFromInternalRow(hit) : null;
+}
+
+/** Active membership workspace by id (all roles). */
+export async function fetchVisibleWorkspaceById(
+  userId: string,
+  workspaceId: string,
+  supabaseClient?: SupabaseClient,
+): Promise<VisibleWorkspaceSummary | null> {
+  const rows = await fetchVisibleWorkspacesInternal(userId, supabaseClient);
+  const hit = rows.find((w) => w.id === workspaceId);
+  return hit ? workspaceSummaryFromInternalRow(hit) : null;
 }
 
 /**
@@ -460,30 +476,26 @@ export async function fetchManageableWorkspaceByRouteParam(
   if (!param) return null;
   const rows = await fetchManageableWorkspacesInternal(userId);
   const byId = rows.find((w) => w.id === param);
-  if (byId) {
-    return {
-      id: byId.id,
-      name: byId.name,
-      slug: byId.slug,
-      workspace_type: byId.workspace_type,
-      workspaceStatus: byId.workspaceStatus,
-      memberRole: byId.memberRole,
-      membershipStatus: byId.membershipStatus,
-      logo_url: byId.logo_url,
-    };
-  }
+  if (byId) return workspaceSummaryFromInternalRow(byId);
   const bySlug = rows.find((w) => (w.slug ?? "").trim() === param);
-  if (!bySlug) return null;
-  return {
-    id: bySlug.id,
-    name: bySlug.name,
-    slug: bySlug.slug,
-    workspace_type: bySlug.workspace_type,
-    workspaceStatus: bySlug.workspaceStatus,
-    memberRole: bySlug.memberRole,
-    membershipStatus: bySlug.membershipStatus,
-    logo_url: bySlug.logo_url,
-  };
+  return bySlug ? workspaceSummaryFromInternalRow(bySlug) : null;
+}
+
+/**
+ * Resolve a visible workspace from a URL segment (canonical id or workspace slug).
+ * Any active member (owner/admin/member/viewer) may enter the workspace overview page.
+ */
+export async function fetchVisibleWorkspaceByRouteParam(
+  userId: string,
+  workspaceIdOrSlug: string,
+): Promise<VisibleWorkspaceSummary | null> {
+  const param = workspaceIdOrSlug.trim();
+  if (!param) return null;
+  const rows = await fetchVisibleWorkspacesInternal(userId);
+  const byId = rows.find((w) => w.id === param);
+  if (byId) return workspaceSummaryFromInternalRow(byId);
+  const bySlug = rows.find((w) => (w.slug ?? "").trim() === param);
+  return bySlug ? workspaceSummaryFromInternalRow(bySlug) : null;
 }
 
 /** Website URL for a workspace the caller may already have resolved as manageable. */

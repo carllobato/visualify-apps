@@ -33,7 +33,7 @@ export const appShellRailAsideClassName =
 
 /** Inner column: padding + flex stack for header/nav + footer. */
 export const appShellRailBodyClassName =
-  "flex min-h-0 flex-1 flex-col overflow-hidden pt-5";
+  "flex min-h-0 flex-1 flex-col pt-5";
 
 import { appShellRailNavStackGapClassName } from "./rail-row-classes";
 

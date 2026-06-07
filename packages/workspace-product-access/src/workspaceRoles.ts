@@ -33,12 +33,37 @@ export function workspaceRoleRank(role: WorkspaceRole): number {
   return WORKSPACE_ROLE_RANK[role];
 }
 
-/** True when `role` has at least the privilege level of `minimumRole`. */
+/**
+ * True when `role` has at least the privilege level of `minimumRole`.
+ */
 export function isWorkspaceRoleAtLeast(
   role: WorkspaceRole,
   minimumRole: WorkspaceRole,
 ): boolean {
   return workspaceRoleRank(role) <= workspaceRoleRank(minimumRole);
+}
+
+/** True when the member is the workspace owner (sole billing administrator in HQ). */
+export function isWorkspaceOwner(roleRaw: string | null | undefined): boolean {
+  return normalizeWorkspaceRole(roleRaw) === "owner";
+}
+
+/**
+ * Workspace invite roles the inviter may assign: their own level or lower.
+ * Viewer cannot invite anyone.
+ */
+export function getAssignableWorkspaceInviteRoles(
+  inviterRoleRaw: string | null | undefined,
+): WorkspaceRole[] {
+  const inviter = normalizeWorkspaceRole(inviterRoleRaw);
+  if (!inviter || inviter === "viewer") return [];
+  const inviterRank = workspaceRoleRank(inviter);
+  return WORKSPACE_ROLES.filter((role) => workspaceRoleRank(role) >= inviterRank);
+}
+
+/** Active members except viewer may invite at or below their own role. */
+export function canInviteToWorkspace(roleRaw: string | null | undefined): boolean {
+  return getAssignableWorkspaceInviteRoles(roleRaw).length > 0;
 }
 
 /**
