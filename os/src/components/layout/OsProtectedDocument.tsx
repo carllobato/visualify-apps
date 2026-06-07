@@ -16,8 +16,6 @@ import { buildOsMobileBottomNavItems } from "@/lib/os-mobile-bottom-nav";
 import { OS_PRIMARY_NAV, OS_ROUTES, OS_SECONDARY_NAV } from "@/lib/os-routes";
 import "./os-mobile-shell.css";
 
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 function osMobilePageTitle(pathname: string): string {
   for (const { href, label } of OS_PRIMARY_NAV) {
     if (appShellNavHrefActive(pathname, href)) {
@@ -46,7 +44,7 @@ export function OsProtectedDocument({ children }: { children: ReactNode }) {
         className="os-mobile-shell-header"
         appName={pageTitle}
         showMenuTrigger={false}
-        appIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+        appIcon={<AppShellRailBrandMark alt="" />}
       />
       <AppShellFrameGutter>
         <AppShellFramedSurface>

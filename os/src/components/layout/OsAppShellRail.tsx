@@ -21,9 +21,6 @@ import { OsRailAccountMenu } from "./OsRailAccountMenu";
 
 const OS_RAIL_PINNED_KEY = "os-platform-rail-pinned";
 
-/** Same asset path as HQ and RiskAI (`public/visualify-brand-mark.png`). */
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 export function OsAppShellRail({ appCatalog }: { appCatalog: readonly AppShellRailAppCatalogEntry[] }) {
   const pathname = usePathname();
   const accountRailActive =
@@ -38,7 +35,7 @@ export function OsAppShellRail({ appCatalog }: { appCatalog: readonly AppShellRa
             appShortName="OS"
             currentAppId="os"
             catalog={appCatalog}
-            brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+            brandIcon={<AppShellRailBrandMark alt="" />}
           />
 
           <AppShellRailSeparator />

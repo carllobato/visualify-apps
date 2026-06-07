@@ -1,0 +1,40 @@
+/**
+ * Optional mobile shell header polish (max-width 767px).
+ * Add `appShellMobileShellHeaderClassName` to {@link AppShellMobileHeader}.
+ */
+
+@media (max-width: 767px) {
+  .vf-app-shell-mobile-shell-header.vf-app-shell-mobile-header {
+    background-color: color-mix(in oklab, var(--ds-bg) 84%, var(--ds-surface-muted) 16%);
+    -webkit-backdrop-filter: blur(12px) saturate(1.05);
+    backdrop-filter: blur(12px) saturate(1.05);
+  }
+
+  .vf-app-shell-mobile-shell-header .vf-app-shell-mobile-header__icon img,
+  .vf-app-shell-mobile-shell-header .vf-app-shell-mobile-header__icon .size-10 {
+    width: 1.5rem;
+    height: 1.5rem;
+    max-width: 1.5rem;
+    max-height: 1.5rem;
+    opacity: 0.72;
+  }
+
+  .vf-app-shell-mobile-shell-header .vf-app-shell-mobile-header__leading {
+    gap: 0;
+  }
+
+  .vf-app-shell-mobile-shell-header .vf-app-shell-mobile-header__inner {
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  }
+
+  .vf-app-shell-mobile-shell-header .vf-app-shell-mobile-header__identity {
+    gap: 0.375rem;
+  }
+
+  .vf-app-shell-mobile-shell-header .vf-app-shell-mobile-header__app-name {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ds-text-primary);
+  }
+}

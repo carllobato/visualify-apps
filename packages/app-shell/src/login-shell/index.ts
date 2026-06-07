@@ -6,6 +6,9 @@
  */
 export {
   APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
+  VISUALIFY_BRAND_MARK_SRC,
+  VISUALIFY_LOGO_DARK_SRC,
+  VISUALIFY_LOGO_LIGHT_SRC,
   appLoginBrandMarkCardClassName,
   appLoginBrandMarkRailClassName,
   appLoginCardClassName,

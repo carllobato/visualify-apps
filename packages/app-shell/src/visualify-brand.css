@@ -1,0 +1,38 @@
+.vf-visualify-brand-mark {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+[data-theme="dark"] .vf-visualify-brand-mark {
+  filter: invert(1);
+}
+
+.vf-visualify-wordmark {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 15rem);
+  height: auto;
+}
+
+.vf-visualify-wordmark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.vf-visualify-wordmark__dark {
+  display: none;
+}
+
+[data-theme="dark"] .vf-visualify-wordmark__light {
+  display: none;
+}
+
+[data-theme="dark"] .vf-visualify-wordmark__dark {
+  display: block;
+}

@@ -21,8 +21,6 @@ import type { VisualifyAppDefinition } from "@/lib/visualify-apps";
 /** Persist pin preference — each HQ page mounts its own shell, so state must survive remounts. */
 const HQ_PLATFORM_RAIL_PINNED_KEY = "hq-platform-rail-pinned";
 
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 /** Same matching rules as Next `<Link>` active styles for primary nav items. */
 function railNavHrefActive(pathname: string, href: string): boolean {
   const pathOnly = href.split("#")[0] ?? href;
@@ -63,7 +61,7 @@ export function PlatformRail({
             appShortName="HQ"
             currentAppId="hq"
             catalog={appCatalog}
-            brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} />}
+            brandIcon={<AppShellRailBrandMark alt="" />}
           />
 
           <AppShellRailSeparator />

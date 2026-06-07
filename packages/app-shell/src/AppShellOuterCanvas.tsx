@@ -1,6 +1,7 @@
 "use client";
 
 import "./app-shell-frame.css";
+import "./app-shell-mobile-shell.css";
 import type { ReactNode } from "react";
 import {
   AppShellMobileBottomNavPresenceProvider,
@@ -54,8 +55,17 @@ function AppShellOuterCanvasRoot({
 }
 
 /**
- * Full-viewport outer row (canvas). Pass rail/aside + {@link AppShellMainColumn} as children.
- * Wraps mobile-header presence so {@link AppShellRail} can hide the legacy floating trigger.
+ * Signed-in shell root. Required wrapper for mobile chrome and the rail drawer.
+ *
+ * **Desktop (≥768px):** {@link AppShellRail} beside {@link AppShellMainColumn} (persistent rail).
+ *
+ * **Mobile (≤767px):** {@link AppShellMobileHeader} + scroll frame inside the main column;
+ * optional {@link AppShellMobileBottomNav} with app-specific `items`. A `kind: "more"` item opens
+ * the existing rail drawer. Set `showMenuTrigger={false}` on the header when using a “More” tab.
+ *
+ * Pass `mobileHeaderExpected` when the main column always includes {@link AppShellMobileHeader}
+ * (suppresses a one-frame floating hamburger). Safe-area insets and bottom scroll padding are
+ * applied automatically via presence classes on this canvas.
  */
 export function AppShellOuterCanvas({
   children,

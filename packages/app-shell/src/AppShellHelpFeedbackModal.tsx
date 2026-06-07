@@ -4,8 +4,19 @@ import type { ChangeEvent, MouseEvent, FormEvent } from "react";
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, Callout, Label, Textarea } from "@visualify/design-system";
+import {
+  AppShellHelpFeedbackActionSelect,
+  type AppShellHelpFeedbackAction,
+} from "./AppShellHelpFeedbackActionSelect";
+import "./app-shell-help-feedback-modal.css";
 
-type HelpAction = "issue" | "feature" | "question";
+type HelpAction = AppShellHelpFeedbackAction;
+
+const HELP_ACTION_OPTIONS: ReadonlyArray<{ value: HelpAction; label: string }> = [
+  { value: "issue", label: "Report an issue" },
+  { value: "feature", label: "Request a feature" },
+  { value: "question", label: "Ask a question" },
+];
 
 export type AppShellHelpFeedbackUser = {
   email?: string | null;
@@ -59,6 +70,7 @@ export function AppShellHelpFeedbackModal({
 }: AppShellHelpFeedbackModalProps) {
   const titleId = useId();
   const fieldId = useId();
+  const actionFieldId = useId();
   const [mounted, setMounted] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [action, setAction] = useState<HelpAction>("issue");
@@ -162,7 +174,10 @@ export function AppShellHelpFeedbackModal({
       aria-labelledby={titleId}
       onClick={handleBackdropClick}
     >
-      <div className="ds-modal-panel w-full max-w-md min-h-0" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="vf-app-shell-help-feedback-modal ds-modal-panel w-full max-w-md min-h-0"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="ds-modal-panel-header">
           <h2 id={titleId} className="ds-modal-panel-title">
             {submitted ? "Message sent successfully" : "Help & Feedback"}
@@ -189,49 +204,40 @@ export function AppShellHelpFeedbackModal({
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-md:gap-3">
               {formError ? (
                 <Callout status="danger" role="alert" className="text-[length:var(--ds-text-sm)]">
                   {formError}
                 </Callout>
               ) : null}
-              <div className="flex flex-col">
+              <div className="hidden flex-col md:flex">
                 <Label className="mb-2 block text-[var(--ds-text-secondary)]">Feedback type</Label>
                 <div className="ds-segmented-control" role="group" aria-label="Feedback type">
-                  <Button
-                    type="button"
-                    variant={action === "issue" ? "primary" : "ghost"}
-                    size="sm"
-                    className="ds-segmented-control__segment"
-                    aria-pressed={action === "issue"}
-                    disabled={submitting}
-                    onClick={() => setAction("issue")}
-                  >
-                    Report an issue
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={action === "feature" ? "primary" : "ghost"}
-                    size="sm"
-                    className="ds-segmented-control__segment"
-                    aria-pressed={action === "feature"}
-                    disabled={submitting}
-                    onClick={() => setAction("feature")}
-                  >
-                    Request a feature
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={action === "question" ? "primary" : "ghost"}
-                    size="sm"
-                    className="ds-segmented-control__segment"
-                    aria-pressed={action === "question"}
-                    disabled={submitting}
-                    onClick={() => setAction("question")}
-                  >
-                    Ask a question
-                  </Button>
+                  {HELP_ACTION_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={action === option.value ? "primary" : "ghost"}
+                      size="sm"
+                      className="ds-segmented-control__segment"
+                      aria-pressed={action === option.value}
+                      disabled={submitting}
+                      onClick={() => setAction(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
                 </div>
+              </div>
+              <div className="flex flex-col md:hidden">
+                <Label htmlFor={actionFieldId}>Feedback type</Label>
+                <AppShellHelpFeedbackActionSelect
+                  id={actionFieldId}
+                  value={action}
+                  options={HELP_ACTION_OPTIONS}
+                  onChange={setAction}
+                  disabled={submitting}
+                />
               </div>
               <div>
                 <Label htmlFor={fieldId} className="mb-1.5 block text-[var(--ds-text-secondary)]">
@@ -241,7 +247,7 @@ export function AppShellHelpFeedbackModal({
                   id={fieldId}
                   value={message}
                   onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
-                  className="min-h-[88px]"
+                  className="min-h-[88px] max-md:min-h-[9.5rem]"
                   placeholder="Tell us more…"
                   rows={3}
                   required

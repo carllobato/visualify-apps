@@ -1,11 +1,14 @@
+import { VisualifyBrandMark } from "./VisualifyBrandMark";
+import { VISUALIFY_BRAND_MARK_RAIL_PX } from "./visualify-brand";
+
 export type AppShellRailBrandMarkProps = {
-  src: string;
+  src?: string;
   alt?: string;
 };
 
-/** Default 40×40 brand mark for {@link AppShellRailBrandAppMenu}. */
+/** Default symbol for {@link AppShellRailBrandAppMenu} — sized within the 40px icon well. */
 export function AppShellRailBrandMark({ src, alt = "" }: AppShellRailBrandMarkProps) {
   return (
-    <img src={src} alt={alt} width={40} height={40} className="size-10 shrink-0 object-contain" />
+    <VisualifyBrandMark src={src} alt={alt} width={VISUALIFY_BRAND_MARK_RAIL_PX} height={VISUALIFY_BRAND_MARK_RAIL_PX} />
   );
 }

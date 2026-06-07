@@ -41,20 +41,20 @@
   outline-offset: 2px;
 }
 
-.vf-app-login-brand-mark--rail {
+.vf-app-login-brand-mark--rail,
+.vf-app-login-brand-mark--card {
   display: block;
-  width: 2.5rem;
-  height: 2.5rem;
   flex-shrink: 0;
-  object-fit: contain;
+}
+
+.vf-app-login-brand-mark--rail {
+  width: 2rem;
+  height: 2rem;
 }
 
 .vf-app-login-brand-mark--card {
-  display: block;
-  width: 3rem;
-  height: 3rem;
-  flex-shrink: 0;
-  object-fit: contain;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .vf-app-login-page-main {

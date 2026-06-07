@@ -2,71 +2,53 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   AppShellFrameGutter,
   AppShellFramedSurface,
   AppShellMainColumn,
-  AppShellMobileHeader,
-  AppShellRailBrandMark,
+  AppShellMobileBottomNav,
   AppShellScrollRegion,
-  appShellNavHrefActive,
 } from "@visualify/app-shell";
-import {
-  isReportProjectsListPath,
-  reportProjectIdFromPathname,
-  REPORT_ROUTES,
-} from "@/lib/report-routes";
+import { ReportMobileHeader } from "@/components/layout/ReportMobileHeader";
+import { ReportMobileMoreSheet } from "@/components/layout/ReportMobileMoreSheet";
+import { buildReportMobileBottomNavItems } from "@/lib/report-mobile-bottom-nav";
+import { useReportLastProjectIdForWorkspace } from "@/lib/projects/useReportLastProjectIdForWorkspace";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
-
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
-function reportMobilePageTitle(pathname: string, projects: ReportProjectListItem[]): string {
-  if (isReportProjectsListPath(pathname)) {
-    return "Projects";
-  }
-
-  const projectId = reportProjectIdFromPathname(pathname);
-  if (projectId) {
-    const project = projects.find((item) => item.id === projectId);
-    if (project) {
-      return project.name;
-    }
-    return "Report";
-  }
-
-  if (appShellNavHrefActive(pathname, REPORT_ROUTES.account)) {
-    return "Account";
-  }
-  if (
-    appShellNavHrefActive(pathname, REPORT_ROUTES.home) ||
-    appShellNavHrefActive(pathname, REPORT_ROUTES.selectWorkspace)
-  ) {
-    return "Workspace";
-  }
-  return "Report";
-}
 
 type ReportProtectedDocumentProps = {
   children: ReactNode;
   projects: ReportProjectListItem[];
+  selectedWorkspaceId: string | null;
 };
 
-export function ReportProtectedDocument({ children, projects }: ReportProtectedDocumentProps) {
+export function ReportProtectedDocument({
+  children,
+  projects,
+  selectedWorkspaceId,
+}: ReportProtectedDocumentProps) {
   const pathname = usePathname();
-  const pageTitle = reportMobilePageTitle(pathname, projects);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const lastUsedProjectId = useReportLastProjectIdForWorkspace(selectedWorkspaceId, pathname);
+
+  useEffect(() => {
+    setMoreMenuOpen(false);
+  }, [pathname]);
+  const bottomNavItems = buildReportMobileBottomNavItems(pathname, projects, lastUsedProjectId, {
+    moreOnPress: () => setMoreMenuOpen((open) => !open),
+    morePressed: moreMenuOpen,
+  });
 
   return (
     <AppShellMainColumn>
-      <AppShellMobileHeader
-        appName="Report"
-        pageTitle={pageTitle}
-        appIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
-      />
+      <ReportMobileHeader />
       <AppShellFrameGutter>
         <AppShellFramedSurface>
           <AppShellScrollRegion>{children}</AppShellScrollRegion>
         </AppShellFramedSurface>
       </AppShellFrameGutter>
+      <AppShellMobileBottomNav items={bottomNavItems} ariaLabel="Report primary" />
+      <ReportMobileMoreSheet open={moreMenuOpen} onClose={() => setMoreMenuOpen(false)} />
     </AppShellMainColumn>
   );
 }

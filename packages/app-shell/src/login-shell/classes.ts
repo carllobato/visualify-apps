@@ -52,8 +52,12 @@ export const appLoginFramedRailBrandLinkClassName = "vf-app-login-rail-brand-lin
 
 export const appLoginFramedRailStackClassName = "vf-app-login-rail-stack";
 
-/** Default path for {@link AppLoginBrandMark} in consuming apps' `public/` folder. */
-export const APP_LOGIN_DEFAULT_BRAND_MARK_SRC = "/visualify-brand-mark.png";
+export {
+  APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
+  VISUALIFY_BRAND_MARK_SRC,
+  VISUALIFY_LOGO_DARK_SRC,
+  VISUALIFY_LOGO_LIGHT_SRC,
+} from "../visualify-brand";
 
 export const appLoginBrandMarkRailClassName = "vf-app-login-brand-mark--rail";
 

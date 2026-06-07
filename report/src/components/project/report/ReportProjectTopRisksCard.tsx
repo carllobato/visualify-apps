@@ -16,7 +16,10 @@ type ReportProjectTopRisksCardProps = {
 };
 
 const TOP_RISKS_ROW_CLASS =
-  "flex min-h-10 shrink-0 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_4.5rem_2.75rem] items-center gap-x-2 py-2.5 text-[length:var(--ds-text-sm)] max-md:min-h-0 md:flex md:min-h-10 md:shrink-0 md:justify-between md:gap-4 md:py-0";
+
+const TOP_RISKS_AREA_MOBILE_CLASS =
+  "min-w-0 truncate text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)] max-md:block md:hidden";
 
 const TOP_RISKS_CALLOUT_CLASS =
   "pointer-events-none absolute left-0 z-20 hidden w-72 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[length:var(--ds-text-xs)] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover/title:block group-focus-within/title:block";
@@ -36,7 +39,7 @@ export function ReportProjectTopRisksCard({
       onNavigate={onNavigate}
       navigateLabel={navigateLabel}
       cardClassName="overflow-visible"
-      contentClassName="flex flex-1 flex-col overflow-visible px-4 py-3"
+      contentClassName="flex flex-1 flex-col overflow-visible px-3 py-3 sm:px-4"
     >
       <ReportProjectOverviewCardHeader title="Key issues & risks" />
       <div className="flex min-h-0 flex-1 flex-col">
@@ -49,37 +52,41 @@ export function ReportProjectTopRisksCard({
 
             return (
               <li key={risk.id} className={TOP_RISKS_ROW_CLASS}>
-                <span className="flex min-w-0 flex-1 items-center gap-2">
-                  <span
-                    className="group/title relative min-w-0 cursor-help pointer-events-auto"
-                    tabIndex={0}
-                    title={calloutText}
-                    aria-describedby={calloutId}
+                <span
+                  className="group/title relative min-w-0 cursor-help pointer-events-auto md:min-w-0 md:flex-1"
+                  tabIndex={0}
+                  title={calloutText}
+                  aria-describedby={calloutId}
+                >
+                  <span className="block truncate text-[var(--ds-text-primary)]">{risk.title}</span>
+                  <div
+                    id={calloutId}
+                    role="tooltip"
+                    className={[
+                      TOP_RISKS_CALLOUT_CLASS,
+                      showCalloutAbove ? "bottom-full mb-1" : "top-full mt-1",
+                    ].join(" ")}
                   >
-                    <span className="block truncate text-[var(--ds-text-primary)]">
-                      {risk.title}
-                    </span>
-                    <div
-                      id={calloutId}
-                      role="tooltip"
-                      className={[
-                        TOP_RISKS_CALLOUT_CLASS,
-                        showCalloutAbove ? "bottom-full mb-1" : "top-full mt-1",
-                      ].join(" ")}
-                    >
-                      <p className="m-0 font-semibold text-[var(--ds-text-primary)]">
-                        {callout.title}
-                      </p>
-                      <p className="m-0 mt-1 leading-snug">{callout.body}</p>
-                    </div>
-                  </span>
-                  <span className={TOP_RISKS_CATEGORY_CLASS} title={risk.category}>
-                    {risk.category}
-                  </span>
+                    <p className="m-0 font-semibold text-[var(--ds-text-primary)]">
+                      {callout.title}
+                    </p>
+                    <p className="m-0 mt-1 leading-snug">{callout.body}</p>
+                  </div>
                 </span>
-                <span className="flex shrink-0 items-center gap-2">
+                <span className={TOP_RISKS_AREA_MOBILE_CLASS} title={risk.category}>
+                  {risk.category}
+                </span>
+                <span className={`${TOP_RISKS_CATEGORY_CLASS} max-md:hidden md:inline-flex`} title={risk.category}>
+                  {risk.category}
+                </span>
+                <span className="flex shrink-0 items-center justify-end gap-1 md:gap-2">
                   <ReportRagStatusDot status={getReportProjectTopRiskRagStatus(risk)} />
-                  <Trend sentiment={risk.trend.sentiment}>{risk.trend.text}</Trend>
+                  <Trend
+                    sentiment={risk.trend.sentiment}
+                    className="max-md:scale-75 max-md:opacity-80"
+                  >
+                    {risk.trend.text}
+                  </Trend>
                 </span>
               </li>
             );

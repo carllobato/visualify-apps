@@ -32,8 +32,6 @@ import { ControlAiWorkspaceRailList } from "./ControlAiWorkspaceRailList";
 
 const CONTROLAI_RAIL_PINNED_KEY = "controlai-platform-rail-pinned";
 
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 type RailPrimaryNavKey =
   | "dashboard"
   | "projects"
@@ -228,7 +226,7 @@ export function ControlAiAppShellRail({
             appShortName="ControlAI"
             currentAppId="controlai"
             catalog={appCatalog}
-            brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+            brandIcon={<AppShellRailBrandMark alt="" />}
           />
 
           <AppShellRailSeparator />

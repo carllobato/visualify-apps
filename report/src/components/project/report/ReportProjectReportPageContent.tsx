@@ -35,6 +35,7 @@ import {
   REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
   resolveReportProjectReportingPeriod,
 } from "@/lib/projects/report-project-reporting-date";
+import { writeReportLastProjectIdForWorkspace } from "@/lib/projects/report-last-project-preference";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
 
 function ReportModuleTabPlaceholder({ tabLabel }: { tabLabel: string }) {
@@ -54,11 +55,13 @@ function ReportModuleTabPlaceholder({ tabLabel }: { tabLabel: string }) {
 
 type ReportProjectReportPageContentProps = {
   project: ReportProjectListItem;
+  workspaceId: string | null;
   periodParam?: string | null;
 };
 
 export function ReportProjectReportPageContent({
   project,
+  workspaceId,
   periodParam = null,
 }: ReportProjectReportPageContentProps) {
   const router = useRouter();
@@ -77,6 +80,12 @@ export function ReportProjectReportPageContent({
       router.replace(`${pathname}?period=${latestPeriod.isoDate}`, { scroll: false });
     }
   }, [pathname, periodParam, reportingPeriods, router]);
+
+  useEffect(() => {
+    if (workspaceId?.trim()) {
+      writeReportLastProjectIdForWorkspace(workspaceId, project.id);
+    }
+  }, [workspaceId, project.id]);
 
   function handleReportingDateChange(isoDate: string) {
     router.replace(`${pathname}?period=${isoDate}`, { scroll: false });
@@ -184,7 +193,10 @@ export function ReportProjectReportPageContent({
       reportingPeriods={reportingPeriods}
       onReportingDateChange={handleReportingDateChange}
       headerTrailing={
-        <Tabs className="h-10 !items-center" aria-label="Report module views">
+        <Tabs
+          className="h-10 !items-center max-md:w-max max-md:flex-nowrap"
+          aria-label="Report module views"
+        >
           {REPORT_MODULE_TABS.map((tab) => (
             <Tab
               key={tab.id}
@@ -197,7 +209,7 @@ export function ReportProjectReportPageContent({
         </Tabs>
       }
     >
-      <div className="min-w-0 w-full pt-4">
+      <div className="min-w-0 w-full pt-4 max-md:overflow-x-hidden max-md:pt-2">
         {activeTab === "settings" ? (
           <ReportProjectSettingsForm project={project} />
         ) : (

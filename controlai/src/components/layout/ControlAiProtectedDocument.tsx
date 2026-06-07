@@ -10,15 +10,13 @@ import {
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 export function ControlAiProtectedDocument({ children }: { children: ReactNode }) {
   return (
     <AppShellMainColumn>
       <AppShellMobileHeader
         appName="ControlAI"
         pageTitle="ControlAI"
-        appIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+        appIcon={<AppShellRailBrandMark alt="" />}
       />
       <AppShellFrameGutter>
         <AppShellFramedSurface>

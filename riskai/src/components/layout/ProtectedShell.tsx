@@ -42,7 +42,7 @@ export function ProtectedShell({
             <AppShellMobileHeader
               appName="Risk AI"
               pageTitle="Dashboard"
-              appIcon={<AppShellRailBrandMark src="/visualify-brand-mark.png" alt="" />}
+              appIcon={<AppShellRailBrandMark alt="" />}
             />
             <AppShellFrameGutter>
               <AppShellFramedSurface>

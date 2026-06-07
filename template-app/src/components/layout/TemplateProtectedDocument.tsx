@@ -10,15 +10,13 @@ import {
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 export function TemplateProtectedDocument({ children }: { children: ReactNode }) {
   return (
     <AppShellMainColumn>
       <AppShellMobileHeader
         appName="Template"
         pageTitle="Dashboard"
-        appIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+        appIcon={<AppShellRailBrandMark alt="" />}
       />
       <AppShellFrameGutter>
         <AppShellFramedSurface>

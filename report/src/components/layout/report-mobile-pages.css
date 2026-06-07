@@ -1,0 +1,16 @@
+/**
+ * Report mobile page polish (max-width 767px) — spacing and project card metadata.
+ */
+
+@media (max-width: 767px) {
+  .report-mobile-page {
+    padding-top: 1rem;
+  }
+
+  .report-project-stage-pill {
+    padding: 0.125rem 0.375rem;
+    font-size: 10px;
+    font-weight: 500;
+    border-color: color-mix(in oklab, var(--ds-status-neutral-subtle-border) 55%, transparent);
+  }
+}

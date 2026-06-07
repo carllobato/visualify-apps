@@ -14,20 +14,32 @@ export type AppShellMobileHeaderProps = {
   appIcon?: ReactNode;
   pageTitle?: string;
   rightSlot?: ReactNode;
-  /** When false, omits the in-header hamburger (e.g. drawer opened from bottom nav “More”). Default true. */
+  /**
+   * When set, replaces the default identity block (icon + titles). Use for linked identity
+   * or other product-specific chrome; keep app-shell header classes on the root element.
+   */
+  appIdentity?: ReactNode;
+  /**
+   * When false, omits the in-header hamburger (standard when bottom nav includes `kind: "more"`).
+   * @default true
+   */
   showMenuTrigger?: boolean;
   className?: string;
 };
 
 /**
- * Sticky mobile top bar (below `md`) with menu trigger, app identity, and optional page context.
- * Must render inside {@link AppShellOuterCanvas} so the rail can suppress the floating hamburger.
+ * Sticky mobile top bar (≤767px) with optional menu trigger, app identity, and page context.
+ * Mount inside {@link AppShellMainColumn} within {@link AppShellOuterCanvas}. Pair with
+ * `mobileHeaderExpected` on the canvas. When using {@link AppShellMobileBottomNav} with
+ * `kind: "more"`, pass `showMenuTrigger={false}` so the drawer opens from the bottom bar only.
+ * Optional polish: `className={appShellMobileShellHeaderClassName}`.
  */
 export function AppShellMobileHeader({
   appName,
   appIcon,
   pageTitle,
   rightSlot,
+  appIdentity,
   showMenuTrigger = true,
   className,
 }: AppShellMobileHeaderProps) {
@@ -54,19 +66,23 @@ export function AppShellMobileHeader({
           {showMenuTrigger ? (
             <AppShellMobileNavTrigger className="vf-app-shell-mobile-nav-trigger--in-header" />
           ) : null}
-          <div className="vf-app-shell-mobile-header__identity">
-            {appIcon != null ? (
-              <span className="vf-app-shell-mobile-header__icon" aria-hidden>
-                {appIcon}
-              </span>
-            ) : null}
-            <div className="vf-app-shell-mobile-header__titles">
-              <span className="vf-app-shell-mobile-header__app-name">{appName}</span>
-              {contextLabel != null ? (
-                <span className="vf-app-shell-mobile-header__page-title">{contextLabel}</span>
+          {appIdentity != null ? (
+            appIdentity
+          ) : (
+            <div className="vf-app-shell-mobile-header__identity">
+              {appIcon != null ? (
+                <span className="vf-app-shell-mobile-header__icon" aria-hidden>
+                  {appIcon}
+                </span>
               ) : null}
+              <div className="vf-app-shell-mobile-header__titles">
+                <span className="vf-app-shell-mobile-header__app-name">{appName}</span>
+                {contextLabel != null ? (
+                  <span className="vf-app-shell-mobile-header__page-title">{contextLabel}</span>
+                ) : null}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         {rightSlot != null ? (
           <div className="vf-app-shell-mobile-header__trailing">{rightSlot}</div>

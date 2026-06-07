@@ -19,6 +19,12 @@ export type AppShellMobileBottomNavMoreItem = {
   kind: "more";
   label?: string;
   icon?: ReactNode;
+  /**
+   * When set, called instead of opening the mobile rail drawer (product-specific menus).
+   */
+  onPress?: () => void;
+  /** When `onPress` is set, drives `aria-expanded` for the More control. */
+  pressed?: boolean;
 };
 
 export type AppShellMobileBottomNavItem =
@@ -97,18 +103,36 @@ type BottomNavMoreTabProps = {
   icon: ReactNode;
   drawerOpen: boolean;
   onOpenDrawer: () => void;
+  onPress?: () => void;
+  pressed?: boolean;
 };
 
-function BottomNavMoreTab({ label, icon, drawerOpen, onOpenDrawer }: BottomNavMoreTabProps) {
+function BottomNavMoreTab({
+  label,
+  icon,
+  drawerOpen,
+  onOpenDrawer,
+  onPress,
+  pressed,
+}: BottomNavMoreTabProps) {
+  const usesCustomPress = onPress != null;
+  const expanded = usesCustomPress ? pressed === true : drawerOpen;
+
   return (
     <li className="vf-app-shell-mobile-bottom-nav__item">
       <button
         type="button"
         className="vf-app-shell-mobile-bottom-nav__control"
         aria-label={label}
-        aria-expanded={drawerOpen}
-        aria-controls="vf-app-shell-rail"
-        onClick={onOpenDrawer}
+        aria-expanded={expanded}
+        aria-controls={usesCustomPress ? undefined : "vf-app-shell-rail"}
+        onClick={() => {
+          if (onPress != null) {
+            onPress();
+            return;
+          }
+          onOpenDrawer();
+        }}
       >
         <BottomNavTabIcon>{icon}</BottomNavTabIcon>
         <BottomNavTabLabel>{label}</BottomNavTabLabel>
@@ -118,8 +142,13 @@ function BottomNavMoreTab({ label, icon, drawerOpen, onOpenDrawer }: BottomNavMo
 }
 
 /**
- * Mobile-only floating bottom tab bar. Mount inside {@link AppShellOuterCanvas} (e.g. in
- * {@link AppShellMainColumn}) so scroll inset and the rail drawer integrate correctly.
+ * Mobile-only bottom tab bar (≤767px). Mount inside {@link AppShellMainColumn} within
+ * {@link AppShellOuterCanvas} so scroll bottom inset and the rail drawer integrate correctly.
+ *
+ * Pass app-specific `items` (typically built with {@link buildAppShellMobileBottomNavItems}).
+ * A `kind: "more"` item calls `setMobileOpen(true)` on the shared rail drawer; `kind: "link"`
+ * items close the drawer on navigate when it is open. Registration sets
+ * `.vf-app-shell-has-mobile-bottom-nav` on the outer canvas for shared safe-area padding.
  */
 export function AppShellMobileBottomNav({
   items,
@@ -165,6 +194,8 @@ export function AppShellMobileBottomNav({
               icon={item.icon ?? <DefaultMoreIcon />}
               drawerOpen={mobileOpen}
               onOpenDrawer={() => setMobileOpen(true)}
+              onPress={item.onPress}
+              pressed={item.pressed}
             />
           );
         })}

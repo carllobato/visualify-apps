@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Badge, Button, Callout } from "@visualify/design-system";
+import "@/components/layout/report-mobile-pages.css";
 import { setReportActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
 import { REPORT_ROUTES } from "@/lib/report-routes";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
@@ -46,16 +47,20 @@ export function SelectWorkspacePageContent({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-lg flex-col gap-6 py-10">
+    <main className="report-mobile-page mx-auto flex w-full max-w-lg flex-col gap-4 py-8">
       <div className="flex flex-col gap-1">
         <h1 className="text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">
-          {variant === "home" ? "Select your workspace" : "Select a workspace"}
+          {variant === "home" ? "Select workspace" : "Select a workspace"}
         </h1>
-        <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-          {variant === "home"
-            ? "Choose a workspace to continue in Report."
-            : "Choose which workspace to use in Report. You can change this anytime from the left rail."}
-        </p>
+        {variant === "home" ? (
+          <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+            Choose where to open Report.
+          </p>
+        ) : (
+          <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+            Choose which workspace to use in Report. You can change this anytime from the left rail.
+          </p>
+        )}
       </div>
 
       {error ? (
@@ -87,13 +92,8 @@ export function SelectWorkspacePageContent({
                   disabled={busyId !== null}
                   onClick={() => void chooseWorkspace(workspace.id)}
                 >
-                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="flex min-w-0 flex-1 flex-col">
                     <span className="font-medium">{workspace.name}</span>
-                    {workspace.slug ? (
-                      <span className="text-[length:var(--ds-text-xs)] font-normal text-[var(--ds-text-muted)]">
-                        {workspace.slug}
-                      </span>
-                    ) : null}
                   </span>
                   {busy ? (
                     <span className="shrink-0 text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)]">

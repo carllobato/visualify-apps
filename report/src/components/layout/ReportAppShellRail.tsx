@@ -22,10 +22,7 @@ import { ReportWorkspaceRailList } from "./ReportWorkspaceRailList";
 
 const REPORT_RAIL_PINNED_KEY = "report-platform-rail-pinned";
 
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 type ReportAppShellRailProps = {
-  workspaces: EntitledWorkspace[];
   selectedWorkspaceId: string | null;
   projects: ReportProjectListItem[];
   appCatalog: readonly AppShellRailAppCatalogEntry[];
@@ -55,7 +52,7 @@ export function ReportAppShellRail({
             appShortName="Report"
             currentAppId="report"
             catalog={appCatalog}
-            brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+            brandIcon={<AppShellRailBrandMark alt="" />}
           />
 
           {emptyPrimaryNav ? null : (

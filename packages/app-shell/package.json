@@ -2,7 +2,7 @@
   "name": "@visualify/app-shell",
   "version": "0.0.1",
   "private": true,
-  "description": "Navigation-agnostic app shell primitives: frame layout, collapsible platform rail (brand app menu, pin/collapse, account row), row chrome, and legal footer. Products own routes, auth, and nav content.",
+  "description": "Navigation-agnostic app shell primitives: frame layout, collapsible platform rail (brand app menu, pin/collapse, account row), mobile shell chrome (header, optional bottom nav, rail drawer), row chrome, and legal footer. Products own routes, auth, and nav content.",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "sideEffects": ["./src/**/*.css"],

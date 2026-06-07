@@ -36,5 +36,11 @@ export default async function ProjectReportPage({
     notFound();
   }
 
-  return <ReportProjectReportPageContent project={project} periodParam={period ?? null} />;
+  return (
+    <ReportProjectReportPageContent
+      project={project}
+      workspaceId={workspaceContext.selectedWorkspaceId}
+      periodParam={period ?? null}
+    />
+  );
 }

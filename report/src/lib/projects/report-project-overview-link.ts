@@ -60,8 +60,11 @@ export function getReportOverviewNavigateLabel(linkId: ReportOverviewModuleLinkI
 export const REPORT_OVERVIEW_HIGHLIGHT_OUTLINE_CLASS =
   "outline outline-2 outline-offset-0 outline-[var(--ds-primary)]";
 
+export const REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS =
+  "max-md:border max-md:border-[var(--ds-border-subtle)] max-md:shadow-[0_8px_24px_rgba(15,23,42,0.06)]";
+
 export const REPORT_OVERVIEW_NAVIGABLE_CARD_HOVER_CLASS =
-  "cursor-pointer hover:bg-[var(--ds-surface-tile-hover)] hover:shadow-[var(--ds-elevation-tile-hover)]";
+  "cursor-pointer hover:bg-[var(--ds-surface-tile-hover)] hover:shadow-[var(--ds-elevation-tile-hover)] max-md:hover:shadow-[0_8px_24px_rgba(15,23,42,0.06)]";
 
 export function getReportOverviewCardClassName(
   highlighted: boolean,
@@ -70,6 +73,7 @@ export function getReportOverviewCardClassName(
 ): string {
   return [
     baseClassName,
+    REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS,
     interactive
       ? `transition-[transform,outline-color,box-shadow,background-color] duration-200 ease-out ${REPORT_OVERVIEW_NAVIGABLE_CARD_HOVER_CLASS}`
       : "transition-[outline-color,box-shadow,background-color] duration-150 ease-out",

@@ -26,9 +26,6 @@ import { useResolvedPortfolioId } from "@/hooks/useResolvedPortfolioId";
 
 const RISKAI_APP_SHELL_RAIL_PINNED_KEY = "riskai-app-shell-rail-pinned";
 
-/** Same asset path pattern as HQ `platform-rail.tsx` (`hq/public/visualify-brand-mark.png`). */
-const VISUALIFY_BRAND_ICON_SRC = "/visualify-brand-mark.png";
-
 const PORTFOLIOS_HREF = riskaiPath("/portfolios");
 const PROJECTS_HREF = riskaiPath("/projects");
 const ACCOUNT_SETTINGS_HREF = riskaiPath("/account");
@@ -343,7 +340,7 @@ export function RiskAiAppShellRail({
             appShortName="ControlsAI"
             currentAppId="riskai"
             catalog={appCatalog}
-            brandIcon={<AppShellRailBrandMark src={VISUALIFY_BRAND_ICON_SRC} alt="" />}
+            brandIcon={<AppShellRailBrandMark alt="" />}
           />
 
           <AppShellRailSeparator />

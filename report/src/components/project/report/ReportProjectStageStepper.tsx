@@ -10,6 +10,7 @@ import {
   type ReportProjectStage,
   type ReportProjectStageStatus,
 } from "@/lib/projects/report-project-stages";
+import { REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS } from "@/lib/projects/report-project-overview-link";
 
 function StageIcon({ children }: { children: ReactNode }) {
   return (
@@ -154,10 +155,14 @@ export function ReportProjectStageStepper({
   const total = REPORT_PROJECT_STAGES.length;
 
   return (
-    <Card className={`w-full min-w-0 ${className}`.trim()}>
-      <CardContent className="px-4 py-3">
-        <nav aria-label="Project stage" className="w-full min-w-0 overflow-x-auto">
-          <ol className="m-0 flex min-w-max list-none items-center p-0 sm:min-w-0 sm:w-full">
+    <Card
+      className={["w-full min-w-0", REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS, className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <CardContent className="px-3 py-3 sm:px-4">
+        <nav aria-label="Project stage" className="w-full min-w-0 overflow-x-hidden sm:overflow-x-auto">
+          <ol className="m-0 flex w-full list-none items-center p-0 sm:min-w-0">
             {REPORT_PROJECT_STAGES.map((stageLabel, index) => {
               const status = getReportProjectStageStatus(index, currentIndex);
               const isCurrent = status === "current";
@@ -172,8 +177,12 @@ export function ReportProjectStageStepper({
                   ) : null}
 
                   <li
-                    className="flex shrink-0 items-center gap-1.5 sm:gap-2"
+                    className={[
+                      "flex items-center gap-1.5 sm:gap-2",
+                      isCurrent ? "min-w-0 shrink" : "shrink-0",
+                    ].join(" ")}
                     aria-current={isCurrent ? "step" : undefined}
+                    aria-label={isCurrent ? undefined : stageLabel}
                   >
                     <span
                       className={[
@@ -185,6 +194,7 @@ export function ReportProjectStageStepper({
                     </span>
                     <span
                       className={[
+                        isCurrent ? "min-w-0 truncate" : "hidden sm:inline",
                         "whitespace-nowrap text-[length:var(--ds-text-xs)] leading-none sm:text-[length:var(--ds-text-sm)]",
                         stageLabelClassName(status),
                       ].join(" ")}

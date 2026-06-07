@@ -74,7 +74,7 @@ export function ReportProjectKeyMetricsCard({
       onNavigate={onNavigate}
       navigateLabel={navigateLabel}
       cardClassName="overflow-visible"
-      contentClassName="flex flex-1 flex-col overflow-visible px-4 py-3"
+      contentClassName="flex flex-1 flex-col overflow-visible px-3 py-3 sm:px-4"
     >
       <ReportProjectOverviewCardHeader title="Project overview" />
       <div className="flex min-h-0 flex-1 flex-col">

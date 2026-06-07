@@ -5,6 +5,7 @@ import {
   AppShellRail,
   AppShellRailBody,
   AppShellRailBrandAppMenu,
+  AppShellRailBrandMark,
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
@@ -34,16 +35,7 @@ function IconDashboard() {
 }
 
 function BrandMonogramMark() {
-  return (
-    <span
-      aria-hidden
-      className={
-        "flex size-10 shrink-0 items-center justify-center select-none text-[length:var(--ds-text-lg)] font-bold leading-none tracking-tight text-[var(--ds-text-primary)]"
-      }
-    >
-      V
-    </span>
-  );
+  return <AppShellRailBrandMark alt="" />;
 }
 
 /**

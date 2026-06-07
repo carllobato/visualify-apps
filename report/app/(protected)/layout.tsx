@@ -67,7 +67,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
         appCatalog={appCatalog}
         emptyPrimaryNav={onHome}
       />
-      <ReportProtectedDocument projects={projects}>{children}</ReportProtectedDocument>
+      <ReportProtectedDocument projects={projects} selectedWorkspaceId={workspaceContext.selectedWorkspaceId}>
+        {children}
+      </ReportProtectedDocument>
     </AppShellOuterCanvas>
   );
 }

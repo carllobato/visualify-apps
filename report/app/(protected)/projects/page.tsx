@@ -39,6 +39,10 @@ export default async function ProjectsPage() {
   }
 
   return (
-    <ProjectsPageContent projects={result.projects} hasActiveWorkspace={hasActiveWorkspace} />
+    <ProjectsPageContent
+      projects={result.projects}
+      hasActiveWorkspace={hasActiveWorkspace}
+      workspaceId={activeWorkspaceId}
+    />
   );
 }

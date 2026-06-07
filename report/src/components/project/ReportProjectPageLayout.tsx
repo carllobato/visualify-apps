@@ -54,32 +54,48 @@ export function ReportProjectPageLayout({
     : "mx-auto flex w-full min-w-0 max-w-[90rem] flex-col";
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="flex shrink-0 flex-col gap-1">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <div className={shellPageHeaderRailRowClassName}>
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2">
-              <h1 className={`min-w-0 truncate ${appShellPageTitleClassName}`}>{displayName}</h1>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:overflow-x-hidden">
+      <header className="flex shrink-0 flex-col gap-1 max-md:gap-0">
+        <div className="flex flex-col gap-y-1 max-md:min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-2">
+          <div className={`${shellPageHeaderRailRowClassName} max-md:h-auto max-md:min-h-0`}>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 max-md:gap-x-1.5">
+              <h1
+                className={[
+                  "min-w-0 truncate",
+                  appShellPageTitleClassName,
+                  "max-md:!text-[length:var(--ds-text-lg)] max-md:!font-medium max-md:!leading-snug",
+                ].join(" ")}
+              >
+                {displayName}
+              </h1>
               {showReportingDateSelect ? (
                 <>
                   <span
-                    className="shrink-0 font-normal text-[var(--ds-text-muted)]"
+                    className="shrink-0 font-normal text-[var(--ds-text-muted)] max-md:text-[length:var(--ds-text-xs)]"
                     aria-hidden
                   >
                     |
                   </span>
-                  <ReportProjectReportingDateSelect
-                    id="report-project-reporting-date"
-                    periods={reportingPeriods}
-                    value={selectedPeriod.isoDate}
-                    onChange={onReportingDateChange}
-                  />
+                  <div className="max-md:text-[length:var(--ds-text-sm)]">
+                    <ReportProjectReportingDateSelect
+                      id="report-project-reporting-date"
+                      periods={reportingPeriods}
+                      value={selectedPeriod.isoDate}
+                      onChange={onReportingDateChange}
+                    />
+                  </div>
                 </>
               ) : null}
             </div>
           </div>
           {headerTrailing ? (
-            <div className={`${shellPageHeaderRailRowClassName} shrink-0 justify-end`}>
+            <div
+              className={[
+                shellPageHeaderRailRowClassName,
+                "shrink-0 justify-end max-md:h-auto max-md:min-h-0",
+                "max-md:w-full max-md:min-w-0 max-md:overflow-x-auto max-md:overscroll-x-contain",
+              ].join(" ")}
+            >
               {headerTrailing}
             </div>
           ) : null}
@@ -91,7 +107,7 @@ export function ReportProjectPageLayout({
         />
       </header>
 
-      <div className="min-h-0 min-w-0 flex-1 pt-1 pb-4">
+      <div className="min-h-0 min-w-0 flex-1 pt-1 pb-4 max-md:pt-0">
         <div className={contentClassName}>{children}</div>
       </div>
     </div>

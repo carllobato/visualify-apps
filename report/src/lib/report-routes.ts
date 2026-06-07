@@ -42,3 +42,37 @@ export function reportProjectIdFromPathname(pathname: string | null): string | n
   }
   return null;
 }
+
+export function isReportReportViewPath(pathname: string | null): boolean {
+  return reportProjectIdFromPathname(pathname) !== null;
+}
+
+type ReportProjectNavTarget = { id: string };
+
+/**
+ * Bottom nav “Reports” href — no `/reports` index exists; report views live at
+ * `/projects/[id]/report`. Uses the current project when on a report, else the last
+ * opened project when remembered, else the first project in the rail list, else `/projects`.
+ */
+export function reportReportsNavHref(
+  pathname: string,
+  projects: readonly ReportProjectNavTarget[],
+  lastUsedProjectId?: string | null,
+): string {
+  const activeProjectId = reportProjectIdFromPathname(pathname);
+  if (activeProjectId) {
+    return reportProjectReportPath(activeProjectId);
+  }
+  const lastUsed = lastUsedProjectId?.trim();
+  if (lastUsed) {
+    const remembered = projects.find((project) => project.id === lastUsed);
+    if (remembered) {
+      return reportProjectReportPath(remembered.id);
+    }
+  }
+  const first = projects[0];
+  if (first) {
+    return reportProjectReportPath(first.id);
+  }
+  return REPORT_ROUTES.projects;
+}

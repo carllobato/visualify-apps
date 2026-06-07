@@ -1,0 +1,54 @@
+/**
+ * Report mobile More menu — drop-up sheet above the bottom tab bar (max-width 767px).
+ */
+
+@media (max-width: 767px) {
+  .report-mobile-more-sheet__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    background: color-mix(in oklab, var(--ds-bg) 32%, transparent);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+
+  .report-mobile-more-sheet {
+    position: fixed;
+    left: max(0.75rem, env(safe-area-inset-left, 0px));
+    right: max(0.75rem, env(safe-area-inset-right, 0px));
+    bottom: calc(
+      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.75rem) +
+        var(
+          --vf-app-shell-mobile-bottom-nav-home-inset,
+          calc(env(safe-area-inset-bottom, 0px) + 30px)
+        ) + 0.5rem
+    );
+    z-index: 46;
+    overflow: hidden;
+    border-radius: var(--ds-radius-lg);
+    border: 1px solid var(--ds-border-subtle);
+    background: var(--ds-surface);
+    box-shadow: var(--ds-elevation-popover);
+  }
+
+  .report-mobile-more-sheet__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0.25rem 0;
+    list-style: none;
+  }
+
+  .report-mobile-more-sheet__item {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+}

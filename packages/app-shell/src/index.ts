@@ -101,6 +101,18 @@ export type { AppShellLegalDocumentId } from "./legal";
 
 export { appShellNavHrefActive } from "./app-shell-nav-active";
 
+export {
+  APP_SHELL_DESKTOP_MIN_WIDTH_PX,
+  APP_SHELL_MOBILE_MAX_WIDTH_PX,
+  appShellMobileBottomNavHasMoreItem,
+  appShellMobileShellHeaderClassName,
+  buildAppShellMobileBottomNavItems,
+} from "./app-shell-mobile-shell";
+export type {
+  AppShellMobileBottomNavLinkConfig,
+  BuildAppShellMobileBottomNavItemsOptions,
+} from "./app-shell-mobile-shell";
+
 export { AppShellMobileBottomNav } from "./AppShellMobileBottomNav";
 export type {
   AppShellMobileBottomNavItem,
@@ -119,6 +131,8 @@ export {
   AppShellMobileHeaderPresenceProvider,
   useAppShellMobileHeaderPresent,
 } from "./app-shell-mobile-header-context";
+
+export { useAppShellMobileBottomNavPresent } from "./app-shell-mobile-bottom-nav-context";
 
 export {
   useAppShellRailMobileNav,
@@ -168,6 +182,21 @@ export type {
 
 export { AppShellRailBrandMark } from "./AppShellRailBrandMark";
 export type { AppShellRailBrandMarkProps } from "./AppShellRailBrandMark";
+
+export { VisualifyBrandMark } from "./VisualifyBrandMark";
+export type { VisualifyBrandMarkProps } from "./VisualifyBrandMark";
+
+export { VisualifyWordmark } from "./VisualifyWordmark";
+export type { VisualifyWordmarkProps } from "./VisualifyWordmark";
+
+export {
+  APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
+  VISUALIFY_BRAND_MARK_DARK_SRC,
+  VISUALIFY_BRAND_MARK_LIGHT_SRC,
+  VISUALIFY_BRAND_MARK_SRC,
+  VISUALIFY_LOGO_DARK_SRC,
+  VISUALIFY_LOGO_LIGHT_SRC,
+} from "./visualify-brand";
 
 export { AppShellRailPinCollapse } from "./AppShellRailPinCollapse";
 export type { AppShellRailPinCollapseProps } from "./AppShellRailPinCollapse";
@@ -282,7 +311,6 @@ export type {
 } from "./account-settings";
 
 export {
-  APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
   AppLoginBrandMark,
   AppLoginCard,
   AppLoginCardSuspense,

@@ -10,7 +10,6 @@ import {
 } from "../AppShellFrame";
 import { AppLoginBrandMark } from "./AppLoginBrandMark";
 import {
-  APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
   appLoginFramedRailAsideClassName,
   appLoginFramedRailBrandLinkClassName,
   appLoginFramedRailStackClassName,
@@ -24,7 +23,7 @@ export type AppLoginFramedShellProps = {
   brandTitle?: string;
   /** `aria-label` on the brand link; defaults to `brandTitle`. */
   brandAriaLabel?: string;
-  /** Brand mark asset URL (host app serves `public/visualify-brand-mark.png`). */
+  /** Symbol asset URL (host app serves `public/visualify-brand-mark.png`). */
   brandMarkSrc?: string;
   className?: string;
 };
@@ -45,7 +44,7 @@ export function AppLoginFramedShell({
   brandHref = "/",
   brandTitle = "Visualify",
   brandAriaLabel,
-  brandMarkSrc = APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
+  brandMarkSrc,
   className,
 }: AppLoginFramedShellProps) {
   const railLabel = brandAriaLabel ?? brandTitle;
