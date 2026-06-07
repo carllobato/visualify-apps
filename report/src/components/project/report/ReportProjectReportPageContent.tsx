@@ -5,15 +5,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { Card, CardContent, Tab, Tabs } from "@visualify/design-system";
 import { ReportProjectPageLayout } from "@/components/project/ReportProjectPageLayout";
 import { ReportProjectBudgetCard } from "@/components/project/report/ReportProjectBudgetCard";
-import { ReportProjectCostTabContent } from "@/components/project/report/ReportProjectCostTabContent";
-import { ReportProjectTabContent } from "@/components/project/report/ReportProjectTabContent";
 import { ReportProjectSafetyCard } from "@/components/project/report/ReportProjectSafetyCard";
 import { ReportProjectScheduleCard } from "@/components/project/report/ReportProjectScheduleCard";
 import { ReportProjectKeyMetricsCard } from "@/components/project/report/ReportProjectKeyMetricsCard";
 import { ReportProjectModuleStatusCard } from "@/components/project/report/ReportProjectModuleStatusCard";
-import { ReportProjectSettingsForm } from "@/components/project/report/ReportProjectSettingsForm";
 import { ReportProjectStageStepper } from "@/components/project/report/ReportProjectStageStepper";
 import { ReportProjectTopRisksCard } from "@/components/project/report/ReportProjectTopRisksCard";
+import {
+  LazyReportProjectCostTabContent,
+  LazyReportProjectScheduleTabPanel,
+  LazyReportProjectSettingsForm,
+  LazyReportProjectTabContent,
+} from "@/components/project/report/report-lazy-tab-panels";
 import { REPORT_PROJECT_BUDGET_PLACEHOLDER } from "@/lib/projects/report-project-budget";
 import { REPORT_PROJECT_COST_PLACEHOLDER } from "@/lib/projects/report-project-cost";
 import { REPORT_PROJECT_KEY_METRICS_PLACEHOLDER } from "@/lib/projects/report-project-key-metrics";
@@ -115,15 +118,15 @@ export function ReportProjectReportPageContent({
 
   function renderActiveTabContent() {
     if (activeTab === "page-2") {
-      return <ReportProjectCostTabContent cost={REPORT_PROJECT_COST_PLACEHOLDER} />;
+      return <LazyReportProjectCostTabContent cost={REPORT_PROJECT_COST_PLACEHOLDER} />;
     }
 
     if (activeTab === "project") {
-      return <ReportProjectTabContent project={project} />;
+      return <LazyReportProjectTabContent project={project} />;
     }
 
     if (activeTab === "schedule") {
-      return <ReportProjectScheduleCard />;
+      return <LazyReportProjectScheduleTabPanel />;
     }
 
     if (activeTab === "page-1") {
@@ -214,7 +217,7 @@ export function ReportProjectReportPageContent({
     >
       <div className="min-w-0 w-full pt-4 max-md:overflow-x-hidden max-md:pt-2">
         {activeTab === "settings" ? (
-          <ReportProjectSettingsForm project={project} />
+          <LazyReportProjectSettingsForm project={project} />
         ) : (
           <div className="flex min-w-0 w-full flex-col gap-3">
             {reportModuleTabShowsStageStepper(activeTab) ? (

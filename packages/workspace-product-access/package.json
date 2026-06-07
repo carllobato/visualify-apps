@@ -7,9 +7,17 @@
   "types": "src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types src/workspaceRoles.test.ts"
+    "test": "node --test --experimental-strip-types src/workspaceRoles.test.ts src/workspaceProductAccess.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "react": "19.2.4",
+    "typescript": "^5"
   }
 }
