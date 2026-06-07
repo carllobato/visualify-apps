@@ -19,11 +19,14 @@
 }
 
 .vf-visualify-wordmark img {
-  display: block;
   width: auto;
   max-width: 100%;
   height: 3rem;
   object-fit: contain;
+}
+
+.vf-visualify-wordmark__light {
+  display: block;
 }
 
 .vf-visualify-wordmark__dark {

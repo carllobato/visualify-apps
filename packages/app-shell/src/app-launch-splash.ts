@@ -1,12 +1,22 @@
 /** App canvas under the splash — matches `--ds-canvas` / PWA `theme_color`. */
 export const VISUALIFY_APP_LAUNCH_CANVAS = "#f7f9fc";
 
-/** Splash face — pure white until the wordmark and app morph in. */
+/** Splash face — pure white until the wordmark and app morph in (desktop). */
 export const VISUALIFY_APP_LAUNCH_SPLASH_BG = "#ffffff";
+
+/** Splash face on mobile — black screen with white wordmark. */
+export const VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE = "#000000";
+
+/** Matches app-shell mobile breakpoint (`app-shell-frame.css`). */
+export const VISUALIFY_APP_LAUNCH_MOBILE_MEDIA = "(max-width: 767px)";
 
 export const VISUALIFY_APP_LAUNCH_SPLASH_ID = "vf-app-launch-splash";
 
 export const VISUALIFY_APP_LAUNCH_WORDMARK_CLASS = "vf-app-launch-splash__wordmark";
+
+export const VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS = "vf-app-launch-splash__wordmark--light";
+
+export const VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS = "vf-app-launch-splash__wordmark--dark";
 
 /** Wordmark intro delay before fade/slide begins. */
 export const VISUALIFY_APP_LAUNCH_INTRO_DELAY_MS = 320;
@@ -68,7 +78,6 @@ body {
 }
 
 #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_CLASS} {
-  display: block;
   width: auto;
   max-width: min(72vw, 15rem);
   height: 3rem;
@@ -76,6 +85,14 @@ body {
   opacity: 0;
   transform: translateY(0.625rem) scale(0.985);
   animation: vf-app-launch-wordmark-in ${VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1) ${VISUALIFY_APP_LAUNCH_INTRO_DELAY_MS}ms forwards;
+}
+
+#${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS} {
+  display: block;
+}
+
+#${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS} {
+  display: none;
 }
 
 @keyframes vf-app-launch-wordmark-in {
@@ -105,6 +122,39 @@ body {
   100% {
     opacity: 0;
     background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
+  }
+}
+
+@keyframes vf-app-launch-splash-out-mobile {
+  0% {
+    opacity: 1;
+    background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
+  }
+  55% {
+    opacity: 1;
+    background-color: color-mix(in srgb, ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE} 35%, ${VISUALIFY_APP_LAUNCH_CANVAS} 65%);
+  }
+  100% {
+    opacity: 0;
+    background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
+  }
+}
+
+@media ${VISUALIFY_APP_LAUNCH_MOBILE_MEDIA} {
+  #${VISUALIFY_APP_LAUNCH_SPLASH_ID} {
+    background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
+  }
+
+  #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS} {
+    display: none;
+  }
+
+  #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS} {
+    display: block;
+  }
+
+  #${VISUALIFY_APP_LAUNCH_SPLASH_ID}.vf-app-launch-splash--exit {
+    animation-name: vf-app-launch-splash-out-mobile;
   }
 }
 

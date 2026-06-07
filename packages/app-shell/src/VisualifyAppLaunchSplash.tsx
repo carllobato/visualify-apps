@@ -1,19 +1,24 @@
 import type { ReactNode } from "react";
-import { VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
-import { visualifyAppLaunchCriticalCss } from "./app-launch-splash";
+import { VISUALIFY_LOGO_DARK_SRC, VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
+import { VISUALIFY_APP_LAUNCH_MOBILE_MEDIA, visualifyAppLaunchCriticalCss } from "./app-launch-splash";
 
 export { VisualifyAppLaunchController } from "./VisualifyAppLaunchController";
 
 /**
  * Instant launch paint for home-screen / standalone PWAs.
- * White screen → black wordmark intro → morph into the app once loaded.
+ * Desktop: white screen + black wordmark. Mobile: black screen + white wordmark.
  */
 export function VisualifyAppLaunchCriticalStyles() {
   return <style dangerouslySetInnerHTML={{ __html: visualifyAppLaunchCriticalCss }} />;
 }
 
 export function VisualifyAppLaunchBrandMarkPreload() {
-  return <link rel="preload" as="image" href={VISUALIFY_LOGO_LIGHT_SRC} />;
+  return (
+    <>
+      <link rel="preload" as="image" href={VISUALIFY_LOGO_LIGHT_SRC} media="(min-width: 768px)" />
+      <link rel="preload" as="image" href={VISUALIFY_LOGO_DARK_SRC} media={VISUALIFY_APP_LAUNCH_MOBILE_MEDIA} />
+    </>
+  );
 }
 
 /** @deprecated Wrap the app in {@link VisualifyAppLaunchController} instead. */

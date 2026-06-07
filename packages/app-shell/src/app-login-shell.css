@@ -119,7 +119,6 @@
 }
 
 .vf-app-login-card-header-mark .vf-visualify-wordmark img {
-  display: block;
   margin-inline: auto;
 }
 
@@ -214,10 +213,32 @@
   }
 
   /*
+   * Canvas backdrop matches iOS status-bar theme-color (--ds-canvas / #f7f9fc) so the
+   * page edge blends with the system chrome; the login card stays on --ds-surface.
+   */
+  .vf-app-login-framed-shell.vf-app-shell-outer-canvas {
+    background-color: var(--ds-canvas);
+  }
+
+  .vf-app-login-framed-shell .vf-app-shell-framed-surface,
+  .vf-app-login-framed-shell .vf-app-shell-scroll-region {
+    background-color: var(--ds-canvas);
+  }
+
+  /*
    * Login has no mobile hamburger — skip the 3.25rem clearance reserved for
    * `.vf-app-shell-mobile-nav-trigger` in `app-shell-frame.css`.
    */
   .vf-app-login-framed-shell .vf-app-shell-scroll-region {
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
+
+  /* Wordmark-only header — "Welcome" title is desktop-only. */
+  .vf-app-login-framed-shell .vf-app-login-card-title {
+    display: none;
+  }
+
+  .vf-app-login-framed-shell .vf-app-login-card-header-mark {
+    margin-bottom: 0;
   }
 }

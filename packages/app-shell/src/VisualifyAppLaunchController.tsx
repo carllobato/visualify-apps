@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
+import { VISUALIFY_LOGO_DARK_SRC, VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
 import {
   VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS,
   VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS,
@@ -10,9 +10,12 @@ import {
   VISUALIFY_APP_LAUNCH_EXIT_MS,
   VISUALIFY_APP_LAUNCH_HOLD_MS,
   VISUALIFY_APP_LAUNCH_INTRO_MS,
+  VISUALIFY_APP_LAUNCH_MOBILE_MEDIA,
   VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS,
   VISUALIFY_APP_LAUNCH_SPLASH_ID,
   VISUALIFY_APP_LAUNCH_WORDMARK_CLASS,
+  VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS,
+  VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS,
 } from "./app-launch-splash";
 
 type SplashPhase = "visible" | "exiting" | "hidden";
@@ -20,7 +23,8 @@ type SplashPhase = "visible" | "exiting" | "hidden";
 /** Splash overlay + app root — dismisses via React state (never `Node.remove()`). */
 export function VisualifyAppLaunchController({ children }: { children: ReactNode }) {
   const [splashPhase, setSplashPhase] = useState<SplashPhase>("visible");
-  const wordmarkRef = useRef<HTMLImageElement>(null);
+  const lightWordmarkRef = useRef<HTMLImageElement>(null);
+  const darkWordmarkRef = useRef<HTMLImageElement>(null);
   const exitStartedRef = useRef(false);
 
   useEffect(() => {
@@ -75,7 +79,8 @@ export function VisualifyAppLaunchController({ children }: { children: ReactNode
     if (reducedMotion) {
       markIntroDone();
     } else {
-      const wordmark = wordmarkRef.current;
+      const isMobile = window.matchMedia(VISUALIFY_APP_LAUNCH_MOBILE_MEDIA).matches;
+      const wordmark = (isMobile ? darkWordmarkRef : lightWordmarkRef).current;
       if (wordmark) {
         wordmark.addEventListener(
           "animationend",
@@ -122,9 +127,19 @@ export function VisualifyAppLaunchController({ children }: { children: ReactNode
         >
           <div className="vf-app-launch-splash__stage">
             <img
-              ref={wordmarkRef}
-              className={VISUALIFY_APP_LAUNCH_WORDMARK_CLASS}
+              ref={lightWordmarkRef}
+              className={`${VISUALIFY_APP_LAUNCH_WORDMARK_CLASS} ${VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS}`}
               src={VISUALIFY_LOGO_LIGHT_SRC}
+              alt=""
+              width={240}
+              height={48}
+              decoding="sync"
+              fetchPriority="high"
+            />
+            <img
+              ref={darkWordmarkRef}
+              className={`${VISUALIFY_APP_LAUNCH_WORDMARK_CLASS} ${VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS}`}
+              src={VISUALIFY_LOGO_DARK_SRC}
               alt=""
               width={240}
               height={48}
