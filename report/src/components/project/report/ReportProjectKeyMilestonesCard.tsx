@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { Card, CardContent } from "@visualify/design-system";
 import type { ReportProjectKeyMilestone } from "@/lib/projects/report-project-key-milestones";
 
@@ -13,35 +12,26 @@ export function ReportProjectKeyMilestonesCard({
     <Card className="flex h-full w-full min-w-0 flex-col">
       <CardContent className="flex flex-1 flex-col px-4 py-3">
         <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
-          Upcoming Key Milestones
+          Upcoming key milestones
         </p>
-        <div
-          className="grid min-h-0 flex-1 grid-cols-[max-content_minmax(0,1fr)] gap-x-4 text-[length:var(--ds-text-sm)]"
-          style={{
-            gridTemplateRows: `repeat(${milestones.length}, minmax(0, 1fr))`,
-          }}
-        >
-          {milestones.map((row, index) => {
-            const rowDivider =
-              index > 0 ? "border-t border-[var(--ds-border-subtle)] pt-1.5" : "";
-            const rowPadding = "pb-1.5";
-
-            return (
-              <Fragment key={row.id}>
-                <span
-                  className={`whitespace-nowrap pr-4 font-medium text-[var(--ds-text-primary)] ${rowDivider} ${rowPadding}`}
-                >
-                  {row.milestone}
-                </span>
-                <span
-                  className={`min-w-0 text-right text-[var(--ds-text-secondary)] ${rowDivider} ${rowPadding}`}
-                >
-                  {row.forecastDate}
-                </span>
-              </Fragment>
-            );
-          })}
-        </div>
+        <ul className="m-0 flex list-none flex-col divide-y divide-[var(--ds-border-subtle)] p-0">
+          {milestones.map((row) => (
+            <li
+              key={row.id}
+              className="flex min-w-0 items-baseline justify-between gap-4 py-3 first:pt-0 last:pb-0"
+            >
+              <span className="min-w-0 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
+                {row.milestone}
+              </span>
+              <time
+                dateTime={row.forecastDate}
+                className="shrink-0 text-[length:var(--ds-text-sm)] tabular-nums text-[var(--ds-text-muted)]"
+              >
+                {row.forecastDate}
+              </time>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   );

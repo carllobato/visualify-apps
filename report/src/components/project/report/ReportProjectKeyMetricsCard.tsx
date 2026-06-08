@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ReportProjectCostMetricCard } from "@/components/project/report/ReportProjectCostMetricCard";
 import { ReportProjectOverviewCardHeader } from "@/components/project/report/ReportProjectOverviewCardHeader";
 import { ReportProjectOverviewInteractiveCard } from "@/components/project/report/ReportProjectOverviewInteractiveCard";
 import {
@@ -8,6 +9,7 @@ import {
 
 type ReportProjectKeyMetricsCardProps = {
   metrics: ReportProjectKeyMetrics;
+  presentation?: "rows" | "kpi";
   highlighted?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
@@ -59,9 +61,31 @@ function KeyMetricRow({
   );
 }
 
-export function ReportProjectKeyMetricsCard({
+function ReportProjectKeyMetricsKpiGrid({ metrics }: { metrics: ReportProjectKeyMetrics }) {
+  const rows = toReportProjectKeyMetricRows(metrics);
+
+  return (
+    <div className="flex min-w-0 w-full flex-col gap-3">
+      <p className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+        Project overview
+      </p>
+      <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {rows.map((row) => (
+          <ReportProjectCostMetricCard
+            key={row.label}
+            label={row.label}
+            value={row.value}
+            helperText={row.callout?.body}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ReportProjectKeyMetricsRows({
   metrics,
-  highlighted = false,
+  highlighted,
   onNavigate,
   navigateLabel,
 }: ReportProjectKeyMetricsCardProps) {
@@ -101,5 +125,26 @@ export function ReportProjectKeyMetricsCard({
         <div className="min-h-0 flex-1" aria-hidden="true" />
       </div>
     </ReportProjectOverviewInteractiveCard>
+  );
+}
+
+export function ReportProjectKeyMetricsCard({
+  metrics,
+  presentation = "rows",
+  highlighted = false,
+  onNavigate,
+  navigateLabel,
+}: ReportProjectKeyMetricsCardProps) {
+  if (presentation === "kpi") {
+    return <ReportProjectKeyMetricsKpiGrid metrics={metrics} />;
+  }
+
+  return (
+    <ReportProjectKeyMetricsRows
+      metrics={metrics}
+      highlighted={highlighted}
+      onNavigate={onNavigate}
+      navigateLabel={navigateLabel}
+    />
   );
 }

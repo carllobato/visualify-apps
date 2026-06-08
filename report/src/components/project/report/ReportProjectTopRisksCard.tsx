@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { Card, CardContent, Trend } from "@visualify/design-system";
 import { ReportProjectOverviewCardHeader } from "@/components/project/report/ReportProjectOverviewCardHeader";
 import { ReportProjectOverviewInteractiveCard } from "@/components/project/report/ReportProjectOverviewInteractiveCard";
@@ -17,6 +16,7 @@ import {
 type ReportProjectTopRisksCardProps = {
   risks: ReportProjectTopRisk[];
   expanded?: boolean;
+  prominent?: boolean;
   highlighted?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
@@ -24,9 +24,6 @@ type ReportProjectTopRisksCardProps = {
 
 const TOP_RISKS_ROW_CLASS =
   "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 py-2.5 text-[length:var(--ds-text-sm)] max-md:min-h-0 md:flex md:min-h-10 md:shrink-0 md:justify-between md:gap-4 md:py-0";
-
-const TOP_RISKS_EXPANDED_GRID_CLASS =
-  "grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)_max-content_0.6875rem_max-content] gap-x-4 text-[length:var(--ds-text-sm)]";
 
 const TOP_RISKS_CALLOUT_CLASS =
   "pointer-events-none absolute left-0 z-20 hidden w-72 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[length:var(--ds-text-xs)] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover/title:block group-focus-within/title:block";
@@ -50,58 +47,61 @@ function ReportProjectTopRiskIndicators({ risk }: { risk: ReportProjectTopRisk }
   );
 }
 
-function ReportProjectTopRisksExpandedGrid({ risks }: { risks: ReportProjectTopRisk[] }) {
+function ReportProjectTopRisksExpandedList({
+  risks,
+  prominent = false,
+}: {
+  risks: ReportProjectTopRisk[];
+  prominent?: boolean;
+}) {
   return (
-    <div
-      className={TOP_RISKS_EXPANDED_GRID_CLASS}
-      style={{
-        gridTemplateRows: `repeat(${risks.length}, minmax(0, 1fr))`,
-      }}
-    >
-      {risks.map((risk, index) => {
-        const rowDivider = index > 0 ? "border-t border-[var(--ds-border-subtle)] pt-1.5" : "";
-        const rowPadding = "pb-1.5";
-
-        return (
-          <Fragment key={risk.id}>
-            <span
-              className={`min-w-0 font-medium text-[var(--ds-text-primary)] ${rowDivider} ${rowPadding}`}
+    <ul className="m-0 flex list-none flex-col divide-y divide-[var(--ds-border-subtle)] p-0">
+      {risks.map((risk) => (
+        <li
+          key={risk.id}
+          className={prominent ? "py-3.5 first:pt-0 last:pb-0" : "py-2.5 first:pt-0 last:pb-0"}
+        >
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <p
+              className={[
+                "m-0 min-w-0 text-[var(--ds-text-primary)]",
+                prominent ? "text-[length:var(--ds-text-base)] font-semibold" : "text-[length:var(--ds-text-sm)] font-medium",
+              ].join(" ")}
             >
               {risk.title}
-            </span>
-            <span className={`min-w-0 text-[var(--ds-text-secondary)] ${rowDivider} ${rowPadding}`}>
-              {risk.comment}
-            </span>
-            <span
-              className={`whitespace-nowrap pr-2 text-[var(--ds-text-secondary)] ${rowDivider} ${rowPadding}`}
-            >
-              {risk.category}
-            </span>
-            <div className={`flex items-center ${rowDivider} ${rowPadding}`}>
+            </p>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <span className={TOP_RISKS_CATEGORY_CLASS} title={risk.category}>
+                {risk.category}
+              </span>
               <ReportRagStatusDot
                 status={getReportProjectTopRiskRagStatus(risk)}
                 dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS}
               />
-            </div>
-            <div className={`flex items-center justify-end ${rowDivider} ${rowPadding}`}>
               <Trend sentiment={risk.trend.sentiment}>{risk.trend.text}</Trend>
             </div>
-          </Fragment>
-        );
-      })}
-    </div>
+          </div>
+          <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+            <span className="font-medium text-[var(--ds-text-muted)]">Mitigation / action: </span>
+            {risk.comment}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
 }
 
 function ReportProjectTopRisksList({
   risks,
   expanded = false,
+  prominent = false,
 }: {
   risks: ReportProjectTopRisk[];
   expanded?: boolean;
+  prominent?: boolean;
 }) {
   if (expanded) {
-    return <ReportProjectTopRisksExpandedGrid risks={risks} />;
+    return <ReportProjectTopRisksExpandedList risks={risks} prominent={prominent} />;
   }
 
   return (
@@ -150,6 +150,7 @@ function ReportProjectTopRisksList({
 export function ReportProjectTopRisksCard({
   risks,
   expanded = false,
+  prominent = false,
   highlighted = false,
   onNavigate,
   navigateLabel,
@@ -157,11 +158,16 @@ export function ReportProjectTopRisksCard({
   if (expanded) {
     return (
       <Card className="flex h-full w-full min-w-0 flex-col">
-        <CardContent className="flex flex-1 flex-col px-4 py-3">
-          <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+        <CardContent className={prominent ? "flex flex-1 flex-col px-4 py-4" : "flex flex-1 flex-col px-4 py-3"}>
+          <p
+            className={[
+              "m-0 mb-3 shrink-0 text-[var(--ds-text-primary)]",
+              prominent ? "text-[length:var(--ds-text-base)] font-semibold" : "text-[length:var(--ds-text-sm)] font-semibold",
+            ].join(" ")}
+          >
             Key issues & risks
           </p>
-          <ReportProjectTopRisksList risks={risks} expanded />
+          <ReportProjectTopRisksList risks={risks} expanded prominent={prominent} />
         </CardContent>
       </Card>
     );
@@ -171,7 +177,7 @@ export function ReportProjectTopRisksCard({
     <>
       <ReportProjectOverviewCardHeader title="Key issues & risks" />
       <div className="flex min-h-0 flex-1 flex-col">
-        <ReportProjectTopRisksList risks={risks} expanded={expanded} />
+        <ReportProjectTopRisksList risks={risks} expanded={expanded} prominent={prominent} />
         <div className="min-h-0 flex-1" aria-hidden="true" />
       </div>
     </>

@@ -4,6 +4,24 @@ export type ReportProjectSafetyStat = {
   display?: "text" | "rag";
 };
 
+export function partitionReportProjectSafetyStats(stats: ReportProjectSafetyStat[]): {
+  primary: ReportProjectSafetyStat[];
+  secondary: ReportProjectSafetyStat[];
+} {
+  const primary: ReportProjectSafetyStat[] = [];
+  const secondary: ReportProjectSafetyStat[] = [];
+
+  for (const stat of stats) {
+    if (/wps\d/i.test(stat.label)) {
+      secondary.push(stat);
+      continue;
+    }
+    primary.push(stat);
+  }
+
+  return { primary, secondary };
+}
+
 /** Placeholder until report Excel upload supplies safety stats. */
 export const REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER: ReportProjectSafetyStat[] = [
   { label: "Safety status", value: "Green", display: "rag" },

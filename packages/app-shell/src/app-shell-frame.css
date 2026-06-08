@@ -194,7 +194,10 @@ html:has(.vf-app-shell-outer-canvas) body {
     --vf-app-shell-frame-edge-inset: 0px;
     --vf-app-shell-mobile-bottom-nav-bar-height: 2.0625rem;
     --vf-app-shell-mobile-bottom-nav-floating-gap: 0px;
-    /* Space below tab labels — home indicator + minimum breathing room (sync with bottom-nav.css). */
+    /*
+     * Space below tab labels — home indicator + minimum breathing room (sync with bottom-nav.css).
+     * Browser mode keeps +8px for Safari’s bottom toolbar; standalone PWA override below.
+     */
     --vf-app-shell-mobile-bottom-nav-home-inset: calc(env(safe-area-inset-bottom, 0px) + 8px);
     box-sizing: border-box;
     height: 100dvh;
@@ -276,6 +279,16 @@ html:has(.vf-app-shell-outer-canvas) body {
 
   .vf-app-shell-rail-footer {
     padding-bottom: max(var(--vf-app-shell-frame-edge-inset), env(safe-area-inset-bottom, 0px));
+  }
+
+  /*
+   * Installed home-screen PWA — no Safari bottom toolbar, so the browser +8px cushion is excess.
+   * Safe-area alone clears the home indicator; scroll inset and nav padding follow this token.
+   */
+  @media (display-mode: standalone) {
+    .vf-app-shell-outer-canvas {
+      --vf-app-shell-mobile-bottom-nav-home-inset: env(safe-area-inset-bottom, 0px);
+    }
   }
 }
 

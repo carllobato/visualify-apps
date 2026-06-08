@@ -1,17 +1,84 @@
 import { Card, CardContent } from "@visualify/design-system";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
-import type { ReportProjectSafetyStat } from "@/lib/projects/report-project-safety-stats";
+import {
+  partitionReportProjectSafetyStats,
+  type ReportProjectSafetyStat,
+} from "@/lib/projects/report-project-safety-stats";
 
 type ReportProjectSafetyStatsCardProps = {
   stats: ReportProjectSafetyStat[];
+  presentation?: "rows" | "kpi";
   /** Match category row count so paired overview cards share aligned row heights. */
   alignedRowCount?: number;
 };
 
+function ReportProjectSafetyStatKpiValue({ stat }: { stat: ReportProjectSafetyStat }) {
+  if (stat.display === "rag") {
+    return (
+      <ReportRagStatusDot status={stat.value} showPhrase compact className="mt-1" />
+    );
+  }
+
+  return (
+    <p className="m-0 mt-1 text-[length:var(--ds-text-2xl)] font-semibold tabular-nums text-[var(--ds-text-primary)]">
+      {stat.value}
+    </p>
+  );
+}
+
+function ReportProjectSafetyStatsKpiGrid({ stats }: { stats: ReportProjectSafetyStat[] }) {
+  const { primary, secondary } = partitionReportProjectSafetyStats(stats);
+
+  return (
+    <div className="flex min-w-0 w-full flex-col gap-3">
+      <p className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+        Safety stats
+      </p>
+      <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {primary.map((stat) => (
+          <Card key={stat.label} className="h-full w-full min-w-0">
+            <CardContent className="px-4 py-3">
+              <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+                {stat.label}
+              </p>
+              <ReportProjectSafetyStatKpiValue stat={stat} />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      {secondary.length > 0 ? (
+        <div className="flex min-w-0 w-full flex-col gap-2 rounded-[var(--ds-radius-md)] border border-[var(--ds-border-subtle)] px-3 py-2.5">
+          <p className="m-0 text-[length:var(--ds-text-xs)] font-medium uppercase tracking-wide text-[var(--ds-text-muted)]">
+            Incidents by WPS
+          </p>
+          <div className="grid min-w-0 w-full grid-cols-1 gap-2 sm:grid-cols-3">
+            {secondary.map((stat) => (
+              <div
+                key={stat.label}
+                className="flex min-w-0 items-baseline justify-between gap-3 text-[length:var(--ds-text-sm)] sm:flex-col sm:items-start sm:gap-0.5"
+              >
+                <span className="text-[var(--ds-text-muted)]">{stat.label}</span>
+                <span className="font-semibold tabular-nums text-[var(--ds-text-secondary)]">
+                  {stat.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function ReportProjectSafetyStatsCard({
   stats,
+  presentation = "rows",
   alignedRowCount = stats.length,
 }: ReportProjectSafetyStatsCardProps) {
+  if (presentation === "kpi") {
+    return <ReportProjectSafetyStatsKpiGrid stats={stats} />;
+  }
+
   const spacerCount = Math.max(0, alignedRowCount - stats.length);
 
   return (

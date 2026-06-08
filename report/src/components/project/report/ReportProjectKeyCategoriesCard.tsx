@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import { Card, CardContent } from "@visualify/design-system";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
 import type { ReportProjectCategoryRow } from "@/lib/projects/report-project-category-rows";
@@ -14,36 +13,21 @@ export function ReportProjectKeyCategoriesCard({ categories }: ReportProjectKeyC
         <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
           Key project categories
         </p>
-        <div
-          className="grid min-h-0 flex-1 grid-cols-[0.6875rem_max-content_minmax(0,1fr)] gap-x-4 text-[length:var(--ds-text-sm)]"
-          style={{
-            gridTemplateRows: `repeat(${categories.length}, minmax(0, 1fr))`,
-          }}
-        >
-          {categories.map((row, index) => {
-            const rowDivider =
-              index > 0 ? "border-t border-[var(--ds-border-subtle)] pt-1.5" : "";
-            const rowPadding = "pb-1.5";
-
-            return (
-              <Fragment key={row.id}>
-                <div className={`flex items-center ${rowDivider} ${rowPadding}`}>
-                  <ReportRagStatusDot status={row.status} />
-                </div>
-                <span
-                  className={`whitespace-nowrap pr-4 font-medium text-[var(--ds-text-primary)] ${rowDivider} ${rowPadding}`}
-                >
+        <ul className="m-0 flex list-none flex-col divide-y divide-[var(--ds-border-subtle)] p-0">
+          {categories.map((row) => (
+            <li key={row.id} className="py-3 first:pt-0 last:pb-0">
+              <div className="flex min-w-0 items-center gap-2">
+                <ReportRagStatusDot status={row.status} />
+                <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
                   {row.category}
                 </span>
-                <span
-                  className={`min-w-0 text-[var(--ds-text-secondary)] ${rowDivider} ${rowPadding}`}
-                >
-                  {row.summary}
-                </span>
-              </Fragment>
-            );
-          })}
-        </div>
+              </div>
+              <p className="m-0 mt-1.5 pl-[calc(0.6875rem+0.5rem)] text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                {row.summary}
+              </p>
+            </li>
+          ))}
+        </ul>
       </CardContent>
     </Card>
   );
