@@ -192,8 +192,12 @@ html:has(.vf-app-shell-outer-canvas) body {
 
   .vf-app-shell-outer-canvas {
     --vf-app-shell-frame-edge-inset: 0px;
-    /* Fixed tab row + home indicator — single token for nav footprint and scroll reserve. */
-    --vf-app-shell-mobile-bottom-nav-bar-height: 4rem;
+    /*
+     * Tab row height (scroll reserve) + full fixed nav footprint (tab row + home indicator).
+     * Scroll uses bar-height only — mirrors the header: content may pass under translucent
+     * safe-area chrome; total-height positions sheets above the full fixed nav.
+     */
+    --vf-app-shell-mobile-bottom-nav-bar-height: 3.0625rem;
     --vf-app-shell-mobile-bottom-nav-total-height: calc(
       var(--vf-app-shell-mobile-bottom-nav-bar-height) + env(safe-area-inset-bottom, 0px)
     );
@@ -246,7 +250,7 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-bottom-nav .vf-app-shell-scroll-region {
-    padding-bottom: var(--vf-app-shell-mobile-bottom-nav-total-height);
+    padding-bottom: var(--vf-app-shell-mobile-bottom-nav-bar-height);
   }
 
   .vf-app-shell-rail-aside {
