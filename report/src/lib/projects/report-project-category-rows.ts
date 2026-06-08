@@ -11,13 +11,13 @@ export const REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER: ReportProjectCategoryRow[
     id: "sc-1",
     category: "Land",
     status: "Green",
-    summary: "Acquisition complete; cladding claim in legal review.",
+    summary: "Acquisition complete. Cladding claim remains under legal review.",
   },
   {
     id: "sc-2",
     category: "Design",
     status: "Amber",
-    summary: "Façade review outstanding; PTU design frozen.",
+    summary: "Facade review outstanding. PTU design frozen.",
   },
   {
     id: "sc-3",
@@ -28,8 +28,8 @@ export const REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER: ReportProjectCategoryRow[
   {
     id: "sc-4",
     category: "Power & Utilities",
-    status: "Amber",
-    summary: "11kV offer accepted; energisation targeted Jul 2026.",
+    status: "Red",
+    summary: "11kV energisation remains the critical path.",
   },
   {
     id: "sc-5",

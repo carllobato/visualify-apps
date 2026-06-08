@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Card, CardContent } from "@visualify/design-system";
 import { ReportProjectPageLayout } from "@/components/project/ReportProjectPageLayout";
 import { ReportProjectBudgetCard } from "@/components/project/report/ReportProjectBudgetCard";
+import { ReportProjectCategoryStatusCard } from "@/components/project/report/ReportProjectCategoryStatusCard";
 import { ReportProjectSafetyCard } from "@/components/project/report/ReportProjectSafetyCard";
 import { ReportProjectScheduleCard } from "@/components/project/report/ReportProjectScheduleCard";
 import { ReportProjectKeyMetricsCard } from "@/components/project/report/ReportProjectKeyMetricsCard";
@@ -17,6 +18,7 @@ import {
   LazyReportProjectSettingsForm,
   LazyReportProjectTabContent,
 } from "@/components/project/report/report-lazy-tab-panels";
+import { REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER } from "@/lib/projects/report-project-category-rows";
 import { REPORT_PROJECT_BUDGET_PLACEHOLDER } from "@/lib/projects/report-project-budget";
 import { REPORT_PROJECT_COST_PLACEHOLDER } from "@/lib/projects/report-project-cost";
 import { REPORT_PROJECT_KEY_METRICS_PLACEHOLDER } from "@/lib/projects/report-project-key-metrics";
@@ -185,6 +187,7 @@ export function ReportProjectReportPageContent({
               />
             </div>
           </div>
+          <ReportProjectCategoryStatusCard categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER} />
         </>
       );
     }

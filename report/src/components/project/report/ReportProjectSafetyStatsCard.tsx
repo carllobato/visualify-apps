@@ -85,7 +85,7 @@ export function ReportProjectSafetyStatsCard({
     <Card className="flex h-full w-full min-w-0 flex-col">
       <CardContent className="flex flex-1 flex-col px-4 py-3">
         <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
-          Safety stats
+          Safety
         </p>
         <dl className="m-0 flex min-h-0 flex-1 flex-col">
           {stats.map((stat, index) => {
