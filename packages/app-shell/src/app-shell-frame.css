@@ -189,6 +189,12 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   html:has(.vf-app-shell-outer-canvas) body {
+    /*
+     * Positioned + full-height so the portaled bottom nav (position: absolute) anchors to the
+     * real screen bottom. iOS standalone PWAs mis-bind `position: fixed; bottom: 0` to the small
+     * (toolbar-reserved) viewport, leaving a gap; the `height: 100%` chain fills the true screen.
+     */
+    position: relative;
     min-height: 100%;
     height: 100%;
     overflow: hidden;
@@ -209,10 +215,14 @@ html:has(.vf-app-shell-outer-canvas) body {
     --vf-app-shell-mobile-bottom-nav-home-inset: env(safe-area-inset-bottom, 0px);
     --vf-app-shell-mobile-bottom-nav-floating-gap: 0px;
     box-sizing: border-box;
+    /*
+     * Fill the parent (html/body = 100% = real screen). The `%` chain is reliable in iOS
+     * standalone where `svh`/`dvh` can resolve to the smaller toolbar-reserved viewport.
+     */
     height: 100dvh;
-    height: 100svh;
+    height: 100%;
     max-height: 100dvh;
-    max-height: 100svh;
+    max-height: 100%;
     min-height: 0;
     overflow: hidden;
   }

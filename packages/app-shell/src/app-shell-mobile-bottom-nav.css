@@ -11,7 +11,12 @@
 @media (max-width: 767px) {
   .vf-app-shell-mobile-bottom-nav {
     box-sizing: border-box;
-    position: fixed;
+    /*
+     * Portaled into <body> (position: relative, height: 100% = real screen). Absolute — not fixed —
+     * so iOS standalone PWAs anchor it to the true screen bottom instead of the smaller
+     * toolbar-reserved viewport that breaks `position: fixed; bottom: 0`.
+     */
+    position: absolute;
     z-index: 45;
     left: 0;
     right: 0;

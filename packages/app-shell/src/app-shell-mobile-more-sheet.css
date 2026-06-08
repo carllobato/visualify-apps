@@ -4,8 +4,13 @@
  */
 
 @media (max-width: 767px) {
+  /*
+   * Backdrop + sheet are portaled into <body> (position: relative, height: 100% = real screen).
+   * Absolute — not fixed — so iOS standalone PWAs anchor them to the true screen bottom rather
+   * than the smaller toolbar-reserved viewport that breaks `position: fixed; bottom`.
+   */
   .vf-app-shell-mobile-more-sheet__backdrop {
-    position: fixed;
+    position: absolute;
     inset: 0;
     z-index: 44;
     border: 0;
@@ -17,7 +22,7 @@
   }
 
   .vf-app-shell-mobile-more-sheet {
-    position: fixed;
+    position: absolute;
     left: max(0.75rem, env(safe-area-inset-left, 0px));
     right: max(0.75rem, env(safe-area-inset-right, 0px));
     bottom: calc(
