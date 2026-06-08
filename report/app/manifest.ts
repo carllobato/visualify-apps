@@ -8,7 +8,9 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "Report",
     description: "Visualify Report — standalone reporting product",
     start_url: REPORT_DEFAULT_ROUTE,
-    display: "standalone",
+    // Runs as a normal Safari web page (not a standalone home-screen app) to avoid the iOS
+    // standalone viewport bug that mis-resolves fixed/viewport-unit layout (the "chin gap").
+    display: "browser",
     theme_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     background_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     icons: [
