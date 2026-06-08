@@ -1,16 +1,15 @@
 /**
  * Report protected routes — mobile shell polish (max-width 767px).
- * Mirrors OS mobile pages (e.g. inbox-mobile.css): shell scroll insets are zero;
- * each page feed owns header/nav clearance.
+ * Scroll top/bottom insets come from app-shell-frame.css — do not override here.
  */
 
 @media (max-width: 767px) {
-  .vf-app-shell-outer-canvas:has(.report-project-page) {
+  .report-mobile-outer-canvas:has(.report-project-page) {
     background-color: var(--ds-surface);
   }
 
-  .vf-app-shell-outer-canvas:has(.report-project-page) .vf-app-shell-framed-surface,
-  .vf-app-shell-outer-canvas:has(.report-project-page) .vf-app-shell-scroll-region,
+  .report-mobile-outer-canvas:has(.report-project-page) .vf-app-shell-framed-surface,
+  .report-mobile-outer-canvas:has(.report-project-page) .vf-app-shell-scroll-region,
   .report-project-overview-stack {
     background-color: var(--ds-surface);
   }
@@ -20,86 +19,24 @@
     overflow-x: visible;
   }
 
+  /* Breathing room below fixed Report header and above the project title. */
+  .report-project-page > header {
+    padding-top: 0.75rem;
+  }
+
+  /* Space below the last dashboard tile before the bottom tab bar. */
+  .report-project-page-body {
+    padding-bottom: 1.25rem;
+  }
+
+  .report-mobile-outer-canvas.vf-app-shell-has-mobile-bottom-nav .vf-app-shell-scroll-region {
+    padding-bottom: calc(var(--vf-app-shell-mobile-bottom-nav-total-height) + 0.75rem);
+  }
+
   .report-project-overview-stack {
     box-sizing: border-box;
     padding-inline: 3px;
     margin-inline: -3px;
-  }
-
-  /*
-   * Beat app-shell scroll padding (3-class selectors in app-shell-frame.css).
-   * Report routes sit inside AppShellPageTransition — use :has() descendants, not >.
-   */
-  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header.vf-app-shell-has-mobile-bottom-nav
-    .vf-app-shell-scroll-region:has(.report-project-page),
-  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header.vf-app-shell-has-mobile-bottom-nav
-    .vf-app-shell-scroll-region:has(.report-mobile-page),
-  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header
-    .vf-app-shell-scroll-region:has(.report-project-page),
-  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header
-    .vf-app-shell-scroll-region:has(.report-mobile-page),
-  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-bottom-nav
-    .vf-app-shell-scroll-region:has(.report-project-page),
-  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-bottom-nav
-    .vf-app-shell-scroll-region:has(.report-mobile-page),
-  .vf-app-shell-outer-canvas .vf-app-shell-scroll-region:has(.report-project-page),
-  .vf-app-shell-outer-canvas .vf-app-shell-scroll-region:has(.report-mobile-page) {
-    padding: 0;
-    background-color: var(--ds-surface);
-  }
-
-  .vf-app-shell-scroll-region:has(.report-project-page, .report-mobile-page)
-    > .vf-app-shell-page-transition {
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-height: 100%;
-    width: 100%;
-  }
-
-  .report-project-page,
-  .report-mobile-page {
-    --report-mobile-bottom-clearance: calc(
-      var(--vf-app-shell-mobile-bottom-nav-bar-height, 3.0625rem) +
-        var(--vf-app-shell-mobile-bottom-nav-home-inset, env(safe-area-inset-bottom, 0px)) +
-        var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0px) + 0.375rem
-    );
-
-    box-sizing: border-box;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    width: 100%;
-    max-width: none;
-    min-height: 100%;
-    margin: 0;
-    padding: 0;
-    padding-left: max(1rem, env(safe-area-inset-left, 0px));
-    padding-right: max(1rem, env(safe-area-inset-right, 0px));
-  }
-
-  .report-project-page {
-    padding-top: var(--vf-app-shell-mobile-header-offset, 3.375rem);
-  }
-
-  /* OS feed pattern — scroll content clears fixed bottom nav once. */
-  .report-project-page-body,
-  .report-mobile-page {
-    box-sizing: border-box;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-width: 0;
-    padding-bottom: var(--report-mobile-bottom-clearance);
-  }
-
-  .report-mobile-page {
-    padding-top: var(--vf-app-shell-mobile-header-offset, 3.375rem);
-  }
-
-  .vf-app-shell-main-column:has(.vf-app-shell-mobile-header--scroll-hidden) .report-project-page,
-  .vf-app-shell-main-column:has(.vf-app-shell-mobile-header--scroll-hidden) .report-mobile-page {
-    padding-top: 0;
   }
 
   .report-mobile-header__identity-link {

@@ -171,6 +171,8 @@ export type {
   AppShellMobileBottomNavProps,
 } from "./AppShellMobileBottomNav";
 
+export { AppShellMobileBottomNavScrollSpacer } from "./AppShellMobileBottomNavScrollSpacer";
+
 export { AppShellMobileNavTrigger } from "./AppShellMobileNavTrigger";
 export type { AppShellMobileNavTriggerProps } from "./AppShellMobileNavTrigger";
 

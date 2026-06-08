@@ -1,0 +1,24 @@
+/**
+ * Extends scrollHeight above the fixed mobile bottom tab bar.
+ * Pair with {@link AppShellMobileBottomNavScrollSpacer} inside {@link AppShellScrollRegion}.
+ */
+
+@media (max-width: 767px) {
+  .vf-app-shell-mobile-bottom-nav-scroll-spacer {
+    box-sizing: border-box;
+    display: block;
+    flex-shrink: 0;
+    width: 100%;
+    height: calc(
+      var(--vf-app-shell-mobile-bottom-nav-total-height, calc(3.0625rem + env(safe-area-inset-bottom, 0px))) +
+        0.375rem
+    );
+    pointer-events: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .vf-app-shell-mobile-bottom-nav-scroll-spacer {
+    display: none;
+  }
+}

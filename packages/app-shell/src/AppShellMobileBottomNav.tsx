@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import "./app-shell-mobile-bottom-nav.css";
 import { useAppShellMobileBottomNavPresenceRegistration } from "./app-shell-mobile-bottom-nav-context";
 import { useAppShellRailMobileNav } from "./app-shell-rail-mobile-context";
@@ -142,13 +142,11 @@ function BottomNavMoreTab({
 }
 
 /**
- * Mobile-only bottom tab bar (≤767px). Mount inside {@link AppShellMainColumn} within
- * {@link AppShellOuterCanvas} so scroll bottom inset and the rail drawer integrate correctly.
+ * Mobile-only bottom tab bar (≤767px). Rendered in `document.body` so `position: fixed` is not
+ * broken by transforms on {@link VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} during launch (PWA-safe).
  *
- * Pass app-specific `items` (typically built with {@link buildAppShellMobileBottomNavItems}).
- * A `kind: "more"` item calls `setMobileOpen(true)` on the shared rail drawer; `kind: "link"`
- * items close the drawer on navigate when it is open. Registration sets
- * `.vf-app-shell-has-mobile-bottom-nav` on the outer canvas for shared safe-area padding.
+ * Mount inside {@link AppShellMainColumn} within {@link AppShellOuterCanvas} for presence
+ * registration. Pair with {@link AppShellMobileBottomNavScrollSpacer} in the scroll region.
  */
 export function AppShellMobileBottomNav({
   items,
@@ -158,13 +156,18 @@ export function AppShellMobileBottomNav({
   const { registerMobileBottomNav, unregisterMobileBottomNav } =
     useAppShellMobileBottomNavPresenceRegistration();
   const { mobileOpen, setMobileOpen, closeMobile } = useAppShellRailMobileNav();
+  const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
     registerMobileBottomNav();
     return unregisterMobileBottomNav;
   }, [registerMobileBottomNav, unregisterMobileBottomNav]);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const nav = (
     <nav
       className={mergeClass("vf-app-shell-mobile-bottom-nav", className)}
       aria-label={ariaLabel}
@@ -202,4 +205,10 @@ export function AppShellMobileBottomNav({
       </ul>
     </nav>
   );
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(nav, document.body);
 }

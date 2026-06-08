@@ -59,7 +59,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   const projects = projectsResult?.ok ? projectsResult.projects : [];
 
   return (
-    <AppShellOuterCanvas mobileHeaderExpected>
+    <AppShellOuterCanvas mobileHeaderExpected className="report-mobile-outer-canvas">
       <AppShellPostLoginRevealEffect />
       <ReportAppShellRail
         workspaces={workspaceContext.workspaces}

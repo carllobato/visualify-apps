@@ -2,7 +2,6 @@
 @import "../../packages/design-system/src/styles/globals.css";
 @import "../../packages/app-shell/src/app-shell-app-menu.css";
 @import "../../packages/app-shell/src/app-shell-login-screen.css";
-@import "../src/components/layout/report-mobile-shell.css";
 
 /* Workspace packages */
 @source "../../packages/design-system/src";
@@ -11,6 +10,9 @@
 /* This app */
 @source "../app";
 @source "../src";
+
+/* After Tailwind @source so shell overrides are not purged or reordered before utilities. */
+@import "../src/components/layout/report-mobile-shell.css";
 
 html,
 body {
