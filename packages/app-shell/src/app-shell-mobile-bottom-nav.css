@@ -1,7 +1,7 @@
 /**
  * Mobile bottom tab bar (below md only).
  * Background matches `.vf-app-shell-mobile-header` for a consistent shell chrome band.
- * Safe-area sits inside the grey list so PWA chrome reaches the screen edge.
+ * Grey chrome + home-indicator clearance live on the fixed wrapper (one padding pass).
  * Scroll reserve uses `--vf-app-shell-mobile-bottom-nav-total-height` in `app-shell-frame.css`.
  */
 
@@ -18,32 +18,8 @@
     right: 0;
     bottom: 0;
     display: block;
-    padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    pointer-events: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .vf-app-shell-mobile-bottom-nav__list {
-    position: relative;
-    z-index: 1;
-    box-sizing: border-box;
-    display: flex;
-    min-width: 0;
-    width: 100%;
-    height: var(
-      --vf-app-shell-mobile-bottom-nav-total-height,
-      calc(4rem + env(safe-area-inset-bottom, 0px))
-    );
-    margin: 0;
-    padding: 0 0 env(safe-area-inset-bottom, 0px);
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0;
-    list-style: none;
+    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
     border: 0;
     border-radius: 0;
     background-color: color-mix(in oklab, var(--ds-bg) 84%, var(--ds-surface-muted) 16%);
@@ -53,22 +29,43 @@
       0 -6px 16px -6px color-mix(in oklab, var(--ds-scrim-ink) 8.5%, transparent);
     -webkit-backdrop-filter: blur(12px) saturate(1.05);
     backdrop-filter: blur(12px) saturate(1.05);
-    pointer-events: auto;
+    pointer-events: none;
     -webkit-tap-highlight-color: transparent;
   }
 
   @supports not (
     (-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))
   ) {
-    .vf-app-shell-mobile-bottom-nav__list {
+    .vf-app-shell-mobile-bottom-nav {
       background-color: color-mix(in oklab, var(--ds-bg) 84%, var(--ds-surface-muted) 16%);
     }
+  }
+
+  .vf-app-shell-mobile-bottom-nav__list {
+    position: relative;
+    z-index: 1;
+    box-sizing: border-box;
+    display: flex;
+    min-width: 0;
+    width: 100%;
+    height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 4rem);
+    margin: 0;
+    padding: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0;
+    list-style: none;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .vf-app-shell-mobile-bottom-nav__item {
     display: flex;
     min-width: 0;
-    height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 4rem);
+    height: 100%;
     flex: 1 1 0%;
     align-items: center;
     justify-content: center;
