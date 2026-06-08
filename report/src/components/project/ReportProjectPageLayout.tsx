@@ -54,7 +54,7 @@ export function ReportProjectPageLayout({
     : "mx-auto flex w-full min-w-0 max-w-[90rem] flex-col";
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col max-md:overflow-x-hidden">
+    <div className="report-project-page flex min-h-0 min-w-0 flex-1 flex-col max-md:overflow-x-visible">
       <header className="flex shrink-0 flex-col gap-1 max-md:gap-0">
         <div className="flex flex-col gap-y-1 max-md:min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-2">
           <div className={`${shellPageHeaderRailRowClassName} max-md:h-auto max-md:min-h-0`}>
@@ -93,7 +93,7 @@ export function ReportProjectPageLayout({
               className={[
                 shellPageHeaderRailRowClassName,
                 "shrink-0 justify-end max-md:h-auto max-md:min-h-0",
-                "max-md:w-full max-md:min-w-0 max-md:overflow-x-auto max-md:overscroll-x-contain",
+                "max-md:w-full max-md:min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:overscroll-x-contain",
               ].join(" ")}
             >
               {headerTrailing}

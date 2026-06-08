@@ -68,21 +68,32 @@ type ReportRagStatusDotProps = {
   compact?: boolean;
   /** Muted phrase colour for secondary contexts such as card headers. */
   subtlePhrase?: boolean;
+  /** Override dot size — use em units to scale with surrounding metric text. */
+  dotClassName?: string;
+  className?: string;
 };
+
+const REPORT_RAG_STATUS_DOT_SIZE_CLASS = "size-[0.6875rem]";
+
+function reportRagStatusDotGlyphClassName(sizeClassName: string, ragStatus: RagStatus): string {
+  return `shrink-0 rounded-full ${sizeClassName} ${ragDotClass(ragStatus)}`;
+}
 
 export function ReportRagStatusDot({
   status,
   showPhrase = false,
   compact = false,
   subtlePhrase = false,
+  dotClassName = REPORT_RAG_STATUS_DOT_SIZE_CLASS,
+  className = "",
 }: ReportRagStatusDotProps) {
   const ragStatus = toRagStatus(status);
 
   if (showPhrase) {
     return (
-      <span className="inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <span className={["inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1", className].filter(Boolean).join(" ")}>
         <span
-          className={`size-[0.6875rem] shrink-0 rounded-full ${ragDotClass(ragStatus)}`}
+          className={reportRagStatusDotGlyphClassName(dotClassName, ragStatus)}
           aria-hidden
         />
         <span
@@ -100,12 +111,12 @@ export function ReportRagStatusDot({
 
   return (
     <span
-      className="inline-flex shrink-0 items-center"
+      className={["inline-flex shrink-0 items-center", className].filter(Boolean).join(" ")}
       title={`RAG ${ragWord(ragStatus)}`}
       aria-label={`RAG ${ragWord(ragStatus)}`}
     >
       <span
-        className={`size-[0.6875rem] shrink-0 rounded-full ${ragDotClass(ragStatus)}`}
+        className={reportRagStatusDotGlyphClassName(dotClassName, ragStatus)}
         aria-hidden
       />
     </span>

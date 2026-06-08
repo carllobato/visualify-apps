@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
-import { AppShellOuterCanvas, buildEntitledAppShellCatalogForUser, type AppShellRailAppCatalogEntry } from "@visualify/app-shell";
+import { AppShellOuterCanvas, AppShellPostLoginRevealEffect, buildEntitledAppShellCatalogForUser, type AppShellRailAppCatalogEntry } from "@visualify/app-shell";
 import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 import { hasProductAccess } from "@/lib/auth/hasProductAccess";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
@@ -60,6 +60,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <AppShellOuterCanvas mobileHeaderExpected>
+      <AppShellPostLoginRevealEffect />
       <ReportAppShellRail
         workspaces={workspaceContext.workspaces}
         selectedWorkspaceId={workspaceContext.selectedWorkspaceId}

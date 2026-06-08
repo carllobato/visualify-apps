@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { VISUALIFY_LOGO_DARK_SRC, VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
-import { VISUALIFY_APP_LAUNCH_MOBILE_MEDIA, visualifyAppLaunchCriticalCss } from "./app-launch-splash";
+import {
+  VISUALIFY_APP_LAUNCH_MOBILE_MEDIA,
+  visualifyAppLaunchCriticalCss,
+  visualifyAppLaunchFirstPaintCss,
+} from "./app-launch-splash";
 
 export { VisualifyAppLaunchController } from "./VisualifyAppLaunchController";
 
@@ -9,7 +13,12 @@ export { VisualifyAppLaunchController } from "./VisualifyAppLaunchController";
  * Desktop: white screen + black wordmark. Mobile: black screen + white wordmark.
  */
 export function VisualifyAppLaunchCriticalStyles() {
-  return <style dangerouslySetInnerHTML={{ __html: visualifyAppLaunchCriticalCss }} />;
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: visualifyAppLaunchFirstPaintCss }} />
+      <style dangerouslySetInnerHTML={{ __html: visualifyAppLaunchCriticalCss }} />
+    </>
+  );
 }
 
 export function VisualifyAppLaunchBrandMarkPreload() {

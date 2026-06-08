@@ -1,6 +1,9 @@
 "use client";
 
-import { AppShellHelpFeedbackSupabaseProvider } from "@visualify/app-shell";
+import {
+  AppShellHelpFeedbackSupabaseProvider,
+  AppShellLegacyLoginTransitionCleanup,
+} from "@visualify/app-shell";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 /** Report app-shell providers (Help & Feedback in rail footer). */
@@ -10,6 +13,7 @@ export function ReportAppShellProviders({ children }: { children: React.ReactNod
       source="report-help-modal"
       getSupabaseClient={() => supabaseBrowserClient()}
     >
+      <AppShellLegacyLoginTransitionCleanup />
       {children}
     </AppShellHelpFeedbackSupabaseProvider>
   );

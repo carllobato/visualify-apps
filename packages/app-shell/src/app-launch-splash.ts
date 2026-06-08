@@ -10,6 +10,12 @@ export const VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE = "#000000";
 /** Matches app-shell mobile breakpoint (`app-shell-frame.css`). */
 export const VISUALIFY_APP_LAUNCH_MOBILE_MEDIA = "(max-width: 767px)";
 
+/** Matches desktop — inverse of {@link VISUALIFY_APP_LAUNCH_MOBILE_MEDIA}. */
+export const VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA = "(min-width: 768px)";
+
+/** PWA install splash — black on mobile so iOS/Android hand off without a white flash. */
+export const VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND = VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE;
+
 export const VISUALIFY_APP_LAUNCH_SPLASH_ID = "vf-app-launch-splash";
 
 export const VISUALIFY_APP_LAUNCH_WORDMARK_CLASS = "vf-app-launch-splash__wordmark";
@@ -18,8 +24,8 @@ export const VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS = "vf-app-launch-splash__
 
 export const VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS = "vf-app-launch-splash__wordmark--dark";
 
-/** Wordmark intro delay before fade/slide begins. */
-export const VISUALIFY_APP_LAUNCH_INTRO_DELAY_MS = 320;
+/** Wordmark intro delay before fade/slide begins (0 — canvas is already painted). */
+export const VISUALIFY_APP_LAUNCH_INTRO_DELAY_MS = 0;
 
 /** Wordmark fade/slide duration (sync with CSS). */
 export const VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS = 1100;
@@ -28,17 +34,17 @@ export const VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS = 1100;
 export const VISUALIFY_APP_LAUNCH_INTRO_MS =
   VISUALIFY_APP_LAUNCH_INTRO_DELAY_MS + VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS;
 
-/** Hold full logo on white before morphing into the app. */
-export const VISUALIFY_APP_LAUNCH_HOLD_MS = 950;
+/** Hold full logo before morphing into the app. */
+export const VISUALIFY_APP_LAUNCH_HOLD_MS = 1500;
 
-/** Exit morph duration (sync with CSS). */
-export const VISUALIFY_APP_LAUNCH_EXIT_MS = 520;
+/** Exit morph duration — matches {@link VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS}. */
+export const VISUALIFY_APP_LAUNCH_EXIT_MS = VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS;
 
-/** App content fade/slide-in — overlaps splash exit for a smooth handoff. */
-export const VISUALIFY_APP_LAUNCH_CONTENT_REVEAL_MS = 720;
+/** App content fade/slide-in — locked to splash exit for a crossfade handoff. */
+export const VISUALIFY_APP_LAUNCH_CONTENT_REVEAL_MS = VISUALIFY_APP_LAUNCH_EXIT_MS;
 
-/** Delay before app content begins revealing during splash exit. */
-export const VISUALIFY_APP_LAUNCH_CONTENT_REVEAL_DELAY_MS = 100;
+/** Start content reveal with splash exit (no stagger — crossfade through the overlay). */
+export const VISUALIFY_APP_LAUNCH_CONTENT_REVEAL_DELAY_MS = 0;
 
 export const VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS = "vf-app-launch-active";
 
@@ -48,14 +54,44 @@ export const VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS = "vf-app-launch-complete"
 
 export const VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS = "vf-app-launch-app-root";
 
+/**
+ * Tiny first-paint block — keep in `<head>` before any other stylesheets so home-screen
+ * launches never show the browser default white canvas between the OS splash and our overlay.
+ */
+export const visualifyAppLaunchFirstPaintCss = `
+html,
+body {
+  background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
+}
+
+@media ${VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA} {
+  html,
+  body {
+    background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
+  }
+}
+`.trim();
+
 /** Inlined in `<head>` — must not depend on Tailwind or design-system CSS bundles. */
 export const visualifyAppLaunchCriticalCss = `
 html,
 body {
   margin: 0;
   padding: 0;
-  background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
+  background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
   color: #111111;
+}
+
+@media ${VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA} {
+  html,
+  body {
+    background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
+  }
+}
+
+html.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS},
+html.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS} body {
+  background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
 }
 
 #${VISUALIFY_APP_LAUNCH_SPLASH_ID} {
@@ -65,7 +101,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG};
+  background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
   pointer-events: none;
   will-change: opacity, background-color;
 }
@@ -88,11 +124,11 @@ body {
 }
 
 #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS} {
-  display: block;
+  display: none;
 }
 
 #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS} {
-  display: none;
+  display: block;
 }
 
 @keyframes vf-app-launch-wordmark-in {
@@ -103,21 +139,17 @@ body {
 }
 
 #${VISUALIFY_APP_LAUNCH_SPLASH_ID}.vf-app-launch-splash--exit {
-  animation: vf-app-launch-splash-out ${VISUALIFY_APP_LAUNCH_EXIT_MS}ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: vf-app-launch-splash-out-mobile ${VISUALIFY_APP_LAUNCH_EXIT_MS}ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 #${VISUALIFY_APP_LAUNCH_SPLASH_ID}.vf-app-launch-splash--exit .${VISUALIFY_APP_LAUNCH_WORDMARK_CLASS} {
-  animation: vf-app-launch-wordmark-out ${VISUALIFY_APP_LAUNCH_EXIT_MS}ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: vf-app-launch-wordmark-out ${VISUALIFY_APP_LAUNCH_EXIT_MS}ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes vf-app-launch-splash-out {
   0% {
     opacity: 1;
     background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG};
-  }
-  55% {
-    opacity: 1;
-    background-color: color-mix(in srgb, ${VISUALIFY_APP_LAUNCH_SPLASH_BG} 35%, ${VISUALIFY_APP_LAUNCH_CANVAS} 65%);
   }
   100% {
     opacity: 0;
@@ -130,31 +162,27 @@ body {
     opacity: 1;
     background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
   }
-  55% {
-    opacity: 1;
-    background-color: color-mix(in srgb, ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE} 35%, ${VISUALIFY_APP_LAUNCH_CANVAS} 65%);
-  }
   100% {
     opacity: 0;
     background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
   }
 }
 
-@media ${VISUALIFY_APP_LAUNCH_MOBILE_MEDIA} {
+@media ${VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA} {
   #${VISUALIFY_APP_LAUNCH_SPLASH_ID} {
-    background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
+    background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG};
   }
 
   #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_LIGHT_CLASS} {
-    display: none;
-  }
-
-  #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS} {
     display: block;
   }
 
+  #${VISUALIFY_APP_LAUNCH_SPLASH_ID} .${VISUALIFY_APP_LAUNCH_WORDMARK_DARK_CLASS} {
+    display: none;
+  }
+
   #${VISUALIFY_APP_LAUNCH_SPLASH_ID}.vf-app-launch-splash--exit {
-    animation-name: vf-app-launch-splash-out-mobile;
+    animation-name: vf-app-launch-splash-out;
   }
 }
 
@@ -171,13 +199,21 @@ body {
   }
 }
 
-html.${VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS} .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS},
 .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} {
+  min-height: 100dvh;
+}
+
+/* Pre-complete only — transform/filter/will-change break position:fixed descendants (e.g. mobile bottom nav). */
+html:not(.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS}) .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} {
   opacity: 0;
   transform: translateY(0.75rem);
   filter: blur(5px);
   will-change: opacity, transform, filter;
-  min-height: 100dvh;
+}
+
+html.${VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS},
+html.${VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS} body {
+  background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
 }
 
 html.${VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS} .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} {
@@ -189,6 +225,7 @@ html.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS} .${VISUALIFY_APP_LAUNCH_APP_ROO
   opacity: 1;
   transform: none;
   filter: none;
+  will-change: auto;
 }
 
 @keyframes vf-app-launch-content-in {
@@ -216,11 +253,11 @@ html.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS} .${VISUALIFY_APP_LAUNCH_APP_ROO
     animation-duration: 0.01ms;
   }
 
-  html.${VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS} .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS},
-  .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} {
+  html:not(.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS}) .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} {
     opacity: 1;
     transform: none;
     filter: none;
+    will-change: auto;
   }
 
   html.${VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS} .${VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} {

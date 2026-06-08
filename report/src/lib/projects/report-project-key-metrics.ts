@@ -33,6 +33,14 @@ export const REPORT_PROJECT_KEY_METRICS_PLACEHOLDER: ReportProjectKeyMetrics = {
   customerStatus: "Secured",
 };
 
+/**
+ * Latest overall RAG for a project list row.
+ * Placeholder until report upload supplies per-project metrics.
+ */
+export function resolveReportProjectLatestOverallStatus(_projectId: string): string {
+  return REPORT_PROJECT_KEY_METRICS_PLACEHOLDER.status;
+}
+
 export function toReportProjectKeyMetricRows(
   metrics: ReportProjectKeyMetrics,
 ): ReportProjectKeyMetric[] {

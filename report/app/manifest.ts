@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { VISUALIFY_APP_LAUNCH_CANVAS, VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND } from "@visualify/app-shell";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -7,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Visualify Report — standalone reporting product",
     start_url: "/home",
     display: "standalone",
-    theme_color: "#f7f9fc",
-    background_color: "#ffffff",
+    theme_color: VISUALIFY_APP_LAUNCH_CANVAS,
+    background_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     icons: [
       {
         src: "/icons/icon-192x192.png",

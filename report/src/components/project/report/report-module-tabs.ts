@@ -9,6 +9,16 @@ export const REPORT_MODULE_TABS = [
 
 export type ReportModuleTabId = (typeof REPORT_MODULE_TABS)[number]["id"];
 
+export const REPORT_MODULE_MORE_TAB_IDS = ["upload", "settings"] as const satisfies readonly ReportModuleTabId[];
+
+export const REPORT_MODULE_PRIMARY_TABS = REPORT_MODULE_TABS.filter(
+  (tab) => !(REPORT_MODULE_MORE_TAB_IDS as readonly string[]).includes(tab.id),
+);
+
+export const REPORT_MODULE_MORE_TABS = REPORT_MODULE_TABS.filter((tab) =>
+  (REPORT_MODULE_MORE_TAB_IDS as readonly string[]).includes(tab.id),
+);
+
 export const REPORT_MODULE_TABS_WITH_STAGE_STEPPER = [
   "page-1",
   "project",

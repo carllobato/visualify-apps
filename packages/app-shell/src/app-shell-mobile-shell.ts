@@ -11,7 +11,7 @@ import type {
  *
  * **Desktop:** persistent {@link AppShellRail} + {@link AppShellMainColumn}.
  *
- * **Mobile:** sticky {@link AppShellMobileHeader} + framed scroll region + optional
+ * **Mobile:** {@link AppShellMobileHeader} (hides on scroll down, reappears on scroll up) + framed scroll region + optional
  * {@link AppShellMobileBottomNav}. A bottom-nav item with `kind: "more"` opens the existing
  * rail drawer (`#vf-app-shell-rail`). Safe-area insets and scroll bottom padding are handled by
  * shared CSS when the header and/or bottom nav mount inside {@link AppShellOuterCanvas}.

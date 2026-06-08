@@ -14,6 +14,11 @@ import {
   getReportBudgetVarianceToneClass,
   type ReportProjectBudget,
 } from "@/lib/projects/report-project-budget";
+import {
+  REPORT_OVERVIEW_METRIC_DOT_CLASS,
+  REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
+  REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
+} from "@/lib/projects/report-project-overview-link";
 import { getReportTrendToneClass } from "@/lib/projects/report-project-trend";
 
 type ReportProjectBudgetCardProps = {
@@ -63,8 +68,10 @@ export function ReportProjectBudgetCard({
           </div>
           <div className={BUDGET_ROW_CLASS}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
-            <dd className="m-0 inline-flex items-center gap-2">
-              <ReportRagStatusDot status={ragStatus} />
+            <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
+              <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
+                <ReportRagStatusDot status={ragStatus} dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS} />
+              </span>
               <span className={`font-semibold tabular-nums ${varianceToneClass}`}>
                 {formatReportBudgetVarianceAmount(varianceAmount, currencySymbol)}{" "}
                 ({formatReportBudgetVariancePercent(variancePercent)})
@@ -73,8 +80,10 @@ export function ReportProjectBudgetCard({
           </div>
           <div className={BUDGET_ROW_CLASS}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
-            <dd className="m-0 inline-flex min-w-0 items-center justify-end gap-1.5">
-              <Trend sentiment={budget.trend.sentiment}>{budget.trend.text}</Trend>
+            <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
+              <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
+                <Trend sentiment={budget.trend.sentiment}>{budget.trend.text}</Trend>
+              </span>
               <span className={`font-semibold tabular-nums ${movementToneClass}`}>
                 {formatReportBudgetMovementSinceLastReport(movementSinceLastReport, currencySymbol)}
               </span>

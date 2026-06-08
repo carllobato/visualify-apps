@@ -5,6 +5,7 @@ import {
   VisualifyAppLaunchController,
   VisualifyAppLaunchCriticalStyles,
   visualifyAppDocumentTitle,
+  visualifyAppLaunchViewport,
 } from "@visualify/app-shell";
 import { ReportAppShellProviders } from "@/components/layout/ReportAppShellProviders";
 import "./globals.css";
@@ -19,10 +20,7 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = {
-  themeColor: "#f7f9fc",
-  viewportFit: "cover",
-};
+export const viewport: Viewport = visualifyAppLaunchViewport;
 
 export default function RootLayout({
   children,

@@ -3,6 +3,11 @@ import { ReportProjectOverviewCardHeader } from "@/components/project/report/Rep
 import { ReportProjectOverviewInteractiveCard } from "@/components/project/report/ReportProjectOverviewInteractiveCard";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
 import {
+  REPORT_OVERVIEW_METRIC_DOT_CLASS,
+  REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
+  REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
+} from "@/lib/projects/report-project-overview-link";
+import {
   getReportProjectTopRiskCallout,
   getReportProjectTopRiskRagStatus,
   type ReportProjectTopRisk,
@@ -16,10 +21,7 @@ type ReportProjectTopRisksCardProps = {
 };
 
 const TOP_RISKS_ROW_CLASS =
-  "grid min-w-0 grid-cols-[minmax(0,1fr)_4.5rem_2.75rem] items-center gap-x-2 py-2.5 text-[length:var(--ds-text-sm)] max-md:min-h-0 md:flex md:min-h-10 md:shrink-0 md:justify-between md:gap-4 md:py-0";
-
-const TOP_RISKS_AREA_MOBILE_CLASS =
-  "min-w-0 truncate text-[length:var(--ds-text-xs)] text-[var(--ds-text-muted)] max-md:block md:hidden";
+  "grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 py-2.5 text-[length:var(--ds-text-sm)] max-md:min-h-0 md:flex md:min-h-10 md:shrink-0 md:justify-between md:gap-4 md:py-0";
 
 const TOP_RISKS_CALLOUT_CLASS =
   "pointer-events-none absolute left-0 z-20 hidden w-72 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[length:var(--ds-text-xs)] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover/title:block group-focus-within/title:block";
@@ -73,18 +75,17 @@ export function ReportProjectTopRisksCard({
                     <p className="m-0 mt-1 leading-snug">{callout.body}</p>
                   </div>
                 </span>
-                <span className={TOP_RISKS_AREA_MOBILE_CLASS} title={risk.category}>
-                  {risk.category}
-                </span>
                 <span className={`${TOP_RISKS_CATEGORY_CLASS} max-md:hidden md:inline-flex`} title={risk.category}>
                   {risk.category}
                 </span>
-                <span className="flex shrink-0 items-center justify-end gap-1 md:gap-2">
-                  <ReportRagStatusDot status={getReportProjectTopRiskRagStatus(risk)} />
-                  <Trend
-                    sentiment={risk.trend.sentiment}
-                    className="max-md:scale-75 max-md:opacity-80"
-                  >
+                <span className={`${REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS} shrink-0`}>
+                  <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
+                    <ReportRagStatusDot
+                      status={getReportProjectTopRiskRagStatus(risk)}
+                      dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS}
+                    />
+                  </span>
+                  <Trend sentiment={risk.trend.sentiment} className="max-md:opacity-80">
                     {risk.trend.text}
                   </Trend>
                 </span>

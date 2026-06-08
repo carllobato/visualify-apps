@@ -10,7 +10,10 @@ import {
   getReportModuleStatusTabId,
   type ReportProjectModuleStatusItem,
 } from "@/lib/projects/report-project-module-status";
-import { REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS } from "@/lib/projects/report-project-overview-link";
+import {
+  REPORT_OVERVIEW_MOBILE_CARD_SHADOW_CLASS,
+  REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS,
+} from "@/lib/projects/report-project-overview-link";
 import { useReportSmMinWidth } from "@/lib/useReportSmMinWidth";
 
 type ReportProjectModuleStatusCardProps = {
@@ -49,8 +52,10 @@ const STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS =
 const STATUS_MODULE_TITLE_CLASS =
   "shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]";
 
-const MOBILE_OVERALL_STATUS_HERO_CLASS =
-  "relative col-span-2 flex min-w-0 flex-col rounded-[var(--ds-radius-md)] px-3 py-3";
+const MOBILE_OVERALL_STATUS_HERO_CLASS = [
+  "relative col-span-2 flex min-w-0 flex-col rounded-[var(--ds-radius-md)] px-3 py-3",
+  REPORT_OVERVIEW_MOBILE_CARD_SHADOW_CLASS,
+].join(" ");
 
 const MOBILE_OVERALL_STATUS_VALUE_CLASS =
   "[&>span>span:first-child]:!size-3 [&>span>span:last-child]:!text-[length:1.75rem] [&>span>span:last-child]:!font-bold";
@@ -105,11 +110,11 @@ function MobileSupportingStatusCard({
       ) : null}
       <div className="relative z-10 flex min-h-0 flex-col pointer-events-none">
         <span className={MOBILE_SUPPORTING_STATUS_LABEL_CLASS}>{label}</span>
-        <div className="flex items-center justify-center gap-1 pt-1.5">
+        <div className="flex items-center justify-center gap-1 pt-1.5 text-[length:var(--ds-text-sm)]">
           <div className={MOBILE_SUPPORTING_STATUS_VALUE_CLASS}>
             <ReportRagStatusDot status={status} showPhrase />
           </div>
-          <Trend sentiment={trend.sentiment} className="shrink-0 scale-75 opacity-70" />
+          <Trend sentiment={trend.sentiment} className="shrink-0 opacity-70" />
         </div>
       </div>
     </div>
@@ -142,12 +147,12 @@ function MobileOverallStatusHero({
       onMouseLeave={() => onItemLeave?.()}
     >
       <span className={STATUS_MODULE_TITLE_CLASS}>Overall Status</span>
-      <div className="flex items-center justify-center gap-2 pt-2 pb-0.5">
+      <div className="flex items-center justify-center gap-2 pt-2 pb-0.5 text-[length:1.75rem]">
         <div className={MOBILE_OVERALL_STATUS_VALUE_CLASS}>
           <ReportRagStatusDot status={status} showPhrase />
         </div>
         {trendText ? (
-          <Trend sentiment={trend.sentiment} className="shrink-0 scale-90 opacity-70">
+          <Trend sentiment={trend.sentiment} className="shrink-0 opacity-70">
             {trendText}
           </Trend>
         ) : null}
@@ -222,7 +227,7 @@ function StatusModuleColumn({
       ) : null}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col pointer-events-none">
         <span className={STATUS_MODULE_TITLE_CLASS}>{label}</span>
-        <div className="flex min-h-14 flex-1 items-center justify-center gap-2 pt-2 pb-2">
+        <div className="flex min-h-14 flex-1 items-center justify-center gap-2 pt-2 pb-2 text-2xl">
           <ReportRagStatusDot status={status} showPhrase />
           <Trend sentiment={trend.sentiment}>{trend.text}</Trend>
         </div>
@@ -371,7 +376,7 @@ export function ReportProjectModuleStatusCard({
   return (
     <Card
       className={[
-        "flex h-full w-full min-w-0 flex-col overflow-visible max-md:overflow-hidden",
+        "flex h-full w-full min-w-0 flex-col overflow-visible",
         REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS,
       ].join(" ")}
     >

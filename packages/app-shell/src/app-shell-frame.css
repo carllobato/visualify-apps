@@ -97,6 +97,14 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 }
 
+/*
+ * Route/page wrappers must not shrink below their content height. On mobile the shell pins
+ * document scroll to this node; flex-shrink would clip tall pages without growing scrollHeight.
+ */
+.vf-app-shell-scroll-region > * {
+  flex-shrink: 0;
+}
+
 /* Content-sized main column; footer slot grows to fill the rest of the scroll region (short pages). */
 .vf-app-shell-scroll-main-slot {
   flex: 0 0 auto;
@@ -166,14 +174,42 @@ html:has(.vf-app-shell-outer-canvas) body {
 
 /* ——— Mobile shell polish (below md) — desktop rules above/below this block are unchanged at 768px+ ——— */
 @media (max-width: 767px) {
+  /*
+   * Pin the signed-in shell to the viewport so `.vf-app-shell-scroll-region` owns vertical
+   * scroll. Without this, the document scrolls (html/body overflow) and the mobile header
+   * stays stuck while scroll-region `scrollTop` never changes.
+   */
+  html:has(.vf-app-shell-outer-canvas) {
+    overflow: hidden;
+    height: 100%;
+  }
+
+  html:has(.vf-app-shell-outer-canvas) body {
+    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
   .vf-app-shell-outer-canvas {
     --vf-app-shell-frame-edge-inset: 0px;
-    --vf-app-shell-mobile-bottom-nav-bar-height: 2.75rem;
+    --vf-app-shell-mobile-bottom-nav-bar-height: 2.0625rem;
     --vf-app-shell-mobile-bottom-nav-floating-gap: 0px;
     /* Space below tab labels — home indicator + minimum breathing room (sync with bottom-nav.css). */
-    --vf-app-shell-mobile-bottom-nav-home-inset: calc(env(safe-area-inset-bottom, 0px) + 30px);
-    min-height: 100dvh;
-    min-height: 100svh;
+    --vf-app-shell-mobile-bottom-nav-home-inset: calc(env(safe-area-inset-bottom, 0px) + 22.5px);
+    box-sizing: border-box;
+    height: 100dvh;
+    height: 100svh;
+    max-height: 100dvh;
+    max-height: 100svh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .vf-app-shell-main-column {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 
   .vf-app-shell-frame-gutter {
@@ -197,14 +233,21 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header .vf-app-shell-scroll-region {
-    padding-top: 0.75rem;
+    padding-top: var(--vf-app-shell-mobile-header-offset, 3.375rem);
+    transition: padding-top 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .vf-app-shell-main-column:has(.vf-app-shell-mobile-header--scroll-hidden) .vf-app-shell-scroll-region {
+    padding-top: 0;
   }
 
   .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-bottom-nav .vf-app-shell-scroll-region {
     padding-bottom: calc(
       var(--vf-app-shell-mobile-bottom-nav-bar-height) +
         var(--vf-app-shell-mobile-bottom-nav-home-inset) +
-        var(--vf-app-shell-mobile-bottom-nav-floating-gap) + 0.25rem
+        var(--vf-app-shell-mobile-bottom-nav-floating-gap) +
+        0.375rem + /* `.vf-app-shell-mobile-bottom-nav__list` padding-top — sync with bottom-nav.css */
+        0.25rem
     );
   }
 
@@ -303,27 +346,49 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 }
 
-/* Sticky mobile header — below md only; desktop unchanged. */
+/* Fixed mobile header — below md only; desktop unchanged. */
 .vf-app-shell-mobile-header {
   display: none;
 }
 
 @media (max-width: 767px) {
+  /*
+   * Fixed overlay — reserve space on the scroll region (same surface as content) rather than
+   * main-column padding, which showed as a blank band behind the translucent header chrome.
+   */
+  .vf-app-shell-main-column:has(.vf-app-shell-mobile-header) {
+    --vf-app-shell-mobile-header-offset: 3.375rem;
+  }
+
   .vf-app-shell-mobile-header {
     box-sizing: border-box;
     display: block;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    right: 0;
     z-index: 45;
-    flex-shrink: 0;
     width: 100%;
     padding-top: env(safe-area-inset-top, 0px);
     padding-left: env(safe-area-inset-left, 0px);
     padding-right: env(safe-area-inset-right, 0px);
     border-bottom: 0;
     background-color: color-mix(in oklab, var(--ds-bg) 84%, var(--ds-surface-muted) 16%);
+    /* Diffuse downward lift — no hairline edge (reads as floating chrome, not a border). */
+    box-shadow:
+      0 2px 2px color-mix(in oklab, var(--ds-scrim-ink) 5%, transparent),
+      0 8px 20px -6px color-mix(in oklab, var(--ds-scrim-ink) 7%, transparent);
     -webkit-backdrop-filter: blur(12px) saturate(1.05);
     backdrop-filter: blur(12px) saturate(1.05);
+    transition:
+      transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+      box-shadow 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .vf-app-shell-mobile-header--scroll-hidden {
+    transform: translate3d(0, calc(-1 * var(--vf-app-shell-mobile-header-offset)), 0);
+    box-shadow: none;
+    pointer-events: none;
   }
 
   .vf-app-shell-mobile-header__inner {
@@ -436,6 +501,13 @@ html:has(.vf-app-shell-outer-canvas) body {
     justify-content: flex-end;
     min-height: 2.25rem;
     padding-left: 0.25rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header .vf-app-shell-scroll-region,
+    .vf-app-shell-mobile-header {
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

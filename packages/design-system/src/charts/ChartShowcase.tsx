@@ -766,6 +766,21 @@ function getNearestMultiLinePointIndex(pointerRatio: number, count: number) {
   return nearestIndex;
 }
 
+const CHART_LEGEND_LABEL_CLASS =
+  "text-[length:var(--ds-chart-label-size)] leading-none text-[var(--ds-chart-axis)]";
+
+function ChartSeriesLegendSwatch({ color }: { color: string }) {
+  return (
+    <span
+      aria-hidden
+      className="inline-flex w-3 shrink-0 items-center justify-center"
+      style={{ height: "var(--ds-chart-label-size)" }}
+    >
+      <span className="block h-0.5 w-full rounded-full" style={{ backgroundColor: color }} />
+    </span>
+  );
+}
+
 function MultiLineChartHoverCallout({
   monthLabel,
   rows,
@@ -792,11 +807,8 @@ function MultiLineChartHoverCallout({
         {rows.map((row) => (
           <div key={row.label} className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
-              <span
-                className="truncate text-[length:var(--ds-chart-label-size)] text-[var(--ds-chart-axis)]"
-                style={{ opacity: row.muted ? 0.72 : 0.92 }}
-              >
+              <ChartSeriesLegendSwatch color={row.color} />
+              <span className={`truncate ${CHART_LEGEND_LABEL_CLASS}`} style={{ opacity: row.muted ? 0.72 : 0.92 }}>
                 {row.label}
               </span>
             </div>
@@ -1078,13 +1090,8 @@ export function MultiLineChartPrimitive({
           <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
             {series.map((line, i) => (
               <div key={line.label} className="flex items-center gap-1.5">
-                <span
-                  className="h-0.5 w-3 shrink-0 rounded-full"
-                  style={{ backgroundColor: seriesColor(line, i) }}
-                />
-                <span className="text-[length:var(--ds-chart-label-size)] text-[var(--ds-chart-axis)] opacity-[0.88]">
-                  {line.label}
-                </span>
+                <ChartSeriesLegendSwatch color={seriesColor(line, i)} />
+                <span className={`${CHART_LEGEND_LABEL_CLASS} opacity-[0.88]`}>{line.label}</span>
               </div>
             ))}
           </div>

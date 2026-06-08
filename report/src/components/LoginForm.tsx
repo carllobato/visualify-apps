@@ -14,6 +14,7 @@ import {
   AppLoginSubmitRow,
   appLoginSubmitLabelsForMode,
   AppLoginTrustLine,
+  navigateAfterAppLoginSuccess,
 } from "@visualify/app-shell";
 import { Input, Label } from "@visualify/design-system";
 import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
@@ -69,8 +70,7 @@ export function LoginForm({ serverError }: { serverError?: string }) {
         setError(formatAuthError(signError));
         return;
       }
-      router.push(safeNextPath(searchParams.get("next")));
-      router.refresh();
+      await navigateAfterAppLoginSuccess(router, safeNextPath(searchParams.get("next")));
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -96,8 +96,7 @@ export function LoginForm({ serverError }: { serverError?: string }) {
         return;
       }
       if (data.session) {
-        router.push(safeNextPath(searchParams.get("next")));
-        router.refresh();
+        await navigateAfterAppLoginSuccess(router, safeNextPath(searchParams.get("next")));
         return;
       }
       setSignUpAwaitingEmail(true);

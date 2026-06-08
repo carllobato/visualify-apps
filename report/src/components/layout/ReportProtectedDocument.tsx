@@ -8,6 +8,8 @@ import {
   AppShellFramedSurface,
   AppShellMainColumn,
   AppShellMobileBottomNav,
+  AppShellPageTransition,
+  AppShellRouteTransitionEffect,
   AppShellScrollRegion,
 } from "@visualify/app-shell";
 import { ReportMobileHeader } from "@/components/layout/ReportMobileHeader";
@@ -41,10 +43,13 @@ export function ReportProtectedDocument({
 
   return (
     <AppShellMainColumn>
+      <AppShellRouteTransitionEffect />
       <ReportMobileHeader />
       <AppShellFrameGutter>
         <AppShellFramedSurface>
-          <AppShellScrollRegion>{children}</AppShellScrollRegion>
+          <AppShellScrollRegion>
+            <AppShellPageTransition>{children}</AppShellPageTransition>
+          </AppShellScrollRegion>
         </AppShellFramedSurface>
       </AppShellFrameGutter>
       <AppShellMobileBottomNav items={bottomNavItems} ariaLabel="Report primary" />

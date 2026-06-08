@@ -73,6 +73,32 @@ export type { AppLoginPasswordFieldProps } from "./AppLoginPasswordField";
 export { AppLoginSubmitRow, appLoginSubmitLabelsForMode } from "./AppLoginSubmitRow";
 export type { AppLoginSubmitRowProps } from "./AppLoginSubmitRow";
 
+export { AppShellLegacyLoginTransitionCleanup } from "./AppShellLegacyLoginTransitionCleanup";
+
+export { AppShellPostLoginRevealEffect } from "./AppShellPostLoginRevealEffect";
+
+export {
+  APP_LOGIN_DESTINATION_MAX_WAIT_MS,
+  APP_LOGIN_DESTINATION_POLL_MS,
+  APP_LOGIN_ENTER_DELAY_MS,
+  APP_LOGIN_ENTER_MS,
+  APP_LOGIN_EXIT_HTML_CLASS,
+  APP_LOGIN_EXIT_MS,
+  APP_LOGIN_POST_AUTH_ENTER_COMPLETE_HTML_CLASS,
+  APP_LOGIN_POST_AUTH_ENTER_HTML_CLASS,
+  APP_LOGIN_POST_AUTH_HOLD_HTML_CLASS,
+  APP_LOGIN_WARM_MAX_MS,
+  beginAppLoginExit,
+  clearLegacyAppLoginTransitionState,
+  consumeAppLoginPostAuthEnter,
+  endAppLoginExit,
+  hasAppLoginPostAuthEnter,
+  markAppLoginPostAuthEnter,
+  navigateAfterAppLoginSuccess,
+  waitForPostLoginDestinationShell,
+  warmPostLoginRoute,
+} from "./app-login-transition";
+
 export { AppLoginTrustLine } from "./AppLoginTrustLine";
 export type { AppLoginTrustLineProps } from "./AppLoginTrustLine";
 

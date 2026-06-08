@@ -4,6 +4,31 @@
  */
 
 @media (max-width: 767px) {
+  /*
+   * Project report pages — white document surface; off-white elevated cards sit above it.
+   */
+  .vf-app-shell-outer-canvas:has(.report-project-page) {
+    background-color: var(--ds-surface);
+  }
+
+  .vf-app-shell-outer-canvas:has(.report-project-page) .vf-app-shell-framed-surface,
+  .vf-app-shell-outer-canvas:has(.report-project-page) .vf-app-shell-scroll-region,
+  .report-project-overview-stack {
+    background-color: var(--ds-surface);
+  }
+
+  /* Let card elevation paint on the left/right — avoid clipping from page overflow. */
+  .report-project-page,
+  .report-project-page .report-project-overview-stack {
+    overflow-x: visible;
+  }
+
+  .report-project-overview-stack {
+    box-sizing: border-box;
+    padding-inline: 3px;
+    margin-inline: -3px;
+  }
+
   .report-mobile-header__identity-link {
     color: inherit;
     text-decoration: none;

@@ -21,10 +21,10 @@
     left: max(0.75rem, env(safe-area-inset-left, 0px));
     right: max(0.75rem, env(safe-area-inset-right, 0px));
     bottom: calc(
-      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.75rem) +
+      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem) +
         var(
           --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 30px)
+          calc(env(safe-area-inset-bottom, 0px) + 22.5px)
         ) + 0.5rem
     );
     z-index: 46;

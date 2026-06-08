@@ -60,11 +60,37 @@ export function getReportOverviewNavigateLabel(linkId: ReportOverviewModuleLinkI
 export const REPORT_OVERVIEW_HIGHLIGHT_OUTLINE_CLASS =
   "outline outline-2 outline-offset-0 outline-[var(--ds-primary)]";
 
-export const REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS =
-  "max-md:border max-md:border-[var(--ds-border-subtle)] max-md:shadow-[0_8px_24px_rgba(15,23,42,0.06)]";
+/** Shared value row for overview metric cards — keeps RAG dots and trend arrows aligned. */
+export const REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS =
+  "m-0 inline-flex min-w-0 items-center justify-end gap-2 text-[length:var(--ds-text-sm)] leading-none";
 
-export const REPORT_OVERVIEW_NAVIGABLE_CARD_HOVER_CLASS =
-  "cursor-pointer hover:bg-[var(--ds-surface-tile-hover)] hover:shadow-[var(--ds-elevation-tile-hover)] max-md:hover:shadow-[0_8px_24px_rgba(15,23,42,0.06)]";
+/** Dot size paired with {@link REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS} indicator slots. */
+export const REPORT_OVERVIEW_METRIC_DOT_CLASS = "size-[0.75em]";
+
+/** Em-based slot so variance dots and trend arrows align and scale with row text. */
+export const REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS =
+  "inline-flex w-[1.25em] shrink-0 items-center justify-center self-center";
+
+/**
+ * Mobile tile shadow — diffuse lift only. Skips inset + outer top hairlines from
+ * `--ds-elevation-tile` (double rim when cards use `overflow-visible` for lateral blur).
+ */
+export const REPORT_OVERVIEW_MOBILE_CARD_SHADOW_CLASS =
+  "max-md:!shadow-[0_2px_6px_color-mix(in_oklab,var(--ds-scrim-ink)_5%,transparent),0_8px_24px_color-mix(in_oklab,var(--ds-scrim-ink)_6%,transparent)]";
+
+export const REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS = [
+  "max-md:overflow-visible",
+  "max-md:border max-md:border-transparent",
+  "max-md:!bg-[var(--ds-surface-tile)]",
+  REPORT_OVERVIEW_MOBILE_CARD_SHADOW_CLASS,
+].join(" ");
+
+export const REPORT_OVERVIEW_NAVIGABLE_CARD_HOVER_CLASS = [
+  "cursor-pointer",
+  "hover:bg-[var(--ds-surface-tile-hover)]",
+  "hover:shadow-[var(--ds-elevation-tile-hover)]",
+  "max-md:hover:!shadow-[0_4px_10px_color-mix(in_oklab,var(--ds-scrim-ink)_6.5%,transparent),0_12px_28px_color-mix(in_oklab,var(--ds-scrim-ink)_8%,transparent)]",
+].join(" ");
 
 export function getReportOverviewCardClassName(
   highlighted: boolean,

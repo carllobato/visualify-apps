@@ -12,6 +12,11 @@ import {
   REPORT_PROJECT_SCHEDULE_OVERVIEW_PLACEHOLDER,
   type ReportProjectScheduleOverview,
 } from "@/lib/projects/report-project-schedule";
+import {
+  REPORT_OVERVIEW_METRIC_DOT_CLASS,
+  REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
+  REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
+} from "@/lib/projects/report-project-overview-link";
 import { getReportTrendToneClass } from "@/lib/projects/report-project-trend";
 
 type ReportProjectScheduleCardProps = {
@@ -59,8 +64,10 @@ export function ReportProjectScheduleCard({
           </div>
           <div className={SCHEDULE_ROW_CLASS}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
-            <dd className="m-0 inline-flex items-center gap-2">
-              <ReportRagStatusDot status={ragStatus} />
+            <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
+              <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
+                <ReportRagStatusDot status={ragStatus} dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS} />
+              </span>
               <span className={`font-semibold tabular-nums ${varianceToneClass}`}>
                 {formatReportScheduleVarianceDays(varianceDays)}
               </span>
@@ -68,8 +75,10 @@ export function ReportProjectScheduleCard({
           </div>
           <div className={SCHEDULE_ROW_CLASS}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
-            <dd className="m-0 inline-flex min-w-0 items-center justify-end gap-1.5">
-              <Trend sentiment={schedule.trend.sentiment}>{schedule.trend.text}</Trend>
+            <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
+              <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
+                <Trend sentiment={schedule.trend.sentiment}>{schedule.trend.text}</Trend>
+              </span>
               <span className={`font-semibold tabular-nums ${movementToneClass}`}>
                 {formatReportScheduleVarianceDays(movementSinceLastReport)}
               </span>

@@ -8,6 +8,7 @@ import {
   parseReportProjectStage,
   type ReportProjectStage,
 } from "@/lib/projects/report-project-stages";
+import { resolveReportProjectLatestOverallStatus } from "@/lib/projects/report-project-key-metrics";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { getReportEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
 
@@ -17,6 +18,8 @@ export type ReportProjectListItem = {
   code: string | null;
   location: string | null;
   stage: ReportProjectStage | null;
+  /** Latest overall RAG status from the most recent report period. */
+  overallStatus: string;
   createdAt: string | null;
 };
 
@@ -104,6 +107,7 @@ function mapProjectRow(row: ProjectListRow): ReportProjectListItem {
     code,
     location,
     stage: parseReportProjectStage(row.stage),
+    overallStatus: resolveReportProjectLatestOverallStatus(row.id),
     createdAt: row.created_at ?? null,
   };
 }

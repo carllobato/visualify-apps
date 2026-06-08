@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Badge, Button, Callout } from "@visualify/design-system";
+import { clearAppShellRouteTransitionState, navigateAfterAppShellRouteTransition } from "@visualify/app-shell";
 import "@/components/layout/report-mobile-pages.css";
 import { setReportActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
 import { REPORT_ROUTES } from "@/lib/report-routes";
@@ -36,14 +37,19 @@ export function SelectWorkspacePageContent({
     if (busyId) return;
     setError(null);
     setBusyId(workspaceId);
-    const result = await setReportActiveWorkspaceIdAction(workspaceId);
-    setBusyId(null);
-    if (!result.ok) {
+    try {
+      const result = await setReportActiveWorkspaceIdAction(workspaceId);
+      if (!result.ok) {
+        setBusyId(null);
+        setError("Could not select that workspace. Try again or pick another.");
+        return;
+      }
+      await navigateAfterAppShellRouteTransition(router, returnPath, { replace: true });
+    } catch {
+      setBusyId(null);
+      clearAppShellRouteTransitionState();
       setError("Could not select that workspace. Try again or pick another.");
-      return;
     }
-    router.replace(returnPath);
-    router.refresh();
   }
 
   return (

@@ -13,11 +13,18 @@ export {
   VISUALIFY_APP_LAUNCH_INTRO_DURATION_MS,
   VISUALIFY_APP_LAUNCH_INTRO_MS,
   VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS,
+  VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA,
+  VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
+  VISUALIFY_APP_LAUNCH_MOBILE_MEDIA,
   VISUALIFY_APP_LAUNCH_SPLASH_BG,
+  VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE,
   VISUALIFY_APP_LAUNCH_SPLASH_ID,
   VISUALIFY_APP_LAUNCH_WORDMARK_CLASS,
   visualifyAppLaunchCriticalCss,
+  visualifyAppLaunchFirstPaintCss,
 } from "./app-launch-splash";
+
+export { visualifyAppLaunchViewport } from "./app-launch-viewport";
 
 export {
   VisualifyAppLaunchAppRoot,
@@ -110,6 +117,23 @@ export type {
   AppShellScrollBodyCenteredProps,
   AppShellScrollRegionProps,
 } from "./AppShellFrame";
+
+export {
+  APP_SHELL_ROUTE_FADE_MS,
+  APP_SHELL_ROUTE_HOLD_HTML_CLASS,
+  AppShellPageTransition,
+  AppShellRouteTransitionEffect,
+  beginAppShellRouteTransitionHold,
+  clearAppShellRouteTransitionState,
+  consumeAppShellRouteEnterPending,
+  markAppShellRouteEnterPending,
+  navigateAfterAppShellRouteTransition,
+  revealAppShellRouteDestination,
+} from "./route-transition";
+export type {
+  AppShellPageTransitionProps,
+  AppShellRouteNavigationRouter,
+} from "./route-transition";
 
 export { AppShellLegalFooter } from "./AppShellLegalFooter";
 export type { AppShellLegalFooterProps } from "./AppShellLegalFooter";
@@ -363,6 +387,9 @@ export {
   AppLoginSignUpAwaitingEmailPanel,
   AppLoginSubmitRow,
   appLoginSubmitLabelsForMode,
+  AppShellLegacyLoginTransitionCleanup,
+  AppShellPostLoginRevealEffect,
+  navigateAfterAppLoginSuccess,
   AppLoginTrustLine,
   appLoginBrandMarkCardClassName,
   appLoginBrandMarkRailClassName,

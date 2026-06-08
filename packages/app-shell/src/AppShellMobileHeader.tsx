@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
+import { bindAppShellMobileHeaderScroll } from "./app-shell-mobile-header-scroll";
 import { useAppShellMobileHeaderPresenceRegistration } from "./app-shell-mobile-header-context";
 import { AppShellMobileNavTrigger } from "./AppShellMobileNavTrigger";
 
@@ -28,7 +29,7 @@ export type AppShellMobileHeaderProps = {
 };
 
 /**
- * Sticky mobile top bar (≤767px) with optional menu trigger, app identity, and page context.
+ * Mobile top bar (≤767px) that hides on scroll down and reappears on scroll up.
  * Mount inside {@link AppShellMainColumn} within {@link AppShellOuterCanvas}. Pair with
  * `mobileHeaderExpected` on the canvas. When using {@link AppShellMobileBottomNav} with
  * `kind: "more"`, pass `showMenuTrigger={false}` so the drawer opens from the bottom bar only.
@@ -43,6 +44,7 @@ export function AppShellMobileHeader({
   showMenuTrigger = true,
   className,
 }: AppShellMobileHeaderProps) {
+  const headerRef = useRef<HTMLElement>(null);
   const { registerMobileHeader, unregisterMobileHeader } =
     useAppShellMobileHeaderPresenceRegistration();
 
@@ -51,6 +53,12 @@ export function AppShellMobileHeader({
     return unregisterMobileHeader;
   }, [registerMobileHeader, unregisterMobileHeader]);
 
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    return bindAppShellMobileHeaderScroll(header);
+  }, []);
+
   const contextLabel = pageTitle?.trim() ? pageTitle.trim() : null;
 
   const headerLabel =
@@ -58,6 +66,7 @@ export function AppShellMobileHeader({
 
   return (
     <header
+      ref={headerRef}
       className={mergeClass("vf-app-shell-mobile-header", className)}
       aria-label={headerLabel}
     >

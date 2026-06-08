@@ -74,11 +74,14 @@
 .vf-app-login-card {
   width: 100%;
   overflow: hidden;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--ds-radius-md);
   background-color: var(--ds-surface);
   color: var(--ds-text-primary);
-  box-shadow: var(--ds-elevation-tile);
+  /* Diffuse lift only — skip inset/outer top hairlines from --ds-elevation-tile (double rim). */
+  box-shadow:
+    0 2px 2px color-mix(in oklab, var(--ds-scrim-ink) 5%, transparent),
+    0 6px 16px -6px color-mix(in oklab, var(--ds-scrim-ink) 8.5%, transparent);
 }
 
 .vf-app-login-card-content {
@@ -125,16 +128,21 @@
 .vf-app-login-tabs-row {
   display: flex;
   justify-content: center;
+  border-bottom: 1px solid var(--ds-border);
 }
 
 .vf-app-login-tabs-row--skeleton {
   min-height: 2.5rem;
 }
 
+/* Replaced by `.vf-app-login-tabs-row` border — keeps one baseline under Sign in / Sign up. */
 .vf-app-login-tabs-divider {
-  height: 1px;
-  width: 100%;
-  background-color: var(--ds-border);
+  display: none;
+}
+
+/* Active tab underline overlaps the shared baseline (avoids double line with divider). */
+.vf-app-login-tabs-row [role="tab"][aria-selected="true"]::after {
+  bottom: -1px;
 }
 
 .vf-app-login-form-skeleton {
@@ -172,6 +180,103 @@
   min-width: 0;
   white-space: normal;
   text-align: center;
+}
+
+.vf-app-login-submit-button--pending:disabled {
+  cursor: wait;
+  opacity: 1;
+}
+
+.vf-app-login-submit-button__spinner {
+  flex-shrink: 0;
+  animation: vf-app-login-submit-spin 0.75s linear infinite;
+}
+
+@keyframes vf-app-login-submit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vf-app-login-submit-button__spinner {
+    animation: none;
+  }
+}
+
+/* ——— Post-auth route transition (login fade out → app fade in) ——— */
+
+html.vf-app-login-post-auth-hold {
+  background-color: var(--ds-canvas);
+}
+
+html.vf-app-login-post-auth-hold
+  .vf-app-shell-outer-canvas:not(.vf-app-login-framed-shell) {
+  visibility: hidden;
+}
+
+html.vf-app-login-exiting .vf-app-login-framed-shell {
+  pointer-events: none;
+  animation: vf-app-login-exit 480ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+html.vf-app-login-post-auth-enter
+  .vf-app-shell-outer-canvas:not(.vf-app-login-framed-shell) {
+  visibility: visible;
+  opacity: 0;
+  transform: translateY(0.75rem);
+  filter: blur(5px);
+  will-change: opacity, transform, filter;
+  animation: vf-app-login-post-auth-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) 60ms forwards;
+}
+
+html.vf-app-login-post-auth-enter-complete
+  .vf-app-shell-outer-canvas:not(.vf-app-login-framed-shell) {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  will-change: auto;
+}
+
+@keyframes vf-app-login-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.625rem);
+    filter: blur(4px);
+  }
+}
+
+@keyframes vf-app-login-post-auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.vf-app-login-exiting .vf-app-login-framed-shell,
+  html.vf-app-login-post-auth-hold
+    .vf-app-shell-outer-canvas:not(.vf-app-login-framed-shell),
+  html.vf-app-login-post-auth-enter
+    .vf-app-shell-outer-canvas:not(.vf-app-login-framed-shell) {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+    will-change: auto;
+    visibility: visible;
+  }
 }
 
 .vf-app-login-trust-line {

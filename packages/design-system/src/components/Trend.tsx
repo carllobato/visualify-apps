@@ -29,13 +29,13 @@ const arrowLabel: Record<TrendSentiment, string> = {
 };
 
 function TrendArrowIcon({ sentiment }: { sentiment: TrendSentiment }) {
-  const className = `size-3.5 shrink-0 ${arrowColorClass[sentiment]}`;
+  const className = `block size-[1em] shrink-0 ${arrowColorClass[sentiment]}`;
 
   if (sentiment === "unfavorable") {
     return (
       <svg viewBox="0 0 12 12" className={className} aria-hidden>
-        <path fill="currentColor" d="M6 2.5 9.5 8H2.5L6 2.5Z" />
-        <rect x="5.25" y="8" width="1.5" height="2.5" rx="0.25" fill="currentColor" />
+        <path fill="currentColor" d="M6 2.75 9.25 7.25H2.75L6 2.75Z" />
+        <rect x="5.35" y="7.25" width="1.3" height="2" rx="0.2" fill="currentColor" />
       </svg>
     );
   }
@@ -43,8 +43,8 @@ function TrendArrowIcon({ sentiment }: { sentiment: TrendSentiment }) {
   if (sentiment === "favorable") {
     return (
       <svg viewBox="0 0 12 12" className={className} aria-hidden>
-        <path fill="currentColor" d="M6 9.5 2.5 4h7L6 9.5Z" />
-        <rect x="5.25" y="1.5" width="1.5" height="2.5" rx="0.25" fill="currentColor" />
+        <rect x="5.35" y="2.75" width="1.3" height="2" rx="0.2" fill="currentColor" />
+        <path fill="currentColor" d="M6 9.25 2.75 4.75h6.5L6 9.25Z" />
       </svg>
     );
   }
@@ -68,7 +68,12 @@ export function Trend({ children, sentiment = "neutral", className = "" }: Trend
 
   return (
     <span
-      className={["inline-flex shrink-0 align-middle", className].filter(Boolean).join(" ")}
+      className={[
+        "inline-flex shrink-0 items-center justify-center leading-none [font-size:inherit]",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-label={description ? `${arrowLabel[sentiment]}: ${description}` : arrowLabel[sentiment]}
     >
       <TrendArrowIcon sentiment={sentiment} />
