@@ -7,9 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "OS",
     description: "Visualify OS — personal operating system",
     start_url: "/today",
-    // Runs as a normal Safari web page (not a standalone home-screen app) to avoid the iOS
-    // standalone viewport bug that mis-resolves fixed/viewport-unit layout (the "chin gap").
-    display: "browser",
+    // Standalone home-screen app so content renders edge-to-edge behind the notch/status bar.
+    display: "standalone",
     theme_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     background_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     icons: [

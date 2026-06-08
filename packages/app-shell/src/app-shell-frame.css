@@ -251,6 +251,7 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   .vf-app-shell-main-column:has(.vf-app-shell-mobile-header--scroll-hidden) .vf-app-shell-scroll-region {
+    /* Header hidden on scroll-down — content scrolls up behind the status bar / notch (immersive). */
     padding-top: 0;
   }
 

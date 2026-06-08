@@ -4,12 +4,18 @@
  */
 
 @media (max-width: 767px) {
-  .report-mobile-outer-canvas:has(.report-project-page) {
-    background-color: var(--ds-surface);
-  }
-
-  .report-mobile-outer-canvas:has(.report-project-page) .vf-app-shell-framed-surface,
-  .report-mobile-outer-canvas:has(.report-project-page) .vf-app-shell-scroll-region,
+  /*
+   * Unify the whole mobile background chain to the content surface so no desktop canvas / muted
+   * shell colour shows through behind or below page content — including the launch app-root and
+   * any area the flex chain doesn't fully cover. Applies to every Report mobile page, not just
+   * the single-project view (the Projects list is not a `.report-project-page`).
+   */
+  .vf-app-launch-app-root:has(.report-mobile-outer-canvas),
+  .report-mobile-outer-canvas,
+  .report-mobile-outer-canvas .vf-app-shell-main-column,
+  .report-mobile-outer-canvas .vf-app-shell-frame-gutter,
+  .report-mobile-outer-canvas .vf-app-shell-framed-surface,
+  .report-mobile-outer-canvas .vf-app-shell-scroll-region,
   .report-project-overview-stack {
     background-color: var(--ds-surface);
   }

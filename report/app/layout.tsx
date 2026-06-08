@@ -13,11 +13,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: visualifyAppDocumentTitle("Report"),
   description: "Visualify Report — standalone reporting product",
-  // capable:false keeps iOS "Add to Home Screen" launching in Safari (with toolbar) rather than
-  // standalone full-screen, which avoids the standalone-only viewport/layout bugs.
+  // Standalone full-screen with a translucent status bar so content scrolls behind the notch.
   appleWebApp: {
-    capable: false,
+    capable: true,
     title: "Report",
+    statusBarStyle: "black-translucent",
   },
 };
 

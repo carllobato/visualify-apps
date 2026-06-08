@@ -8,6 +8,14 @@
 }
 
 @media (max-width: 767px) {
+  /*
+   * Breathing room above the page title so list pages (Projects, Workspace select) don't sit
+   * flush under the fixed header — matches the single-project page's `header` top padding.
+   */
+  .report-mobile-page {
+    padding-top: 0.75rem;
+  }
+
   .report-project-stage-pill {
     padding: 0 0.3125rem;
     font-size: 10px;
