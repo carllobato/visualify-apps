@@ -29,10 +29,6 @@
     padding-bottom: 1.25rem;
   }
 
-  .report-mobile-outer-canvas.vf-app-shell-has-mobile-bottom-nav .vf-app-shell-scroll-region {
-    padding-bottom: calc(var(--vf-app-shell-mobile-bottom-nav-total-height) + 0.75rem);
-  }
-
   .report-project-overview-stack {
     box-sizing: border-box;
     padding-inline: 3px;

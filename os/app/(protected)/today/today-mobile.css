@@ -442,13 +442,8 @@
   }
 
   .os-today-page {
-    --os-today-bottom-clearance: calc(
-      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.75rem) +
-        var(
-          --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 8px)
-        ) + var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0px) + 0.25rem
-    );
+    /* Nav is in-flow below the scroll region (handles its own safe area) — only a small gap here. */
+    --os-today-bottom-clearance: 0.25rem;
 
     box-sizing: border-box;
     display: flex;
