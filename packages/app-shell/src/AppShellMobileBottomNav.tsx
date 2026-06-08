@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useLayoutEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import "./app-shell-mobile-bottom-nav.css";
 import { useAppShellMobileBottomNavPresenceRegistration } from "./app-shell-mobile-bottom-nav-context";
 import { useAppShellRailMobileNav } from "./app-shell-rail-mobile-context";
@@ -141,10 +142,11 @@ function BottomNavMoreTab({
 }
 
 /**
- * Mobile-only bottom tab bar (≤767px). Rendered in-flow as the last flex child of
- * {@link AppShellMainColumn} so it docks at the bottom of the full-height column — no
- * `position: fixed`/`absolute`, which iOS standalone PWAs mis-anchor to the toolbar-reserved
- * viewport. Mount it after {@link AppShellFrameGutter} inside {@link AppShellMainColumn}.
+ * Mobile-only bottom tab bar (≤767px). Rendered in `document.body` so `position: fixed` is not
+ * broken by transforms on {@link VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS} during launch (PWA-safe).
+ *
+ * Mount inside {@link AppShellMainColumn} within {@link AppShellOuterCanvas} for presence
+ * registration. Pair with {@link AppShellMobileBottomNavScrollSpacer} in the scroll region.
  */
 export function AppShellMobileBottomNav({
   items,
@@ -154,13 +156,18 @@ export function AppShellMobileBottomNav({
   const { registerMobileBottomNav, unregisterMobileBottomNav } =
     useAppShellMobileBottomNavPresenceRegistration();
   const { mobileOpen, setMobileOpen, closeMobile } = useAppShellRailMobileNav();
+  const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
     registerMobileBottomNav();
     return unregisterMobileBottomNav;
   }, [registerMobileBottomNav, unregisterMobileBottomNav]);
 
-  return (
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const nav = (
     <nav
       className={mergeClass("vf-app-shell-mobile-bottom-nav", className)}
       aria-label={ariaLabel}
@@ -198,4 +205,10 @@ export function AppShellMobileBottomNav({
       </ul>
     </nav>
   );
+
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(nav, document.body);
 }

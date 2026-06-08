@@ -12,21 +12,22 @@
   .vf-app-shell-mobile-bottom-nav {
     box-sizing: border-box;
     /*
-     * In-flow: last flex child of `.vf-app-shell-main-column` (full-height column). Docks at the
-     * column bottom = real screen bottom with no `position: fixed`/`absolute`, which iOS standalone
-     * PWAs mis-anchor to the toolbar-reserved viewport. `position: relative` + z-index lets the
-     * upward chrome shadow sit over the scrolling content above.
+     * Portaled into <body> (position: relative, height: 100% = real screen). Absolute — not fixed —
+     * so iOS standalone PWAs anchor it to the true screen bottom instead of the smaller
+     * toolbar-reserved viewport that breaks `position: fixed; bottom: 0`.
      */
-    position: relative;
+    position: absolute;
     z-index: 45;
-    flex: 0 0 auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: block;
-    width: 100%;
     padding: 0 env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
     border: 0;
     border-radius: 0;
     background: transparent;
     box-shadow: none;
+    pointer-events: none;
     -webkit-tap-highlight-color: transparent;
   }
 

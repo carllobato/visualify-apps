@@ -56,14 +56,6 @@ export function AppShellMobileMoreSheet({
     return null;
   }
 
-  /*
-   * Portal into the shell root (position: fixed; inset: 0 = full physical screen) so the drop-up
-   * anchors to the true screen bottom — same reference as the in-flow bottom nav. Falls back to
-   * <body> when no shell is mounted.
-   */
-  const portalTarget =
-    document.querySelector<HTMLElement>(".vf-app-shell-outer-canvas") ?? document.body;
-
   return createPortal(
     <>
       <button
@@ -76,6 +68,6 @@ export function AppShellMobileMoreSheet({
         {children}
       </div>
     </>,
-    portalTarget,
+    document.body,
   );
 }
