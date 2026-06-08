@@ -1,8 +1,7 @@
 /**
  * Mobile bottom tab bar (below md only).
  * Background matches `.vf-app-shell-mobile-header` for a consistent shell chrome band.
- * Safe-area clearance is on the transparent wrapper; the grey list is the compact tab row.
- * Scroll inset pairs with `.vf-app-shell-has-mobile-bottom-nav` in `app-shell-frame.css`.
+ * Scroll reserve uses `--vf-app-shell-mobile-bottom-nav-total-height` in `app-shell-frame.css`.
  */
 
 .vf-app-shell-mobile-bottom-nav {
@@ -18,17 +17,7 @@
     right: 0;
     bottom: 0;
     display: block;
-    height: auto;
-    min-height: 0;
-    /*
-     * Home-indicator clearance lives on the transparent wrapper so the grey tab bar
-     * stays compact; scroll inset uses the same `--vf-app-shell-mobile-bottom-nav-home-inset` token.
-     */
-    padding: 0 env(safe-area-inset-right, 0px)
-      var(
-        --vf-app-shell-mobile-bottom-nav-home-inset,
-        calc(env(safe-area-inset-bottom, 0px) + 8px)
-      )
+    padding: 0 env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px)
       env(safe-area-inset-left, 0px);
     border: 0;
     border-radius: 0;
@@ -38,21 +27,20 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-
   .vf-app-shell-mobile-bottom-nav__list {
     position: relative;
     z-index: 1;
     box-sizing: border-box;
     display: flex;
     min-width: 0;
-    height: auto;
-    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem);
+    width: 100%;
+    height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 4rem);
+    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 4rem);
+    margin: 0;
+    padding: 0;
     align-items: center;
     justify-content: space-between;
     gap: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0.375rem 0 0;
     list-style: none;
     border: 0;
     border-radius: 0;
@@ -78,7 +66,7 @@
   .vf-app-shell-mobile-bottom-nav__item {
     display: flex;
     min-width: 0;
-    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem);
+    height: 100%;
     flex: 1 1 0%;
     align-items: center;
     justify-content: center;
@@ -90,7 +78,7 @@
     display: flex;
     width: 100%;
     min-width: 0;
-    min-height: 1.96875rem;
+    min-height: 2.75rem;
     flex-direction: column;
     align-items: center;
     justify-content: center;
