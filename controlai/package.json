@@ -1,6 +1,6 @@
 {
   "name": "visualify-controlai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Visualify ControlAI — control and governance product app.",
   "type": "module",
