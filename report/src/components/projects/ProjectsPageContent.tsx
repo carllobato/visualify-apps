@@ -40,7 +40,7 @@ export function ProjectsPageContent({
   }
 
   return (
-    <main className="report-mobile-page mx-auto flex w-full max-w-2xl flex-col gap-6 py-8 max-md:mx-0 max-md:max-w-none max-md:py-0">
+    <main className="report-mobile-page mx-auto flex w-full max-w-2xl flex-col gap-6 md:py-8 max-md:mx-0 max-md:max-w-none">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 flex-col gap-1">
           <h1 className="text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">

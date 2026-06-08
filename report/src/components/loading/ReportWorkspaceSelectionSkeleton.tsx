@@ -10,7 +10,7 @@ export function ReportWorkspaceSelectionSkeleton() {
   return (
     <ReportSkeletonPage
       label="Loading workspaces"
-      className="report-mobile-page mx-auto flex w-full max-w-lg flex-col gap-4 py-8 max-md:mx-0 max-md:max-w-none max-md:py-0"
+      className="report-mobile-page mx-auto flex w-full max-w-lg flex-col gap-4 md:py-8 max-md:mx-0 max-md:max-w-none"
     >
       <div className="flex flex-col gap-2">
         <ReportSkeletonBar className="h-6 w-40 max-w-full" />

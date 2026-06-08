@@ -107,7 +107,7 @@ export function ReportProjectPageLayout({
         />
       </header>
 
-      <div className="min-h-0 min-w-0 flex-1 pt-1 pb-4 max-md:pt-0">
+      <div className="report-project-page-body min-h-0 min-w-0 flex-1 md:pt-1">
         <div className={contentClassName}>{children}</div>
       </div>
     </div>

@@ -14,6 +14,7 @@ import {
 } from "@visualify/app-shell";
 import { ReportMobileHeader } from "@/components/layout/ReportMobileHeader";
 import { ReportMobileMoreSheet } from "@/components/layout/ReportMobileMoreSheet";
+import "./report-mobile-shell.css";
 import { buildReportMobileBottomNavItems } from "@/lib/report-mobile-bottom-nav";
 import { useReportLastProjectIdForWorkspace } from "@/lib/projects/useReportLastProjectIdForWorkspace";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";

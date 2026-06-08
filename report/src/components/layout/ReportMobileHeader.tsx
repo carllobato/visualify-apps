@@ -7,7 +7,6 @@ import {
   appShellMobileShellHeaderClassName,
 } from "@visualify/app-shell";
 import { REPORT_ROUTES } from "@/lib/report-routes";
-import "./report-mobile-shell.css";
 
 /**
  * Report mobile top bar — brand mark + "Report" linking to `/home`, no route page title.

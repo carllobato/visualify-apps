@@ -56,7 +56,7 @@ export function ReportProjectReportDashboardSkeleton() {
         <div className="h-px w-full shrink-0 bg-[var(--ds-border-subtle)]" role="separator" aria-hidden />
       </header>
 
-      <div className="min-h-0 min-w-0 flex-1 pt-1 pb-4 max-md:pt-0">
+      <div className="report-project-page-body min-h-0 min-w-0 flex-1 md:pt-1 md:pb-4">
         <div className="flex w-full min-w-0 flex-col">
           <div className="min-w-0 w-full pt-4 max-md:overflow-x-visible max-md:pt-2">
             <div className="report-project-overview-stack flex min-w-0 w-full flex-col gap-3">
