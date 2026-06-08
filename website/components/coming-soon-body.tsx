@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { ContactForm } from "@/components/contact-form";
 import { EarlyAccessForm } from "@/components/early-access-form";
 import { LiquidDialog } from "@/components/liquid-dialog";
+import { VisualifyWordmark } from "@/components/visualify-wordmark";
 
 type Dialog = "none" | "early-access" | "early-access-success" | "contact";
 
@@ -17,9 +18,7 @@ export function ComingSoonBody() {
   return (
     <>
       <header className="relative z-20 flex h-14 items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-        <span className="text-[17px] font-semibold tracking-tight text-foreground sm:text-[18px]">
-          Visualify
-        </span>
+        <VisualifyWordmark height={32} />
       </header>
 
       <div className="relative z-10 flex min-h-[calc(100svh-3.5rem)] flex-col sm:min-h-[calc(100svh-4rem)]">
@@ -66,7 +65,8 @@ export function ComingSoonBody() {
           </div>
         </main>
 
-        <footer className="relative z-10 px-4 pb-10 pt-4 text-center sm:px-6 lg:px-8">
+        <footer className="relative z-10 flex flex-col items-center gap-3 px-4 pb-10 pt-4 text-center sm:px-6 lg:px-8">
+          <VisualifyWordmark height={22} className="opacity-80" />
           <p className="text-[12px] text-muted">© 2026 Visualify. All rights reserved.</p>
         </footer>
       </div>

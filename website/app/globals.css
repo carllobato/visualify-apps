@@ -138,3 +138,37 @@ html.dark .email-preview-root {
     transform: none !important;
   }
 }
+
+/* Visualify brand assets — theme-aware wordmark (html.dark) and inverted symbol on dark surfaces */
+.vf-visualify-brand-mark {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+html.dark .vf-visualify-brand-mark {
+  filter: invert(1);
+}
+
+.vf-visualify-wordmark img {
+  width: auto;
+  max-width: 100%;
+  height: var(--vf-wordmark-height, 1.75rem);
+  object-fit: contain;
+}
+
+.vf-visualify-wordmark__light {
+  display: block;
+}
+
+.vf-visualify-wordmark__dark {
+  display: none;
+}
+
+html.dark .vf-visualify-wordmark__light {
+  display: none;
+}
+
+html.dark .vf-visualify-wordmark__dark {
+  display: block;
+}

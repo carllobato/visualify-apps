@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headerSignInClass, RISKAI_LOGIN_URL } from "@/components/riskai-marketing/constants";
+import { VisualifyWordmark } from "@/components/visualify-wordmark";
 
 export function MarketingHeader() {
   return (
@@ -13,9 +14,15 @@ export function MarketingHeader() {
       <div className="flex min-w-0 items-center gap-[var(--ds-space-3)]">
         <Link
           href="/"
-          className="inline-flex h-9 items-center px-[var(--ds-space-2)] text-[length:var(--ds-text-lg)] font-medium leading-none tracking-tight text-[var(--ds-text-primary)] no-underline transition-colors hover:text-[var(--ds-text-secondary)]"
+          className="inline-flex h-9 min-w-0 items-center gap-[var(--ds-space-2)] px-[var(--ds-space-2)] no-underline transition-opacity hover:opacity-80"
         >
-          Visualify <span className="mx-1.5 font-normal">|</span> RiskAI
+          <VisualifyWordmark height={26} />
+          <span className="shrink-0 text-[length:var(--ds-text-lg)] font-medium leading-none tracking-tight text-[var(--ds-text-muted)]">
+            |
+          </span>
+          <span className="shrink-0 text-[length:var(--ds-text-lg)] font-medium leading-none tracking-tight text-[var(--ds-text-primary)]">
+            RiskAI
+          </span>
         </Link>
       </div>
       <div className="flex items-center gap-[var(--ds-space-2)]">
