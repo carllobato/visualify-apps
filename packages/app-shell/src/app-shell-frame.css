@@ -189,14 +189,19 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   html:has(.vf-app-shell-outer-canvas) body {
-    /*
-     * Positioned + full-height so the portaled More sheet (position: absolute) anchors to the real
-     * screen bottom. iOS standalone PWAs mis-bind `position: fixed; bottom` to the small
-     * (toolbar-reserved) viewport; the `height: 100%` chain fills the true screen instead.
-     */
-    position: relative;
     min-height: 100%;
     height: 100%;
+    overflow: hidden;
+  }
+
+  /*
+   * The launch wrapper transforms during reveal, which makes its descendant `position: fixed`
+   * shell root bind to this box. Pin it to the real screen too so the shell stays full-bleed
+   * through the reveal animation (no chin-gap snap when the transform is finally removed).
+   */
+  html:has(.vf-app-shell-outer-canvas) .vf-app-launch-app-root {
+    position: fixed;
+    inset: 0;
     overflow: hidden;
   }
 
@@ -216,14 +221,13 @@ html:has(.vf-app-shell-outer-canvas) body {
     --vf-app-shell-mobile-bottom-nav-floating-gap: 0px;
     box-sizing: border-box;
     /*
-     * Viewport-unit height fills the screen without needing a definite-height ancestor
-     * (`.vf-app-launch-app-root` only sets `min-height`, so `height: 100%` would collapse).
-     * The main column then chains `height: 100%` off this to dock the in-flow bottom nav.
+     * `position: fixed; inset: 0` is the only thing that fills the TRUE physical screen in an iOS
+     * standalone PWA. `100dvh`/`100svh`/`height: 100%` all resolve ~`env(safe-area-inset-bottom)`
+     * short (they exclude the home-indicator region), which leaves the "chin gap" below the nav.
+     * Fixed inset binds to the real initial containing block, which includes that region.
      */
-    height: 100dvh;
-    height: 100svh;
-    max-height: 100dvh;
-    max-height: 100svh;
+    position: fixed;
+    inset: 0;
     min-height: 0;
     overflow: hidden;
   }
