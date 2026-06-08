@@ -5,9 +5,8 @@
 
 @media (max-width: 767px) {
   /*
-   * Backdrop + sheet are portaled into <body> (position: relative, height: 100% = real screen).
-   * Absolute — not fixed — so iOS standalone PWAs anchor them to the true screen bottom rather
-   * than the smaller toolbar-reserved viewport that breaks `position: fixed; bottom`.
+   * Portaled into <body> (position: relative, height: 100dvh = visible viewport). Absolute — not
+   * fixed — so they anchor to <body> and are immune to launch-animation ancestor transforms.
    */
   .vf-app-shell-mobile-more-sheet__backdrop {
     position: absolute;

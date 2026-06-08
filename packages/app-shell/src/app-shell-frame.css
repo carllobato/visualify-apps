@@ -180,8 +180,15 @@ html:has(.vf-app-shell-outer-canvas) body {
    * stays stuck while scroll-region `scrollTop` never changes.
    */
   html:has(.vf-app-shell-outer-canvas) {
+    /*
+     * Pin the shell to the *visible* viewport (100dvh) so `.vf-app-shell-scroll-region` owns
+     * vertical scroll and its bottom stays on-screen. We use dvh — not 100%/svh — because the
+     * apps now run in a normal Safari tab where `height: 100%` resolves to the taller layout
+     * viewport (toolbar excluded), oversizing the shell so content fit inside and finger
+     * scrolling did nothing. dvh tracks the visible area as the toolbar shows/hides.
+     */
     overflow: hidden;
-    height: 100%;
+    height: 100dvh;
     --vf-app-shell-mobile-bottom-nav-bar-height: 3.0625rem;
     --vf-app-shell-mobile-bottom-nav-total-height: calc(
       var(--vf-app-shell-mobile-bottom-nav-bar-height) + env(safe-area-inset-bottom, 0px)
@@ -189,24 +196,14 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   html:has(.vf-app-shell-outer-canvas) body {
-    /*
-     * Positioned + full-height so the portaled bottom nav (position: absolute) anchors to the
-     * real screen bottom. iOS standalone PWAs mis-bind `position: fixed; bottom: 0` to the small
-     * (toolbar-reserved) viewport, leaving a gap; the `height: 100%` chain fills the true screen.
-     */
+    /* Positioned anchor for the portaled bottom nav + sheets; matches the pinned shell height. */
     position: relative;
-    min-height: 100%;
-    height: 100%;
+    height: 100dvh;
     overflow: hidden;
   }
 
   .vf-app-shell-outer-canvas {
     --vf-app-shell-frame-edge-inset: 0px;
-    /*
-     * Tab row height (scroll reserve) + full fixed nav footprint (tab row + home indicator).
-     * Scroll uses bar-height only — mirrors the header: content may pass under translucent
-     * safe-area chrome; total-height positions sheets above the full fixed nav.
-     */
     --vf-app-shell-mobile-bottom-nav-bar-height: 3.0625rem;
     --vf-app-shell-mobile-bottom-nav-total-height: calc(
       var(--vf-app-shell-mobile-bottom-nav-bar-height) + env(safe-area-inset-bottom, 0px)
@@ -215,21 +212,15 @@ html:has(.vf-app-shell-outer-canvas) body {
     --vf-app-shell-mobile-bottom-nav-home-inset: env(safe-area-inset-bottom, 0px);
     --vf-app-shell-mobile-bottom-nav-floating-gap: 0px;
     box-sizing: border-box;
-    /*
-     * Fill the parent (html/body = 100% = real screen). The `%` chain is reliable in iOS
-     * standalone where `svh`/`dvh` can resolve to the smaller toolbar-reserved viewport.
-     */
     height: 100dvh;
-    height: 100%;
     max-height: 100dvh;
-    max-height: 100%;
     min-height: 0;
     overflow: hidden;
   }
 
   .vf-app-shell-main-column {
-    height: 100%;
-    max-height: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
     min-height: 0;
     overflow: hidden;
   }

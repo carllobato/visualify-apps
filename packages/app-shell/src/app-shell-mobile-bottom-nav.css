@@ -12,9 +12,9 @@
   .vf-app-shell-mobile-bottom-nav {
     box-sizing: border-box;
     /*
-     * Portaled into <body> (position: relative, height: 100% = real screen). Absolute — not fixed —
-     * so iOS standalone PWAs anchor it to the true screen bottom instead of the smaller
-     * toolbar-reserved viewport that breaks `position: fixed; bottom: 0`.
+     * Portaled into <body> (position: relative, height: 100dvh = visible viewport). Absolute —
+     * not fixed — so it anchors to <body> and is immune to transforms on launch-animation
+     * ancestors that would otherwise re-base a fixed element. Sits at the visible viewport bottom.
      */
     position: absolute;
     z-index: 45;
