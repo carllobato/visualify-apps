@@ -1,6 +1,7 @@
 /**
  * Report protected routes — mobile shell polish (max-width 767px).
- * Pairs with {@link ReportMobileHeader}; does not alter app-shell header colours or spacing.
+ * Mirrors the OS mobile pattern: zero shell scroll insets, page owns clearance.
+ * Pairs with {@link ReportMobileHeader}; does not alter app-shell header colours.
  */
 
 @media (max-width: 767px) {
@@ -27,6 +28,64 @@
     box-sizing: border-box;
     padding-inline: 3px;
     margin-inline: -3px;
+  }
+
+  /*
+   * OS pattern — shell scroll region does not reserve header/nav space; each page clears
+   * fixed chrome itself. Descendant selectors required because Report wraps routes in
+   * {@link AppShellPageTransition} (OS mounts page roots as direct scroll children).
+   */
+  .vf-app-shell-outer-canvas
+    .vf-app-shell-scroll-region:has(.report-project-page, .report-mobile-page) {
+    padding: 0;
+    background-color: var(--ds-surface);
+  }
+
+  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header
+    .vf-app-shell-scroll-region:has(.report-project-page, .report-mobile-page) {
+    padding-top: 0;
+  }
+
+  .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-bottom-nav
+    .vf-app-shell-scroll-region:has(.report-project-page, .report-mobile-page) {
+    padding-bottom: 0;
+  }
+
+  .vf-app-shell-scroll-region:has(.report-project-page, .report-mobile-page)
+    > .vf-app-shell-page-transition {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 100%;
+    width: 100%;
+  }
+
+  .report-project-page,
+  .report-mobile-page {
+    --report-mobile-bottom-clearance: calc(
+      var(
+          --vf-app-shell-mobile-bottom-nav-total-height,
+          calc(3.0625rem + env(safe-area-inset-bottom, 0px))
+        ) + 0.375rem
+    );
+
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    min-height: 100%;
+    margin: 0;
+    padding-top: var(--vf-app-shell-mobile-header-offset, 3.375rem);
+    padding-bottom: var(--report-mobile-bottom-clearance);
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+
+  .vf-app-shell-main-column:has(.vf-app-shell-mobile-header--scroll-hidden) .report-project-page,
+  .vf-app-shell-main-column:has(.vf-app-shell-mobile-header--scroll-hidden) .report-mobile-page {
+    padding-top: 0;
   }
 
   .report-mobile-header__identity-link {

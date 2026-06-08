@@ -46,7 +46,7 @@ export function SelectWorkspacePageContent({
   }
 
   return (
-    <main className="report-mobile-page mx-auto flex w-full max-w-lg flex-col gap-4 py-8">
+    <main className="report-mobile-page mx-auto flex w-full max-w-lg flex-col gap-4 py-8 max-md:mx-0 max-md:max-w-none max-md:py-0">
       <div className="flex flex-col gap-1">
         <h1 className="text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">
           {variant === "home" ? "Select workspace" : "Select a workspace"}

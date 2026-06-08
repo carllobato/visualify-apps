@@ -35,7 +35,7 @@ export function ReportProjectsListSkeleton() {
   return (
     <ReportSkeletonPage
       label="Loading projects"
-      className="report-mobile-page mx-auto flex w-full max-w-2xl flex-col gap-6 py-8"
+      className="report-mobile-page mx-auto flex w-full max-w-2xl flex-col gap-6 py-8 max-md:mx-0 max-md:max-w-none max-md:py-0"
     >
       <div className="flex flex-col gap-2">
         <ReportSkeletonBar className="h-6 w-28 max-w-full" />

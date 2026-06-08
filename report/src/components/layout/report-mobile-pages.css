@@ -8,10 +8,6 @@
 }
 
 @media (max-width: 767px) {
-  .report-mobile-page {
-    padding-top: 1rem;
-  }
-
   .report-project-stage-pill {
     padding: 0 0.3125rem;
     font-size: 10px;
