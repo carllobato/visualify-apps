@@ -6,15 +6,8 @@ import { Badge, Button, Callout } from "@visualify/design-system";
 import { clearAppShellRouteTransitionState, navigateAfterAppShellRouteTransition } from "@visualify/app-shell";
 import "@/components/layout/report-mobile-pages.css";
 import { setReportActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
-import { REPORT_ROUTES } from "@/lib/report-routes";
+import { reportReturnPathAfterWorkspaceSelection } from "@/lib/report-routes";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
-
-function safeReturnPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return REPORT_ROUTES.projects;
-  }
-  return next;
-}
 
 type SelectWorkspacePageContentProps = {
   workspaces: EntitledWorkspace[];
@@ -29,7 +22,7 @@ export function SelectWorkspacePageContent({
 }: SelectWorkspacePageContentProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnPath = safeReturnPath(searchParams.get("next"));
+  const returnPath = reportReturnPathAfterWorkspaceSelection(searchParams.get("next"));
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

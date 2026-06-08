@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "OS",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
 };
 

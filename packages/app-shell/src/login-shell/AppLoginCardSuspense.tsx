@@ -1,4 +1,5 @@
 import { Suspense, type ReactNode } from "react";
+import { AppLaunchGate } from "./AppLaunchGate";
 import { AppLoginCard } from "./AppLoginCard";
 import { AppLoginSuspenseFallback } from "./AppLoginSuspenseFallback";
 
@@ -21,9 +22,11 @@ export type AppLoginCardSuspenseProps = {
 export function AppLoginCardSuspense({ children, suspenseLabel }: AppLoginCardSuspenseProps) {
   return (
     <AppLoginCard>
-      <Suspense fallback={<AppLoginSuspenseFallback label={suspenseLabel} />}>
-        {children}
-      </Suspense>
+      <AppLaunchGate>
+        <Suspense fallback={<AppLoginSuspenseFallback label={suspenseLabel} />}>
+          {children}
+        </Suspense>
+      </AppLaunchGate>
     </AppLoginCard>
   );
 }

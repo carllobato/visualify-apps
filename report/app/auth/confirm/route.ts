@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
-import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
+import { reportDefaultPostLoginPath } from "@/lib/report-routes";
 import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 
 function authErrorRedirect(request: NextRequest, message: string): NextResponse {
@@ -51,5 +51,5 @@ export async function GET(request: NextRequest) {
     return authErrorRedirect(request, error.message);
   }
 
-  return NextResponse.redirect(new URL(REPORT_DEFAULT_ROUTE, request.url));
+  return NextResponse.redirect(new URL(reportDefaultPostLoginPath(), request.url));
 }

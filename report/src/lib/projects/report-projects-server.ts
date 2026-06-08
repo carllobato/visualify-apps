@@ -240,6 +240,15 @@ export async function getReportWorkspaceProjectById(
   workspaceId: string | null,
   projectId: string,
 ): Promise<ReportProjectListItem | null> {
+  return getReportWorkspaceProjectByIdImpl(supabase, userId, workspaceId, projectId);
+}
+
+async function getReportWorkspaceProjectByIdImpl(
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId: string | null,
+  projectId: string,
+): Promise<ReportProjectListItem | null> {
   const activeWorkspaceId = workspaceId?.trim() ?? "";
   const id = projectId.trim();
   if (!activeWorkspaceId || !id || id === REPORT_LEGACY_EXCLUDED_PROJECT_ID) {

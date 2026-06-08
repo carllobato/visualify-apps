@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
+import { reportDefaultPostLoginPath } from "@/lib/report-routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   if (user) {
-    redirect(REPORT_DEFAULT_ROUTE);
+    redirect(reportDefaultPostLoginPath());
   }
 
   redirect("/login");

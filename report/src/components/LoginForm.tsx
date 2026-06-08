@@ -17,14 +17,14 @@ import {
   navigateAfterAppLoginSuccess,
 } from "@visualify/app-shell";
 import { Input, Label } from "@visualify/design-system";
-import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
+import { reportDefaultPostLoginPath, reportReturnPathAfterWorkspaceSelection } from "@/lib/report-routes";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 
 function safeNextPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
-    return REPORT_DEFAULT_ROUTE;
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next === "/") {
+    return reportDefaultPostLoginPath();
   }
-  return next;
+  return reportReturnPathAfterWorkspaceSelection(next);
 }
 
 function authConfirmUrl(): string {

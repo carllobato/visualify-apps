@@ -195,7 +195,7 @@ html:has(.vf-app-shell-outer-canvas) body {
     --vf-app-shell-mobile-bottom-nav-bar-height: 2.0625rem;
     --vf-app-shell-mobile-bottom-nav-floating-gap: 0px;
     /* Space below tab labels — home indicator + minimum breathing room (sync with bottom-nav.css). */
-    --vf-app-shell-mobile-bottom-nav-home-inset: calc(env(safe-area-inset-bottom, 0px) + 22.5px);
+    --vf-app-shell-mobile-bottom-nav-home-inset: calc(env(safe-area-inset-bottom, 0px) + 8px);
     box-sizing: border-box;
     height: 100dvh;
     height: 100svh;

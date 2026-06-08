@@ -62,6 +62,8 @@ export const visualifyAppLaunchFirstPaintCss = `
 html,
 body {
   background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 @media ${VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA} {
@@ -80,12 +82,24 @@ body {
   padding: 0;
   background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
   color: #111111;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html.${VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS},
+html.${VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS} body {
+  background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG_MOBILE};
 }
 
 @media ${VISUALIFY_APP_LAUNCH_DESKTOP_MEDIA} {
   html,
   body {
     background-color: ${VISUALIFY_APP_LAUNCH_CANVAS};
+  }
+
+  html.${VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS},
+  html.${VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS} body {
+    background-color: ${VISUALIFY_APP_LAUNCH_SPLASH_BG};
   }
 }
 
@@ -209,6 +223,11 @@ html:not(.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS}) .${VISUALIFY_APP_LAUNCH_A
   transform: translateY(0.75rem);
   filter: blur(5px);
   will-change: opacity, transform, filter;
+}
+
+html:not(.${VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS}) .vf-app-login-framed-shell {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 html.${VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS},

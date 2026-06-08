@@ -1,14 +1,15 @@
 import type { MetadataRoute } from "next";
-import { VISUALIFY_APP_LAUNCH_CANVAS, VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND } from "@visualify/app-shell";
+import { VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND } from "@visualify/app-shell";
+import { REPORT_DEFAULT_ROUTE } from "@/lib/report-routes";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Report",
     short_name: "Report",
     description: "Visualify Report — standalone reporting product",
-    start_url: "/home",
+    start_url: REPORT_DEFAULT_ROUTE,
     display: "standalone",
-    theme_color: VISUALIFY_APP_LAUNCH_CANVAS,
+    theme_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     background_color: VISUALIFY_APP_LAUNCH_MANIFEST_BACKGROUND,
     icons: [
       {

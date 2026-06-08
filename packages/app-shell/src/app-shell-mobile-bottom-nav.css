@@ -40,7 +40,7 @@
       var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem) +
         var(
           --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 22.5px)
+          calc(env(safe-area-inset-bottom, 0px) + 8px)
         )
     );
     align-items: flex-start;
@@ -51,7 +51,7 @@
     padding: 0.375rem env(safe-area-inset-right, 0px)
       var(
           --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 22.5px)
+          calc(env(safe-area-inset-bottom, 0px) + 8px)
         )
       env(safe-area-inset-left, 0px);
     list-style: none;

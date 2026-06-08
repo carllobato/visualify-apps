@@ -1,17 +1,15 @@
 import "server-only";
 
+import { cache } from "react";
 import { fetchWorkspaceProductAccessForUser } from "@visualify/workspace-product-access";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { productConfig } from "@/lib/product-config";
+import { supabaseServerClient } from "@/lib/supabase/server";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 
 export type { EntitledWorkspace };
 
-/**
- * Workspaces where the user has active Report product entitlement.
- * Resolves `visualify_workspaces.id` from entitled slugs (RLS applies).
- */
-export async function getReportEntitledWorkspaces(
+async function getReportEntitledWorkspacesImpl(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<EntitledWorkspace[]> {
@@ -56,4 +54,30 @@ export async function getReportEntitledWorkspaces(
   }
 
   return entitled.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function getReportEntitledWorkspacesForUser(userId: string): Promise<EntitledWorkspace[]> {
+  const id = userId.trim();
+  if (!id) {
+    return [];
+  }
+
+  const supabase = await supabaseServerClient();
+  return getReportEntitledWorkspacesImpl(supabase, id);
+}
+
+/**
+ * Workspaces where the user has active Report product entitlement.
+ * Resolves `visualify_workspaces.id` from entitled slugs (RLS applies).
+ *
+ * Wrapped in `cache()` keyed by `userId` so repeated lookups in the same request
+ * (e.g. workspace resolution + project list membership check) share one query.
+ */
+const getReportEntitledWorkspacesCached = cache(getReportEntitledWorkspacesForUser);
+
+export async function getReportEntitledWorkspaces(
+  _supabase: SupabaseClient,
+  userId: string,
+): Promise<EntitledWorkspace[]> {
+  return getReportEntitledWorkspacesCached(userId);
 }

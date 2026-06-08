@@ -24,7 +24,7 @@
       var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem) +
         var(
           --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 22.5px)
+          calc(env(safe-area-inset-bottom, 0px) + 8px)
         ) + 0.5rem
     );
     z-index: 46;

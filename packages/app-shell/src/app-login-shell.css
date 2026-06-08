@@ -346,4 +346,13 @@ html.vf-app-login-post-auth-enter-complete
   .vf-app-login-framed-shell .vf-app-login-card-header-mark {
     margin-bottom: 0;
   }
+
+  /*
+   * iOS zooms focused inputs below 16px — design-system fields use --ds-text-sm (14px).
+   */
+  .vf-app-login-form input,
+  .vf-app-login-form select,
+  .vf-app-login-form textarea {
+    font-size: 16px;
+  }
 }

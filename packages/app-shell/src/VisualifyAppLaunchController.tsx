@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { VISUALIFY_LOGO_DARK_SRC, VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
 import {
+  VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS,
   VISUALIFY_APP_LAUNCH_APP_ROOT_CLASS,
+  VISUALIFY_APP_LAUNCH_CANVAS,
   VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS,
   VISUALIFY_APP_LAUNCH_EXIT_MS,
   VISUALIFY_APP_LAUNCH_HOLD_MS,
@@ -18,6 +20,15 @@ import {
 
 type SplashPhase = "visible" | "exiting" | "hidden";
 
+function setMobileThemeColor(color: string) {
+  for (const meta of document.querySelectorAll('meta[name="theme-color"]')) {
+    const media = meta.getAttribute("media");
+    if (media?.includes("max-width")) {
+      meta.setAttribute("content", color);
+    }
+  }
+}
+
 /** Splash overlay + app root — dismisses via React state (never `Node.remove()`). */
 export function VisualifyAppLaunchController({ children }: { children: ReactNode }) {
   const [splashPhase, setSplashPhase] = useState<SplashPhase>("visible");
@@ -27,6 +38,8 @@ export function VisualifyAppLaunchController({ children }: { children: ReactNode
 
   useEffect(() => {
     const root = document.documentElement;
+    root.classList.add(VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS);
+
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let introDone = reducedMotion;
     let appReady = document.readyState === "complete";
@@ -50,10 +63,18 @@ export function VisualifyAppLaunchController({ children }: { children: ReactNode
           window.setTimeout(() => {
             root.classList.remove(VISUALIFY_APP_LAUNCH_REVEALING_HTML_CLASS);
             root.classList.add(VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS);
+            root.classList.remove(VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS);
+            if (window.matchMedia(VISUALIFY_APP_LAUNCH_MOBILE_MEDIA).matches) {
+              setMobileThemeColor(VISUALIFY_APP_LAUNCH_CANVAS);
+            }
           }, VISUALIFY_APP_LAUNCH_EXIT_MS + 60),
         );
       } else {
         root.classList.add(VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS);
+        root.classList.remove(VISUALIFY_APP_LAUNCH_ACTIVE_HTML_CLASS);
+        if (window.matchMedia(VISUALIFY_APP_LAUNCH_MOBILE_MEDIA).matches) {
+          setMobileThemeColor(VISUALIFY_APP_LAUNCH_CANVAS);
+        }
       }
 
       setSplashPhase("exiting");
@@ -83,7 +104,7 @@ export function VisualifyAppLaunchController({ children }: { children: ReactNode
         wordmark.addEventListener(
           "animationend",
           (event) => {
-            if (event.animationName === "vf-app-launch-wordmark-in") {
+            if ((event as AnimationEvent).animationName === "vf-app-launch-wordmark-in") {
               markIntroDone();
             }
           },

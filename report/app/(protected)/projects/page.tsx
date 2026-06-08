@@ -1,13 +1,22 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Callout } from "@visualify/design-system";
 import { ProjectsPageContent } from "@/components/projects/ProjectsPageContent";
 import { getReportWorkspaceProjects } from "@/lib/projects/report-projects-server";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
+import {
+  isReportProjectsResumeEntry,
+  REPORT_ROUTES,
+  reportSingleProjectReportPath,
+} from "@/lib/report-routes";
 import { resolveActiveReportWorkspaceContext } from "@/lib/workspace/resolveActiveReportWorkspaceContext";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectsPage() {
+type ProjectsPageProps = {
+  searchParams: Promise<{ resume?: string }>;
+};
+
+export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
   const user = await resolveAuthenticatedUser();
 
   if (!user) {
@@ -19,6 +28,17 @@ export default async function ProjectsPage() {
   const hasActiveWorkspace = Boolean(activeWorkspaceId?.trim());
 
   const result = await getReportWorkspaceProjects(user.id, activeWorkspaceId);
+
+  const { resume } = await searchParams;
+  const isResumeEntry = isReportProjectsResumeEntry(resume);
+
+  if (isResumeEntry && result.ok) {
+    const singleProjectReportPath = reportSingleProjectReportPath(result.projects);
+    if (singleProjectReportPath) {
+      redirect(singleProjectReportPath);
+    }
+    redirect(REPORT_ROUTES.projects);
+  }
 
   if (!result.ok) {
     return (

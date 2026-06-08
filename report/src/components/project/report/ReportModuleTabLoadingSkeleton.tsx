@@ -1,7 +1,7 @@
-import { Card, CardContent } from "@visualify/design-system";
-
-const SKELETON_BAR_CLASS =
-  "animate-pulse rounded-[var(--ds-radius-sm)] bg-[color-mix(in_oklab,var(--ds-border)_42%,transparent)]";
+import {
+  ReportSkeletonBar,
+  ReportSkeletonCard,
+} from "@/components/loading/report-skeleton-primitives";
 
 /** Lightweight placeholder while a lazy report tab chunk loads. */
 export function ReportModuleTabLoadingSkeleton() {
@@ -11,16 +11,14 @@ export function ReportModuleTabLoadingSkeleton() {
       aria-busy="true"
       aria-label="Loading report view"
     >
-      <Card>
-        <CardContent className="flex min-h-[10rem] flex-col gap-3 px-4 py-6">
-          <div className={`h-4 w-36 ${SKELETON_BAR_CLASS}`} />
-          <div className="flex flex-col gap-2">
-            <div className={`h-3 w-full ${SKELETON_BAR_CLASS}`} />
-            <div className={`h-3 w-[88%] ${SKELETON_BAR_CLASS}`} />
-            <div className={`h-3 w-[62%] ${SKELETON_BAR_CLASS}`} />
-          </div>
-        </CardContent>
-      </Card>
+      <ReportSkeletonCard contentClassName="flex min-h-[10rem] flex-col gap-3 px-4 py-6">
+        <ReportSkeletonBar className="h-4 w-36" />
+        <div className="flex flex-col gap-2">
+          <ReportSkeletonBar className="h-3 w-full" />
+          <ReportSkeletonBar className="h-3 w-[88%]" />
+          <ReportSkeletonBar className="h-3 w-[62%]" />
+        </div>
+      </ReportSkeletonCard>
     </div>
   );
 }

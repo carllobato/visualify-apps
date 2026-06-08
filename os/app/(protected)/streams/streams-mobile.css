@@ -144,7 +144,7 @@
       var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.75rem) +
         var(
           --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 30px)
+          calc(env(safe-area-inset-bottom, 0px) + 8px)
         ) + var(--vf-app-shell-mobile-bottom-nav-floating-gap, 0px) + 0.25rem
     );
 
