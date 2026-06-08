@@ -14,6 +14,7 @@ export type ReportProjectKeyMetrics = {
   statusTrend: ReportProjectTrend;
   /** Module labels that explain the overall status rating. */
   statusContributors: string[];
+  siteItLoad: string;
   deploymentCurrent: string;
   deploymentTotal: string;
   numberOfHalls: string;
@@ -26,6 +27,7 @@ export const REPORT_PROJECT_KEY_METRICS_PLACEHOLDER: ReportProjectKeyMetrics = {
   status: "Amber",
   statusTrend: { text: "Worsened vs last report", sentiment: "unfavorable" },
   statusContributors: ["Schedule", "Project Risks"],
+  siteItLoad: "105MW",
   deploymentCurrent: "15MW",
   deploymentTotal: "105MW",
   numberOfHalls: "1",
@@ -46,16 +48,21 @@ export function toReportProjectKeyMetricRows(
 ): ReportProjectKeyMetric[] {
   return [
     {
-      label: "Deployment",
-      value: `${metrics.deploymentCurrent} / ${metrics.deploymentTotal}`,
+      label: "Site IT Load",
+      value: metrics.siteItLoad,
+      callout: getReportProjectSiteItLoadCallout(metrics),
+    },
+    {
+      label: "Deployment IT Load",
+      value: metrics.deploymentCurrent,
       callout: getReportProjectDeploymentCallout(metrics),
     },
     {
-      label: "Nr of Halls",
+      label: "Number of Data Halls",
       value: metrics.numberOfHalls,
       callout: getReportProjectNumberOfHallsCallout(metrics),
     },
-    { label: "RFS", value: metrics.rfs },
+    { label: "RFS Date", value: metrics.rfs },
     { label: "Customer Status", value: metrics.customerStatus },
   ];
 }
@@ -75,6 +82,15 @@ function formatReportProjectStatusContributorList(contributors: string[]): strin
   return `${contributors.slice(0, -1).join(", ")}, and ${contributors.at(-1)}`;
 }
 
+export function getReportProjectSiteItLoadCallout(
+  metrics: Pick<ReportProjectKeyMetrics, "siteItLoad" | "deploymentTotal">,
+): { title: string; body: string } {
+  return {
+    title: "Site IT load",
+    body: `${metrics.siteItLoad} total campus capacity; ${metrics.deploymentTotal} masterplan envelope.`,
+  };
+}
+
 export function getReportProjectNumberOfHallsCallout(
   metrics: Pick<ReportProjectKeyMetrics, "numberOfHalls">,
 ): { title: string; body: string } {
@@ -88,8 +104,8 @@ export function getReportProjectDeploymentCallout(
   metrics: Pick<ReportProjectKeyMetrics, "deploymentCurrent" | "deploymentTotal">,
 ): { title: string; body: string } {
   return {
-    title: "Deployment vs campus",
-    body: `${metrics.deploymentCurrent} deployment size versus ${metrics.deploymentTotal} campus size.`,
+    title: "Deployment IT load",
+    body: `${metrics.deploymentCurrent} live deployment against ${metrics.deploymentTotal} campus capacity.`,
   };
 }
 

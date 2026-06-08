@@ -36,13 +36,7 @@
     display: flex;
     min-width: 0;
     height: auto;
-    min-height: calc(
-      var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem) +
-        var(
-          --vf-app-shell-mobile-bottom-nav-home-inset,
-          calc(env(safe-area-inset-bottom, 0px) + 8px)
-        )
-    );
+    min-height: var(--vf-app-shell-mobile-bottom-nav-bar-height, 2.0625rem);
     align-items: flex-start;
     justify-content: space-between;
     gap: 0;
