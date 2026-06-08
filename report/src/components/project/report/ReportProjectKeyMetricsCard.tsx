@@ -15,18 +15,24 @@ type ReportProjectKeyMetricsCardProps = {
   navigateLabel?: string;
 };
 
-const KEY_METRICS_ROW_CLASS =
-  "flex min-h-10 shrink-0 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
+const KEY_METRICS_DATA_POINT_CLASS =
+  "flex min-w-0 flex-col gap-0.5";
+
+const KEY_METRICS_DATA_POINT_LABEL_CLASS =
+  "m-0 text-[length:var(--ds-text-xs)] font-medium leading-snug text-[var(--ds-text-muted)]";
+
+const KEY_METRICS_DATA_POINT_VALUE_CLASS =
+  "m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums leading-tight text-[var(--ds-text-primary)] sm:text-[length:var(--ds-text-xl)]";
 
 const KEY_METRICS_CALLOUT_CLASS =
-  "pointer-events-none absolute right-0 top-full z-20 mt-1 hidden w-64 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[length:var(--ds-text-xs)] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block";
+  "pointer-events-none absolute left-0 top-full z-20 mt-1 hidden w-64 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[length:var(--ds-text-xs)] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block";
 
 type KeyMetricCallout = {
   title: string;
   body: string;
 };
 
-function KeyMetricRow({
+function KeyMetricDataPoint({
   label,
   value,
   callout,
@@ -42,15 +48,15 @@ function KeyMetricRow({
   return (
     <div
       className={[
-        KEY_METRICS_ROW_CLASS,
+        KEY_METRICS_DATA_POINT_CLASS,
         callout ? "group relative cursor-help pointer-events-auto" : "",
       ].join(" ")}
       tabIndex={callout ? 0 : undefined}
       title={calloutText}
       aria-describedby={callout ? calloutId : undefined}
     >
-      <span className="text-[var(--ds-text-secondary)]">{label}</span>
-      {value}
+      <dt className={KEY_METRICS_DATA_POINT_LABEL_CLASS}>{label}</dt>
+      <dd className={KEY_METRICS_DATA_POINT_VALUE_CLASS}>{value}</dd>
       {callout && calloutId ? (
         <div id={calloutId} role="tooltip" className={KEY_METRICS_CALLOUT_CLASS}>
           <p className="m-0 font-semibold text-[var(--ds-text-primary)]">{callout.title}</p>
@@ -90,7 +96,6 @@ function ReportProjectKeyMetricsRows({
   navigateLabel,
 }: ReportProjectKeyMetricsCardProps) {
   const rows = toReportProjectKeyMetricRows(metrics);
-  const spacerRowCount = Math.max(0, 5 - rows.length);
 
   return (
     <ReportProjectOverviewInteractiveCard
@@ -101,27 +106,20 @@ function ReportProjectKeyMetricsRows({
       contentClassName="flex flex-1 flex-col overflow-visible px-3 py-3 sm:px-4"
     >
       <ReportProjectOverviewCardHeader title="Project overview" />
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex shrink-0 flex-col divide-y divide-[var(--ds-border-subtle)]">
+      <div className="flex min-h-0 flex-1 flex-col pt-1">
+        <dl className="m-0 grid min-w-0 shrink-0 grid-cols-3 gap-x-3 gap-y-5 sm:gap-x-4">
           {rows.map((row) => (
-            <KeyMetricRow
+            <KeyMetricDataPoint
               key={row.label}
               label={row.label}
-              value={
-                <span className="font-semibold tabular-nums text-[var(--ds-text-primary)]">
-                  {row.value}
-                </span>
-              }
+              value={row.value}
               callout={row.callout}
               calloutId={
                 row.callout ? `project-metrics-${row.label.toLowerCase().replace(/\s+/g, "-")}-callout` : undefined
               }
             />
           ))}
-          {Array.from({ length: spacerRowCount }, (_, index) => (
-            <div key={`spacer-${index}`} className="min-h-10 shrink-0" aria-hidden="true" />
-          ))}
-        </div>
+        </dl>
         <div className="min-h-0 flex-1" aria-hidden="true" />
       </div>
     </ReportProjectOverviewInteractiveCard>
