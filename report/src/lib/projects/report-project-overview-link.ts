@@ -103,6 +103,30 @@ export const REPORT_OVERVIEW_NAVIGABLE_CARD_HOVER_CLASS = [
 export const REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS =
   "transition-[background-color] duration-200 ease-out hover:bg-[var(--ds-surface-hover)]";
 
+/** Lift and shadow for overview tiles — no grey hover fill (e.g. RAG-tinted Overall Status). */
+export const REPORT_OVERVIEW_TILE_HOVER_LIFT_CLASS = [
+  "transition-[transform,box-shadow] duration-200 ease-out",
+  "hover:-translate-y-px hover:shadow-[var(--ds-elevation-tile-hover)]",
+  "max-md:hover:!shadow-[0_4px_10px_color-mix(in_oklab,var(--ds-scrim-ink)_6.5%,transparent),0_12px_28px_color-mix(in_oklab,var(--ds-scrim-ink)_8%,transparent)]",
+  "motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+].join(" ");
+
+/** Grey fill, lift, and shadow for interactive overview tiles (module status columns, key metrics). */
+export const REPORT_OVERVIEW_TILE_HOVER_ELEVATION_CLASS = [
+  REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS,
+  "transition-[transform,box-shadow,background-color] duration-200 ease-out",
+  "hover:-translate-y-px hover:shadow-[var(--ds-elevation-tile-hover)]",
+  "max-md:hover:!shadow-[0_4px_10px_color-mix(in_oklab,var(--ds-scrim-ink)_6.5%,transparent),0_12px_28px_color-mix(in_oklab,var(--ds-scrim-ink)_8%,transparent)]",
+  "motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+].join(" ");
+
+/** Flex row list shared by paired overview cards so rows align across columns. */
+export const REPORT_PROJECT_OVERVIEW_ALIGNED_ROW_LIST_CLASS =
+  "m-0 flex min-h-0 flex-1 flex-col divide-y divide-[var(--ds-border-subtle)]";
+
+export const REPORT_PROJECT_OVERVIEW_ALIGNED_ROW_CLASS =
+  "flex min-h-0 flex-1 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
+
 export function getReportOverviewCardClassName(
   highlighted: boolean,
   baseClassName: string,

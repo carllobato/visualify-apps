@@ -841,6 +841,8 @@ export function MultiLineChartPrimitive({
   formatYLabel,
   showAllXLabels = false,
   todayIndex,
+  linkedPointIndex,
+  linkedSeriesLabel,
   forecastDasharray = "4 4",
   embedded = false,
   embeddedContentClassName = "px-4 pb-3",
@@ -858,6 +860,8 @@ export function MultiLineChartPrimitive({
   formatYLabel?: (value: number) => string;
   showAllXLabels?: boolean;
   todayIndex?: number;
+  linkedPointIndex?: number;
+  linkedSeriesLabel?: string;
   forecastDasharray?: string;
   embedded?: boolean;
   embeddedContentClassName?: string;
@@ -890,6 +894,11 @@ export function MultiLineChartPrimitive({
   const gradientPrefix = useId().replace(/:/g, "");
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const formatPointValue = formatYLabel ?? ((value: number) => String(value));
+  const linkedIndex =
+    linkedPointIndex !== undefined && linkedPointIndex >= 0 && linkedPointIndex < n
+      ? linkedPointIndex
+      : null;
+  const activeIndex = hoveredIndex ?? linkedIndex;
 
   function handlePlotMouseMove(event: MouseEvent<HTMLDivElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -903,9 +912,9 @@ export function MultiLineChartPrimitive({
     setHoveredIndex(null);
   }
 
-  const hoveredMonthLabel = hoveredIndex !== null ? xLabels[hoveredIndex] : null;
-  const hoveredAnchorPercent = hoveredIndex !== null ? multiLinePlotXPercent(hoveredIndex, n) : 0;
-  const flipHoverCalloutLeft = hoveredIndex !== null && hoveredIndex > n / 2;
+  const hoveredMonthLabel = activeIndex !== null ? xLabels[activeIndex] : null;
+  const hoveredAnchorPercent = activeIndex !== null ? multiLinePlotXPercent(activeIndex, n) : 0;
+  const flipHoverCalloutLeft = activeIndex !== null && activeIndex > n / 2;
 
   return (
     <ChartFrame
@@ -957,12 +966,12 @@ export function MultiLineChartPrimitive({
                     aria-hidden
                   />
                 ) : null}
-                {hoveredIndex !== null && hoveredIndex !== todayIndex ? (
+                {activeIndex !== null && activeIndex !== todayIndex ? (
                   <span
                     className="pointer-events-none absolute inset-y-0 z-[2] border-l border-[var(--ds-chart-axis)]"
                     style={{
-                      left: `${multiLinePlotXPercent(hoveredIndex, n)}%`,
-                      opacity: 0.16,
+                      left: `${multiLinePlotXPercent(activeIndex, n)}%`,
+                      opacity: hoveredIndex !== null ? 0.16 : 0.24,
                     }}
                     aria-hidden
                   />
@@ -1034,7 +1043,10 @@ export function MultiLineChartPrimitive({
                 <div className="pointer-events-none absolute inset-0" aria-hidden>
                   {series.map((line, lineIndex) =>
                     line.data.map((point, pointIndex) => {
-                      const isHovered = pointIndex === hoveredIndex;
+                      const isActive = pointIndex === activeIndex;
+                      const isLinkedSeries =
+                        linkedSeriesLabel == null || line.label === linkedSeriesLabel;
+                      const showActiveMarker = isActive && (hoveredIndex !== null || isLinkedSeries);
                       const isForecast =
                         line.forecastFromIndex !== undefined && pointIndex > line.forecastFromIndex;
 
@@ -1042,7 +1054,7 @@ export function MultiLineChartPrimitive({
                         <span
                           key={`${line.label}-${point.key}-${pointIndex}`}
                           className={
-                            isHovered
+                            showActiveMarker
                               ? "absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[var(--ds-background)] shadow-[var(--ds-shadow-sm)]"
                               : "absolute h-[5px] w-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--ds-chart-panel)]"
                           }
@@ -1050,24 +1062,33 @@ export function MultiLineChartPrimitive({
                             left: `${multiLinePlotXPercent(pointIndex, n)}%`,
                             top: `${plotYPercent(point.value)}%`,
                             backgroundColor: seriesColor(line, lineIndex),
-                            opacity: isHovered ? 1 : isForecast ? "0.72" : STATE_OPACITY_VAR.default,
+                            opacity: showActiveMarker
+                              ? 1
+                              : isForecast
+                                ? "0.72"
+                                : STATE_OPACITY_VAR.default,
                           }}
                         />
                       );
                     }),
                   )}
                 </div>
-                {hoveredIndex !== null && hoveredMonthLabel ? (
+                {activeIndex !== null && hoveredMonthLabel ? (
                   <MultiLineChartHoverCallout
                     monthLabel={hoveredMonthLabel}
                     anchorPercent={hoveredAnchorPercent}
                     flipLeft={flipHoverCalloutLeft}
                     rows={series.map((line, lineIndex) => ({
                       label: line.label,
-                      value: formatPointValue(line.data[hoveredIndex]?.value ?? 0),
+                      value: formatPointValue(line.data[activeIndex]?.value ?? 0),
                       color: seriesColor(line, lineIndex),
                       muted:
-                        line.forecastFromIndex !== undefined && hoveredIndex > line.forecastFromIndex,
+                        linkedSeriesLabel != null &&
+                        hoveredIndex === null &&
+                        line.label !== linkedSeriesLabel
+                          ? true
+                          : line.forecastFromIndex !== undefined &&
+                            activeIndex > line.forecastFromIndex,
                     }))}
                   />
                 ) : null}

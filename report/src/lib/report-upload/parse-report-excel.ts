@@ -1,12 +1,17 @@
 import * as XLSX from "xlsx";
 import {
+  getReportCostSummaryUncommittedAmount,
   getReportProjectCostNormalisedForecast,
   getReportProjectCostWbsSummaryTotals,
 } from "@/lib/projects/report-project-cost-summary";
 import type { ReportProjectBudget } from "@/lib/projects/report-project-budget";
 import type { ReportProjectCategoryRow } from "@/lib/projects/report-project-category-rows";
 import type { ReportProjectCostData } from "@/lib/projects/report-project-cost";
-import type { ReportProjectCashflowSeries } from "@/lib/projects/report-project-cost";
+import {
+  getReportCashflowSpentToDateAmount,
+  getReportProjectSpentToDateAmount,
+  type ReportProjectCashflowSeries,
+} from "@/lib/projects/report-project-cost";
 import type { ReportProjectCostSummaryDirectRow } from "@/lib/projects/report-project-cost-summary";
 import type { ReportProjectCostWbsOption } from "@/lib/projects/report-project-cost-summary";
 import type { ReportProjectKeyMetrics } from "@/lib/projects/report-project-key-metrics";
@@ -611,7 +616,10 @@ function parseCostSummarySheet(
       const approvedBudget = parseNumber(normalizeCellString(row[approvedCol]));
       const currentForecast = parseNumber(normalizeCellString(row[forecastCol]));
       const currentCommitted = parseNumber(normalizeCellString(row[committedCol]));
-      const currentUncommitted = Math.max(0, currentForecast - currentCommitted);
+      const currentUncommitted = getReportCostSummaryUncommittedAmount(
+        currentForecast,
+        currentCommitted,
+      );
 
       wbsOptions.push({
         id: wbsId,
@@ -822,7 +830,10 @@ export function enrichPayloadWithPriorSnapshot(
           currentForecast: getReportProjectCostWbsSummaryTotals(prior.cost.costSummary)
             .currentForecast,
           normalisedForecast: prior.cost.summary.normalisedBudget,
-          spentToDate: prior.cost.summary.spentToDate,
+          spentToDate: getReportProjectSpentToDateAmount(
+            prior.cost.summary,
+            prior.cost.cashflow ?? [],
+          ),
         },
       },
     },
@@ -874,6 +885,11 @@ export function parseReportExcel(
   );
   const cashflow = parseCashflowSheet(sheets.Cashflow ?? [], status.reportingDate);
   cost.cashflow = cashflow;
+
+  const spentToDate = getReportCashflowSpentToDateAmount(cashflow);
+  if (spentToDate !== undefined) {
+    cost.summary.spentToDate = spentToDate;
+  }
 
   if (errors.length > 0) {
     return { ok: false, errors };

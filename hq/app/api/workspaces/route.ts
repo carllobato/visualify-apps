@@ -68,6 +68,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if (result.code === "PRODUCT_PROVISION_FAILED") {
+      return NextResponse.json(
+        {
+          error: "WORKSPACE_PRODUCT_PROVISION_FAILED",
+          message:
+            "Workspace was not created because Report could not be attached. Check server logs and visualify_products / visualify_workspace_products.",
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json({ error: "Could not create workspace" }, { status: 500 });
   }
 

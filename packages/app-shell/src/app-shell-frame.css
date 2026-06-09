@@ -98,11 +98,44 @@ html:has(.vf-app-shell-outer-canvas) body {
 }
 
 /*
- * Route/page wrappers must not shrink below their content height. On mobile the shell pins
- * document scroll to this node; flex-shrink would clip tall pages without growing scrollHeight.
+ * Desktop / tablet — pin the shell to the viewport so `.vf-app-shell-scroll-region` owns
+ * vertical scroll. With only `min-height: 100dvh` the frame can size to content without
+ * growing scrollHeight, so wheel/trackpad scrolling appears dead in Edge and other browsers.
+ */
+@media (min-width: 768px) {
+  html:has(.vf-app-shell-outer-canvas) {
+    overflow: hidden;
+    height: 100dvh;
+  }
+
+  html:has(.vf-app-shell-outer-canvas) body {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .vf-app-shell-outer-canvas {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .vf-app-shell-main-column {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
+
+/*
+ * Route/page wrappers must be content-sized — never flex-grow to fill the scrollport or tall
+ * pages clip inside the viewport without increasing scrollHeight (finger scroll does nothing).
  */
 .vf-app-shell-scroll-region > * {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 /* Content-sized main column; footer slot grows to fill the rest of the scroll region (short pages). */
@@ -243,6 +276,27 @@ html:has(.vf-app-shell-outer-canvas) body {
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /*
+   * Installed home-screen apps: the % height chain matches the real screen. Browser tabs need
+   * 100dvh (above) — 100% there resolves to the taller layout viewport and kills inner scroll.
+   */
+  @media (display-mode: standalone) {
+    html:has(.vf-app-shell-outer-canvas) {
+      height: 100%;
+    }
+
+    html:has(.vf-app-shell-outer-canvas) body {
+      height: 100%;
+    }
+
+    .vf-app-shell-outer-canvas,
+    .vf-app-shell-main-column {
+      height: 100%;
+      max-height: 100%;
+    }
   }
 
   .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header .vf-app-shell-scroll-region {

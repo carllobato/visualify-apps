@@ -13,12 +13,16 @@ type ReportProjectCashflowChartCardProps = {
   data: ReportProjectCashflowSeries[];
   summary?: Pick<ReportProjectCostSummary, "currencySymbol">;
   highlighted?: boolean;
+  linkedPointIndex?: number;
+  linkedSeriesLabel?: string;
 };
 
 export function ReportProjectCashflowChartCard({
   data,
   summary,
   highlighted = false,
+  linkedPointIndex,
+  linkedSeriesLabel,
 }: ReportProjectCashflowChartCardProps) {
   const currencySymbol = summary?.currencySymbol ?? "$";
   const todayIndex = getReportCashflowTodayIndex(data);
@@ -38,6 +42,8 @@ export function ReportProjectCashflowChartCard({
               formatYLabel={(value) => formatReportCashflowAxisLabel(value, currencySymbol)}
               showAllXLabels
               todayIndex={todayIndex >= 0 ? todayIndex : undefined}
+              linkedPointIndex={linkedPointIndex}
+              linkedSeriesLabel={linkedSeriesLabel}
               forecastDasharray="4 4"
               embedded
               embeddedContentClassName="pb-3 pl-0 pr-0"

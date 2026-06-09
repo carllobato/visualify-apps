@@ -1,5 +1,7 @@
 import type { ReportProjectTrend } from "@/lib/projects/report-project-trend";
 
+export const REPORT_PROJECT_SCHEDULE_OVERVIEW_ROW_COUNT = 4;
+
 export type ReportProjectScheduleOverview = {
   baselineRfs: string;
   forecastRfs: string;

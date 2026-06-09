@@ -4,6 +4,7 @@ import {
   isValidInviteToken,
 } from "@/lib/auth/acceptWorkspaceInvitation";
 import { requireUser } from "@/lib/auth/requireUser";
+import { writeVisualifyActiveWorkspaceIdCookie } from "@/lib/workspace-settings-data";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,10 @@ async function handleAccept(request: Request) {
     inviteToken: rawToken,
     user: { id: user.id, email: user.email },
   });
+
+  if (result.ok) {
+    await writeVisualifyActiveWorkspaceIdCookie(result.workspace_id);
+  }
 
   return resultToResponse(result);
 }

@@ -1,7 +1,5 @@
-import { Trend } from "@visualify/design-system";
 import { ReportProjectOverviewCardHeader } from "@/components/project/report/ReportProjectOverviewCardHeader";
 import { ReportProjectOverviewInteractiveCard } from "@/components/project/report/ReportProjectOverviewInteractiveCard";
-import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
 import {
   formatReportScheduleDate,
   formatReportScheduleVarianceDays,
@@ -12,13 +10,11 @@ import {
   REPORT_PROJECT_SCHEDULE_OVERVIEW_PLACEHOLDER,
   type ReportProjectScheduleOverview,
 } from "@/lib/projects/report-project-schedule";
-import {
-  REPORT_OVERVIEW_METRIC_DOT_CLASS,
-  REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
-  REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
-  REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS,
-} from "@/lib/projects/report-project-overview-link";
+import { REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS } from "@/lib/projects/report-project-overview-link";
 import { getReportTrendToneClass } from "@/lib/projects/report-project-trend";
+
+const SCHEDULE_ROW_CLASS =
+  "flex min-h-10 shrink-0 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
 
 type ReportProjectScheduleCardProps = {
   schedule?: ReportProjectScheduleOverview;
@@ -28,9 +24,6 @@ type ReportProjectScheduleCardProps = {
   onNavigate?: () => void;
   navigateLabel?: string;
 };
-
-const SCHEDULE_ROW_CLASS =
-  "flex min-h-10 shrink-0 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
 
 function formatScheduleDateDisplay(isoDate: string): string {
   return isoDate.trim() ? formatReportScheduleDate(isoDate) : "—";
@@ -64,11 +57,11 @@ export function ReportProjectScheduleCard({
   return (
     <ReportProjectOverviewInteractiveCard
       highlighted={highlighted}
-      hoverable={hoverable}
+      hoverable={hoverable || (rowHoverable && onNavigate == null)}
       onNavigate={onNavigate}
       navigateLabel={navigateLabel}
     >
-      <ReportProjectOverviewCardHeader title="Schedule" />
+      <ReportProjectOverviewCardHeader title="Schedule" status={ragStatus} />
       <div className="flex min-h-0 flex-1 flex-col">
         <dl className="m-0 flex shrink-0 flex-col divide-y divide-[var(--ds-border-subtle)]">
           <div className={scheduleRowClassName} {...scheduleRowProps}>
@@ -85,24 +78,14 @@ export function ReportProjectScheduleCard({
           </div>
           <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
-            <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
-              <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
-                <ReportRagStatusDot status={ragStatus} dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS} />
-              </span>
-              <span className={`font-semibold tabular-nums ${varianceToneClass}`}>
-                {formatReportScheduleVarianceDays(varianceDays)}
-              </span>
+            <dd className={`m-0 font-semibold tabular-nums ${varianceToneClass}`}>
+              {formatReportScheduleVarianceDays(varianceDays)}
             </dd>
           </div>
           <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
-            <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
-              <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
-                <Trend sentiment={schedule.trend.sentiment}>{schedule.trend.text}</Trend>
-              </span>
-              <span className={`font-semibold tabular-nums ${movementToneClass}`}>
-                {formatReportScheduleVarianceDays(movementSinceLastReport)}
-              </span>
+            <dd className={`m-0 font-semibold tabular-nums ${movementToneClass}`}>
+              {formatReportScheduleVarianceDays(movementSinceLastReport)}
             </dd>
           </div>
         </dl>

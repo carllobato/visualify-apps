@@ -19,6 +19,8 @@ import {
   formatReportCostSummaryTotalVarianceAmount,
   formatReportCostSummaryVarianceAmount,
   formatReportCostSummaryWbsCode,
+  getReportCostSummaryAmountToneClass,
+  getReportCostSummaryUncommittedAmount,
   getReportCostSummaryVarianceAmount,
   getReportCostSummaryVarianceToneClass,
   sumReportCostSummaryCategoryRows,
@@ -100,6 +102,10 @@ function ReportProjectCostSummaryTableRow({
     row.approvedBudget,
     row.currentForecast,
   );
+  const uncommittedAmount = getReportCostSummaryUncommittedAmount(
+    row.currentForecast,
+    row.currentCommitted,
+  );
 
   return (
     <TableRow
@@ -130,7 +136,7 @@ function ReportProjectCostSummaryTableRow({
         ].join(" ")}
       >
         <span
-          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums text-[var(--ds-text-primary)]`}
+          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums ${getReportCostSummaryAmountToneClass(row.approvedBudget)}`}
         >
           {formatReportCostSummaryAmount(row.approvedBudget, currencySymbol)}
         </span>
@@ -145,7 +151,7 @@ function ReportProjectCostSummaryTableRow({
         ].join(" ")}
       >
         <span
-          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums text-[var(--ds-text-primary)]`}
+          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums ${getReportCostSummaryAmountToneClass(row.currentForecast)}`}
         >
           {formatReportCostSummaryAmount(row.currentForecast, currencySymbol)}
         </span>
@@ -159,16 +165,16 @@ function ReportProjectCostSummaryTableRow({
       </TableCell>
       <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
         <span
-          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums text-[var(--ds-text-primary)]`}
+          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums ${getReportCostSummaryAmountToneClass(row.currentCommitted)}`}
         >
           {formatReportCostSummaryAmount(row.currentCommitted, currencySymbol)}
         </span>
       </TableCell>
       <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
         <span
-          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums text-[var(--ds-text-primary)]`}
+          className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums ${getReportCostSummaryAmountToneClass(uncommittedAmount)}`}
         >
-          {formatReportCostSummaryAmount(row.currentUncommitted, currencySymbol)}
+          {formatReportCostSummaryAmount(uncommittedAmount, currencySymbol)}
         </span>
       </TableCell>
     </TableRow>
@@ -194,6 +200,10 @@ export function ReportProjectCostSummaryTable({
   const projectVarianceAmount = getReportCostSummaryVarianceAmount(
     projectTotals.approvedBudget,
     projectTotals.currentForecast,
+  );
+  const projectUncommittedAmount = getReportCostSummaryUncommittedAmount(
+    projectTotals.currentForecast,
+    projectTotals.currentCommitted,
   );
 
   return (
@@ -224,7 +234,7 @@ export function ReportProjectCostSummaryTable({
                   }),
                 ].join(" ")}
               >
-                Approved Budget
+                Budget
               </TableHeaderCell>
               <TableHeaderCell
                 className={[
@@ -234,14 +244,14 @@ export function ReportProjectCostSummaryTable({
                   }),
                 ].join(" ")}
               >
-                Current Forecast
+                Forecast
               </TableHeaderCell>
               <TableHeaderCell className={SUMMARY_AMOUNT_HEADER_CLASS}>vs Budget</TableHeaderCell>
               <TableHeaderCell className={SUMMARY_AMOUNT_HEADER_CLASS}>
-                Current Committed
+                Committed
               </TableHeaderCell>
               <TableHeaderCell className={SUMMARY_AMOUNT_HEADER_CLASS}>
-                Current Uncommitted
+                Uncommitted
               </TableHeaderCell>
             </TableRow>
           </TableHead>
@@ -285,7 +295,7 @@ export function ReportProjectCostSummaryTable({
                     ].join(" ")}
                   >
                     <span
-                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums text-[var(--ds-text-primary)]`}
+                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums ${getReportCostSummaryAmountToneClass(projectTotals.approvedBudget)}`}
                     >
                       {formatReportCostSummaryTotalAmount(projectTotals.approvedBudget, currencySymbol)}
                     </span>
@@ -299,7 +309,7 @@ export function ReportProjectCostSummaryTable({
                     ].join(" ")}
                   >
                     <span
-                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums text-[var(--ds-text-primary)]`}
+                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums ${getReportCostSummaryAmountToneClass(projectTotals.currentForecast)}`}
                     >
                       {formatReportCostSummaryTotalAmount(projectTotals.currentForecast, currencySymbol)}
                     </span>
@@ -313,16 +323,16 @@ export function ReportProjectCostSummaryTable({
                   </TableCell>
                   <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
                     <span
-                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums text-[var(--ds-text-primary)]`}
+                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums ${getReportCostSummaryAmountToneClass(projectTotals.currentCommitted)}`}
                     >
                       {formatReportCostSummaryTotalAmount(projectTotals.currentCommitted, currencySymbol)}
                     </span>
                   </TableCell>
                   <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
                     <span
-                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums text-[var(--ds-text-primary)]`}
+                      className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums ${getReportCostSummaryAmountToneClass(projectUncommittedAmount)}`}
                     >
-                      {formatReportCostSummaryTotalAmount(projectTotals.currentUncommitted, currencySymbol)}
+                      {formatReportCostSummaryTotalAmount(projectUncommittedAmount, currencySymbol)}
                     </span>
                   </TableCell>
                 </TableRow>

@@ -254,7 +254,7 @@ function buildReportProjectCashflowPlaceholder(): ReportProjectCashflowSeries[] 
 const REPORT_PROJECT_COST_SUMMARY_PLACEHOLDER: ReportProjectCostSummary = {
   /** Rolled-up approved budget — matches summary table “Approved Budget” project total. */
   currentBudget: REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL,
-  /** Project total current forecast minus Asset Holding (11), Customer (19), and Contingency (49). */
+  /** Project total current forecast minus Asset Holding (11) and Contingency (49). */
   normalisedBudget: REPORT_PROJECT_WBS_NORMALISED_FORECAST_TOTAL,
   /** Matches summary table “Current Forecast” project total until EFC is supplied separately. */
   forecastFinalAccount: REPORT_PROJECT_WBS_CURRENT_FORECAST_TOTAL,
@@ -280,6 +280,8 @@ export const REPORT_PROJECT_COST_PLACEHOLDER: ReportProjectCostData = {
 
 export const REPORT_PROJECT_CASHFLOW_AXIS_MAX = REPORT_CASHFLOW_AXIS_MAX;
 
+export const REPORT_CASHFLOW_ACTUALS_SERIES_LABEL = "Actuals";
+
 export function getReportCashflowTodayIndex(series: ReportProjectCashflowSeries[]): number {
   const firstSeries = series[0];
   if (
@@ -291,6 +293,39 @@ export function getReportCashflowTodayIndex(series: ReportProjectCashflowSeries[
 
   const monthKeys = firstSeries?.data.map((point) => point.key) ?? [];
   return monthKeys.indexOf(REPORT_CASHFLOW_TODAY_KEY);
+}
+
+export function getReportCashflowActualsSeries(
+  series: ReportProjectCashflowSeries[],
+): ReportProjectCashflowSeries | undefined {
+  return series.find((entry) => entry.label === REPORT_CASHFLOW_ACTUALS_SERIES_LABEL);
+}
+
+/** Cumulative Actuals at the reporting month — source of truth for spent to date. */
+export function getReportCashflowSpentToDateAmount(
+  series: ReportProjectCashflowSeries[],
+): number | undefined {
+  const actuals = getReportCashflowActualsSeries(series);
+  if (!actuals || actuals.data.length === 0) return undefined;
+
+  const reportingMonthIndex = getReportCashflowTodayIndex(series);
+  if (reportingMonthIndex >= 0 && reportingMonthIndex < actuals.data.length) {
+    return actuals.data[reportingMonthIndex]?.value;
+  }
+
+  const lastActualIndex =
+    actuals.forecastFromIndex !== undefined && actuals.forecastFromIndex > 0
+      ? actuals.forecastFromIndex - 1
+      : actuals.data.length - 1;
+
+  return actuals.data[lastActualIndex]?.value;
+}
+
+export function getReportProjectSpentToDateAmount(
+  summary: Pick<ReportProjectCostSummary, "spentToDate">,
+  cashflow: ReportProjectCashflowSeries[],
+): number {
+  return getReportCashflowSpentToDateAmount(cashflow) ?? summary.spentToDate;
 }
 
 export function formatReportCostAmount(

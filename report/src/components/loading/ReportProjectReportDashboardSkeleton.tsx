@@ -23,7 +23,7 @@ export function ReportProjectReportDashboardSkeleton() {
   return (
     <ReportSkeletonPage
       label="Loading project report"
-      className="report-project-page flex min-w-0 flex-1 flex-col max-md:overflow-x-visible"
+      className="report-project-page flex min-h-0 min-w-0 flex-col max-md:overflow-x-visible"
     >
       <header className="flex shrink-0 flex-col gap-1 max-md:gap-0">
         <div className="flex flex-col gap-y-1 max-md:min-w-0 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-2">
@@ -56,7 +56,7 @@ export function ReportProjectReportDashboardSkeleton() {
         <div className="h-px w-full shrink-0 bg-[var(--ds-border-subtle)]" role="separator" aria-hidden />
       </header>
 
-      <div className="report-project-page-body min-w-0 flex-1 md:pt-1 md:pb-4">
+      <div className="report-project-page-body min-h-0 min-w-0 md:pt-1 md:pb-4">
         <div className="flex w-full min-w-0 flex-col">
           <div className="min-w-0 w-full pt-4 max-md:overflow-x-visible max-md:pt-2">
             <div className="report-project-overview-stack flex min-w-0 w-full flex-col gap-3">

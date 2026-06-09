@@ -66,7 +66,7 @@ function sumDirectRowsForCategory(
   directRows: ReportProjectCostSummaryDirectRow[],
   wbsById: Map<string, ReportProjectCostWbsOption>,
 ): ReportProjectCostSummaryTotals {
-  return directRows.reduce<ReportProjectCostSummaryTotals>(
+  const totals = directRows.reduce(
     (totals, row) => {
       const wbs = wbsById.get(row.wbsId);
       if (!wbs) return totals;
@@ -78,16 +78,22 @@ function sumDirectRowsForCategory(
         approvedBudget: totals.approvedBudget + row.approvedBudget,
         currentForecast: totals.currentForecast + row.currentForecast,
         currentCommitted: totals.currentCommitted + row.currentCommitted,
-        currentUncommitted: totals.currentUncommitted + row.currentUncommitted,
       };
     },
     {
       approvedBudget: 0,
       currentForecast: 0,
       currentCommitted: 0,
-      currentUncommitted: 0,
     },
   );
+
+  return {
+    ...totals,
+    currentUncommitted: getReportCostSummaryUncommittedAmount(
+      totals.currentForecast,
+      totals.currentCommitted,
+    ),
+  };
 }
 
 /** Builds one flat row per top-level WBS category, rolling up descendant cost lines. */
@@ -124,20 +130,33 @@ export function buildReportCostSummaryCategoryRows(
 export function sumReportCostSummaryCategoryRows(
   rows: ReportProjectCostSummaryCategoryRow[],
 ): ReportProjectCostSummaryTotals {
-  return rows.reduce<ReportProjectCostSummaryTotals>(
+  const totals = rows.reduce(
     (totals, row) => ({
       approvedBudget: totals.approvedBudget + row.approvedBudget,
       currentForecast: totals.currentForecast + row.currentForecast,
       currentCommitted: totals.currentCommitted + row.currentCommitted,
-      currentUncommitted: totals.currentUncommitted + row.currentUncommitted,
     }),
     {
       approvedBudget: 0,
       currentForecast: 0,
       currentCommitted: 0,
-      currentUncommitted: 0,
     },
   );
+
+  return {
+    ...totals,
+    currentUncommitted: getReportCostSummaryUncommittedAmount(
+      totals.currentForecast,
+      totals.currentCommitted,
+    ),
+  };
+}
+
+export function getReportCostSummaryUncommittedAmount(
+  currentForecast: number,
+  currentCommitted: number,
+): number {
+  return currentForecast - currentCommitted;
 }
 
 export function getReportCostSummaryVarianceAmount(
@@ -147,12 +166,23 @@ export function getReportCostSummaryVarianceAmount(
   return currentForecast - approvedBudget;
 }
 
-/** Summary table amounts — millions with two decimal places (e.g. $1.23M). */
+function formatReportCostSummaryMagnitude(
+  amount: number,
+  decimals: number,
+  currencySymbol = "$",
+): string {
+  if (amount === 0) return `${currencySymbol} - M`;
+  const magnitude = `${currencySymbol}${(Math.abs(amount) / 1_000_000).toFixed(decimals)}M`;
+  if (amount < 0) return `- ${magnitude}`;
+  return magnitude;
+}
+
+/** Summary table amounts — millions with two decimal places (e.g. $1.23M, - $1.23M). */
 export function formatReportCostSummaryAmount(
   amount: number,
   currencySymbol = "$",
 ): string {
-  return `${currencySymbol}${(amount / 1_000_000).toFixed(2)}M`;
+  return formatReportCostSummaryMagnitude(amount, 2, currencySymbol);
 }
 
 /** Summary table project total row — millions with one decimal place (e.g. $233.5M). */
@@ -160,35 +190,61 @@ export function formatReportCostSummaryTotalAmount(
   amount: number,
   currencySymbol = "$",
 ): string {
-  return `${currencySymbol}${(amount / 1_000_000).toFixed(1)}M`;
+  return formatReportCostSummaryMagnitude(amount, 1, currencySymbol);
 }
 
+function formatReportCostSummaryDifferenceAmount(
+  amount: number,
+  formatAbsolute: (abs: number, currencySymbol: string) => string,
+  currencySymbol = "$",
+): string {
+  const formatted = formatAbsolute(Math.abs(amount), currencySymbol);
+  if (amount > 0) return `+ ${formatted}`;
+  if (amount < 0) return `- ${formatted}`;
+  return formatted;
+}
+
+/** vs Budget column — positive differences include a leading + (e.g. + $1.23M). */
 export function formatReportCostSummaryVarianceAmount(
   amount: number,
   currencySymbol = "$",
 ): string {
-  const formatted = formatReportCostSummaryAmount(Math.abs(amount), currencySymbol);
-  if (amount > 0) return `+${formatted}`;
-  if (amount < 0) return `-${formatted}`;
-  return formatted;
+  return formatReportCostSummaryDifferenceAmount(
+    amount,
+    formatReportCostSummaryAmount,
+    currencySymbol,
+  );
 }
 
 export function formatReportCostSummaryTotalVarianceAmount(
   amount: number,
   currencySymbol = "$",
 ): string {
-  const formatted = formatReportCostSummaryTotalAmount(Math.abs(amount), currencySymbol);
-  if (amount > 0) return `+${formatted}`;
-  if (amount < 0) return `-${formatted}`;
-  return formatted;
+  return formatReportCostSummaryDifferenceAmount(
+    amount,
+    formatReportCostSummaryTotalAmount,
+    currencySymbol,
+  );
 }
 
-export function getReportCostSummaryVarianceToneClass(varianceAmount: number): string {
-  if (varianceAmount > 0) {
+export function getReportCostSummaryAmountToneClass(amount: number): string {
+  if (amount < 0) {
     return "text-[var(--ds-status-danger-fg)]";
   }
 
-  return "text-[var(--ds-status-success-fg)]";
+  return "text-[var(--ds-text-primary)]";
+}
+
+export function getReportCostSummaryVarianceToneClass(varianceAmount: number): string {
+  if (varianceAmount < 0) {
+    return "text-[var(--ds-status-danger-fg)]";
+  }
+
+  if (varianceAmount > 0) {
+    return "text-[var(--ds-status-success-fg)]";
+  }
+
+  return "text-[var(--ds-text-primary)]";
 }
 
 export function getReportCostSummaryVariancePercent(
@@ -211,10 +267,9 @@ export const REPORT_PROJECT_COST_SUMMARY_EXCLUDED_TOP_LEVEL_CODES = new Set([
   "99",
 ]);
 
-/** Top-level WBS codes excluded from normalised forecast (Asset Holding, Customer, Contingency). */
+/** Top-level WBS codes excluded from normalised forecast (Asset Holding, Contingency). */
 export const REPORT_PROJECT_COST_NORMALISED_FORECAST_EXCLUDED_WBS_CODES = new Set([
   "11",
-  "19",
   "49",
 ]);
 
@@ -329,11 +384,12 @@ export function getReportProjectCostWbsSummaryTotals(
 }
 
 /**
- * Normalised forecast — project current forecast total minus Asset Holding (11),
- * Customer (19), and Contingency (49).
+ * Normalised forecast — project current forecast total minus Asset Holding (11)
+ * and Contingency (49).
  */
-export function getReportProjectCostNormalisedForecast(
+function sumReportProjectCostNormalisedCategoryField(
   data: ReportProjectCostSummaryData,
+  field: keyof Pick<ReportProjectCostSummaryCategoryRow, "approvedBudget" | "currentForecast">,
 ): number {
   const categoryRows = buildReportCostSummaryCategoryRows(data.wbsOptions, data.directRows);
 
@@ -342,8 +398,20 @@ export function getReportProjectCostNormalisedForecast(
       return total;
     }
 
-    return total + row.currentForecast;
+    return total + row[field];
   }, 0);
+}
+
+export function getReportProjectCostNormalisedForecast(
+  data: ReportProjectCostSummaryData,
+): number {
+  return sumReportProjectCostNormalisedCategoryField(data, "currentForecast");
+}
+
+export function getReportProjectCostNormalisedApprovedBudget(
+  data: ReportProjectCostSummaryData,
+): number {
+  return sumReportProjectCostNormalisedCategoryField(data, "approvedBudget");
 }
 
 const REPORT_PROJECT_WBS_SUMMARY_TOTALS = getReportProjectCostWbsSummaryTotals(

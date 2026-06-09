@@ -13,6 +13,8 @@ import {
 import {
   REPORT_OVERVIEW_MOBILE_CARD_SHADOW_CLASS,
   REPORT_OVERVIEW_MOBILE_FLATTEN_CARD_CLASS,
+  REPORT_OVERVIEW_TILE_HOVER_ELEVATION_CLASS,
+  REPORT_OVERVIEW_TILE_HOVER_LIFT_CLASS,
 } from "@/lib/projects/report-project-overview-link";
 import { useReportSmMinWidth } from "@/lib/useReportSmMinWidth";
 
@@ -43,13 +45,8 @@ const STATUS_MODULE_COLUMN_CLASS =
 
 const STATUS_MODULE_OVERALL_ELEVATION_CLASS = "shadow-[var(--ds-elevation-tile)]";
 
-const STATUS_MODULE_INTERACTIVE_INSET_CLASS = "absolute inset-0 z-0";
-
-const STATUS_MODULE_INTERACTIVE_OUTLINE_CLASS =
-  "rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 transition-[outline-color,box-shadow,background-color] duration-150 ease-out hover:outline hover:outline-2 hover:outline-offset-0 hover:outline-[var(--ds-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-[var(--ds-primary)]";
-
-const STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS =
-  "transition-[outline-color,box-shadow,background-color] duration-150 ease-out hover:outline hover:outline-2 hover:outline-offset-0 hover:outline-[var(--ds-primary)]";
+const STATUS_MODULE_INTERACTIVE_INSET_CLASS =
+  "absolute inset-0 z-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 focus-visible:outline-none";
 
 const STATUS_MODULE_TITLE_CLASS =
   "shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]";
@@ -93,8 +90,7 @@ function MobileSupportingStatusCard({
   const isInteractive = tabId != null && onItemNavigate != null;
 
   return (
-    <div
-      className={MOBILE_SUPPORTING_STATUS_CARD_CLASS}
+    <div className={[MOBILE_SUPPORTING_STATUS_CARD_CLASS, REPORT_OVERVIEW_TILE_HOVER_ELEVATION_CLASS].join(" ")}
       onMouseEnter={() => onItemHover?.(label)}
       onMouseLeave={() => onItemLeave?.()}
     >
@@ -103,11 +99,7 @@ function MobileSupportingStatusCard({
           type="button"
           onClick={() => onItemNavigate(tabId, label)}
           aria-label={`View ${label} — open ${tabLabel} tab`}
-          className={[
-            STATUS_MODULE_INTERACTIVE_INSET_CLASS,
-            STATUS_MODULE_INTERACTIVE_OUTLINE_CLASS,
-            "cursor-pointer",
-          ].join(" ")}
+          className={[STATUS_MODULE_INTERACTIVE_INSET_CLASS, "cursor-pointer"].join(" ")}
         />
       ) : null}
       <div className="relative z-10 flex min-h-0 flex-col pointer-events-none">
@@ -135,7 +127,13 @@ function MobileOverallStatusHero({
   const trendText = trend.text.trim();
 
   return (
-    <div className={[MOBILE_OVERALL_STATUS_HERO_CLASS, highlightClassName].join(" ")}>
+    <div
+      className={[
+        MOBILE_OVERALL_STATUS_HERO_CLASS,
+        highlightClassName,
+        REPORT_OVERVIEW_TILE_HOVER_LIFT_CLASS,
+      ].join(" ")}
+    >
       <span className={STATUS_MODULE_TITLE_CLASS}>Overall Status</span>
       <div className="flex items-center justify-center gap-2 pt-2 pb-0.5 text-[length:1.75rem]">
         <div className={MOBILE_OVERALL_STATUS_VALUE_CLASS}>
@@ -197,7 +195,9 @@ function StatusModuleColumn({
         columnClassName,
         highlightClassName,
         highlightClassName ? STATUS_MODULE_OVERALL_ELEVATION_CLASS : "",
-        !isInteractive && onItemHover ? STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS : "",
+        highlightClassName
+          ? REPORT_OVERVIEW_TILE_HOVER_LIFT_CLASS
+          : REPORT_OVERVIEW_TILE_HOVER_ELEVATION_CLASS,
       ]
         .filter(Boolean)
         .join(" ")}
@@ -209,11 +209,7 @@ function StatusModuleColumn({
           type="button"
           onClick={() => onItemNavigate(tabId, label)}
           aria-label={`View ${label} — open ${tabLabel} tab`}
-          className={[
-            STATUS_MODULE_INTERACTIVE_INSET_CLASS,
-            STATUS_MODULE_INTERACTIVE_OUTLINE_CLASS,
-            "cursor-pointer",
-          ].join(" ")}
+          className={[STATUS_MODULE_INTERACTIVE_INSET_CLASS, "cursor-pointer"].join(" ")}
         />
       ) : null}
       <div className="relative z-10 flex min-h-0 flex-1 flex-col pointer-events-none">

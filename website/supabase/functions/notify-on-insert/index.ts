@@ -1,9 +1,8 @@
 /**
- * Invoked by Supabase Database Webhooks on INSERT into `visualify_signup` or `visualify_contact`.
- * Sends a notification email via Resend (optional: skips if RESEND_API_KEY is unset).
+ * Invoked by Supabase Database Webhooks on INSERT into `visualify_signup`, `visualify_contact`,
+ * or `visualify_invitations`. Sends email via Resend (optional: skips if RESEND_API_KEY is unset).
  *
- * Security: deploy with JWT verification disabled and require `Authorization: Bearer <WEBHOOK_SECRET>`.
- * See supabase/NOTIFY_SETUP.md.
+ * Security: deploy with JWT verification disabled (`--no-verify-jwt`). See supabase/NOTIFY_SETUP.md.
  */
 
 const NOTIFY_TO_DEFAULT = "help@visualify.com.au";
@@ -115,6 +114,13 @@ type WebhookInsertPayload = {
   record?: Record<string, unknown> | null;
 };
 
+type InvitationResourceType = "workspace" | "project" | "portfolio";
+
+/** Header brand line for invitation emails. Workspace invites use HQ branding. */
+function invitationBrandLabel(resourceType: InvitationResourceType): string {
+  return resourceType === "workspace" ? "Visualify HQ" : "Visualify | Risk AI";
+}
+
 async function sendResendEmail(params: {
   apiKey: string;
   from: string;
@@ -172,15 +178,17 @@ function buildInvitationEmail(params: {
   inviterDisplayName: string;
   inviteLink: string;
   isExistingUser: boolean;
+  brandLabel: string;
 }): { text: string; html: string } {
   const greetingName = params.firstName || "there";
+  const brandLabel = params.brandLabel.trim() || "Visualify";
   const secondLine = params.isExistingUser
     ? "Log in to your account to accept this invitation."
     : "Create your account to accept this invitation.";
   const cta = params.isExistingUser ? "Accept invitation" : "Create account & join";
   const msoBtnW = params.isExistingUser ? "190px" : "240px";
   const text = [
-    "Visualify | Risk AI",
+    brandLabel,
     "",
     "You've been invited",
     "",
@@ -219,7 +227,7 @@ function buildInvitationEmail(params: {
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                     <tr>
                       <td style="font-size:16px;line-height:24px;font-weight:600;color:#111111;padding:0 0 14px 0;">
-                        Visualify | Risk AI
+                        ${escapeHtml(brandLabel)}
                       </td>
                     </tr>
                     <tr>
@@ -317,12 +325,18 @@ Deno.serve(async (req) => {
       const inviteLink =
         url.searchParams.get("invite_link")?.trim() || "https://app.riskai.com.au/invite?invite_token=demo-token";
       const isExistingUser = url.searchParams.get("existing") === "1";
+      const previewResourceType = url.searchParams.get("resource_type")?.trim().toLowerCase();
+      const previewBrand =
+        previewResourceType === "workspace"
+          ? invitationBrandLabel("workspace")
+          : invitationBrandLabel("project");
       const preview = buildInvitationEmail({
         firstName,
         projectName,
         inviterDisplayName,
         inviteLink,
         isExistingUser,
+        brandLabel: previewBrand,
       });
       return new Response(preview.html, {
         status: 200,
@@ -523,6 +537,7 @@ Deno.serve(async (req) => {
       inviterDisplayName,
       inviteLink,
       isExistingUser,
+      brandLabel: invitationBrandLabel(resourceType as InvitationResourceType),
     });
     text = invitationEmail.text;
     html = invitationEmail.html;

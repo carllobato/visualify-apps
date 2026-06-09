@@ -5,6 +5,7 @@ import {
   type AcceptWorkspaceInvitationErrorCode,
 } from "@/lib/auth/acceptWorkspaceInvitation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
+import { writeVisualifyActiveWorkspaceIdCookie } from "@/lib/workspace-settings-data";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -81,6 +82,7 @@ export default async function InvitePage({
   });
 
   if (result.ok) {
+    await writeVisualifyActiveWorkspaceIdCookie(result.workspace_id);
     redirect("/dashboard?invite_accepted=1");
   }
 

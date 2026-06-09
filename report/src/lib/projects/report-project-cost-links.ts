@@ -1,4 +1,9 @@
 import {
+  getReportCashflowTodayIndex,
+  REPORT_CASHFLOW_ACTUALS_SERIES_LABEL,
+  type ReportProjectCashflowSeries,
+} from "@/lib/projects/report-project-cost";
+import {
   REPORT_PROJECT_COST_NORMALISED_FORECAST_EXCLUDED_WBS_CODES,
   type ReportProjectCostSummaryCategoryRow,
 } from "@/lib/projects/report-project-cost-summary";
@@ -44,8 +49,28 @@ export function getReportCostMetricSummaryColumn(
   }
 }
 
+export type ReportCostMetricCashflowLink = {
+  pointIndex: number;
+  seriesLabel: string;
+};
+
 export function getReportCostMetricHighlightsCashflow(linkId: ReportCostMetricLinkId): boolean {
   return linkId === "spent-to-date";
+}
+
+export function getReportCostMetricCashflowLink(
+  linkId: ReportCostMetricLinkId,
+  cashflow: ReportProjectCashflowSeries[],
+): ReportCostMetricCashflowLink | undefined {
+  if (linkId !== "spent-to-date") return undefined;
+
+  const pointIndex = getReportCashflowTodayIndex(cashflow);
+  if (pointIndex < 0) return undefined;
+
+  return {
+    pointIndex,
+    seriesLabel: REPORT_CASHFLOW_ACTUALS_SERIES_LABEL,
+  };
 }
 
 export function getReportCostMetricSummaryRowFilter(

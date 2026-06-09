@@ -23,6 +23,7 @@ export function AppShellRouteTransitionEffect() {
     resetAppShellScrollRegion();
 
     if (!consumeAppShellRouteEnterPending()) {
+      clearAppShellRouteTransitionState();
       return;
     }
 

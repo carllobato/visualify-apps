@@ -8,9 +8,11 @@ import { ReportProjectCostSummaryTable } from "@/components/project/report/Repor
 import {
   getReportCostMetricTrend,
   getReportCostRagStatus,
+  getReportProjectSpentToDateAmount,
   type ReportProjectCostData,
 } from "@/lib/projects/report-project-cost";
 import {
+  getReportCostMetricCashflowLink,
   getReportCostMetricHighlightsCashflow,
   getReportCostMetricSummaryColumn,
   getReportCostMetricSummaryRowFilter,
@@ -19,6 +21,7 @@ import {
 import type { ReportOverviewModuleLinkId } from "@/lib/projects/report-project-overview-link";
 import {
   formatReportCostSummaryTotalAmount,
+  getReportCostSummaryAmountToneClass,
   getReportProjectCostNormalisedForecast,
   getReportProjectCostWbsSummaryTotals,
 } from "@/lib/projects/report-project-cost-summary";
@@ -47,6 +50,10 @@ export function ReportProjectCostTabContent({
   const highlightedCashflow = hoveredMetric
     ? getReportCostMetricHighlightsCashflow(hoveredMetric)
     : false;
+  const cashflowLink = hoveredMetric
+    ? getReportCostMetricCashflowLink(hoveredMetric, cashflow)
+    : undefined;
+  const spentToDate = getReportProjectSpentToDateAmount(summary, cashflow);
 
   return (
     <div className="flex min-w-0 w-full flex-col gap-3">
@@ -59,6 +66,7 @@ export function ReportProjectCostTabContent({
         <ReportProjectCostMetricCard
           label="Approved budget"
           value={formatReportCostSummaryTotalAmount(wbsTotals.approvedBudget, currencySymbol)}
+          valueClassName={getReportCostSummaryAmountToneClass(wbsTotals.approvedBudget)}
           trend={getReportCostMetricTrend(wbsTotals.approvedBudget, lastReport?.approvedBudget)}
           metricLinkId="approved-budget"
           onMetricHover={setHoveredMetric}
@@ -67,6 +75,7 @@ export function ReportProjectCostTabContent({
         <ReportProjectCostMetricCard
           label="Current forecast"
           value={formatReportCostSummaryTotalAmount(wbsTotals.currentForecast, currencySymbol)}
+          valueClassName={getReportCostSummaryAmountToneClass(wbsTotals.currentForecast)}
           trend={getReportCostMetricTrend(wbsTotals.currentForecast, lastReport?.currentForecast)}
           metricLinkId="current-forecast"
           onMetricHover={setHoveredMetric}
@@ -75,6 +84,7 @@ export function ReportProjectCostTabContent({
         <ReportProjectCostMetricCard
           label="Normalised Forecast"
           value={formatReportCostSummaryTotalAmount(normalisedForecast, currencySymbol)}
+          valueClassName={getReportCostSummaryAmountToneClass(normalisedForecast)}
           trend={getReportCostMetricTrend(normalisedForecast, lastReport?.normalisedForecast)}
           metricLinkId="normalised-forecast"
           onMetricHover={setHoveredMetric}
@@ -82,8 +92,9 @@ export function ReportProjectCostTabContent({
         />
         <ReportProjectCostMetricCard
           label="Spent to date"
-          value={formatReportCostSummaryTotalAmount(summary.spentToDate, currencySymbol)}
-          trend={getReportCostMetricTrend(summary.spentToDate, lastReport?.spentToDate)}
+          value={formatReportCostSummaryTotalAmount(spentToDate, currencySymbol)}
+          valueClassName={getReportCostSummaryAmountToneClass(spentToDate)}
+          trend={getReportCostMetricTrend(spentToDate, lastReport?.spentToDate)}
           metricLinkId="spent-to-date"
           onMetricHover={setHoveredMetric}
           onMetricLeave={() => setHoveredMetric(null)}
@@ -99,6 +110,8 @@ export function ReportProjectCostTabContent({
         data={cashflow}
         summary={summary}
         highlighted={highlightedCashflow}
+        linkedPointIndex={cashflowLink?.pointIndex}
+        linkedSeriesLabel={cashflowLink?.seriesLabel}
       />
     </div>
   );

@@ -1,7 +1,13 @@
 /**
- * Report protected routes — mobile shell polish (max-width 767px).
+ * Report protected routes — shell polish.
  * Scroll top/bottom insets come from app-shell-frame.css — do not override here.
  */
+
+/* Content-sized page root — applies on desktop and mobile. */
+.vf-app-shell-scroll-region .report-project-page {
+  flex: 0 0 auto;
+  width: 100%;
+}
 
 @media (max-width: 767px) {
   /*

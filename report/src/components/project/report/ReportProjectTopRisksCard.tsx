@@ -10,6 +10,7 @@ import {
 } from "@/lib/projects/report-project-overview-link";
 import {
   getReportProjectTopRiskRagStatus,
+  sortReportProjectTopRisksByRagStatus,
   type ReportProjectTopRisk,
 } from "@/lib/projects/report-project-top-risks";
 
@@ -80,10 +81,11 @@ function ReportProjectTopRisksTabularList({ risks }: { risks: ReportProjectTopRi
             <p className="m-0 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
               {risk.description}
             </p>
-            <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-              <span className="font-medium text-[var(--ds-text-muted)]">Mitigation / action: </span>
-              {risk.comment}
-            </p>
+            {risk.comment ? (
+              <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                {risk.comment}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center justify-end gap-1.5">
             <ReportRagStatusDot
@@ -130,10 +132,11 @@ function ReportProjectTopRisksExpandedList({
               <Trend sentiment={risk.trend.sentiment}>{risk.trend.text}</Trend>
             </div>
           </div>
-          <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-            <span className="font-medium text-[var(--ds-text-muted)]">Mitigation / action: </span>
-            {risk.comment}
-          </p>
+          {risk.comment ? (
+            <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+              {risk.comment}
+            </p>
+          ) : null}
         </li>
       ))}
     </ul>
@@ -198,6 +201,8 @@ export function ReportProjectTopRisksCard({
   onNavigate,
   navigateLabel,
 }: ReportProjectTopRisksCardProps) {
+  const sortedRisks = sortReportProjectTopRisksByRagStatus(risks);
+
   if (expanded) {
     return (
       <ReportProjectOverviewInteractiveCard
@@ -213,7 +218,7 @@ export function ReportProjectTopRisksCard({
         >
           Key issues & risks
         </p>
-        <ReportProjectTopRisksList risks={risks} expanded prominent={prominent} />
+        <ReportProjectTopRisksList risks={sortedRisks} expanded prominent={prominent} />
       </ReportProjectOverviewInteractiveCard>
     );
   }
@@ -222,7 +227,7 @@ export function ReportProjectTopRisksCard({
     <>
       <ReportProjectOverviewCardHeader title="Key issues & risks" />
       <div className="flex min-h-0 flex-1 flex-col">
-        <ReportProjectTopRisksList risks={risks} expanded={expanded} prominent={prominent} rowHoverable={rowHoverable} onNavigate={onNavigate} />
+        <ReportProjectTopRisksList risks={sortedRisks} expanded={expanded} prominent={prominent} rowHoverable={rowHoverable} onNavigate={onNavigate} />
         <div className="min-h-0 flex-1" aria-hidden="true" />
       </div>
     </>

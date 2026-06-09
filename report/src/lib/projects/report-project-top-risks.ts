@@ -36,6 +36,38 @@ export function getReportProjectTopRiskRagStatus(
   return "Green";
 }
 
+const REPORT_TOP_RISK_RAG_SORT_ORDER: Record<string, number> = {
+  red: 0,
+  amber: 1,
+  yellow: 1,
+  green: 2,
+};
+
+function getReportProjectTopRiskRagSortOrder(
+  risk: Pick<ReportProjectTopRisk, "likelihood" | "impact">,
+): number {
+  const ragStatus = getReportProjectTopRiskRagStatus(risk).toLowerCase();
+  return REPORT_TOP_RISK_RAG_SORT_ORDER[ragStatus] ?? 3;
+}
+
+export function compareReportProjectTopRisksByRagStatus(
+  a: ReportProjectTopRisk,
+  b: ReportProjectTopRisk,
+): number {
+  const ragOrder = getReportProjectTopRiskRagSortOrder(a) - getReportProjectTopRiskRagSortOrder(b);
+  if (ragOrder !== 0) {
+    return ragOrder;
+  }
+
+  return a.title.localeCompare(b.title);
+}
+
+export function sortReportProjectTopRisksByRagStatus(
+  risks: ReportProjectTopRisk[],
+): ReportProjectTopRisk[] {
+  return [...risks].sort(compareReportProjectTopRisksByRagStatus);
+}
+
 /** Placeholder until report Excel upload supplies top risks. */
 export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
   {

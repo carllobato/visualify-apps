@@ -6,12 +6,16 @@ import {
   isPostgresUniqueViolation,
 } from "@/lib/workspace-slug";
 import { resolveWorkspaceLogoUrl } from "@/lib/workspace-logo";
+import { provisionReportProductForWorkspace } from "@/lib/provision-workspace-report-product";
 import { parseOptionalWorkspaceWebsiteUrl } from "@/lib/workspace-website-url";
 import type { WorkspaceCreateType } from "@/types/workspace-create";
 
 export type CreateWorkspaceResult =
   | { ok: true; workspaceId: string }
-  | { ok: false; code: "INVALID_INPUT" | "SERVICE_ROLE_UNAVAILABLE" | "DB_ERROR" };
+  | {
+      ok: false;
+      code: "INVALID_INPUT" | "SERVICE_ROLE_UNAVAILABLE" | "DB_ERROR" | "PRODUCT_PROVISION_FAILED";
+    };
 
 const WORKSPACE_NAME_MAX = 120;
 
@@ -23,9 +27,39 @@ const WORKSPACE_NAME_MAX = 120;
  * source of truth: HQ admin access and app entitlements are evaluated from active member rows,
  * not from the workspace record alone.
  *
- * Creates workspace + owner membership atomically via service role: insert workspace, insert
- * member, and compensate (delete workspace) if the member row cannot be created.
+ * Creates workspace + owner membership + Report product entitlement via service role. Compensates
+ * (delete workspace) if the member row cannot be created; rolls back workspace + member if
+ * Report provisioning fails.
  */
+async function rollbackCreatedWorkspace(
+  admin: ReturnType<typeof supabaseAdminClient>,
+  workspaceId: string,
+): Promise<void> {
+  const { error: membersErr } = await admin
+    .from("visualify_workspace_members")
+    .delete()
+    .eq("workspace_id", workspaceId);
+  if (membersErr) {
+    console.error("createWorkspaceForOwner rollback members:", membersErr.message, { workspaceId });
+  }
+
+  const { error: productsErr } = await admin
+    .from("visualify_workspace_products")
+    .delete()
+    .eq("workspace_id", workspaceId);
+  if (productsErr) {
+    console.error("createWorkspaceForOwner rollback products:", productsErr.message, { workspaceId });
+  }
+
+  const { error: workspaceErr } = await admin
+    .from("visualify_workspaces")
+    .delete()
+    .eq("id", workspaceId);
+  if (workspaceErr) {
+    console.error("createWorkspaceForOwner rollback workspace:", workspaceErr.message, { workspaceId });
+  }
+}
+
 export async function createWorkspaceForOwner(params: {
   ownerUserId: string;
   name: string;
@@ -96,15 +130,20 @@ export async function createWorkspaceForOwner(params: {
     });
 
     if (memberErr) {
-      console.error("createWorkspaceForOwner member:", memberErr.message);
-      const { error: rollbackErr } = await admin
-        .from("visualify_workspaces")
-        .delete()
-        .eq("id", workspaceId);
-      if (rollbackErr) {
-        console.error("createWorkspaceForOwner rollback:", rollbackErr.message);
-      }
+      console.error("createWorkspaceForOwner member:", memberErr.message, { workspaceId });
+      await rollbackCreatedWorkspace(admin, workspaceId);
       return { ok: false, code: "DB_ERROR" };
+    }
+
+    const provisioned = await provisionReportProductForWorkspace(admin, workspaceId);
+    if (!provisioned.ok) {
+      console.error("createWorkspaceForOwner product provision failed", {
+        workspaceId,
+        step: provisioned.step,
+        message: provisioned.message,
+      });
+      await rollbackCreatedWorkspace(admin, workspaceId);
+      return { ok: false, code: "PRODUCT_PROVISION_FAILED" };
     }
 
     return { ok: true, workspaceId };
