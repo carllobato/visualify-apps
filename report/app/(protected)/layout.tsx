@@ -33,24 +33,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(buildLoginRedirectUrl(pathname));
   }
 
-  // TODO(report-access-debug): Remove temporary entitlement debug logging after invite/access investigation.
-  {
-    const productKey = productConfig.PRODUCT_KEY;
-    const supabaseUrlPrefix = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().slice(0, 40) ?? "";
-    console.log("[report-access-debug] session", {
-      userId: user.id,
-      userEmail: user.email ?? null,
-      productKey,
-      supabaseUrlPrefix,
-    });
-  }
-
   const supabase = await supabaseServerClient();
 
   const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
-
-  // TODO(report-access-debug): Remove temporary entitlement debug logging after invite/access investigation.
-  console.log("[report-access-debug] entitled", { entitled });
   if (!entitled) {
     return (
       <main className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">

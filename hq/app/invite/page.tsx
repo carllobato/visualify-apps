@@ -1,11 +1,5 @@
 import { redirect } from "next/navigation";
-import {
-  acceptWorkspaceInvitation,
-  inviteErrorQueryValue,
-  type AcceptWorkspaceInvitationErrorCode,
-} from "@/lib/auth/acceptWorkspaceInvitation";
 import { resolveAuthenticatedUser } from "@/lib/auth/resolve-authenticated-user";
-import { writeVisualifyActiveWorkspaceIdCookie } from "@/lib/workspace-settings-data";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -29,24 +23,6 @@ function loginRedirectWithInviteContext(params: {
   if (params.inviteError) sp.set("invite_error", params.inviteError);
   if (params.inviteConflict) sp.set("invite_conflict", "1");
   redirect(`/login?${sp.toString()}`);
-}
-
-function redirectInviteFailure(
-  code: AcceptWorkspaceInvitationErrorCode,
-  inviteToken: string,
-  invitedEmail: string,
-  mode: string
-): never {
-  const useConflict =
-    code === "EMAIL_MISMATCH" || code === "CONFLICT" || code === "INVITATION_ALREADY_USED";
-
-  loginRedirectWithInviteContext({
-    inviteToken,
-    invitedEmail,
-    mode,
-    inviteError: inviteErrorQueryValue(code),
-    inviteConflict: useConflict,
-  });
 }
 
 export default async function InvitePage({
@@ -76,15 +52,9 @@ export default async function InvitePage({
     redirect("/login?invite_error=invite_token_required");
   }
 
-  const result = await acceptWorkspaceInvitation({
-    inviteToken,
-    user: { id: user.id, email: user.email },
-  });
-
-  if (result.ok) {
-    await writeVisualifyActiveWorkspaceIdCookie(result.workspace_id);
-    redirect("/dashboard?invite_accepted=1");
-  }
-
-  redirectInviteFailure(result.code, inviteToken, invitedEmail, mode || "signup");
+  const acceptParams = new URLSearchParams();
+  acceptParams.set("invite_token", inviteToken);
+  if (invitedEmail) acceptParams.set("invited_email", invitedEmail);
+  if (mode) acceptParams.set("mode", mode);
+  redirect(`/api/invitations/accept?${acceptParams.toString()}`);
 }
