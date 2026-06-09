@@ -10,6 +10,7 @@ import {
   AppShellRailFooterAccount,
   AppShellRailHeader,
   AppShellRailNavLink,
+  AppShellRailNavScroll,
   AppShellRailNavSection,
   AppShellRailSeparator,
   appShellNavHrefActive,
@@ -231,14 +232,15 @@ export function ControlAiAppShellRail({
 
           <AppShellRailSeparator />
 
-          <ControlAiWorkspaceRailList
-            workspaces={workspaces}
-            selectedWorkspaceId={selectedWorkspaceId}
-          />
+          <AppShellRailNavScroll>
+            <ControlAiWorkspaceRailList
+              workspaces={workspaces}
+              selectedWorkspaceId={selectedWorkspaceId}
+            />
 
-          <AppShellRailSeparator />
+            <AppShellRailSeparator />
 
-          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
+            <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
             {CONTROLAI_PRIMARY_NAV.map(({ href, label }) => (
               <AppShellRailNavLink
                 key={href}
@@ -271,6 +273,7 @@ export function ControlAiAppShellRail({
               </AppShellRailNavSection>
             ) : null}
           </nav>
+          </AppShellRailNavScroll>
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

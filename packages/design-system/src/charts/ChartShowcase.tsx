@@ -201,7 +201,7 @@ function ChartFrame({
   embedded = false,
   children,
 }: {
-  title: string;
+  title?: string;
   insight?: string;
   status?: ChartStatus;
   showDelta?: boolean;
@@ -219,33 +219,35 @@ function ChartFrame({
           : "rounded-[var(--ds-radius-md)] border border-[var(--ds-chart-panel-border)] bg-[var(--ds-chart-panel)]/95 p-[var(--ds-chart-panel-padding)]"
       }
     >
-      <div
-        className={
-          embedded
-            ? "mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3 px-4 pt-3"
-            : "mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3"
-        }
-      >
-        <div className="flex items-baseline gap-2">
-          <h3 className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-card-foreground)]">{title}</h3>
-          {showDelta && delta ? (
+      {title ? (
+        <div
+          className={
+            embedded
+              ? "mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3 px-4 pt-3"
+              : "mb-[var(--ds-chart-header-gap)] flex items-start justify-between gap-3"
+          }
+        >
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-card-foreground)]">{title}</h3>
+            {showDelta && delta ? (
+              <span
+                className="text-[length:var(--ds-chart-label-size)] font-medium tabular-nums"
+                style={{ color: STATUS_COLOR_VAR[status] }}
+              >
+                {delta}
+              </span>
+            ) : null}
+          </div>
+          {insight ? (
             <span
-              className="text-[length:var(--ds-chart-label-size)] font-medium tabular-nums"
-              style={{ color: STATUS_COLOR_VAR[status] }}
+              className="text-[length:var(--ds-chart-annotation-size)] font-semibold uppercase tracking-[0.045em]"
+              style={{ color: STATUS_COLOR_VAR[status], opacity: 0.94 }}
             >
-              {delta}
+              {insight}
             </span>
           ) : null}
         </div>
-        {insight ? (
-          <span
-            className="text-[length:var(--ds-chart-annotation-size)] font-semibold uppercase tracking-[0.045em]"
-            style={{ color: STATUS_COLOR_VAR[status], opacity: 0.94 }}
-          >
-            {insight}
-          </span>
-        ) : null}
-      </div>
+      ) : null}
       <div className={embedded ? "relative min-h-0 flex-1" : "relative"}>
         {children}
         {hoverCard ? (
@@ -841,8 +843,9 @@ export function MultiLineChartPrimitive({
   todayIndex,
   forecastDasharray = "4 4",
   embedded = false,
+  embeddedContentClassName = "px-4 pb-3",
 }: {
-  title: string;
+  title?: string;
   series: LineSeries[];
   insight?: string;
   status?: ChartStatus;
@@ -857,6 +860,7 @@ export function MultiLineChartPrimitive({
   todayIndex?: number;
   forecastDasharray?: string;
   embedded?: boolean;
+  embeddedContentClassName?: string;
 }) {
   const w = MULTI_LINE_VIEW_WIDTH;
   const h = MULTI_LINE_VIEW_HEIGHT;
@@ -916,7 +920,7 @@ export function MultiLineChartPrimitive({
       <div
         className={
           embedded
-            ? "flex min-h-0 flex-1 flex-col px-4 pb-3"
+            ? `flex min-h-0 flex-1 flex-col ${embeddedContentClassName}`
             : "rounded-[var(--ds-radius-sm)] bg-[var(--ds-chart-surface)] px-[var(--ds-space-2)] pb-[var(--ds-space-2)] pt-[var(--ds-space-1)]"
         }
       >

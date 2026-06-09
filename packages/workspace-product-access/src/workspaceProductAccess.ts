@@ -39,6 +39,18 @@ type MemberRow = {
   visualify_workspaces: WorkspaceEmbed | WorkspaceEmbed[] | null;
 };
 
+type UserProductGrantRow = {
+  status: string | null;
+  visualify_workspaces: Pick<WorkspaceEmbed, "name" | "slug" | "status"> | Pick<WorkspaceEmbed, "name" | "slug" | "status">[] | null;
+  visualify_products: ProductEmbed | ProductEmbed[] | null;
+};
+
+type WorkspaceMemberSlugRow = {
+  role: string;
+  status: string | null;
+  visualify_workspaces: { slug: string } | { slug: string }[] | null;
+};
+
 function asArray<T>(value: T | T[] | null | undefined): T[] {
   if (value == null) return [];
   return Array.isArray(value) ? value : [value];
@@ -132,8 +144,151 @@ async function fetchWorkspaceProductAccessImpl(
   return rows;
 }
 
+async function fetchMemberRoleByWorkspaceSlug(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from("visualify_workspace_members")
+    .select(
+      `
+      role,
+      status,
+      visualify_workspaces!inner ( slug )
+    `,
+    )
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("fetchMemberRoleByWorkspaceSlug:", error.message);
+    return new Map();
+  }
+
+  const roleBySlug = new Map<string, string>();
+  for (const m of (data ?? []) as WorkspaceMemberSlugRow[]) {
+    if (!isActiveStatus(m.status)) continue;
+    for (const ws of asArray(m.visualify_workspaces)) {
+      const slug = ws.slug?.trim();
+      if (!slug || roleBySlug.has(slug)) continue;
+      roleBySlug.set(slug, m.role);
+    }
+  }
+
+  return roleBySlug;
+}
+
 /**
- * Loads workspace-linked product access for a Supabase auth user (RLS applies to `supabase`).
+ * User-level product overrides (`visualify_user_product_grants`, status = active).
+ * Workspace subscription checks are unchanged; grant rows are merged separately.
+ */
+async function fetchUserProductGrantAccessImpl(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<WorkspaceProductAccessRow[]> {
+  const [grantsResult, roleBySlug] = await Promise.all([
+    supabase
+      .from("visualify_user_product_grants")
+      .select(
+        `
+        status,
+        visualify_workspaces!inner (
+          name,
+          slug,
+          status
+        ),
+        visualify_products!inner (
+          key,
+          name
+        )
+      `,
+      )
+      .eq("user_id", userId)
+      .eq("status", "active"),
+    fetchMemberRoleByWorkspaceSlug(supabase, userId),
+  ]);
+
+  if (grantsResult.error) {
+    console.error("fetchUserProductGrantAccessImpl:", grantsResult.error.message);
+    return [];
+  }
+
+  const rows: WorkspaceProductAccessRow[] = [];
+
+  for (const grant of (grantsResult.data ?? []) as UserProductGrantRow[]) {
+    if (!isActiveStatus(grant.status)) continue;
+
+    for (const ws of asArray(grant.visualify_workspaces)) {
+      if (!isActiveStatus(ws.status)) continue;
+
+      const workspaceSlug = ws.slug?.trim();
+      if (!workspaceSlug) continue;
+
+      for (const prod of asArray(grant.visualify_products)) {
+        const productKey = normalizeProductKey(prod?.key);
+        if (!productKey) continue;
+
+        rows.push({
+          productKey,
+          productName: prod.name?.trim() || productKey,
+          workspaceName: ws.name,
+          workspaceSlug,
+          memberRole: roleBySlug.get(workspaceSlug) ?? "",
+          subscriptionStatus: "grant",
+          plan: null,
+        });
+      }
+    }
+  }
+
+  return rows;
+}
+
+function mergeWorkspaceAndGrantProductAccessRows(
+  workspaceRows: WorkspaceProductAccessRow[],
+  grantRows: WorkspaceProductAccessRow[],
+): WorkspaceProductAccessRow[] {
+  const seen = new Set<string>();
+  const merged: WorkspaceProductAccessRow[] = [];
+
+  for (const row of workspaceRows) {
+    const slug = row.workspaceSlug?.trim();
+    const productKey = normalizeProductKey(row.productKey);
+    if (!slug || !productKey) continue;
+    const key = `${slug}\0${productKey}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+
+  for (const row of grantRows) {
+    const slug = row.workspaceSlug?.trim();
+    const productKey = normalizeProductKey(row.productKey);
+    if (!slug || !productKey) continue;
+    const key = `${slug}\0${productKey}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+
+  return merged;
+}
+
+async function fetchCombinedProductAccessForUserImpl(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<WorkspaceProductAccessRow[]> {
+  const [workspaceRows, grantRows] = await Promise.all([
+    fetchWorkspaceProductAccessImpl(supabase, userId),
+    fetchUserProductGrantAccessImpl(supabase, userId),
+  ]);
+  return mergeWorkspaceAndGrantProductAccessRows(workspaceRows, grantRows);
+}
+
+/**
+ * Loads product access for a Supabase auth user (RLS applies to `supabase`).
+ *
+ * Includes workspace subscription entitlements and active rows in
+ * `visualify_user_product_grants` (merged without altering workspace subscription checks).
  *
  * Memoized per React request via {@link getWorkspaceProductAccessCacheSlot} so layout, product
  * gates, and app-catalog loaders share one entitlement query for the same user.
@@ -148,7 +303,7 @@ export async function fetchWorkspaceProductAccessForUser(
   }
 
   const slot = getWorkspaceProductAccessCacheSlot(normalizedUserId);
-  slot.promise ??= fetchWorkspaceProductAccessImpl(supabase, normalizedUserId);
+  slot.promise ??= fetchCombinedProductAccessForUserImpl(supabase, normalizedUserId);
   return slot.promise;
 }
 

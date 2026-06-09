@@ -66,6 +66,7 @@ export {
   appShellRailFooterRowOuterTailwindClassName,
   appShellRailFooterClassName,
   appShellRailHeaderClassName,
+  appShellRailNavScrollClassName,
   appShellRailHoverTimingClassName,
   appShellRailPadXClassName,
   appShellRailPinRevealClassName,
@@ -216,6 +217,7 @@ export {
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
+  AppShellRailNavScroll,
   AppShellRailSeparator,
 } from "./AppShellRail";
 export type {
@@ -223,6 +225,7 @@ export type {
   AppShellRailFooterAccountProps,
   AppShellRailFooterProps,
   AppShellRailHeaderProps,
+  AppShellRailNavScrollProps,
   AppShellRailProps,
 } from "./AppShellRail";
 

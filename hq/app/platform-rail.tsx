@@ -9,6 +9,7 @@ import {
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
+  AppShellRailNavScroll,
   AppShellRailSeparator,
   AppShellRailNavLink,
   appShellRailPrimaryNavClassName,
@@ -66,17 +67,19 @@ export function PlatformRail({
 
           <AppShellRailSeparator />
 
-          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
-            <AppShellRailNavLink
-              href="/dashboard"
-              active={railNavHrefActive(pathname, "/dashboard")}
-              label="Dashboard"
-            >
-              <IconDashboard />
-            </AppShellRailNavLink>
-          </nav>
+          <AppShellRailNavScroll>
+            <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
+              <AppShellRailNavLink
+                href="/dashboard"
+                active={railNavHrefActive(pathname, "/dashboard")}
+                label="Dashboard"
+              >
+                <IconDashboard />
+              </AppShellRailNavLink>
+            </nav>
 
-          <WorkspaceRailList workspaces={workspaces} selectedWorkspaceId={selectedWorkspaceId} />
+            <WorkspaceRailList workspaces={workspaces} selectedWorkspaceId={selectedWorkspaceId} />
+          </AppShellRailNavScroll>
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

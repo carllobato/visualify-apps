@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@visualify/design-system";
+import { ReportProjectCategoryIcon } from "@/components/project/report/ReportProjectCategoryIcon";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
 import type { ReportProjectCategoryRow } from "@/lib/projects/report-project-category-rows";
 
@@ -17,6 +18,7 @@ export function ReportProjectKeyCategoriesCard({ categories }: ReportProjectKeyC
           {categories.map((row) => (
             <li key={row.id} className="py-3 first:pt-0 last:pb-0">
               <div className="flex min-w-0 items-center gap-2">
+                <ReportProjectCategoryIcon category={row.category} />
                 <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
                   {row.category}
                 </span>

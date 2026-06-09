@@ -13,6 +13,7 @@ import {
   appShellRailFooterAccountOuterTailwindClassName,
   appShellRailFooterClassName,
   appShellRailHeaderClassName,
+  appShellRailNavScrollClassName,
   APP_SHELL_RAIL_HOVER_EXPAND_DELAY_MS,
   appShellRailHoverTimingClassName,
   appShellRailPadXClassName,
@@ -72,7 +73,7 @@ function mergeClass(base: string, extra?: string): string {
 
 /**
  * Collapsible platform rail shell (`aside` + pin state).
- * Compose with {@link AppShellRailBody}, {@link AppShellRailHeader}, {@link AppShellRailFooter}, etc.
+ * Compose with {@link AppShellRailBody}, {@link AppShellRailHeader}, {@link AppShellRailNavScroll}, {@link AppShellRailFooter}, etc.
  */
 export function AppShellRail({
   children,
@@ -209,6 +210,16 @@ export type AppShellRailHeaderProps = {
 
 export function AppShellRailHeader({ children, className }: AppShellRailHeaderProps) {
   return <div className={mergeClass(appShellRailHeaderClassName, className)}>{children}</div>;
+}
+
+export type AppShellRailNavScrollProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+/** Scrollable nav slot inside {@link AppShellRailHeader} (workspace/project lists, primary nav). */
+export function AppShellRailNavScroll({ children, className }: AppShellRailNavScrollProps) {
+  return <div className={mergeClass(appShellRailNavScrollClassName, className)}>{children}</div>;
 }
 
 export function AppShellRailSeparator() {

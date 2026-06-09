@@ -146,7 +146,7 @@ export function ReportProjectReportPageContent({
             onItemLeave={handleModuleStatusLeave}
           />
           <div className="flex min-w-0 w-full flex-col gap-3 sm:flex-row sm:items-stretch">
-            <div className="flex min-w-0 flex-col lg:w-1/2">
+            <div className="flex min-w-0 flex-col sm:w-1/3">
               <ReportProjectKeyMetricsCard
                 metrics={projectMetrics}
                 highlighted={hoveredOverviewModule === "overall"}
@@ -154,7 +154,7 @@ export function ReportProjectReportPageContent({
                 navigateLabel={getReportOverviewNavigateLabel("overall")}
               />
             </div>
-            <div className="flex min-w-0 flex-col lg:w-1/2">
+            <div className="flex min-w-0 flex-col sm:w-2/3">
               <ReportProjectTopRisksCard
                 risks={REPORT_PROJECT_TOP_RISKS_PLACEHOLDER}
                 highlighted={hoveredOverviewModule === "risk"}

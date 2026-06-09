@@ -9,6 +9,7 @@ import {
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
+  AppShellRailNavScroll,
   AppShellRailSeparator,
   appShellNavHrefActive,
   type AppShellRailAppCatalogEntry,
@@ -60,12 +61,14 @@ export function ReportAppShellRail({
             <>
               <AppShellRailSeparator />
 
-              <ReportWorkspaceRailList
-                workspaces={workspaces}
-                selectedWorkspaceId={selectedWorkspaceId}
-              />
+              <AppShellRailNavScroll>
+                <ReportWorkspaceRailList
+                  workspaces={workspaces}
+                  selectedWorkspaceId={selectedWorkspaceId}
+                />
 
-              <ReportProjectRailList projects={projects} />
+                <ReportProjectRailList projects={projects} />
+              </AppShellRailNavScroll>
             </>
           )}
         </AppShellRailHeader>

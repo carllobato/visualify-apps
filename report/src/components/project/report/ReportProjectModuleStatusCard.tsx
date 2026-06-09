@@ -41,6 +41,8 @@ function overallStatusHighlightClass(status: string): string {
 const STATUS_MODULE_COLUMN_CLASS =
   "relative flex min-h-0 min-w-0 flex-col m-2 sm:m-3 rounded-[var(--ds-radius-md)] px-3 py-3 sm:min-w-0 sm:flex-1 sm:px-5 sm:py-4";
 
+const STATUS_MODULE_OVERALL_ELEVATION_CLASS = "shadow-[var(--ds-elevation-tile)]";
+
 const STATUS_MODULE_INTERACTIVE_INSET_CLASS = "absolute inset-0 z-0";
 
 const STATUS_MODULE_INTERACTIVE_OUTLINE_CLASS =
@@ -206,6 +208,7 @@ function StatusModuleColumn({
         STATUS_MODULE_COLUMN_CLASS,
         columnClassName,
         highlightClassName,
+        highlightClassName ? STATUS_MODULE_OVERALL_ELEVATION_CLASS : "",
         !isInteractive ? STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS : "",
       ]
         .filter(Boolean)

@@ -9,6 +9,7 @@ import {
   AppShellRailFooter,
   AppShellRailFooterAccount,
   AppShellRailHeader,
+  AppShellRailNavScroll,
   AppShellRailSeparator,
   AppShellRailNavLink,
   appShellRailPrimaryNavClassName,
@@ -63,15 +64,17 @@ export function TemplateAppShellRail({
 
           <AppShellRailSeparator />
 
-          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
-            <AppShellRailNavLink
-              href="/dashboard"
-              active={railNavHrefActive(pathname, "/dashboard")}
-              label="Dashboard"
-            >
-              <IconDashboard />
-            </AppShellRailNavLink>
-          </nav>
+          <AppShellRailNavScroll>
+            <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
+              <AppShellRailNavLink
+                href="/dashboard"
+                active={railNavHrefActive(pathname, "/dashboard")}
+                label="Dashboard"
+              >
+                <IconDashboard />
+              </AppShellRailNavLink>
+            </nav>
+          </AppShellRailNavScroll>
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

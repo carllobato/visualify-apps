@@ -10,6 +10,7 @@ import {
   AppShellRailFooterAccount,
   AppShellRailHeader,
   AppShellRailNavLink,
+  AppShellRailNavScroll,
   AppShellRailNavSection,
   AppShellRailSeparator,
   appShellRailPrimaryNavClassName,
@@ -345,7 +346,8 @@ export function RiskAiAppShellRail({
 
           <AppShellRailSeparator />
 
-          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
+          <AppShellRailNavScroll>
+            <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
             <AppShellRailNavLink href={DASHBOARD_PATH} active={activeNav === "dashboard"} label="Dashboard">
               <IconDashboard />
             </AppShellRailNavLink>
@@ -427,6 +429,7 @@ export function RiskAiAppShellRail({
               </AppShellRailNavSection>
             ) : null}
           </nav>
+          </AppShellRailNavScroll>
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

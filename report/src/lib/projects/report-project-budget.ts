@@ -1,4 +1,9 @@
+import { REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL } from "@/lib/projects/report-project-cost-summary";
 import type { ReportProjectTrend } from "@/lib/projects/report-project-trend";
+
+/** Demo ratios — placeholder until Excel upload supplies project-level budget figures. */
+const REPORT_PROJECT_BUDGET_DEMO_CURRENT_FORECAST_RATIO = 201_400_000 / 204_200_000;
+const REPORT_PROJECT_BUDGET_DEMO_LAST_REPORT_FORECAST_RATIO = 210_300_000 / 204_200_000;
 
 export type ReportProjectBudget = {
   approvedBudget: number;
@@ -11,9 +16,13 @@ export type ReportProjectBudget = {
 
 /** Placeholder until report Excel upload supplies project budget. */
 export const REPORT_PROJECT_BUDGET_PLACEHOLDER: ReportProjectBudget = {
-  approvedBudget: 204_200_000,
-  currentForecast: 201_400_000,
-  lastReportForecast: 210_300_000,
+  approvedBudget: REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL,
+  currentForecast: Math.round(
+    REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL * REPORT_PROJECT_BUDGET_DEMO_CURRENT_FORECAST_RATIO,
+  ),
+  lastReportForecast: Math.round(
+    REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL * REPORT_PROJECT_BUDGET_DEMO_LAST_REPORT_FORECAST_RATIO,
+  ),
   currencySymbol: "$",
   status: "Green",
   trend: { text: "Improved vs last report", sentiment: "favorable" },

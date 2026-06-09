@@ -17,7 +17,6 @@ export type ReportProjectKeyMetrics = {
   siteItLoad: string;
   deploymentCurrent: string;
   deploymentTotal: string;
-  numberOfHalls: string;
   rfs: string;
   customerStatus: string;
 };
@@ -30,7 +29,6 @@ export const REPORT_PROJECT_KEY_METRICS_PLACEHOLDER: ReportProjectKeyMetrics = {
   siteItLoad: "105MW",
   deploymentCurrent: "15MW",
   deploymentTotal: "105MW",
-  numberOfHalls: "1",
   rfs: "24 Sept 2026",
   customerStatus: "Secured",
 };
@@ -56,11 +54,6 @@ export function toReportProjectKeyMetricRows(
       label: "Deployment IT Load",
       value: metrics.deploymentCurrent,
       callout: getReportProjectDeploymentCallout(metrics),
-    },
-    {
-      label: "Number of Data Halls",
-      value: metrics.numberOfHalls,
-      callout: getReportProjectNumberOfHallsCallout(metrics),
     },
     { label: "RFS Date", value: metrics.rfs },
     { label: "Customer Status", value: metrics.customerStatus },
@@ -88,15 +81,6 @@ export function getReportProjectSiteItLoadCallout(
   return {
     title: "Site IT load",
     body: `${metrics.siteItLoad} total campus capacity; ${metrics.deploymentTotal} masterplan envelope.`,
-  };
-}
-
-export function getReportProjectNumberOfHallsCallout(
-  metrics: Pick<ReportProjectKeyMetrics, "numberOfHalls">,
-): { title: string; body: string } {
-  return {
-    title: "Data halls",
-    body: `${metrics.numberOfHalls} Data Halls in the current deployment.`,
   };
 }
 

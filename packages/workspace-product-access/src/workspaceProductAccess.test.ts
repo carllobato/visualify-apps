@@ -54,7 +54,99 @@ function createSupabaseWithProductKey(productKey: string): SupabaseClient {
   };
 
   return {
-    from: () => chain,
+    from: (table: string) => {
+      if (table === "visualify_user_product_grants") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                then(onFulfilled: (value: { data: unknown[]; error: null }) => unknown) {
+                  return Promise.resolve(onFulfilled({ data: [], error: null }));
+                },
+              }),
+            }),
+          }),
+        };
+      }
+      return chain;
+    },
+  } as unknown as SupabaseClient;
+}
+
+function createSupabaseWithUserProductGrant(options: {
+  productKey: string;
+  workspaceSlug?: string;
+  grantStatus?: string;
+}): SupabaseClient {
+  const workspaceSlug = options.workspaceSlug ?? "grant-ws";
+  const grantStatus = options.grantStatus ?? "active";
+
+  return {
+    from: (table: string) => {
+      if (table === "visualify_workspace_members") {
+        const memberChain = {
+          select: () => memberChain,
+          eq: () => memberChain,
+          then(onFulfilled: (value: { data: unknown[]; error: null }) => unknown) {
+            return Promise.resolve(
+              onFulfilled({
+                data: [
+                  {
+                    role: "viewer",
+                    status: "active",
+                    visualify_workspaces: { slug: workspaceSlug },
+                  },
+                ],
+                error: null,
+              }),
+            );
+          },
+        };
+        return memberChain;
+      }
+
+      if (table === "visualify_user_product_grants") {
+        return {
+          select: () => ({
+            eq: () => ({
+              eq: () => ({
+                then(onFulfilled: (value: { data: unknown[]; error: null }) => unknown) {
+                  return Promise.resolve(
+                    onFulfilled({
+                      data: [
+                        {
+                          status: grantStatus,
+                          visualify_workspaces: {
+                            name: "Grant Workspace",
+                            slug: workspaceSlug,
+                            status: "active",
+                          },
+                          visualify_products: {
+                            key: options.productKey,
+                            name: "Report",
+                          },
+                        },
+                      ],
+                      error: null,
+                    }),
+                  );
+                },
+              }),
+            }),
+          }),
+        };
+      }
+
+      return {
+        select: () => ({
+          eq: () => ({
+            then(onFulfilled: (value: { data: unknown[]; error: null }) => unknown) {
+              return Promise.resolve(onFulfilled({ data: [], error: null }));
+            },
+          }),
+        }),
+      };
+    },
   } as unknown as SupabaseClient;
 }
 
@@ -92,6 +184,24 @@ describe("fetchWorkspaceProductAccessForUser per-request cache", () => {
     await loadOncePerUserSlot(createCountingSupabase(queryCount));
     await loadOncePerUserSlot(createCountingSupabase(queryCount));
 
-    assert.equal(queryCount.value, 1);
+    // One combined fetch: workspace members, user grants, and member roles for grant rows.
+    assert.equal(queryCount.value, 3);
+  });
+});
+
+describe("visualify_user_product_grants", () => {
+  it("grants product access when workspace subscription is absent", async () => {
+    const supabase = createSupabaseWithUserProductGrant({ productKey: "report" });
+
+    assert.equal(await hasProductAccess(supabase, "user-grant", "report"), true);
+  });
+
+  it("ignores non-active grant rows", async () => {
+    const supabase = createSupabaseWithUserProductGrant({
+      productKey: "report",
+      grantStatus: "revoked",
+    });
+
+    assert.equal(await hasProductAccess(supabase, "user-revoked-grant", "report"), false);
   });
 });

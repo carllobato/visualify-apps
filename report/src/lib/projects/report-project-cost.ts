@@ -1,4 +1,19 @@
 import { formatReportBudgetAmount } from "@/lib/projects/report-project-budget";
+import {
+  REPORT_PROJECT_COST_WBS_SUMMARY_PLACEHOLDER,
+  REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL,
+  REPORT_PROJECT_WBS_CURRENT_FORECAST_TOTAL,
+  REPORT_PROJECT_WBS_NORMALISED_FORECAST_TOTAL,
+  type ReportProjectCostSummaryData,
+} from "@/lib/projects/report-project-cost-summary";
+import type { ReportProjectTrend } from "@/lib/projects/report-project-trend";
+
+export type ReportProjectCostLastReport = {
+  approvedBudget: number;
+  currentForecast: number;
+  normalisedForecast: number;
+  spentToDate: number;
+};
 
 export type ReportProjectCostSummary = {
   currentBudget: number;
@@ -7,6 +22,9 @@ export type ReportProjectCostSummary = {
   spentToDate: number;
   deploymentSizeMw: number;
   currencySymbol?: string;
+  status?: string;
+  trend?: ReportProjectTrend;
+  lastReport?: ReportProjectCostLastReport;
 };
 
 export type ReportProjectCashflowPoint = {
@@ -24,6 +42,7 @@ export type ReportProjectCashflowSeries = {
 
 export type ReportProjectCostData = {
   summary: ReportProjectCostSummary;
+  costSummary: ReportProjectCostSummaryData;
   cashflow: ReportProjectCashflowSeries[];
 };
 
@@ -233,17 +252,29 @@ function buildReportProjectCashflowPlaceholder(): ReportProjectCashflowSeries[] 
 }
 
 const REPORT_PROJECT_COST_SUMMARY_PLACEHOLDER: ReportProjectCostSummary = {
-  currentBudget: 204_200_000,
-  normalisedBudget: 198_400_000,
-  forecastFinalAccount: 210_326_000,
+  /** Rolled-up approved budget — matches summary table “Approved Budget” project total. */
+  currentBudget: REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL,
+  /** Project total current forecast minus Asset Holding (11), Customer (19), and Contingency (49). */
+  normalisedBudget: REPORT_PROJECT_WBS_NORMALISED_FORECAST_TOTAL,
+  /** Matches summary table “Current Forecast” project total until EFC is supplied separately. */
+  forecastFinalAccount: REPORT_PROJECT_WBS_CURRENT_FORECAST_TOTAL,
   spentToDate: 70_000_000,
   deploymentSizeMw: 15,
   currencySymbol: "$",
+  status: "Green",
+  trend: { text: "Unchanged vs last report", sentiment: "neutral" },
+  lastReport: {
+    approvedBudget: REPORT_PROJECT_WBS_APPROVED_BUDGET_TOTAL,
+    currentForecast: Math.round(REPORT_PROJECT_WBS_CURRENT_FORECAST_TOTAL * 1.028),
+    normalisedForecast: Math.round(REPORT_PROJECT_WBS_NORMALISED_FORECAST_TOTAL * 1.025),
+    spentToDate: 65_000_000,
+  },
 };
 
 /** Placeholder until report Excel upload supplies cost data. */
 export const REPORT_PROJECT_COST_PLACEHOLDER: ReportProjectCostData = {
   summary: REPORT_PROJECT_COST_SUMMARY_PLACEHOLDER,
+  costSummary: REPORT_PROJECT_COST_WBS_SUMMARY_PLACEHOLDER,
   cashflow: buildReportProjectCashflowPlaceholder(),
 };
 
@@ -288,6 +319,14 @@ export function formatReportCostPerMw(
   return `${currencySymbol}${Math.round(perMw)}/MW`;
 }
 
+export function formatReportCurrentBudgetPerMw(summary: ReportProjectCostSummary): string {
+  return formatReportCostPerMw(
+    summary.currentBudget,
+    summary.deploymentSizeMw,
+    summary.currencySymbol ?? "$",
+  );
+}
+
 export function formatReportNormalisedBudgetPerMw(summary: ReportProjectCostSummary): string {
   return formatReportCostPerMw(
     summary.normalisedBudget,
@@ -301,6 +340,34 @@ export function getReportForecastVariancePercent(summary: ReportProjectCostSumma
   return ((summary.forecastFinalAccount - summary.currentBudget) / summary.currentBudget) * 100;
 }
 
+export function getReportCostRagStatus(summary: ReportProjectCostSummary): string {
+  if (summary.status) return summary.status;
+
+  const variancePercent = getReportForecastVariancePercent(summary);
+  if (variancePercent <= 0) return "Green";
+  if (variancePercent <= 5) return "Amber";
+  return "Red";
+}
+
+/** Trend arrow for a cost metric vs the prior reporting period (lower cost is favorable). */
+export function getReportCostMetricTrend(
+  current: number,
+  lastReport?: number,
+): ReportProjectTrend | undefined {
+  if (lastReport === undefined) return undefined;
+
+  const movement = current - lastReport;
+  if (movement === 0) {
+    return { text: "Unchanged vs last report", sentiment: "neutral" };
+  }
+
+  if (movement < 0) {
+    return { text: "Improved vs last report", sentiment: "favorable" };
+  }
+
+  return { text: "Worsened vs last report", sentiment: "unfavorable" };
+}
+
 export function formatReportForecastVariancePercent(variancePercent: number): string {
   const rounded = Math.round(variancePercent * 10) / 10;
   const sign = rounded > 0 ? "+" : "";
@@ -310,4 +377,9 @@ export function formatReportForecastVariancePercent(variancePercent: number): st
 export function getReportSpentToDatePercent(summary: ReportProjectCostSummary): number {
   if (summary.currentBudget <= 0) return 0;
   return Math.min(100, Math.max(0, (summary.spentToDate / summary.currentBudget) * 100));
+}
+
+/** Subtitle for the spent-to-date metric. */
+export function getReportSpentToDateMetricHelper(spentToDatePercent: number): string {
+  return `${Math.round(spentToDatePercent)}% of approved budget spent to date`;
 }

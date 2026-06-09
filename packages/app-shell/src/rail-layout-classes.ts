@@ -37,8 +37,12 @@ export const appShellRailBodyClassName =
 
 import { appShellRailNavStackGapClassName } from "./rail-row-classes";
 
-/** Top stack (brand, separator, primary nav) — scrolls when nav exceeds viewport. */
+/** Top stack (brand, separator) — grows to fill space above the footer; does not scroll. */
 export const appShellRailHeaderClassName =
+  `flex min-h-0 flex-1 flex-col ${appShellRailNavStackGapClassName}`;
+
+/** Scrollable nav / entity lists below the brand row — scrolls only when items exceed viewport. */
+export const appShellRailNavScrollClassName =
   `flex min-h-0 flex-1 flex-col ${appShellRailNavStackGapClassName} overflow-y-auto overscroll-contain`;
 
 /** Bottom stack (pin/collapse + account) — pinned to the bottom of the rail. */

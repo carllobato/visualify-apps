@@ -26,7 +26,7 @@ export const appShellRailFooterIconWellClassName = appShellRailIconWellClassName
 /** Vertical gap between rail interactive rows — 4px (`h-10` rows stay 40px). */
 export const appShellRailNavStackGapClassName = "gap-1";
 
-/** Primary / entity nav stack inside {@link appShellRailHeaderClassName}. */
+/** Primary / entity nav stack inside {@link AppShellRailNavScroll}. */
 export const appShellRailPrimaryNavClassName =
   `flex flex-col ${appShellRailNavStackGapClassName}`;
 

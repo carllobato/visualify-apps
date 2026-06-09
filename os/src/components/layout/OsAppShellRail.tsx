@@ -10,6 +10,7 @@ import {
   AppShellRailFooterAccount,
   AppShellRailHeader,
   AppShellRailNavLink,
+  AppShellRailNavScroll,
   AppShellRailSeparator,
   appShellNavHrefActive,
   appShellRailPrimaryNavClassName,
@@ -40,18 +41,20 @@ export function OsAppShellRail({ appCatalog }: { appCatalog: readonly AppShellRa
 
           <AppShellRailSeparator />
 
-          <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
-            {OS_PRIMARY_NAV.map(({ href, label }) => (
-              <AppShellRailNavLink
-                key={href}
-                href={href}
-                active={appShellNavHrefActive(pathname, href)}
-                label={label}
-              >
-                <OsNavIcon href={href} />
-              </AppShellRailNavLink>
-            ))}
-          </nav>
+          <AppShellRailNavScroll>
+            <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
+              {OS_PRIMARY_NAV.map(({ href, label }) => (
+                <AppShellRailNavLink
+                  key={href}
+                  href={href}
+                  active={appShellNavHrefActive(pathname, href)}
+                  label={label}
+                >
+                  <OsNavIcon href={href} />
+                </AppShellRailNavLink>
+              ))}
+            </nav>
+          </AppShellRailNavScroll>
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

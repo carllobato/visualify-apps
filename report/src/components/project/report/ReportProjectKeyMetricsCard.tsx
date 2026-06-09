@@ -16,7 +16,7 @@ type ReportProjectKeyMetricsCardProps = {
 };
 
 const KEY_METRICS_DATA_POINT_CLASS =
-  "flex min-w-0 flex-col gap-0.5";
+  "flex min-h-0 min-w-0 flex-col justify-center gap-0.5";
 
 const KEY_METRICS_DATA_POINT_LABEL_CLASS =
   "m-0 text-[length:var(--ds-text-xs)] font-medium leading-snug text-[var(--ds-text-muted)]";
@@ -75,7 +75,7 @@ function ReportProjectKeyMetricsKpiGrid({ metrics }: { metrics: ReportProjectKey
       <p className="m-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
         Project overview
       </p>
-      <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid min-w-0 w-full grid-cols-2 gap-3 sm:grid-cols-2">
         {rows.map((row) => (
           <ReportProjectCostMetricCard
             key={row.label}
@@ -107,7 +107,7 @@ function ReportProjectKeyMetricsRows({
     >
       <ReportProjectOverviewCardHeader title="Project overview" />
       <div className="flex min-h-0 flex-1 flex-col pt-1">
-        <dl className="m-0 grid min-w-0 shrink-0 grid-cols-3 gap-x-3 gap-y-5 sm:gap-x-4">
+        <dl className="m-0 grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-3 sm:gap-4">
           {rows.map((row) => (
             <KeyMetricDataPoint
               key={row.label}
@@ -120,7 +120,6 @@ function ReportProjectKeyMetricsRows({
             />
           ))}
         </dl>
-        <div className="min-h-0 flex-1" aria-hidden="true" />
       </div>
     </ReportProjectOverviewInteractiveCard>
   );
