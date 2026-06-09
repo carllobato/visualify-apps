@@ -14,7 +14,8 @@ export const REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER: ReportProjectCategoryRow[
     id: "sc-1",
     category: "Land",
     status: "Green",
-    summary: "Acquisition complete. Cladding claim remains under legal review.",
+    summary:
+      "Acquisition complete. Cladding claim remains under legal review with counsel engaged on settlement options, title indemnity in place for the south boundary, and no material constraints flagged for Phase 2 land release.",
     trend: { text: "Improved vs last report", sentiment: "favorable" },
   },
   {

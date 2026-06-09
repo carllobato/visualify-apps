@@ -187,7 +187,11 @@ export function ReportProjectReportPageContent({
               />
             </div>
           </div>
-          <ReportProjectCategoryStatusCard categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER} />
+          <ReportProjectCategoryStatusCard
+            categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER}
+            onNavigate={() => setActiveTab("project")}
+            navigateLabel="View Project category status — open Project tab"
+          />
         </>
       );
     }

@@ -3,6 +3,7 @@ import type { ReportProjectTrend } from "@/lib/projects/report-project-trend";
 export type ReportProjectTopRisk = {
   id: string;
   title: string;
+  description: string;
   category: string;
   likelihood: string;
   impact: string;
@@ -40,6 +41,8 @@ export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
   {
     id: "risk-1",
     title: "11kV energisation delay",
+    description:
+      "ESB grid connection works remain on the critical path; energisation date has slipped twice this quarter.",
     category: "Power & Utilities",
     likelihood: "Medium",
     impact: "High",
@@ -49,6 +52,8 @@ export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
   {
     id: "risk-2",
     title: "Customer NRC execution slip",
+    description:
+      "Customer network readiness criteria are not yet signed off, threatening the handover window for Hall A.",
     category: "Customer",
     likelihood: "Medium",
     impact: "Medium",
@@ -58,6 +63,8 @@ export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
   {
     id: "risk-3",
     title: "Chiller lead time",
+    description:
+      "Long-lead mechanical plant delivery is tracking beyond the procurement allowance for the cooling yard install.",
     category: "Construction",
     likelihood: "Low",
     impact: "High",
@@ -67,6 +74,8 @@ export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
   {
     id: "risk-4",
     title: "PTU commissioning resource",
+    description:
+      "Specialist commissioning capacity is constrained across overlapping PTU and white-space fit-out phases.",
     category: "Construction",
     likelihood: "Medium",
     impact: "Medium",
@@ -76,6 +85,8 @@ export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
   {
     id: "risk-5",
     title: "Planning condition discharge",
+    description:
+      "Outstanding planning conditions on the south access road could delay final occupation certificate.",
     category: "Authority",
     likelihood: "Medium",
     impact: "Medium",
@@ -83,12 +94,3 @@ export const REPORT_PROJECT_TOP_RISKS_PLACEHOLDER: ReportProjectTopRisk[] = [
     trend: { text: "Improved vs last report", sentiment: "favorable" },
   },
 ];
-
-export function getReportProjectTopRiskCallout(
-  risk: ReportProjectTopRisk,
-): { title: string; body: string } {
-  return {
-    title: risk.title,
-    body: `Likelihood: ${risk.likelihood}. Impact: ${risk.impact}. ${risk.comment}`,
-  };
-}

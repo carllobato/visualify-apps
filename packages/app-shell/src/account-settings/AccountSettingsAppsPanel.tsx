@@ -66,7 +66,6 @@ export function AccountSettingsAppsPanel({
   );
   const entitledSet = new Set(effectiveEntitledKeys);
   const withAccess = appCatalog.filter((a) => entitledSet.has(a.id));
-  const withoutAccess = appCatalog.filter((a) => !entitledSet.has(a.id));
 
   return (
     <section className={accountSettingsPanelSectionClassName}>
@@ -87,28 +86,6 @@ export function AccountSettingsAppsPanel({
             <ul className="m-0 list-none space-y-2 p-0">
               {withAccess.map((app) => (
                 <AppRow key={app.id} app={app} access="granted" />
-              ))}
-            </ul>
-          )}
-        </AccountSettingsCardContent>
-      </AccountSettingsCard>
-
-      <AccountSettingsCard>
-        <AccountSettingsCardHeader title="Catalog apps not enabled yet" />
-        <AccountSettingsCardContent>
-          <p className={accountSettingsIntroTextClassName}>
-            Other Visualify products in the catalog. They become available when a workspace you belong to enables
-            them (subscriptions are attached to workspaces).
-          </p>
-          {withoutAccess.length === 0 ? (
-            <p className="text-sm text-[var(--ds-text-muted)]">
-              Every catalog app listed here is enabled for you through at least one workspace, or there are no
-              additional catalog entries.
-            </p>
-          ) : (
-            <ul className="m-0 list-none space-y-2 p-0">
-              {withoutAccess.map((app) => (
-                <AppRow key={app.id} app={app} access="denied" />
               ))}
             </ul>
           )}

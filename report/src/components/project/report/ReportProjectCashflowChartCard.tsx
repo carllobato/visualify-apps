@@ -1,5 +1,6 @@
 import { Card, CardContent, MultiLineChartPrimitive } from "@visualify/design-system";
 import { REPORT_PROJECT_COST_SECTION_TITLE_CLASS } from "@/components/project/report/report-project-cost-section-title";
+import { getReportOverviewCardClassName } from "@/lib/projects/report-project-overview-link";
 import {
   formatReportCashflowAxisLabel,
   getReportCashflowTodayIndex,
@@ -11,17 +12,19 @@ import {
 type ReportProjectCashflowChartCardProps = {
   data: ReportProjectCashflowSeries[];
   summary?: Pick<ReportProjectCostSummary, "currencySymbol">;
+  highlighted?: boolean;
 };
 
 export function ReportProjectCashflowChartCard({
   data,
   summary,
+  highlighted = false,
 }: ReportProjectCashflowChartCardProps) {
   const currencySymbol = summary?.currencySymbol ?? "$";
   const todayIndex = getReportCashflowTodayIndex(data);
 
   return (
-    <Card className="h-full w-full min-w-0">
+    <Card className={getReportOverviewCardClassName(highlighted, "h-full w-full min-w-0", true)}>
       <CardContent className="flex h-full min-h-0 flex-col p-0">
         <p className={REPORT_PROJECT_COST_SECTION_TITLE_CLASS}>Cashflow</p>
         <div className="flex min-h-0 flex-1 flex-col">

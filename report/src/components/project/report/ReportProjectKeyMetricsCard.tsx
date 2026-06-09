@@ -24,45 +24,11 @@ const KEY_METRICS_DATA_POINT_LABEL_CLASS =
 const KEY_METRICS_DATA_POINT_VALUE_CLASS =
   "m-0 text-[length:var(--ds-text-lg)] font-semibold tabular-nums leading-tight text-[var(--ds-text-primary)] sm:text-[length:var(--ds-text-xl)]";
 
-const KEY_METRICS_CALLOUT_CLASS =
-  "pointer-events-none absolute left-0 top-full z-20 mt-1 hidden w-64 rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-elevated)] px-3 py-2 text-left text-[length:var(--ds-text-xs)] font-normal normal-case tracking-normal text-[var(--ds-text-secondary)] shadow-[var(--ds-shadow-sm)] group-hover:block group-focus-within:block";
-
-type KeyMetricCallout = {
-  title: string;
-  body: string;
-};
-
-function KeyMetricDataPoint({
-  label,
-  value,
-  callout,
-  calloutId,
-}: {
-  label: string;
-  value: ReactNode;
-  callout?: KeyMetricCallout;
-  calloutId?: string;
-}) {
-  const calloutText = callout ? `${callout.title}\n\n${callout.body}` : undefined;
-
+function KeyMetricDataPoint({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div
-      className={[
-        KEY_METRICS_DATA_POINT_CLASS,
-        callout ? "group relative cursor-help pointer-events-auto" : "",
-      ].join(" ")}
-      tabIndex={callout ? 0 : undefined}
-      title={calloutText}
-      aria-describedby={callout ? calloutId : undefined}
-    >
+    <div className={KEY_METRICS_DATA_POINT_CLASS}>
       <dt className={KEY_METRICS_DATA_POINT_LABEL_CLASS}>{label}</dt>
       <dd className={KEY_METRICS_DATA_POINT_VALUE_CLASS}>{value}</dd>
-      {callout && calloutId ? (
-        <div id={calloutId} role="tooltip" className={KEY_METRICS_CALLOUT_CLASS}>
-          <p className="m-0 font-semibold text-[var(--ds-text-primary)]">{callout.title}</p>
-          <p className="m-0 mt-1 leading-snug">{callout.body}</p>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -77,12 +43,7 @@ function ReportProjectKeyMetricsKpiGrid({ metrics }: { metrics: ReportProjectKey
       </p>
       <div className="grid min-w-0 w-full grid-cols-2 gap-3 sm:grid-cols-2">
         {rows.map((row) => (
-          <ReportProjectCostMetricCard
-            key={row.label}
-            label={row.label}
-            value={row.value}
-            helperText={row.callout?.body}
-          />
+          <ReportProjectCostMetricCard key={row.label} label={row.label} value={row.value} />
         ))}
       </div>
     </div>
@@ -109,15 +70,7 @@ function ReportProjectKeyMetricsRows({
       <div className="flex min-h-0 flex-1 flex-col pt-1">
         <dl className="m-0 grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-3 sm:gap-4">
           {rows.map((row) => (
-            <KeyMetricDataPoint
-              key={row.label}
-              label={row.label}
-              value={row.value}
-              callout={row.callout}
-              calloutId={
-                row.callout ? `project-metrics-${row.label.toLowerCase().replace(/\s+/g, "-")}-callout` : undefined
-              }
-            />
+            <KeyMetricDataPoint key={row.label} label={row.label} value={row.value} />
           ))}
         </dl>
       </div>

@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import "./report-project-cost-summary-table.css";
 import {
   Card,
   CardContent,
@@ -22,16 +26,28 @@ import {
   type ReportProjectCostSummaryData,
 } from "@/lib/projects/report-project-cost-summary";
 import { REPORT_PROJECT_COST_SECTION_TITLE_CLASS } from "@/components/project/report/report-project-cost-section-title";
+import { getReportOverviewCardClassName } from "@/lib/projects/report-project-overview-link";
+import {
+  getReportCostSummaryColumnBorderClass,
+  getReportCostSummaryColumnFillClass,
+  type ReportCostSummaryColumnBorderSegment,
+  type ReportCostSummaryHighlightColumn,
+} from "@/lib/projects/report-project-cost-links";
 
 const SUMMARY_TABLE_CELL_CLASS = "!py-0 !px-1.5 align-middle";
 const SUMMARY_TABLE_HEADER_CELL_CLASS = "!py-0.5 !px-1.5 align-middle";
 const SUMMARY_TABLE_ROW_CLASS = "group h-8 [&>td]:!py-0";
+const SUMMARY_TABLE_DATA_ROW_CLASS = [
+  SUMMARY_TABLE_ROW_CLASS,
+  "cursor-pointer transition-colors hover:bg-[var(--ds-surface-hover)]",
+].join(" ");
+const SUMMARY_TABLE_DATA_ROW_SELECTED_CLASS = "bg-[var(--ds-surface-hover)]";
 const SUMMARY_CODE_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} w-[120px] max-w-[120px] whitespace-nowrap`;
 const SUMMARY_DESCRIPTION_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} min-w-0`;
-const SUMMARY_AMOUNT_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} w-[9rem] max-w-[9rem] overflow-hidden text-right`;
+const SUMMARY_AMOUNT_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} w-[9rem] max-w-[9rem] text-right`;
 const SUMMARY_AMOUNT_HEADER_CLASS = `${SUMMARY_TABLE_HEADER_CELL_CLASS} w-[9rem] max-w-[9rem] text-right`;
 const SUMMARY_TABLE_CLASS =
-  "w-full table-fixed border-separate border-spacing-0 text-[length:var(--ds-text-xs)] [&_tbody_tr:last-child_td:first-child]:rounded-bl-[var(--ds-radius-md)] [&_tbody_tr:last-child_td:last-child]:rounded-br-[var(--ds-radius-md)] [&_th]:!py-0.5 [&_td]:!py-0";
+  "w-full table-fixed !border-separate border-spacing-0 text-[length:var(--ds-text-xs)] [&_tbody_tr:last-child_td:first-child]:rounded-bl-[var(--ds-radius-md)] [&_tbody_tr:last-child_td:last-child]:rounded-br-[var(--ds-radius-md)] [&_th]:!py-0.5 [&_td]:!py-0";
 const SUMMARY_TABLE_HEAD_CLASS =
   "!border-b-0 !bg-transparent [&_th]:border-b [&_th]:border-[var(--ds-border-subtle)] [&_th]:bg-[var(--ds-surface-muted)] [&_th:first-child]:rounded-tl-[var(--ds-radius-md)] [&_th:last-child]:rounded-tr-[var(--ds-radius-md)]";
 const SUMMARY_TABLE_BODY_CLASS =
@@ -40,14 +56,45 @@ const SUMMARY_STATIC_VALUE_CLASS =
   "flex h-8 max-h-8 min-h-8 items-center text-[length:var(--ds-text-xs)] leading-snug";
 const SUMMARY_PROJECT_TOTAL_ROW_CLASS = `${SUMMARY_TABLE_ROW_CLASS} h-9 cursor-default bg-[var(--ds-surface-muted)] [&>td]:!py-1`;
 
+function summaryColumnCellClass(
+  column: ReportCostSummaryHighlightColumn,
+  segment: ReportCostSummaryColumnBorderSegment,
+  highlightedColumn: ReportCostSummaryHighlightColumn | undefined,
+  options: {
+    row?: ReportProjectCostSummaryCategoryRow;
+    highlightedRowFilter?: (row: ReportProjectCostSummaryCategoryRow) => boolean;
+  } = {},
+): string {
+  const { row, highlightedRowFilter } = options;
+
+  return [
+    getReportCostSummaryColumnBorderClass(column, segment, highlightedColumn),
+    getReportCostSummaryColumnFillClass(column, highlightedColumn, {
+      row,
+      highlightedRowFilter,
+      segment,
+    }),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 type ReportProjectCostSummaryTableRowProps = {
   row: ReportProjectCostSummaryCategoryRow;
   currencySymbol: string;
+  isSelected: boolean;
+  onSelect: (rowKey: string) => void;
+  highlightedColumn?: ReportCostSummaryHighlightColumn;
+  highlightedRowFilter?: (row: ReportProjectCostSummaryCategoryRow) => boolean;
 };
 
 function ReportProjectCostSummaryTableRow({
   row,
   currencySymbol,
+  isSelected,
+  onSelect,
+  highlightedColumn,
+  highlightedRowFilter,
 }: ReportProjectCostSummaryTableRowProps) {
   const varianceAmount = getReportCostSummaryVarianceAmount(
     row.approvedBudget,
@@ -55,7 +102,14 @@ function ReportProjectCostSummaryTableRow({
   );
 
   return (
-    <TableRow className={SUMMARY_TABLE_ROW_CLASS}>
+    <TableRow
+      className={[
+        SUMMARY_TABLE_DATA_ROW_CLASS,
+        isSelected ? SUMMARY_TABLE_DATA_ROW_SELECTED_CLASS : "",
+      ].join(" ")}
+      aria-selected={isSelected}
+      onClick={() => onSelect(row.rowKey)}
+    >
       <TableCell className={SUMMARY_CODE_CELL_CLASS}>
         <span className={`${SUMMARY_STATIC_VALUE_CLASS} font-medium text-[var(--ds-text-primary)]`}>
           {formatReportCostSummaryWbsCode(row.wbsCode)}
@@ -66,14 +120,30 @@ function ReportProjectCostSummaryTableRow({
           {row.wbsDescription}
         </span>
       </TableCell>
-      <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
+      <TableCell
+        className={[
+          SUMMARY_AMOUNT_CELL_CLASS,
+          summaryColumnCellClass("approved-budget", "body", highlightedColumn, {
+            row,
+            highlightedRowFilter,
+          }),
+        ].join(" ")}
+      >
         <span
           className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums text-[var(--ds-text-primary)]`}
         >
           {formatReportCostSummaryAmount(row.approvedBudget, currencySymbol)}
         </span>
       </TableCell>
-      <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
+      <TableCell
+        className={[
+          SUMMARY_AMOUNT_CELL_CLASS,
+          summaryColumnCellClass("current-forecast", "body", highlightedColumn, {
+            row,
+            highlightedRowFilter,
+          }),
+        ].join(" ")}
+      >
         <span
           className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end tabular-nums text-[var(--ds-text-primary)]`}
         >
@@ -108,12 +178,17 @@ function ReportProjectCostSummaryTableRow({
 type ReportProjectCostSummaryTableProps = {
   summary: ReportProjectCostSummaryData;
   currencySymbol?: string;
+  highlightedColumn?: ReportCostSummaryHighlightColumn;
+  highlightedRowFilter?: (row: ReportProjectCostSummaryCategoryRow) => boolean;
 };
 
 export function ReportProjectCostSummaryTable({
   summary,
   currencySymbol = "$",
+  highlightedColumn,
+  highlightedRowFilter,
 }: ReportProjectCostSummaryTableProps) {
+  const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null);
   const categoryRows = buildReportCostSummaryCategoryRows(summary.wbsOptions, summary.directRows);
   const projectTotals = sumReportCostSummaryCategoryRows(categoryRows);
   const projectVarianceAmount = getReportCostSummaryVarianceAmount(
@@ -122,10 +197,13 @@ export function ReportProjectCostSummaryTable({
   );
 
   return (
-    <Card className="w-full min-w-0" aria-label="Summary">
+    <Card
+      className={getReportOverviewCardClassName(false, "w-full min-w-0", true)}
+      aria-label="Summary"
+    >
       <CardContent className="flex flex-col p-0">
         <p className={REPORT_PROJECT_COST_SECTION_TITLE_CLASS}>Summary</p>
-        <div className="overflow-hidden rounded-[var(--ds-radius-md)] border-t border-[var(--ds-border-subtle)]">
+        <div className="overflow-hidden rounded-[var(--ds-radius-md)] p-[2px]">
           <div className="min-w-0 overflow-x-auto">
             <Table className={SUMMARY_TABLE_CLASS}>
           <TableHead className={SUMMARY_TABLE_HEAD_CLASS}>
@@ -138,10 +216,24 @@ export function ReportProjectCostSummaryTable({
               <TableHeaderCell className={SUMMARY_TABLE_HEADER_CELL_CLASS}>
                 WBS Description
               </TableHeaderCell>
-              <TableHeaderCell className={SUMMARY_AMOUNT_HEADER_CLASS}>
+              <TableHeaderCell
+                className={[
+                  SUMMARY_AMOUNT_HEADER_CLASS,
+                  summaryColumnCellClass("approved-budget", "header", highlightedColumn, {
+                    highlightedRowFilter,
+                  }),
+                ].join(" ")}
+              >
                 Approved Budget
               </TableHeaderCell>
-              <TableHeaderCell className={SUMMARY_AMOUNT_HEADER_CLASS}>
+              <TableHeaderCell
+                className={[
+                  SUMMARY_AMOUNT_HEADER_CLASS,
+                  summaryColumnCellClass("current-forecast", "header", highlightedColumn, {
+                    highlightedRowFilter,
+                  }),
+                ].join(" ")}
+              >
                 Current Forecast
               </TableHeaderCell>
               <TableHeaderCell className={SUMMARY_AMOUNT_HEADER_CLASS}>vs Budget</TableHeaderCell>
@@ -170,6 +262,10 @@ export function ReportProjectCostSummaryTable({
                     key={row.rowKey}
                     row={row}
                     currencySymbol={currencySymbol}
+                    isSelected={selectedRowKey === row.rowKey}
+                    onSelect={setSelectedRowKey}
+                    highlightedColumn={highlightedColumn}
+                    highlightedRowFilter={highlightedRowFilter}
                   />
                 ))}
                 <TableRow className={SUMMARY_PROJECT_TOTAL_ROW_CLASS}>
@@ -180,14 +276,28 @@ export function ReportProjectCostSummaryTable({
                       Project total
                     </span>
                   </TableCell>
-                  <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
+                  <TableCell
+                    className={[
+                      SUMMARY_AMOUNT_CELL_CLASS,
+                      summaryColumnCellClass("approved-budget", "footer", highlightedColumn, {
+                        highlightedRowFilter,
+                      }),
+                    ].join(" ")}
+                  >
                     <span
                       className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums text-[var(--ds-text-primary)]`}
                     >
                       {formatReportCostSummaryTotalAmount(projectTotals.approvedBudget, currencySymbol)}
                     </span>
                   </TableCell>
-                  <TableCell className={SUMMARY_AMOUNT_CELL_CLASS}>
+                  <TableCell
+                    className={[
+                      SUMMARY_AMOUNT_CELL_CLASS,
+                      summaryColumnCellClass("current-forecast", "footer", highlightedColumn, {
+                        highlightedRowFilter,
+                      }),
+                    ].join(" ")}
+                  >
                     <span
                       className={`${SUMMARY_STATIC_VALUE_CLASS} w-full justify-end text-[length:var(--ds-text-sm)] font-semibold tabular-nums text-[var(--ds-text-primary)]`}
                     >

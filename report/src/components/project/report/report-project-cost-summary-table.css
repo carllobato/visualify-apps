@@ -1,0 +1,40 @@
+/**
+ * Column highlight ring for the cost summary table.
+ * Uses ::before so corners render cleanly on table cells (border-separate required).
+ */
+.report-cost-summary-col-highlight-header,
+.report-cost-summary-col-highlight-body,
+.report-cost-summary-col-highlight-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.report-cost-summary-col-highlight-header {
+  border-bottom-color: transparent !important;
+}
+
+.report-cost-summary-col-highlight-header::before,
+.report-cost-summary-col-highlight-body::before,
+.report-cost-summary-col-highlight-footer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid var(--ds-primary);
+}
+
+.report-cost-summary-col-highlight-header::before {
+  border-bottom: none;
+  border-radius: var(--ds-radius-md) var(--ds-radius-md) 0 0;
+}
+
+.report-cost-summary-col-highlight-body::before {
+  border-top: none;
+  border-bottom: none;
+}
+
+.report-cost-summary-col-highlight-footer::before {
+  border-top: none;
+  border-radius: 0 0 var(--ds-radius-md) var(--ds-radius-md);
+}

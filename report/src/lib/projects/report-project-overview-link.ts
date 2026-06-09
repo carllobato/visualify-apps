@@ -92,6 +92,10 @@ export const REPORT_OVERVIEW_NAVIGABLE_CARD_HOVER_CLASS = [
   "max-md:hover:!shadow-[0_4px_10px_color-mix(in_oklab,var(--ds-scrim-ink)_6.5%,transparent),0_12px_28px_color-mix(in_oklab,var(--ds-scrim-ink)_8%,transparent)]",
 ].join(" ");
 
+/** Row highlight used on the Project tab list and table rows. */
+export const REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS =
+  "transition-[background-color] duration-200 ease-out hover:bg-[var(--ds-surface-hover)]";
+
 export function getReportOverviewCardClassName(
   highlighted: boolean,
   baseClassName: string,

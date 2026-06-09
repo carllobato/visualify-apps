@@ -4,6 +4,7 @@ import { getReportOverviewCardClassName } from "@/lib/projects/report-project-ov
 
 type ReportProjectOverviewInteractiveCardProps = {
   highlighted?: boolean;
+  hoverable?: boolean;
   navigateLabel?: string;
   onNavigate?: () => void;
   cardClassName?: string;
@@ -13,23 +14,24 @@ type ReportProjectOverviewInteractiveCardProps = {
 
 export function ReportProjectOverviewInteractiveCard({
   highlighted = false,
+  hoverable = false,
   navigateLabel,
   onNavigate,
   cardClassName = "",
   contentClassName = "flex flex-1 flex-col px-4 py-3",
   children,
 }: ReportProjectOverviewInteractiveCardProps) {
-  const interactive = onNavigate != null;
+  const navigable = onNavigate != null;
 
   return (
     <Card
       className={getReportOverviewCardClassName(
         highlighted,
         ["relative flex h-full w-full min-w-0 flex-col", cardClassName].filter(Boolean).join(" "),
-        interactive,
+        navigable || hoverable,
       )}
     >
-      {interactive ? (
+      {navigable ? (
         <button
           type="button"
           onClick={onNavigate}
@@ -40,7 +42,7 @@ export function ReportProjectOverviewInteractiveCard({
       <CardContent
         className={[
           "relative z-10",
-          interactive ? "pointer-events-none" : "",
+          navigable ? "pointer-events-none" : "",
           contentClassName,
         ].join(" ")}
       >

@@ -1,4 +1,6 @@
 import { Card, CardContent, Trend } from "@visualify/design-system";
+import { getReportOverviewCardClassName } from "@/lib/projects/report-project-overview-link";
+import type { ReportCostMetricLinkId } from "@/lib/projects/report-project-cost-links";
 import type { ReportProjectTrend } from "@/lib/projects/report-project-trend";
 
 const COST_METRIC_LABEL_CLASS =
@@ -12,6 +14,9 @@ type ReportProjectCostMetricCardProps = {
   value: string;
   helperText?: string;
   trend?: ReportProjectTrend;
+  metricLinkId?: ReportCostMetricLinkId;
+  onMetricHover?: (linkId: ReportCostMetricLinkId) => void;
+  onMetricLeave?: () => void;
 };
 
 export function ReportProjectCostMetricCard({
@@ -19,11 +24,18 @@ export function ReportProjectCostMetricCard({
   value,
   helperText,
   trend,
+  metricLinkId,
+  onMetricHover,
+  onMetricLeave,
 }: ReportProjectCostMetricCardProps) {
   const trendText = trend?.text.trim() ?? "";
 
   return (
-    <Card className="h-full w-full min-w-0">
+    <Card
+      className={getReportOverviewCardClassName(false, "h-full w-full min-w-0", true)}
+      onMouseEnter={metricLinkId ? () => onMetricHover?.(metricLinkId) : undefined}
+      onMouseLeave={metricLinkId ? () => onMetricLeave?.() : undefined}
+    >
       <CardContent className="flex h-full flex-1 flex-col px-3 py-3 sm:px-5 sm:py-4">
         <p className={COST_METRIC_LABEL_CLASS}>{label}</p>
         <div className={COST_METRIC_VALUE_ROW_CLASS}>

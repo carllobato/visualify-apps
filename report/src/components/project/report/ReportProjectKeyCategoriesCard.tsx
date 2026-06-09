@@ -1,36 +1,45 @@
-import { Card, CardContent } from "@visualify/design-system";
 import { ReportProjectCategoryIcon } from "@/components/project/report/ReportProjectCategoryIcon";
+import { ReportProjectOverviewInteractiveCard } from "@/components/project/report/ReportProjectOverviewInteractiveCard";
 import { ReportRagStatusDot } from "@/components/project/report/ReportRagStatusDot";
 import type { ReportProjectCategoryRow } from "@/lib/projects/report-project-category-rows";
+import { REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS } from "@/lib/projects/report-project-overview-link";
 
 type ReportProjectKeyCategoriesCardProps = {
   categories: ReportProjectCategoryRow[];
 };
 
+const CATEGORY_COMMENTARY_LIST_CLASS =
+  "m-0 grid list-none grid-cols-[1.125rem_7rem_minmax(0,1fr)_0.75rem] gap-x-2 p-0";
+
+const CATEGORY_COMMENTARY_ROW_CLASS = [
+  "col-span-full grid grid-cols-subgrid items-start gap-x-2 border-b border-[var(--ds-border-subtle)] py-3 last:border-b-0 first:pt-0",
+  REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS,
+].join(" ");
+
 export function ReportProjectKeyCategoriesCard({ categories }: ReportProjectKeyCategoriesCardProps) {
   return (
-    <Card className="flex h-full w-full min-w-0 flex-col">
-      <CardContent className="flex flex-1 flex-col px-4 py-3">
-        <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
-          Category commentary
-        </p>
-        <ul className="m-0 flex list-none flex-col divide-y divide-[var(--ds-border-subtle)] p-0">
-          {categories.map((row) => (
-            <li key={row.id} className="py-3 first:pt-0 last:pb-0">
-              <div className="flex min-w-0 items-center gap-2">
-                <ReportProjectCategoryIcon category={row.category} />
-                <span className="text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">
-                  {row.category}
-                </span>
-                <ReportRagStatusDot status={row.status} />
-              </div>
-              <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-                {row.summary}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <ReportProjectOverviewInteractiveCard hoverable>
+      <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
+        Category commentary
+      </p>
+      <ul className={CATEGORY_COMMENTARY_LIST_CLASS}>
+        {categories.map((row) => (
+          <li key={row.id} className={CATEGORY_COMMENTARY_ROW_CLASS}>
+            <span className="flex items-center pt-0.5">
+              <ReportProjectCategoryIcon category={row.category} />
+            </span>
+            <span className="min-w-0 pt-0.5 text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+              {row.category}
+            </span>
+            <p className="m-0 min-w-0 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+              {row.summary}
+            </p>
+            <span className="flex justify-end pt-0.5">
+              <ReportRagStatusDot status={row.status} />
+            </span>
+          </li>
+        ))}
+      </ul>
+    </ReportProjectOverviewInteractiveCard>
   );
 }
