@@ -6,11 +6,13 @@ import type { ReportProjectCategoryRow } from "@/lib/projects/report-project-cat
 import {
   REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
   REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
+  REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS,
 } from "@/lib/projects/report-project-overview-link";
 
 type ReportProjectCategoryStatusCardProps = {
   categories: ReportProjectCategoryRow[];
   highlighted?: boolean;
+  rowHoverable?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
 };
@@ -18,9 +20,22 @@ type ReportProjectCategoryStatusCardProps = {
 export function ReportProjectCategoryStatusCard({
   categories,
   highlighted = false,
+  rowHoverable = false,
   onNavigate,
   navigateLabel,
 }: ReportProjectCategoryStatusCardProps) {
+  const categoryRowClassName = [
+    "flex min-w-0 items-center justify-between gap-4 border-b border-[var(--ds-border-subtle)] py-3.5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0",
+    rowHoverable ? REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS : "",
+    rowHoverable && onNavigate ? "pointer-events-auto cursor-pointer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const categoryRowProps =
+    rowHoverable && onNavigate
+      ? ({ onClick: onNavigate } as const)
+      : undefined;
+
   return (
     <ReportProjectOverviewInteractiveCard
       highlighted={highlighted}
@@ -33,10 +48,7 @@ export function ReportProjectCategoryStatusCard({
       </p>
       <ul className="m-0 grid list-none grid-cols-1 gap-x-8 gap-y-0 p-0 sm:grid-cols-2">
         {categories.map((row) => (
-          <li
-            key={row.id}
-            className="flex min-w-0 items-center justify-between gap-4 border-b border-[var(--ds-border-subtle)] py-3.5 last:border-b-0 sm:[&:nth-last-child(-n+2)]:border-b-0"
-          >
+          <li key={row.id} className={categoryRowClassName} {...categoryRowProps}>
             <span className="flex min-w-0 items-center gap-2">
               <ReportProjectCategoryIcon category={row.category} />
               <span className="min-w-0 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-primary)]">

@@ -1,4 +1,7 @@
-import type { ReportModuleTabId } from "@/components/project/report/report-module-tabs";
+import {
+  isReportModuleTabVisible,
+  type ReportModuleTabId,
+} from "@/components/project/report/report-module-tabs";
 import type { ReportProjectTrend } from "@/lib/projects/report-project-trend";
 
 export type ReportProjectModuleStatusItem = {
@@ -15,7 +18,11 @@ const REPORT_MODULE_STATUS_TAB_BY_LABEL: Record<string, ReportModuleTabId> = {
 };
 
 export function getReportModuleStatusTabId(label: string): ReportModuleTabId | undefined {
-  return REPORT_MODULE_STATUS_TAB_BY_LABEL[label];
+  const tabId = REPORT_MODULE_STATUS_TAB_BY_LABEL[label];
+  if (tabId == null || !isReportModuleTabVisible(tabId)) {
+    return undefined;
+  }
+  return tabId;
 }
 
 export function getReportModuleStatusValue(

@@ -45,9 +45,17 @@ export function ReportProjectScheduleCard({
   const ragStatus = getReportScheduleRagStatus(schedule);
   const varianceToneClass = getReportScheduleVarianceToneClass(schedule);
   const movementToneClass = getReportTrendToneClass(schedule.trend.sentiment);
-  const scheduleRowClassName = [SCHEDULE_ROW_CLASS, rowHoverable ? REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS : ""]
+  const scheduleRowClassName = [
+    SCHEDULE_ROW_CLASS,
+    rowHoverable ? REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS : "",
+    rowHoverable && onNavigate ? "pointer-events-auto cursor-pointer" : "",
+  ]
     .filter(Boolean)
     .join(" ");
+  const scheduleRowProps =
+    rowHoverable && onNavigate
+      ? ({ onClick: onNavigate } as const)
+      : undefined;
 
   return (
     <ReportProjectOverviewInteractiveCard
@@ -59,19 +67,19 @@ export function ReportProjectScheduleCard({
       <ReportProjectOverviewCardHeader title="Schedule" />
       <div className="flex min-h-0 flex-1 flex-col">
         <dl className="m-0 flex shrink-0 flex-col divide-y divide-[var(--ds-border-subtle)]">
-          <div className={scheduleRowClassName}>
+          <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Target RFS</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
               {formatReportScheduleDate(schedule.baselineRfs)}
             </dd>
           </div>
-          <div className={scheduleRowClassName}>
+          <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Current RFS</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
               {formatReportScheduleDate(schedule.forecastRfs)}
             </dd>
           </div>
-          <div className={scheduleRowClassName}>
+          <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
             <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
               <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
@@ -82,7 +90,7 @@ export function ReportProjectScheduleCard({
               </span>
             </dd>
           </div>
-          <div className={scheduleRowClassName}>
+          <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
             <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
               <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>

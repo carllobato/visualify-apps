@@ -9,9 +9,11 @@ import { REPORT_PROJECT_KEY_MILESTONES_PLACEHOLDER } from "@/lib/projects/report
 import { REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER } from "@/lib/projects/report-project-safety-stats";
 import { REPORT_PROJECT_TOP_RISKS_PLACEHOLDER } from "@/lib/projects/report-project-top-risks";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
+import type { ReportOverviewModuleLinkId } from "@/lib/projects/report-project-overview-link";
 
 type ReportProjectTabContentProps = {
   project: ReportProjectListItem;
+  focusedModule?: ReportOverviewModuleLinkId | null;
 };
 
 function ReportProjectTabSection({
@@ -24,7 +26,10 @@ function ReportProjectTabSection({
   return <section className={["flex min-w-0 w-full flex-col gap-3", className].join(" ")}>{children}</section>;
 }
 
-export function ReportProjectTabContent({ project: _project }: ReportProjectTabContentProps) {
+export function ReportProjectTabContent({
+  project: _project,
+  focusedModule = null,
+}: ReportProjectTabContentProps) {
   return (
     <ReportProjectTabSection>
       <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch">
@@ -40,6 +45,7 @@ export function ReportProjectTabContent({ project: _project }: ReportProjectTabC
           <ReportProjectSafetyStatsCard
             stats={REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER}
             alignedRowCount={REPORT_PROJECT_KEY_MILESTONES_PLACEHOLDER.length}
+            highlighted={focusedModule === "safety"}
           />
         </div>
         <div className="flex min-w-0 flex-col sm:col-span-2">
@@ -50,6 +56,7 @@ export function ReportProjectTabContent({ project: _project }: ReportProjectTabC
         risks={REPORT_PROJECT_TOP_RISKS_PLACEHOLDER}
         expanded
         prominent
+        highlighted={focusedModule === "risk"}
       />
     </ReportProjectTabSection>
   );

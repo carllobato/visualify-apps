@@ -17,12 +17,14 @@ import {
   REPORT_OVERVIEW_METRIC_DOT_CLASS,
   REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
   REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
+  REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS,
 } from "@/lib/projects/report-project-overview-link";
 import { getReportTrendToneClass } from "@/lib/projects/report-project-trend";
 
 type ReportProjectSafetyCardProps = {
   safety?: ReportProjectSafetyOverview;
   highlighted?: boolean;
+  rowHoverable?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
 };
@@ -33,6 +35,7 @@ const SAFETY_ROW_CLASS =
 export function ReportProjectSafetyCard({
   safety = REPORT_PROJECT_SAFETY_OVERVIEW_PLACEHOLDER,
   highlighted = false,
+  rowHoverable = false,
   onNavigate,
   navigateLabel,
 }: ReportProjectSafetyCardProps) {
@@ -41,6 +44,17 @@ export function ReportProjectSafetyCard({
   const ragStatus = getReportSafetyRagStatus(safety);
   const varianceToneClass = getReportSafetyVarianceToneClass(safety);
   const movementToneClass = getReportTrendToneClass(safety.trend.sentiment);
+  const safetyRowClassName = [
+    SAFETY_ROW_CLASS,
+    rowHoverable ? REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS : "",
+    rowHoverable && onNavigate ? "pointer-events-auto cursor-pointer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const safetyRowProps =
+    rowHoverable && onNavigate
+      ? ({ onClick: onNavigate } as const)
+      : undefined;
 
   return (
     <ReportProjectOverviewInteractiveCard
@@ -51,19 +65,19 @@ export function ReportProjectSafetyCard({
       <ReportProjectOverviewCardHeader title="Safety" />
       <div className="flex min-h-0 flex-1 flex-col">
         <dl className="m-0 flex shrink-0 flex-col divide-y divide-[var(--ds-border-subtle)]">
-          <div className={SAFETY_ROW_CLASS}>
+          <div className={safetyRowClassName} {...safetyRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Target LTIFR</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
               {formatReportSafetyLtifr(safety.targetLtifr)}
             </dd>
           </div>
-          <div className={SAFETY_ROW_CLASS}>
+          <div className={safetyRowClassName} {...safetyRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Current LTIFR</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
               {formatReportSafetyLtifr(safety.currentLtifr)}
             </dd>
           </div>
-          <div className={SAFETY_ROW_CLASS}>
+          <div className={safetyRowClassName} {...safetyRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
             <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
               <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
@@ -74,7 +88,7 @@ export function ReportProjectSafetyCard({
               </span>
             </dd>
           </div>
-          <div className={SAFETY_ROW_CLASS}>
+          <div className={safetyRowClassName} {...safetyRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
             <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
               <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>

@@ -18,12 +18,14 @@ import {
   REPORT_OVERVIEW_METRIC_DOT_CLASS,
   REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS,
   REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS,
+  REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS,
 } from "@/lib/projects/report-project-overview-link";
 import { getReportTrendToneClass } from "@/lib/projects/report-project-trend";
 
 type ReportProjectBudgetCardProps = {
   budget: ReportProjectBudget;
   highlighted?: boolean;
+  rowHoverable?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
 };
@@ -34,6 +36,7 @@ const BUDGET_ROW_CLASS =
 export function ReportProjectBudgetCard({
   budget,
   highlighted = false,
+  rowHoverable = false,
   onNavigate,
   navigateLabel,
 }: ReportProjectBudgetCardProps) {
@@ -44,6 +47,17 @@ export function ReportProjectBudgetCard({
   const ragStatus = getReportBudgetRagStatus(budget);
   const varianceToneClass = getReportBudgetVarianceToneClass(budget);
   const movementToneClass = getReportTrendToneClass(budget.trend.sentiment);
+  const budgetRowClassName = [
+    BUDGET_ROW_CLASS,
+    rowHoverable ? REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS : "",
+    rowHoverable && onNavigate ? "pointer-events-auto cursor-pointer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const budgetRowProps =
+    rowHoverable && onNavigate
+      ? ({ onClick: onNavigate } as const)
+      : undefined;
 
   return (
     <ReportProjectOverviewInteractiveCard
@@ -54,19 +68,19 @@ export function ReportProjectBudgetCard({
       <ReportProjectOverviewCardHeader title="Cost" />
       <div className="flex min-h-0 flex-1 flex-col">
         <dl className="m-0 flex shrink-0 flex-col divide-y divide-[var(--ds-border-subtle)]">
-          <div className={BUDGET_ROW_CLASS}>
+          <div className={budgetRowClassName} {...budgetRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Target Budget</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
               {formatReportBudgetAmount(budget.approvedBudget, currencySymbol)}
             </dd>
           </div>
-          <div className={BUDGET_ROW_CLASS}>
+          <div className={budgetRowClassName} {...budgetRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Current Forecast</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
               {formatReportBudgetAmount(budget.currentForecast, currencySymbol)}
             </dd>
           </div>
-          <div className={BUDGET_ROW_CLASS}>
+          <div className={budgetRowClassName} {...budgetRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Variance</dt>
             <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
               <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>
@@ -78,7 +92,7 @@ export function ReportProjectBudgetCard({
               </span>
             </dd>
           </div>
-          <div className={BUDGET_ROW_CLASS}>
+          <div className={budgetRowClassName} {...budgetRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Since last report</dt>
             <dd className={REPORT_OVERVIEW_METRIC_VALUE_ROW_CLASS}>
               <span className={REPORT_OVERVIEW_METRIC_INDICATOR_SLOT_CLASS}>

@@ -74,6 +74,8 @@ export function ReportProjectReportPageContent({
   const [activeTab, setActiveTab] = useState<ReportModuleTabId>("page-1");
   const [hoveredOverviewModule, setHoveredOverviewModule] =
     useState<ReportOverviewModuleLinkId | null>(null);
+  const [focusedOverviewModule, setFocusedOverviewModule] =
+    useState<ReportOverviewModuleLinkId | null>(null);
   const reportingPeriods = REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER;
   const selectedReportingPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
 
@@ -100,11 +102,22 @@ export function ReportProjectReportPageContent({
     router.replace(`${pathname}?period=${isoDate}`, { scroll: false });
   }
 
+  function handleTabChange(tabId: ReportModuleTabId) {
+    setActiveTab(tabId);
+    setFocusedOverviewModule(null);
+  }
+
   function handleOverviewModuleNavigate(linkId: ReportOverviewModuleLinkId) {
     const tabId = getReportOverviewModuleTabId(linkId);
     if (tabId != null) {
       setActiveTab(tabId);
+      setFocusedOverviewModule(linkId);
     }
+  }
+
+  function handleModuleStatusNavigate(tabId: ReportModuleTabId, label: string) {
+    setActiveTab(tabId);
+    setFocusedOverviewModule(getReportOverviewModuleLinkId(label) ?? null);
   }
 
   function handleModuleStatusHover(label: string) {
@@ -121,15 +134,27 @@ export function ReportProjectReportPageContent({
 
   function renderActiveTabContent() {
     if (activeTab === "page-2") {
-      return <LazyReportProjectCostTabContent cost={REPORT_PROJECT_COST_PLACEHOLDER} />;
+      return (
+        <LazyReportProjectCostTabContent
+          cost={REPORT_PROJECT_COST_PLACEHOLDER}
+          focusedModule={focusedOverviewModule}
+        />
+      );
     }
 
     if (activeTab === "project") {
-      return <LazyReportProjectTabContent project={project} />;
+      return (
+        <LazyReportProjectTabContent
+          project={project}
+          focusedModule={focusedOverviewModule}
+        />
+      );
     }
 
     if (activeTab === "schedule") {
-      return <LazyReportProjectScheduleTabPanel />;
+      return (
+        <LazyReportProjectScheduleTabPanel highlighted={focusedOverviewModule === "schedule"} />
+      );
     }
 
     if (activeTab === "page-1") {
@@ -141,7 +166,7 @@ export function ReportProjectReportPageContent({
           <ReportProjectModuleStatusCard
             items={moduleStatus}
             projectStatus={projectMetrics}
-            onItemNavigate={setActiveTab}
+            onItemNavigate={handleModuleStatusNavigate}
             onItemHover={handleModuleStatusHover}
             onItemLeave={handleModuleStatusLeave}
           />
@@ -149,7 +174,6 @@ export function ReportProjectReportPageContent({
             <div className="flex min-w-0 flex-col sm:w-1/3">
               <ReportProjectKeyMetricsCard
                 metrics={projectMetrics}
-                highlighted={hoveredOverviewModule === "overall"}
                 onNavigate={() => handleOverviewModuleNavigate("overall")}
                 navigateLabel={getReportOverviewNavigateLabel("overall")}
               />
@@ -158,6 +182,7 @@ export function ReportProjectReportPageContent({
               <ReportProjectTopRisksCard
                 risks={REPORT_PROJECT_TOP_RISKS_PLACEHOLDER}
                 highlighted={hoveredOverviewModule === "risk"}
+                rowHoverable
                 onNavigate={() => handleOverviewModuleNavigate("risk")}
                 navigateLabel={getReportOverviewNavigateLabel("risk")}
               />
@@ -167,6 +192,7 @@ export function ReportProjectReportPageContent({
             <div className="flex min-w-0 flex-col lg:w-1/3">
               <ReportProjectSafetyCard
                 highlighted={hoveredOverviewModule === "safety"}
+                rowHoverable
                 onNavigate={() => handleOverviewModuleNavigate("safety")}
                 navigateLabel={getReportOverviewNavigateLabel("safety")}
               />
@@ -174,14 +200,24 @@ export function ReportProjectReportPageContent({
             <div className="flex min-w-0 flex-col lg:w-1/3">
               <ReportProjectScheduleCard
                 highlighted={hoveredOverviewModule === "schedule"}
-                onNavigate={() => handleOverviewModuleNavigate("schedule")}
-                navigateLabel={getReportOverviewNavigateLabel("schedule")}
+                rowHoverable
+                onNavigate={
+                  getReportOverviewModuleTabId("schedule") != null
+                    ? () => handleOverviewModuleNavigate("schedule")
+                    : undefined
+                }
+                navigateLabel={
+                  getReportOverviewModuleTabId("schedule") != null
+                    ? getReportOverviewNavigateLabel("schedule")
+                    : undefined
+                }
               />
             </div>
             <div className="flex min-w-0 flex-col lg:w-1/3">
               <ReportProjectBudgetCard
                 budget={REPORT_PROJECT_BUDGET_PLACEHOLDER}
                 highlighted={hoveredOverviewModule === "cost"}
+                rowHoverable
                 onNavigate={() => handleOverviewModuleNavigate("cost")}
                 navigateLabel={getReportOverviewNavigateLabel("cost")}
               />
@@ -189,7 +225,8 @@ export function ReportProjectReportPageContent({
           </div>
           <ReportProjectCategoryStatusCard
             categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER}
-            onNavigate={() => setActiveTab("project")}
+            rowHoverable
+            onNavigate={() => handleTabChange("project")}
             navigateLabel="View Project category status — open Project tab"
           />
         </>
@@ -207,7 +244,7 @@ export function ReportProjectReportPageContent({
       reportingPeriods={reportingPeriods}
       onReportingDateChange={handleReportingDateChange}
       headerTrailing={
-        <ReportProjectModuleTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <ReportProjectModuleTabs activeTab={activeTab} onTabChange={handleTabChange} />
       }
     >
       <div className="min-w-0 w-full pt-4 max-md:overflow-x-visible max-md:pt-2">

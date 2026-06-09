@@ -23,18 +23,20 @@ function costStatusHighlightClass(status: string): string {
 type ReportProjectCostStatusMetricCardProps = {
   status: string;
   trend?: ReportProjectTrend;
+  highlighted?: boolean;
 };
 
 export function ReportProjectCostStatusMetricCard({
   status,
   trend,
+  highlighted = false,
 }: ReportProjectCostStatusMetricCardProps) {
   const trendText = trend?.text.trim() ?? "";
 
   return (
     <Card
       className={getReportOverviewCardClassName(
-        false,
+        highlighted,
         `h-full w-full min-w-0 ${costStatusHighlightClass(status)}`,
         true,
       )}

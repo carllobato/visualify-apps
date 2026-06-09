@@ -1,5 +1,8 @@
-import type { ReportModuleTabId } from "@/components/project/report/report-module-tabs";
-import { REPORT_MODULE_TABS } from "@/components/project/report/report-module-tabs";
+import {
+  isReportModuleTabVisible,
+  REPORT_MODULE_TABS,
+  type ReportModuleTabId,
+} from "@/components/project/report/report-module-tabs";
 
 export type ReportOverviewModuleLinkId = "safety" | "schedule" | "cost" | "risk" | "overall";
 
@@ -47,7 +50,11 @@ const REPORT_OVERVIEW_CARD_TITLE_BY_LINK_ID: Record<ReportOverviewModuleLinkId, 
 export function getReportOverviewModuleTabId(
   linkId: ReportOverviewModuleLinkId,
 ): ReportModuleTabId | undefined {
-  return REPORT_OVERVIEW_MODULE_TAB_BY_LINK_ID[linkId];
+  const tabId = REPORT_OVERVIEW_MODULE_TAB_BY_LINK_ID[linkId];
+  if (tabId == null || !isReportModuleTabVisible(tabId)) {
+    return undefined;
+  }
+  return tabId;
 }
 
 export function getReportOverviewNavigateLabel(linkId: ReportOverviewModuleLinkId): string {

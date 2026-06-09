@@ -12,6 +12,7 @@ type ReportProjectSafetyStatsCardProps = {
   presentation?: "rows" | "kpi";
   /** Match category row count so paired overview cards share aligned row heights. */
   alignedRowCount?: number;
+  highlighted?: boolean;
 };
 
 function ReportProjectSafetyStatKpiValue({ stat }: { stat: ReportProjectSafetyStat }) {
@@ -76,6 +77,7 @@ export function ReportProjectSafetyStatsCard({
   stats,
   presentation = "rows",
   alignedRowCount = stats.length,
+  highlighted = false,
 }: ReportProjectSafetyStatsCardProps) {
   if (presentation === "kpi") {
     return <ReportProjectSafetyStatsKpiGrid stats={stats} />;
@@ -84,7 +86,7 @@ export function ReportProjectSafetyStatsCard({
   const spacerCount = Math.max(0, alignedRowCount - stats.length);
 
   return (
-    <ReportProjectOverviewInteractiveCard hoverable>
+    <ReportProjectOverviewInteractiveCard hoverable highlighted={highlighted}>
       <p className="m-0 mb-2 shrink-0 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]">
         Safety
       </p>

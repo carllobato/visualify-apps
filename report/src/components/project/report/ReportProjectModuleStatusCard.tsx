@@ -19,7 +19,7 @@ import { useReportSmMinWidth } from "@/lib/useReportSmMinWidth";
 type ReportProjectModuleStatusCardProps = {
   items: ReportProjectModuleStatusItem[];
   projectStatus: Pick<ReportProjectKeyMetrics, "status" | "statusTrend" | "statusContributors">;
-  onItemNavigate?: (tabId: ReportModuleTabId) => void;
+  onItemNavigate?: (tabId: ReportModuleTabId, label: string) => void;
   onItemHover?: (label: string) => void;
   onItemLeave?: () => void;
 };
@@ -86,7 +86,7 @@ function MobileSupportingStatusCard({
   trend: ReportProjectModuleStatusItem["trend"];
   tabId?: ReportModuleTabId;
   tabLabel?: string;
-  onItemNavigate?: (tabId: ReportModuleTabId) => void;
+  onItemNavigate?: (tabId: ReportModuleTabId, label: string) => void;
   onItemHover?: (label: string) => void;
   onItemLeave?: () => void;
 }) {
@@ -101,7 +101,7 @@ function MobileSupportingStatusCard({
       {isInteractive ? (
         <button
           type="button"
-          onClick={() => onItemNavigate(tabId)}
+          onClick={() => onItemNavigate(tabId, label)}
           aria-label={`View ${label} — open ${tabLabel} tab`}
           className={[
             STATUS_MODULE_INTERACTIVE_INSET_CLASS,
@@ -127,27 +127,15 @@ function MobileOverallStatusHero({
   status,
   trend,
   highlightClassName,
-  onItemHover,
-  onItemLeave,
 }: {
   status: string;
   trend: ReportProjectModuleStatusItem["trend"];
   highlightClassName: string;
-  onItemHover?: (label: string) => void;
-  onItemLeave?: () => void;
 }) {
   const trendText = trend.text.trim();
 
   return (
-    <div
-      className={[
-        MOBILE_OVERALL_STATUS_HERO_CLASS,
-        highlightClassName,
-        STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS,
-      ].join(" ")}
-      onMouseEnter={() => onItemHover?.("Overall Status")}
-      onMouseLeave={() => onItemLeave?.()}
-    >
+    <div className={[MOBILE_OVERALL_STATUS_HERO_CLASS, highlightClassName].join(" ")}>
       <span className={STATUS_MODULE_TITLE_CLASS}>Overall Status</span>
       <div className="flex items-center justify-center gap-2 pt-2 pb-0.5 text-[length:1.75rem]">
         <div className={MOBILE_OVERALL_STATUS_VALUE_CLASS}>
@@ -196,7 +184,7 @@ function StatusModuleColumn({
   tabLabel?: string;
   highlightClassName?: string;
   columnClassName?: string;
-  onItemNavigate?: (tabId: ReportModuleTabId) => void;
+  onItemNavigate?: (tabId: ReportModuleTabId, label: string) => void;
   onItemHover?: (label: string) => void;
   onItemLeave?: () => void;
 }) {
@@ -209,7 +197,7 @@ function StatusModuleColumn({
         columnClassName,
         highlightClassName,
         highlightClassName ? STATUS_MODULE_OVERALL_ELEVATION_CLASS : "",
-        !isInteractive ? STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS : "",
+        !isInteractive && onItemHover ? STATUS_MODULE_COLUMN_HOVER_OUTLINE_CLASS : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -219,7 +207,7 @@ function StatusModuleColumn({
       {isInteractive ? (
         <button
           type="button"
-          onClick={() => onItemNavigate(tabId)}
+          onClick={() => onItemNavigate(tabId, label)}
           aria-label={`View ${label} — open ${tabLabel} tab`}
           className={[
             STATUS_MODULE_INTERACTIVE_INSET_CLASS,
@@ -257,8 +245,6 @@ function ModuleStatusMobileGrid({
         status={projectStatus.status}
         trend={projectStatus.statusTrend}
         highlightClassName={overallStatusHighlightClass(projectStatus.status)}
-        onItemHover={onItemHover}
-        onItemLeave={onItemLeave}
       />
       {items.map((row) => {
         const tabId = getReportModuleStatusTabId(row.label);
@@ -318,8 +304,6 @@ function ModuleStatusDesktopRow({
         status={projectStatus.status}
         trend={projectStatus.statusTrend}
         highlightClassName={overallStatusHighlightClass(projectStatus.status)}
-        onItemHover={onItemHover}
-        onItemLeave={onItemLeave}
       />
     </>
   );

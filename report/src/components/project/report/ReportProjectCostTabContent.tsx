@@ -16,6 +16,7 @@ import {
   getReportCostMetricSummaryRowFilter,
   type ReportCostMetricLinkId,
 } from "@/lib/projects/report-project-cost-links";
+import type { ReportOverviewModuleLinkId } from "@/lib/projects/report-project-overview-link";
 import {
   formatReportCostSummaryTotalAmount,
   getReportProjectCostNormalisedForecast,
@@ -24,9 +25,13 @@ import {
 
 type ReportProjectCostTabContentProps = {
   cost: ReportProjectCostData;
+  focusedModule?: ReportOverviewModuleLinkId | null;
 };
 
-export function ReportProjectCostTabContent({ cost }: ReportProjectCostTabContentProps) {
+export function ReportProjectCostTabContent({
+  cost,
+  focusedModule = null,
+}: ReportProjectCostTabContentProps) {
   const [hoveredMetric, setHoveredMetric] = useState<ReportCostMetricLinkId | null>(null);
   const { summary, costSummary, cashflow } = cost;
   const currencySymbol = summary.currencySymbol ?? "$";
@@ -49,6 +54,7 @@ export function ReportProjectCostTabContent({ cost }: ReportProjectCostTabConten
         <ReportProjectCostStatusMetricCard
           status={getReportCostRagStatus(summary)}
           trend={summary.trend}
+          highlighted={focusedModule === "cost"}
         />
         <ReportProjectCostMetricCard
           label="Approved budget"

@@ -18,6 +18,7 @@ type ReportProjectTopRisksCardProps = {
   expanded?: boolean;
   prominent?: boolean;
   highlighted?: boolean;
+  rowHoverable?: boolean;
   onNavigate?: () => void;
   navigateLabel?: string;
 };
@@ -143,11 +144,27 @@ function ReportProjectTopRisksList({
   risks,
   expanded = false,
   prominent = false,
+  rowHoverable = false,
+  onNavigate,
 }: {
   risks: ReportProjectTopRisk[];
   expanded?: boolean;
   prominent?: boolean;
+  rowHoverable?: boolean;
+  onNavigate?: () => void;
 }) {
+  const compactRowClassName = [
+    TOP_RISKS_ROW_CLASS,
+    rowHoverable ? REPORT_PROJECT_TAB_ROW_INTERACTIVE_CLASS : "",
+    rowHoverable && onNavigate ? "pointer-events-auto cursor-pointer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const compactRowProps =
+    rowHoverable && onNavigate
+      ? ({ onClick: onNavigate } as const)
+      : undefined;
+
   if (expanded) {
     return <ReportProjectTopRisksExpandedList risks={risks} prominent={prominent} />;
   }
@@ -155,7 +172,7 @@ function ReportProjectTopRisksList({
   return (
     <ul className="m-0 flex shrink-0 list-none flex-col divide-y divide-[var(--ds-border-subtle)] p-0">
       {risks.map((risk) => (
-        <li key={risk.id} className={TOP_RISKS_ROW_CLASS}>
+        <li key={risk.id} className={compactRowClassName} {...compactRowProps}>
           <span className="min-w-0 truncate text-[var(--ds-text-primary)] md:min-w-0 md:flex-1">
             {risk.title}
           </span>
@@ -177,6 +194,7 @@ export function ReportProjectTopRisksCard({
   expanded = false,
   prominent = false,
   highlighted = false,
+  rowHoverable = false,
   onNavigate,
   navigateLabel,
 }: ReportProjectTopRisksCardProps) {
@@ -184,6 +202,7 @@ export function ReportProjectTopRisksCard({
     return (
       <ReportProjectOverviewInteractiveCard
         hoverable
+        highlighted={highlighted}
         contentClassName={prominent ? "flex flex-1 flex-col px-4 py-4" : "flex flex-1 flex-col px-4 py-3"}
       >
         <p
@@ -203,7 +222,7 @@ export function ReportProjectTopRisksCard({
     <>
       <ReportProjectOverviewCardHeader title="Key issues & risks" />
       <div className="flex min-h-0 flex-1 flex-col">
-        <ReportProjectTopRisksList risks={risks} expanded={expanded} prominent={prominent} />
+        <ReportProjectTopRisksList risks={risks} expanded={expanded} prominent={prominent} rowHoverable={rowHoverable} onNavigate={onNavigate} />
         <div className="min-h-0 flex-1" aria-hidden="true" />
       </div>
     </>
