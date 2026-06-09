@@ -282,14 +282,25 @@ html:has(.vf-app-shell-outer-canvas) body {
   /*
    * Installed home-screen apps: the % height chain matches the real screen. Browser tabs need
    * 100dvh (above) — 100% there resolves to the taller layout viewport and kills inner scroll.
+   * Every ancestor through `.vf-app-launch-app-root` must participate — otherwise
+   * `height: 100%` on the shell resolves against auto-height content and inner scroll never engages.
    */
   @media (display-mode: standalone) {
     html:has(.vf-app-shell-outer-canvas) {
       height: 100%;
+      height: -webkit-fill-available;
     }
 
     html:has(.vf-app-shell-outer-canvas) body {
       height: 100%;
+      height: -webkit-fill-available;
+    }
+
+    html:has(.vf-app-shell-outer-canvas) .vf-app-launch-app-root {
+      box-sizing: border-box;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .vf-app-shell-outer-canvas,

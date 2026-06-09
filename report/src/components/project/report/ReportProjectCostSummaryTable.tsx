@@ -45,11 +45,13 @@ const SUMMARY_TABLE_DATA_ROW_CLASS = [
 ].join(" ");
 const SUMMARY_TABLE_DATA_ROW_SELECTED_CLASS = "bg-[var(--ds-surface-hover)]";
 const SUMMARY_CODE_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} w-[120px] max-w-[120px] whitespace-nowrap`;
-const SUMMARY_DESCRIPTION_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} min-w-0`;
+const SUMMARY_DESCRIPTION_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} min-w-0 max-md:min-w-[14rem] max-md:w-[14rem]`;
+const SUMMARY_DESCRIPTION_HEADER_CLASS = `${SUMMARY_TABLE_HEADER_CELL_CLASS} min-w-0 max-md:min-w-[14rem] max-md:w-[14rem]`;
 const SUMMARY_AMOUNT_CELL_CLASS = `${SUMMARY_TABLE_CELL_CLASS} w-[9rem] max-w-[9rem] text-right`;
 const SUMMARY_AMOUNT_HEADER_CLASS = `${SUMMARY_TABLE_HEADER_CELL_CLASS} w-[9rem] max-w-[9rem] text-right`;
+const SUMMARY_TABLE_SCROLL_CLASS = "min-w-0 overflow-x-auto max-md:overscroll-x-contain";
 const SUMMARY_TABLE_CLASS =
-  "w-full table-fixed !border-separate border-spacing-0 text-[length:var(--ds-text-xs)] [&_tbody_tr:last-child_td:first-child]:rounded-bl-[var(--ds-radius-md)] [&_tbody_tr:last-child_td:last-child]:rounded-br-[var(--ds-radius-md)] [&_th]:!py-0.5 [&_td]:!py-0";
+  "w-full table-fixed !border-separate border-spacing-0 text-[length:var(--ds-text-xs)] max-md:min-w-[66.5rem] [&_tbody_tr:last-child_td:first-child]:rounded-bl-[var(--ds-radius-md)] [&_tbody_tr:last-child_td:last-child]:rounded-br-[var(--ds-radius-md)] [&_th]:!py-0.5 [&_td]:!py-0";
 const SUMMARY_TABLE_HEAD_CLASS =
   "!border-b-0 !bg-transparent [&_th]:border-b [&_th]:border-[var(--ds-border-subtle)] [&_th]:bg-[var(--ds-surface-muted)] [&_th:first-child]:rounded-tl-[var(--ds-radius-md)] [&_th:last-child]:rounded-tr-[var(--ds-radius-md)]";
 const SUMMARY_TABLE_BODY_CLASS =
@@ -214,7 +216,7 @@ export function ReportProjectCostSummaryTable({
       <CardContent className="flex flex-col p-0">
         <p className={REPORT_PROJECT_COST_SECTION_TITLE_CLASS}>Summary</p>
         <div className="overflow-hidden rounded-[var(--ds-radius-md)] p-[2px]">
-          <div className="min-w-0 overflow-x-auto">
+          <div className={SUMMARY_TABLE_SCROLL_CLASS}>
             <Table className={SUMMARY_TABLE_CLASS}>
           <TableHead className={SUMMARY_TABLE_HEAD_CLASS}>
             <TableRow className={SUMMARY_TABLE_ROW_CLASS}>
@@ -223,7 +225,7 @@ export function ReportProjectCostSummaryTable({
               >
                 WBS Code
               </TableHeaderCell>
-              <TableHeaderCell className={SUMMARY_TABLE_HEADER_CELL_CLASS}>
+              <TableHeaderCell className={SUMMARY_DESCRIPTION_HEADER_CLASS}>
                 WBS Description
               </TableHeaderCell>
               <TableHeaderCell

@@ -33,8 +33,11 @@ const TOP_RISKS_CATEGORY_CLASS =
 const TOP_RISKS_TABULAR_CATEGORY_CLASS =
   "inline-flex w-fit shrink-0 items-center whitespace-nowrap rounded-full border border-[var(--ds-border-subtle)] bg-[var(--ds-surface)] px-2 py-0.5 text-[10px] font-normal text-[var(--ds-text-muted)]";
 
+const TOP_RISKS_TABULAR_SCROLL_CLASS =
+  "min-w-0 overflow-x-auto max-md:overscroll-x-contain";
+
 const TOP_RISKS_TABULAR_LIST_CLASS =
-  "m-0 grid w-full list-none grid-cols-[minmax(10rem,14%)_max-content_minmax(0,1fr)_max-content] gap-x-4 p-0";
+  "m-0 grid w-full list-none grid-cols-[minmax(10rem,14%)_max-content_minmax(0,1fr)_max-content] gap-x-4 p-0 max-md:min-w-[42rem] max-md:grid-cols-[10rem_max-content_minmax(14rem,1fr)_max-content]";
 
 const TOP_RISKS_TABULAR_ROW_CLASS = [
   "col-span-full grid cursor-default grid-cols-subgrid items-start gap-x-4 border-b border-[var(--ds-border-subtle)] py-3 first:pt-0 last:border-b-0",
@@ -62,43 +65,45 @@ function ReportProjectTopRiskIndicators({ risk }: { risk: ReportProjectTopRisk }
 
 function ReportProjectTopRisksTabularList({ risks }: { risks: ReportProjectTopRisk[] }) {
   return (
-    <ul className={TOP_RISKS_TABULAR_LIST_CLASS}>
-      <li className={TOP_RISKS_TABULAR_HEADER_CLASS} aria-hidden="true">
-        <span>Issue</span>
-        <span>Category</span>
-        <span>Description</span>
-        <span className="text-right">Status</span>
-      </li>
-      {risks.map((risk) => (
-        <li key={risk.id} className={TOP_RISKS_TABULAR_ROW_CLASS}>
-          <p className="m-0 min-w-0 text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
-            {risk.title}
-          </p>
-          <span className={TOP_RISKS_TABULAR_CATEGORY_CLASS} title={risk.category}>
-            {risk.category}
-          </span>
-          <div className="min-w-0">
-            <p className="m-0 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-              {risk.description}
-            </p>
-            {risk.comment ? (
-              <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-                {risk.comment}
-              </p>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 items-center justify-end gap-1.5">
-            <ReportRagStatusDot
-              status={getReportProjectTopRiskRagStatus(risk)}
-              dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS}
-            />
-            <Trend sentiment={risk.trend.sentiment} className="text-[length:var(--ds-text-sm)]">
-              {risk.trend.text}
-            </Trend>
-          </div>
+    <div className={TOP_RISKS_TABULAR_SCROLL_CLASS}>
+      <ul className={TOP_RISKS_TABULAR_LIST_CLASS}>
+        <li className={TOP_RISKS_TABULAR_HEADER_CLASS} aria-hidden="true">
+          <span>Issue</span>
+          <span>Category</span>
+          <span>Description</span>
+          <span className="text-right">Status</span>
         </li>
-      ))}
-    </ul>
+        {risks.map((risk) => (
+          <li key={risk.id} className={TOP_RISKS_TABULAR_ROW_CLASS}>
+            <p className="m-0 min-w-0 text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+              {risk.title}
+            </p>
+            <span className={TOP_RISKS_TABULAR_CATEGORY_CLASS} title={risk.category}>
+              {risk.category}
+            </span>
+            <div className="min-w-0">
+              <p className="m-0 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                {risk.description}
+              </p>
+              {risk.comment ? (
+                <p className="m-0 mt-1.5 text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
+                  {risk.comment}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-1.5">
+              <ReportRagStatusDot
+                status={getReportProjectTopRiskRagStatus(risk)}
+                dotClassName={REPORT_OVERVIEW_METRIC_DOT_CLASS}
+              />
+              <Trend sentiment={risk.trend.sentiment} className="text-[length:var(--ds-text-sm)]">
+                {risk.trend.text}
+              </Trend>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
