@@ -281,7 +281,15 @@ export const REPORT_PROJECT_COST_PLACEHOLDER: ReportProjectCostData = {
 export const REPORT_PROJECT_CASHFLOW_AXIS_MAX = REPORT_CASHFLOW_AXIS_MAX;
 
 export function getReportCashflowTodayIndex(series: ReportProjectCashflowSeries[]): number {
-  const monthKeys = series[0]?.data.map((point) => point.key) ?? [];
+  const firstSeries = series[0];
+  if (
+    firstSeries?.forecastFromIndex !== undefined &&
+    firstSeries.forecastFromIndex >= 0
+  ) {
+    return firstSeries.forecastFromIndex;
+  }
+
+  const monthKeys = firstSeries?.data.map((point) => point.key) ?? [];
   return monthKeys.indexOf(REPORT_CASHFLOW_TODAY_KEY);
 }
 

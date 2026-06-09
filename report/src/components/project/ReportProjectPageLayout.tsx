@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { appShellPageTitleClassName, shellPageHeaderRailRowClassName } from "@visualify/app-shell";
 import { ReportProjectReportingDateSelect } from "@/components/project/report/ReportProjectReportingDateSelect";
 import {
-  REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
   resolveReportProjectReportingPeriod,
   type ReportProjectReportingPeriod,
 } from "@/lib/projects/report-project-reporting-date";
@@ -42,13 +41,16 @@ export function ReportProjectPageLayout({
   contentFullWidth = false,
   headerTrailing,
   reportingDate,
-  reportingPeriods = REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
+  reportingPeriods = [],
   onReportingDateChange,
 }: ReportProjectPageLayoutProps) {
   const displayName = formatReportProjectDisplayName(project.name);
-  const selectedPeriod = resolveReportProjectReportingPeriod(reportingDate, reportingPeriods);
+  const hasReportingPeriods = reportingPeriods.length > 0;
+  const selectedPeriod = hasReportingPeriods
+    ? resolveReportProjectReportingPeriod(reportingDate, reportingPeriods)
+    : null;
   const showReportingDateSelect =
-    reportingPeriods.length > 0 && onReportingDateChange != null;
+    hasReportingPeriods && selectedPeriod != null && onReportingDateChange != null;
   const contentClassName = contentFullWidth
     ? "flex w-full min-w-0 flex-col"
     : "mx-auto flex w-full min-w-0 max-w-[90rem] flex-col";
@@ -68,7 +70,7 @@ export function ReportProjectPageLayout({
               >
                 {displayName}
               </h1>
-              {showReportingDateSelect ? (
+              {hasReportingPeriods ? (
                 <>
                   <span
                     className="shrink-0 font-normal text-[var(--ds-text-muted)] max-md:text-[length:var(--ds-text-xs)]"
@@ -76,14 +78,16 @@ export function ReportProjectPageLayout({
                   >
                     |
                   </span>
-                  <div className="max-md:text-[length:var(--ds-text-sm)]">
-                    <ReportProjectReportingDateSelect
-                      id="report-project-reporting-date"
-                      periods={reportingPeriods}
-                      value={selectedPeriod.isoDate}
-                      onChange={onReportingDateChange}
-                    />
-                  </div>
+                  {showReportingDateSelect ? (
+                    <div className="max-md:text-[length:var(--ds-text-sm)]">
+                      <ReportProjectReportingDateSelect
+                        id="report-project-reporting-date"
+                        periods={reportingPeriods}
+                        value={selectedPeriod.isoDate}
+                        onChange={onReportingDateChange}
+                      />
+                    </div>
+                  ) : null}
                 </>
               ) : null}
             </div>

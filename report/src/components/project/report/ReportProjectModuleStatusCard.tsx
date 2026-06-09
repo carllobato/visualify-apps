@@ -220,7 +220,9 @@ function StatusModuleColumn({
         <span className={STATUS_MODULE_TITLE_CLASS}>{label}</span>
         <div className="flex min-h-14 flex-1 items-center justify-center gap-2 pt-2 pb-2 text-2xl">
           <ReportRagStatusDot status={status} showPhrase />
-          <Trend sentiment={trend.sentiment}>{trend.text}</Trend>
+          {trend.text.trim() ? (
+            <Trend sentiment={trend.sentiment}>{trend.text}</Trend>
+          ) : null}
         </div>
       </div>
     </div>

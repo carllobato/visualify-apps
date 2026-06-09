@@ -18,13 +18,8 @@ import {
   LazyReportProjectSettingsForm,
   LazyReportProjectTabContent,
 } from "@/components/project/report/report-lazy-tab-panels";
-import { REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER } from "@/lib/projects/report-project-category-rows";
-import { REPORT_PROJECT_BUDGET_PLACEHOLDER } from "@/lib/projects/report-project-budget";
-import { REPORT_PROJECT_COST_PLACEHOLDER } from "@/lib/projects/report-project-cost";
-import { REPORT_PROJECT_KEY_METRICS_PLACEHOLDER } from "@/lib/projects/report-project-key-metrics";
-import { REPORT_PROJECT_MODULE_STATUS_PLACEHOLDER } from "@/lib/projects/report-project-module-status";
-import { REPORT_PROJECT_TOP_RISKS_PLACEHOLDER } from "@/lib/projects/report-project-top-risks";
 import { ReportProjectModuleTabs } from "@/components/project/report/ReportProjectModuleTabs";
+import { ReportProjectUploadTabContent } from "@/components/project/report/ReportProjectUploadTabContent";
 import {
   REPORT_MODULE_TABS,
   reportModuleTabShowsStageStepper,
@@ -37,11 +32,13 @@ import {
   type ReportOverviewModuleLinkId,
 } from "@/lib/projects/report-project-overview-link";
 import {
-  REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
   resolveReportProjectReportingPeriod,
+  type ReportProjectReportingPeriod,
 } from "@/lib/projects/report-project-reporting-date";
 import { writeReportLastProjectIdForWorkspace } from "@/lib/projects/report-last-project-preference";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
+import type { ReportSnapshotUploadRow } from "@/lib/projects/report-snapshots-server";
+import type { ResolvedReportProjectData } from "@/lib/report-upload/resolve-report-project-data";
 
 function ReportModuleTabPlaceholder({ tabLabel }: { tabLabel: string }) {
   return (
@@ -58,16 +55,34 @@ function ReportModuleTabPlaceholder({ tabLabel }: { tabLabel: string }) {
   );
 }
 
+function ReportProjectNoReportEmptyState() {
+  return (
+    <Card>
+      <CardContent className="flex flex-col items-center py-12 text-center">
+        <p className="m-0 text-[length:var(--ds-text-base)] font-medium text-[var(--ds-text-primary)]">
+          Upload your first report to view
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 type ReportProjectReportPageContentProps = {
   project: ReportProjectListItem;
   workspaceId: string | null;
   periodParam?: string | null;
+  reportingPeriods?: ReportProjectReportingPeriod[];
+  recentUploads?: ReportSnapshotUploadRow[];
+  resolvedData: ResolvedReportProjectData;
 };
 
 export function ReportProjectReportPageContent({
   project,
   workspaceId,
   periodParam = null,
+  reportingPeriods = [],
+  recentUploads = [],
+  resolvedData,
 }: ReportProjectReportPageContentProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,16 +91,35 @@ export function ReportProjectReportPageContent({
     useState<ReportOverviewModuleLinkId | null>(null);
   const [focusedOverviewModule, setFocusedOverviewModule] =
     useState<ReportOverviewModuleLinkId | null>(null);
-  const reportingPeriods = REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER;
+  const hasReportData = reportingPeriods.length > 0;
   const selectedReportingPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
+  const {
+    keyMetrics: projectMetrics,
+    moduleStatus,
+    schedule,
+    safetyOverview,
+    categories,
+    topRisks,
+    budget,
+    cost,
+    milestones,
+    safetyStats,
+  } = resolvedData;
 
   useEffect(() => {
+    if (reportingPeriods.length === 0) {
+      return;
+    }
+
     const normalizedPeriodParam = periodParam?.trim() ?? "";
     if (!normalizedPeriodParam) {
       return;
     }
 
     const resolvedPeriod = resolveReportProjectReportingPeriod(periodParam, reportingPeriods);
+    if (resolvedPeriod == null) {
+      return;
+    }
 
     if (normalizedPeriodParam !== resolvedPeriod.isoDate) {
       router.replace(`${pathname}?period=${resolvedPeriod.isoDate}`, { scroll: false });
@@ -133,10 +167,25 @@ export function ReportProjectReportPageContent({
     REPORT_MODULE_TABS.find((tab) => tab.id === activeTab)?.label ?? "Overview";
 
   function renderActiveTabContent() {
+    if (activeTab === "upload") {
+      return (
+        <ReportProjectUploadTabContent
+          project={project}
+          recentUploads={recentUploads}
+          reportingPeriods={reportingPeriods}
+          selectedReportingDate={selectedReportingPeriod?.isoDate ?? null}
+        />
+      );
+    }
+
+    if (!hasReportData) {
+      return <ReportProjectNoReportEmptyState />;
+    }
+
     if (activeTab === "page-2") {
       return (
         <LazyReportProjectCostTabContent
-          cost={REPORT_PROJECT_COST_PLACEHOLDER}
+          cost={cost}
           focusedModule={focusedOverviewModule}
         />
       );
@@ -147,20 +196,25 @@ export function ReportProjectReportPageContent({
         <LazyReportProjectTabContent
           project={project}
           focusedModule={focusedOverviewModule}
+          schedule={schedule}
+          milestones={milestones}
+          safetyStats={safetyStats}
+          categories={categories}
+          topRisks={topRisks}
         />
       );
     }
 
     if (activeTab === "schedule") {
       return (
-        <LazyReportProjectScheduleTabPanel highlighted={focusedOverviewModule === "schedule"} />
+        <LazyReportProjectScheduleTabPanel
+          schedule={schedule}
+          highlighted={focusedOverviewModule === "schedule"}
+        />
       );
     }
 
     if (activeTab === "page-1") {
-      const moduleStatus = REPORT_PROJECT_MODULE_STATUS_PLACEHOLDER;
-      const projectMetrics = REPORT_PROJECT_KEY_METRICS_PLACEHOLDER;
-
       return (
         <>
           <ReportProjectModuleStatusCard
@@ -180,7 +234,7 @@ export function ReportProjectReportPageContent({
             </div>
             <div className="flex min-w-0 flex-col sm:w-2/3">
               <ReportProjectTopRisksCard
-                risks={REPORT_PROJECT_TOP_RISKS_PLACEHOLDER}
+                risks={topRisks}
                 highlighted={hoveredOverviewModule === "risk"}
                 rowHoverable
                 onNavigate={() => handleOverviewModuleNavigate("risk")}
@@ -191,6 +245,7 @@ export function ReportProjectReportPageContent({
           <div className="flex min-w-0 w-full flex-col gap-3 lg:flex-row lg:items-stretch">
             <div className="flex min-w-0 flex-col lg:w-1/3">
               <ReportProjectSafetyCard
+                safety={safetyOverview}
                 highlighted={hoveredOverviewModule === "safety"}
                 rowHoverable
                 onNavigate={() => handleOverviewModuleNavigate("safety")}
@@ -199,6 +254,7 @@ export function ReportProjectReportPageContent({
             </div>
             <div className="flex min-w-0 flex-col lg:w-1/3">
               <ReportProjectScheduleCard
+                schedule={schedule}
                 highlighted={hoveredOverviewModule === "schedule"}
                 rowHoverable
                 onNavigate={
@@ -215,7 +271,7 @@ export function ReportProjectReportPageContent({
             </div>
             <div className="flex min-w-0 flex-col lg:w-1/3">
               <ReportProjectBudgetCard
-                budget={REPORT_PROJECT_BUDGET_PLACEHOLDER}
+                budget={budget}
                 highlighted={hoveredOverviewModule === "cost"}
                 rowHoverable
                 onNavigate={() => handleOverviewModuleNavigate("cost")}
@@ -224,7 +280,7 @@ export function ReportProjectReportPageContent({
             </div>
           </div>
           <ReportProjectCategoryStatusCard
-            categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER}
+            categories={categories}
             rowHoverable
             onNavigate={() => handleTabChange("project")}
             navigateLabel="View Project category status — open Project tab"
@@ -240,7 +296,7 @@ export function ReportProjectReportPageContent({
     <ReportProjectPageLayout
       project={project}
       contentFullWidth
-      reportingDate={selectedReportingPeriod.isoDate}
+      reportingDate={selectedReportingPeriod?.isoDate ?? null}
       reportingPeriods={reportingPeriods}
       onReportingDateChange={handleReportingDateChange}
       headerTrailing={
@@ -252,7 +308,7 @@ export function ReportProjectReportPageContent({
           <LazyReportProjectSettingsForm project={project} />
         ) : (
           <div className="report-project-overview-stack flex min-w-0 w-full flex-col gap-3">
-            {reportModuleTabShowsStageStepper(activeTab) ? (
+            {hasReportData && reportModuleTabShowsStageStepper(activeTab) ? (
               <ReportProjectStageStepper stage={project.stage} />
             ) : null}
             {renderActiveTabContent()}

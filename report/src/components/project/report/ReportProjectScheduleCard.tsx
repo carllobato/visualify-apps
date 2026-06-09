@@ -32,6 +32,10 @@ type ReportProjectScheduleCardProps = {
 const SCHEDULE_ROW_CLASS =
   "flex min-h-10 shrink-0 items-center justify-between gap-4 text-[length:var(--ds-text-sm)]";
 
+function formatScheduleDateDisplay(isoDate: string): string {
+  return isoDate.trim() ? formatReportScheduleDate(isoDate) : "—";
+}
+
 export function ReportProjectScheduleCard({
   schedule = REPORT_PROJECT_SCHEDULE_OVERVIEW_PLACEHOLDER,
   highlighted = false,
@@ -70,13 +74,13 @@ export function ReportProjectScheduleCard({
           <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Target RFS</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
-              {formatReportScheduleDate(schedule.baselineRfs)}
+              {formatScheduleDateDisplay(schedule.baselineRfs)}
             </dd>
           </div>
           <div className={scheduleRowClassName} {...scheduleRowProps}>
             <dt className="m-0 text-[var(--ds-text-secondary)]">Current RFS</dt>
             <dd className="m-0 font-semibold tabular-nums text-[var(--ds-text-primary)]">
-              {formatReportScheduleDate(schedule.forecastRfs)}
+              {formatScheduleDateDisplay(schedule.forecastRfs)}
             </dd>
           </div>
           <div className={scheduleRowClassName} {...scheduleRowProps}>

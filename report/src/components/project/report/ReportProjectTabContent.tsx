@@ -4,16 +4,22 @@ import { ReportProjectKeyMilestonesCard } from "@/components/project/report/Repo
 import { ReportProjectSafetyStatsCard } from "@/components/project/report/ReportProjectSafetyStatsCard";
 import { ReportProjectScheduleCard } from "@/components/project/report/ReportProjectScheduleCard";
 import { ReportProjectTopRisksCard } from "@/components/project/report/ReportProjectTopRisksCard";
-import { REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER } from "@/lib/projects/report-project-category-rows";
-import { REPORT_PROJECT_KEY_MILESTONES_PLACEHOLDER } from "@/lib/projects/report-project-key-milestones";
-import { REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER } from "@/lib/projects/report-project-safety-stats";
-import { REPORT_PROJECT_TOP_RISKS_PLACEHOLDER } from "@/lib/projects/report-project-top-risks";
+import type { ReportProjectCategoryRow } from "@/lib/projects/report-project-category-rows";
+import type { ReportProjectKeyMilestone } from "@/lib/projects/report-project-key-milestones";
+import type { ReportProjectSafetyStat } from "@/lib/projects/report-project-safety-stats";
+import type { ReportProjectScheduleOverview } from "@/lib/projects/report-project-schedule";
+import type { ReportProjectTopRisk } from "@/lib/projects/report-project-top-risks";
 import type { ReportProjectListItem } from "@/lib/projects/report-projects-server";
 import type { ReportOverviewModuleLinkId } from "@/lib/projects/report-project-overview-link";
 
 type ReportProjectTabContentProps = {
   project: ReportProjectListItem;
   focusedModule?: ReportOverviewModuleLinkId | null;
+  schedule: ReportProjectScheduleOverview;
+  milestones: ReportProjectKeyMilestone[];
+  safetyStats: ReportProjectSafetyStat[];
+  categories: ReportProjectCategoryRow[];
+  topRisks: ReportProjectTopRisk[];
 };
 
 function ReportProjectTabSection({
@@ -29,31 +35,36 @@ function ReportProjectTabSection({
 export function ReportProjectTabContent({
   project: _project,
   focusedModule = null,
+  schedule,
+  milestones,
+  safetyStats,
+  categories,
+  topRisks,
 }: ReportProjectTabContentProps) {
   return (
     <ReportProjectTabSection>
       <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch">
         <div className="flex min-w-0 flex-col">
-          <ReportProjectScheduleCard hoverable rowHoverable />
+          <ReportProjectScheduleCard schedule={schedule} hoverable rowHoverable />
         </div>
         <div className="flex min-w-0 flex-col">
-          <ReportProjectKeyMilestonesCard milestones={REPORT_PROJECT_KEY_MILESTONES_PLACEHOLDER} />
+          <ReportProjectKeyMilestonesCard milestones={milestones} />
         </div>
       </div>
       <div className="grid min-w-0 w-full grid-cols-1 gap-3 sm:grid-cols-3 sm:items-stretch">
         <div className="flex min-w-0 flex-col sm:col-span-1">
           <ReportProjectSafetyStatsCard
-            stats={REPORT_PROJECT_SAFETY_STATS_PLACEHOLDER}
-            alignedRowCount={REPORT_PROJECT_KEY_MILESTONES_PLACEHOLDER.length}
+            stats={safetyStats}
+            alignedRowCount={milestones.length}
             highlighted={focusedModule === "safety"}
           />
         </div>
         <div className="flex min-w-0 flex-col sm:col-span-2">
-          <ReportProjectKeyCategoriesCard categories={REPORT_PROJECT_CATEGORY_ROWS_PLACEHOLDER} />
+          <ReportProjectKeyCategoriesCard categories={categories} />
         </div>
       </div>
       <ReportProjectTopRisksCard
-        risks={REPORT_PROJECT_TOP_RISKS_PLACEHOLDER}
+        risks={topRisks}
         expanded
         prominent
         highlighted={focusedModule === "risk"}

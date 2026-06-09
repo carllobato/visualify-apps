@@ -1,4 +1,11 @@
+import { REPORT_PROJECT_NO_SNAPSHOT_STATUS } from "@/lib/projects/report-project-key-metrics";
+
 type RagStatus = "green" | "amber" | "red" | "neutral";
+
+function isNoReportStatus(status: string): boolean {
+  const normalized = status.trim().toLowerCase();
+  return !normalized || normalized === REPORT_PROJECT_NO_SNAPSHOT_STATUS.toLowerCase();
+}
 
 function toRagStatus(status: string): RagStatus {
   const normalized = status.toLowerCase();
@@ -88,22 +95,27 @@ export function ReportRagStatusDot({
   className = "",
 }: ReportRagStatusDotProps) {
   const ragStatus = toRagStatus(status);
+  const noReportStatus = isNoReportStatus(status);
 
   if (showPhrase) {
     return (
       <span className={["inline-flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1", className].filter(Boolean).join(" ")}>
-        <span
-          className={reportRagStatusDotGlyphClassName(dotClassName, ragStatus)}
-          aria-hidden
-        />
+        {noReportStatus ? null : (
+          <span
+            className={reportRagStatusDotGlyphClassName(dotClassName, ragStatus)}
+            aria-hidden
+          />
+        )}
         <span
           className={[
             "tracking-tight line-clamp-2 break-words",
             compact ? "text-[length:var(--ds-text-xs)] font-medium" : "text-2xl font-semibold",
-            subtlePhrase ? "text-[var(--ds-text-secondary)]" : ragPhraseClass(ragStatus),
+            noReportStatus || subtlePhrase
+              ? "text-[var(--ds-text-secondary)]"
+              : ragPhraseClass(ragStatus),
           ].join(" ")}
         >
-          {ragPhrase(ragStatus)}
+          {noReportStatus ? REPORT_PROJECT_NO_SNAPSHOT_STATUS : ragPhrase(ragStatus)}
         </span>
       </span>
     );

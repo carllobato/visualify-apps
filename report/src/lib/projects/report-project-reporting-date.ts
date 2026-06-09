@@ -27,7 +27,11 @@ export function formatReportProjectReportingDate(isoDate: string): string {
 
 export function getLatestReportProjectReportingPeriod(
   periods: ReportProjectReportingPeriod[] = REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
-): ReportProjectReportingPeriod {
+): ReportProjectReportingPeriod | null {
+  if (periods.length === 0) {
+    return null;
+  }
+
   return (
     periods.find((period) => period.isLatest) ??
     periods[0] ?? { isoDate: REPORT_PROJECT_REPORTING_DATE_PLACEHOLDER, isLatest: true }
@@ -45,6 +49,13 @@ export function getReportProjectReportingPeriodByIsoDate(
 export function resolveReportProjectReportingPeriod(
   isoDate: string | null | undefined,
   periods: ReportProjectReportingPeriod[] = REPORT_PROJECT_REPORTING_PERIODS_PLACEHOLDER,
-): ReportProjectReportingPeriod {
-  return getReportProjectReportingPeriodByIsoDate(isoDate ?? "", periods) ?? getLatestReportProjectReportingPeriod(periods);
+): ReportProjectReportingPeriod | null {
+  if (periods.length === 0) {
+    return null;
+  }
+
+  return (
+    getReportProjectReportingPeriodByIsoDate(isoDate ?? "", periods) ??
+    getLatestReportProjectReportingPeriod(periods)
+  );
 }

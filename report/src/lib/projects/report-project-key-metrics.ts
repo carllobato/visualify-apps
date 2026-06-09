@@ -5,6 +5,9 @@ export type ReportProjectKeyMetric = {
   value: string;
 };
 
+/** Overall status label when no report snapshot exists for the project. */
+export const REPORT_PROJECT_NO_SNAPSHOT_STATUS = "No report uploaded";
+
 export type ReportProjectKeyMetrics = {
   status: string;
   statusTrend: ReportProjectTrend;
