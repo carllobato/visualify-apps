@@ -11,6 +11,7 @@ import {
   AppShellMobileHeaderPresenceProvider,
   useAppShellMobileHeaderPresent,
 } from "./app-shell-mobile-header-context";
+import { AppShellMobileViewportSync } from "./AppShellMobileViewportSync";
 import { AppShellRailMobileNavController } from "./app-shell-rail-mobile-nav-controller";
 import { appShellOuterCanvasClassName } from "./layout-classes";
 
@@ -76,6 +77,7 @@ export function AppShellOuterCanvas({
     <AppShellMobileHeaderPresenceProvider mobileHeaderExpected={mobileHeaderExpected}>
       <AppShellMobileBottomNavPresenceProvider>
         <AppShellRailMobileNavController>
+          <AppShellMobileViewportSync />
           <AppShellOuterCanvasRoot className={className} mobileHeaderExpected={mobileHeaderExpected}>
             {children}
           </AppShellOuterCanvasRoot>

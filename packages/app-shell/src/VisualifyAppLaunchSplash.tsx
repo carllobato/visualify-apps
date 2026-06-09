@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { VISUALIFY_LOGO_DARK_SRC, VISUALIFY_LOGO_LIGHT_SRC } from "./visualify-brand";
-import { visualifyAppLaunchBlockingScript } from "./app-launch-blocking-script";
+import {
+  appShellIosStandaloneBlockingScript,
+  visualifyAppLaunchBlockingScript,
+} from "./app-launch-blocking-script";
 import {
   VISUALIFY_APP_LAUNCH_MOBILE_MEDIA,
   visualifyAppLaunchCriticalCss,
@@ -17,6 +20,7 @@ export function VisualifyAppLaunchCriticalStyles() {
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: visualifyAppLaunchBlockingScript }} />
+      <script dangerouslySetInnerHTML={{ __html: appShellIosStandaloneBlockingScript }} />
       <style dangerouslySetInnerHTML={{ __html: visualifyAppLaunchFirstPaintCss }} />
       <style dangerouslySetInnerHTML={{ __html: visualifyAppLaunchCriticalCss }} />
     </>

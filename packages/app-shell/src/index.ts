@@ -152,6 +152,18 @@ export type { AppShellLegalDocumentId } from "./legal";
 
 export { appShellNavHrefActive } from "./app-shell-nav-active";
 
+export { AppShellMobileViewportSync } from "./AppShellMobileViewportSync";
+
+export {
+  APP_SHELL_IOS_STANDALONE_HTML_CLASS,
+  bindAppShellIosStandaloneClass,
+  isIosStandalonePwa,
+  isMobileShellViewport,
+  syncAppShellIosStandaloneClass,
+} from "./app-shell-mobile-viewport";
+
+export { appShellIosStandaloneBlockingScript } from "./app-launch-blocking-script";
+
 export {
   APP_SHELL_DESKTOP_MIN_WIDTH_PX,
   APP_SHELL_MOBILE_MAX_WIDTH_PX,

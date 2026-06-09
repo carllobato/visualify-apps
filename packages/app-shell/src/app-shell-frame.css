@@ -231,7 +231,20 @@ html:has(.vf-app-shell-outer-canvas) body {
   html:has(.vf-app-shell-outer-canvas) body {
     /* Positioned anchor for the portaled bottom nav + sheets; matches the pinned shell height. */
     position: relative;
+    min-height: 0;
     height: 100dvh;
+    overflow: hidden;
+  }
+
+  /*
+   * Launch app root sits between body and the shell — must be height-bounded or the inner scroll
+   * region grows with content and finger scrolling does nothing (portrait mobile / installed PWA).
+   */
+  html:has(.vf-app-shell-outer-canvas) .vf-app-launch-app-root {
+    box-sizing: border-box;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
     overflow: hidden;
   }
 
@@ -252,8 +265,8 @@ html:has(.vf-app-shell-outer-canvas) body {
   }
 
   .vf-app-shell-main-column {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: 100%;
+    max-height: 100%;
     min-height: 0;
     overflow: hidden;
   }
@@ -276,38 +289,24 @@ html:has(.vf-app-shell-outer-canvas) body {
     padding-left: max(1rem, env(safe-area-inset-left, 0px));
     padding-right: max(1rem, env(safe-area-inset-right, 0px));
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    overflow-y: scroll;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
 
   /*
-   * Installed home-screen apps: the % height chain matches the real screen. Browser tabs need
-   * 100dvh (above) — 100% there resolves to the taller layout viewport and kills inner scroll.
-   * Every ancestor through `.vf-app-launch-app-root` must participate — otherwise
-   * `height: 100%` on the shell resolves against auto-height content and inner scroll never engages.
+   * Installed iOS home-screen apps: `100dvh` / `-webkit-fill-available` lie with viewport-fit=cover
+   * (WebKit #254868). Safari also ignores `(display-mode: standalone)` — use `html.vf-app-shell-ios-standalone`
+   * (set by AppShellMobileViewportSync + blocking head script). `100vh` / `100lvh` match the true screen.
    */
-  @media (display-mode: standalone) {
-    html:has(.vf-app-shell-outer-canvas) {
-      height: 100%;
-      height: -webkit-fill-available;
-    }
-
-    html:has(.vf-app-shell-outer-canvas) body {
-      height: 100%;
-      height: -webkit-fill-available;
-    }
-
-    html:has(.vf-app-shell-outer-canvas) .vf-app-launch-app-root {
-      box-sizing: border-box;
-      height: 100%;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .vf-app-shell-outer-canvas,
-    .vf-app-shell-main-column {
-      height: 100%;
-      max-height: 100%;
-    }
+  html.vf-app-shell-ios-standalone:has(.vf-app-shell-outer-canvas),
+  html.vf-app-shell-ios-standalone:has(.vf-app-shell-outer-canvas) body,
+  html.vf-app-shell-ios-standalone:has(.vf-app-shell-outer-canvas) .vf-app-launch-app-root,
+  html.vf-app-shell-ios-standalone .vf-app-shell-outer-canvas {
+    height: 100vh;
+    height: 100lvh;
+    max-height: 100vh;
+    max-height: 100lvh;
   }
 
   .vf-app-shell-outer-canvas.vf-app-shell-has-mobile-header .vf-app-shell-scroll-region {
