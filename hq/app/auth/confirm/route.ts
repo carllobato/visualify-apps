@@ -50,12 +50,20 @@ export async function GET(request: NextRequest) {
     return authErrorRedirect(request, error.message);
   }
 
+  const confirmType = type.trim();
+  const invitedEmailParam = url.searchParams.get("invited_email")?.trim() ?? "";
   let inviteToken = url.searchParams.get("invite_token")?.trim() ?? "";
-  if (!inviteToken) {
+
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"] = null;
+  if (!inviteToken || confirmType === "signup") {
     const {
-      data: { user },
+      data: { user: verifiedUser },
     } = await supabase.auth.getUser();
-    const metaToken = user?.user_metadata?.hq_invite_token;
+    user = verifiedUser;
+  }
+
+  if (!inviteToken && user) {
+    const metaToken = user.user_metadata?.hq_invite_token;
     if (typeof metaToken === "string" && metaToken.trim()) {
       inviteToken = metaToken.trim();
     }
@@ -64,7 +72,28 @@ export async function GET(request: NextRequest) {
   if (inviteToken) {
     const inviteUrl = new URL("/invite", request.url);
     inviteUrl.searchParams.set("invite_token", inviteToken);
+    if (invitedEmailParam) {
+      inviteUrl.searchParams.set("invited_email", invitedEmailParam);
+    }
     return NextResponse.redirect(inviteUrl);
+  }
+
+  if (confirmType === "signup") {
+    const metaInviteKeyPresent =
+      user?.user_metadata != null &&
+      typeof user.user_metadata === "object" &&
+      "hq_invite_token" in user.user_metadata;
+    const inviteRelated =
+      url.searchParams.has("invite_token") ||
+      Boolean(invitedEmailParam) ||
+      metaInviteKeyPresent;
+
+    if (inviteRelated) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("mode", "signup");
+      loginUrl.searchParams.set("invite_error", "invite_token_required");
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   return NextResponse.redirect(new URL("/dashboard", request.url));

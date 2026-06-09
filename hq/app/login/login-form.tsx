@@ -27,8 +27,15 @@ function HqLoginSubmitRow() {
   return <AppLoginSubmitRow pending={pending} />;
 }
 
-function authConfirmUrl(): string {
-  return new URL("/auth/confirm", window.location.origin).toString();
+function authConfirmUrl(params?: { inviteToken: string; invitedEmail?: string }): string {
+  const url = new URL("/auth/confirm", window.location.origin);
+  const inviteToken = params?.inviteToken.trim();
+  if (inviteToken) {
+    url.searchParams.set("invite_token", inviteToken);
+    const invitedEmail = params?.invitedEmail?.trim();
+    if (invitedEmail) url.searchParams.set("invited_email", invitedEmail);
+  }
+  return url.toString();
 }
 
 function formatAuthError(err: unknown): string {
@@ -94,7 +101,9 @@ export function LoginForm({ serverError }: { serverError?: string }) {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: authConfirmUrl(),
+          emailRedirectTo: authConfirmUrl(
+            inviteToken ? { inviteToken, invitedEmail: invitedEmail || undefined } : undefined,
+          ),
           data: inviteToken ? { hq_invite_token: inviteToken } : {},
         },
       });

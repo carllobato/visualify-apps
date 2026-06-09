@@ -7,6 +7,7 @@ import {
   workspaceRoleRank,
 } from "@visualify/workspace-product-access";
 import { cookies } from "next/headers";
+import { getSupabaseAuthCookieOptions } from "@/lib/supabase/auth-cookie-options";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { resolveWorkspaceTileAvatarInitials } from "@/lib/workspace-avatar-initials";
 
@@ -398,16 +399,35 @@ export async function readVisualifyActiveWorkspaceIdFromCookie(): Promise<string
   return raw && raw.length > 0 ? raw : null;
 }
 
-export async function writeVisualifyActiveWorkspaceIdCookie(workspaceId: string): Promise<void> {
-  const id = workspaceId.trim();
-  if (!id) return;
-  const store = await cookies();
-  store.set(VISUALIFY_ACTIVE_WORKSPACE_COOKIE, id, {
+type ActiveWorkspaceCookieOptions = {
+  path: string;
+  sameSite: "lax";
+  secure: boolean;
+  httpOnly: true;
+  domain?: string;
+};
+
+function activeWorkspaceCookieOptions(): ActiveWorkspaceCookieOptions {
+  const base: ActiveWorkspaceCookieOptions = {
     path: "/",
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     httpOnly: true,
-  });
+  };
+
+  const authOpts = getSupabaseAuthCookieOptions();
+  if (authOpts?.domain) {
+    return { ...base, domain: authOpts.domain };
+  }
+
+  return base;
+}
+
+export async function writeVisualifyActiveWorkspaceIdCookie(workspaceId: string): Promise<void> {
+  const id = workspaceId.trim();
+  if (!id) return;
+  const store = await cookies();
+  store.set(VISUALIFY_ACTIVE_WORKSPACE_COOKIE, id, activeWorkspaceCookieOptions());
 }
 
 /** Clears the active-workspace cookie when it points at the given workspace (e.g. after archive). */

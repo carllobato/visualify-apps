@@ -33,11 +33,41 @@ export default async function ProtectedLayout({ children }: { children: React.Re
     redirect(buildLoginRedirectUrl(pathname));
   }
 
+  // TODO(report-access-debug): Remove temporary entitlement debug logging after invite/access investigation.
+  {
+    const productKey = productConfig.PRODUCT_KEY;
+    const supabaseUrlPrefix = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim().slice(0, 40) ?? "";
+    console.log("[report-access-debug] session", {
+      userId: user.id,
+      userEmail: user.email ?? null,
+      productKey,
+      supabaseUrlPrefix,
+    });
+  }
+
   const supabase = await supabaseServerClient();
 
   const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
+
+  // TODO(report-access-debug): Remove temporary entitlement debug logging after invite/access investigation.
+  console.log("[report-access-debug] entitled", { entitled });
   if (!entitled) {
-    redirect(productConfig.HQ_APPS_URL);
+    return (
+      <main className="mx-auto flex min-h-[60vh] w-full max-w-lg flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">
+          You do not have access to Report for this workspace.
+        </h1>
+        <p className="text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+          Ask a workspace owner to enable Report access or switch workspace in HQ.
+        </p>
+        <a
+          href={productConfig.HQ_APPS_URL}
+          className="inline-flex h-10 items-center justify-center rounded-[var(--ds-radius-md)] bg-[var(--ds-primary)] px-4 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-primary-text)] no-underline hover:bg-[var(--ds-primary-hover)]"
+        >
+          Open HQ Apps
+        </a>
+      </main>
+    );
   }
 
   const workspaceContext = await resolveActiveReportWorkspaceContext(user.id);
