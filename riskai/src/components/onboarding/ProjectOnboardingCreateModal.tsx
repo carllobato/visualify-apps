@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { OPEN_PORTFOLIO_ONBOARDING_EVENT } from "@/lib/onboarding/types";
 import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
 import type { FinancialUnit, ProjectCurrency, RiskAppetite } from "@/lib/projectContext";
 import type { WorkingDaysPerWeek } from "@/lib/workingDays";
@@ -22,6 +23,8 @@ type Props = {
 };
 
 type CreateStep = 1 | 2 | 3 | 4 | 5;
+
+type PortfolioRow = { id: string; name: string };
 
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 
@@ -117,6 +120,9 @@ export function ProjectOnboardingCreateModal({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrorCallout, setShowErrorCallout] = useState(false);
+  const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
+  const [portfoliosLoadError, setPortfoliosLoadError] = useState<string | null>(null);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
   const skipNextErrorAutoClearRef = useRef(false);
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const calendarPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -140,7 +146,46 @@ export function ProjectOnboardingCreateModal({
     setRiskAppetite("P80");
     setError(null);
     setShowErrorCallout(false);
+    setPortfolios(null);
+    setPortfoliosLoadError(null);
+    setSelectedPortfolioId("");
   }, [open, portfolioId, initialStep]);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/portfolios", { cache: "no-store", credentials: "include" });
+        const json = (await res.json()) as { portfolios?: PortfolioRow[]; error?: string };
+        if (cancelled) return;
+        if (!res.ok) {
+          setPortfoliosLoadError(json.error?.trim() || "Could not load portfolios.");
+          setPortfolios([]);
+          return;
+        }
+        const list = Array.isArray(json.portfolios) ? json.portfolios : [];
+        setPortfolios(list);
+        const propId = typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
+        const validProp = propId && list.some((p) => p.id === propId) ? propId : null;
+        if (list.length === 1) {
+          setSelectedPortfolioId(validProp ?? list[0]!.id);
+        } else if (list.length > 1) {
+          setSelectedPortfolioId(validProp ?? "");
+        } else {
+          setSelectedPortfolioId("");
+        }
+      } catch {
+        if (!cancelled) {
+          setPortfoliosLoadError("Could not load portfolios.");
+          setPortfolios([]);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, portfolioId]);
 
   useEffect(() => {
     if (!showErrorCallout) return;
@@ -162,6 +207,7 @@ export function ProjectOnboardingCreateModal({
     workingDaysPerWeek,
     scheduleContingencyWorkingDays,
     riskAppetite,
+    selectedPortfolioId,
   ]);
 
   useEffect(() => {
@@ -213,6 +259,10 @@ export function ProjectOnboardingCreateModal({
   if (!open) return null;
 
   function validateStep(current: CreateStep): boolean {
+    if (!selectedPortfolioId.trim()) {
+      setError("Select a portfolio.");
+      return false;
+    }
     const trimmed = name.trim();
     if (current === 1 && !trimmed) {
       setError("Project name is required.");
@@ -295,12 +345,13 @@ export function ProjectOnboardingCreateModal({
 
     setCreating(true);
     try {
+      const resolvedPortfolioId = selectedPortfolioId.trim();
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         credentials: "include",
-        body: JSON.stringify({ name: trimmed, ...(portfolioId ? { portfolioId } : {}) }),
+        body: JSON.stringify({ name: trimmed, portfolioId: resolvedPortfolioId }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         project?: { id: string; name: string };
@@ -398,6 +449,125 @@ export function ProjectOnboardingCreateModal({
     };
   });
 
+  function openPortfolioOnboarding() {
+    onDismiss();
+    window.dispatchEvent(new Event(OPEN_PORTFOLIO_ONBOARDING_EVENT));
+  }
+
+  if (portfolios === null) {
+    return (
+      <div
+        className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-onboarding-create-title"
+      >
+        <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
+          <div className="ds-onboarding-modal-scroll-area">
+            <div className="ds-onboarding-modal-panel-header">
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 id="project-onboarding-create-title" className="ds-onboarding-modal-title">
+                  Create project
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="ds-onboarding-modal-close"
+                onClick={onDismiss}
+                aria-label="Close"
+              >
+                <OnboardingModalCloseIcon />
+              </button>
+            </div>
+            <p className="ds-onboarding-modal-lede">Loading portfolios…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (portfoliosLoadError) {
+    return (
+      <div
+        className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-onboarding-create-title"
+      >
+        <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
+          <div className="ds-onboarding-modal-scroll-area">
+            <div className="ds-onboarding-modal-panel-header">
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 id="project-onboarding-create-title" className="ds-onboarding-modal-title">
+                  Create project
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="ds-onboarding-modal-close"
+                onClick={onDismiss}
+                aria-label="Close"
+              >
+                <OnboardingModalCloseIcon />
+              </button>
+            </div>
+            <Callout status="danger" role="alert" className="ds-onboarding-modal-callout">
+              {portfoliosLoadError}
+            </Callout>
+            <OnboardingStepActions
+              forwardSlot={
+                <button type="button" onClick={onDismiss}>
+                  Close
+                </button>
+              }
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (portfolios.length === 0) {
+    return (
+      <div
+        className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-onboarding-create-title"
+      >
+        <div className="ds-onboarding-modal-panel flex max-h-[85vh] min-h-0 flex-col overflow-hidden">
+          <div className="ds-onboarding-modal-scroll-area">
+            <div className="ds-onboarding-modal-panel-header">
+              <div className="min-w-0 flex-1 space-y-1">
+                <h2 id="project-onboarding-create-title" className="ds-onboarding-modal-title">
+                  Portfolio required
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="ds-onboarding-modal-close"
+                onClick={onDismiss}
+                aria-label="Close"
+              >
+                <OnboardingModalCloseIcon />
+              </button>
+            </div>
+            <p className="ds-onboarding-modal-lede">
+              Every project belongs to a portfolio. Create a portfolio first, then add your project.
+            </p>
+            <OnboardingStepActions
+              forwardSlot={
+                <button type="button" onClick={openPortfolioOnboarding}>
+                  Create portfolio
+                </button>
+              }
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
@@ -442,6 +612,30 @@ export function ProjectOnboardingCreateModal({
         <form onSubmit={handleFinalSubmit} className="ds-onboarding-modal-form">
           {step === 1 && (
             <>
+              {portfolios.length > 1 ? (
+                <div>
+                  <label htmlFor="project-onboarding-portfolio" className="ds-onboarding-modal-label">
+                    Portfolio <span className="text-[var(--ds-status-danger)]">*</span>
+                  </label>
+                  <select
+                    id="project-onboarding-portfolio"
+                    value={selectedPortfolioId}
+                    onChange={(e) => setSelectedPortfolioId(e.target.value)}
+                    disabled={creating}
+                    required
+                    className="ds-onboarding-modal-select"
+                  >
+                    <option value="" disabled>
+                      Select a portfolio
+                    </option>
+                    {portfolios.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name || p.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div>
                 <label htmlFor="project-onboarding-name" className="ds-onboarding-modal-label">
                   Project name <span className="text-[var(--ds-status-danger)]">*</span>

@@ -8,6 +8,7 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { ProtectedShell } from "@/components/layout/ProtectedShell";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
+import { NO_ACCESS_PATH } from "@/lib/routes";
 import {
   parseSideNavPinnedCookie,
   SIDE_NAV_PINNED_COOKIE_NAME,
@@ -33,7 +34,7 @@ export default async function ProtectedLayout({
   if (user) {
     const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
     if (!entitled) {
-      redirect(productConfig.HQ_APPS_URL);
+      redirect(NO_ACCESS_PATH);
     }
 
     const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);

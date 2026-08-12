@@ -39,20 +39,45 @@ type CreateProjectBody = {
   portfolioId?: unknown;
 };
 
-async function resolveCreatablePortfolioIdForUser(
+type ResolveCreatablePortfolioResult =
+  | { portfolioId: string; workspaceId: string }
+  | { error: "not_found" | "forbidden" | "unbound_workspace" | "portfolio_required" };
+
+/**
+ * Authorises the preferred portfolio for create, then derives workspace_id from that parent row.
+ * Never trusts a client-supplied workspace_id.
+ */
+async function resolveCreatablePortfolioForUser(
   userId: string,
-  preferredPortfolioId?: string
-): Promise<{ portfolioId: string | null } | { error: "not_found" | "forbidden" }> {
+  preferredPortfolioId?: string,
+): Promise<ResolveCreatablePortfolioResult> {
   const supabase = await supabaseServerClient();
 
   if (preferredPortfolioId) {
     const viewer = await getPortfolioMembersViewerContext(supabase, preferredPortfolioId, userId);
     if (!viewer) return { error: "not_found" };
     if (!viewer.canInviteMembers) return { error: "forbidden" };
-    return { portfolioId: preferredPortfolioId };
+
+    const { data: portfolio, error } = await supabase
+      .from("visualify_portfolios")
+      .select("workspace_id")
+      .eq("id", preferredPortfolioId)
+      .maybeSingle();
+
+    if (error || !portfolio) return { error: "not_found" };
+
+    const workspaceId =
+      typeof portfolio.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
+        ? portfolio.workspace_id.trim()
+        : null;
+
+    if (!workspaceId) return { error: "unbound_workspace" };
+
+    return { portfolioId: preferredPortfolioId, workspaceId };
   }
-  // If no portfolio is explicitly chosen, create an unscoped project (portfolio_id = null).
-  return { portfolioId: null };
+
+  // Projects require a parent portfolio so workspace_id can be derived server-side.
+  return { error: "portfolio_required" };
 }
 
 export async function POST(request: Request) {
@@ -76,10 +101,22 @@ export async function POST(request: Request) {
       ? body.portfolioId.trim()
       : undefined;
 
-  const target = await resolveCreatablePortfolioIdForUser(user.id, portfolioId);
+  const target = await resolveCreatablePortfolioForUser(user.id, portfolioId);
   if ("error" in target) {
     if (target.error === "forbidden") {
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+    }
+    if (target.error === "unbound_workspace") {
+      return NextResponse.json(
+        { error: "This portfolio is not linked to a workspace." },
+        { status: 400 },
+      );
+    }
+    if (target.error === "portfolio_required") {
+      return NextResponse.json(
+        { error: "Select a portfolio before creating a project." },
+        { status: 400 },
+      );
     }
     return NextResponse.json({ error: "Portfolio not found" }, { status: 404 });
   }
@@ -91,8 +128,9 @@ export async function POST(request: Request) {
       owner_user_id: user.id,
       name,
       portfolio_id: target.portfolioId,
+      workspace_id: target.workspaceId,
     })
-    .select("id, name, portfolio_id, created_at")
+    .select("id, name, portfolio_id, workspace_id, created_at")
     .single();
 
   if (error) {

@@ -176,6 +176,8 @@ export default async function DashboardPage({
             hasAppAccess={hasAppAccess}
             workspaces={workspaces}
             isWorkspaceAdmin={isWorkspaceAdmin}
+            preferredPortfolioId={portfolios.length === 1 ? portfolios[0]!.id : null}
+            portfolioCount={portfolios.length}
           />
         ) : (
           <div className="flex flex-col gap-[var(--ds-space-4)]">
@@ -184,12 +186,24 @@ export default async function DashboardPage({
                 <ProjectTile key={payload.id} payload={payload} />
               ))}
             </div>
-            <OpenProjectOnboardingLink className="ds-dashboard-inline-create">
-              <span className="ds-dashboard-inline-create-label">Create project</span>
-              <span className="ds-dashboard-inline-create-plus" aria-hidden>
-                +
-              </span>
-            </OpenProjectOnboardingLink>
+            {portfolios.length === 0 ? (
+              <OpenPortfolioOnboardingLink className="ds-dashboard-inline-create">
+                <span className="ds-dashboard-inline-create-label">Create portfolio</span>
+                <span className="ds-dashboard-inline-create-plus" aria-hidden>
+                  +
+                </span>
+              </OpenPortfolioOnboardingLink>
+            ) : (
+              <OpenProjectOnboardingLink
+                className="ds-dashboard-inline-create"
+                portfolioId={portfolios.length === 1 ? portfolios[0]!.id : null}
+              >
+                <span className="ds-dashboard-inline-create-label">Create project</span>
+                <span className="ds-dashboard-inline-create-plus" aria-hidden>
+                  +
+                </span>
+              </OpenProjectOnboardingLink>
+            )}
           </div>
         )}
       </section>

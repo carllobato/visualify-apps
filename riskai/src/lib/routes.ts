@@ -1,6 +1,8 @@
 /** Authenticated RiskAI UI (served under app host, e.g. app.visualify.com.au). */
 export const RISKAI_BASE = "";
 export const DASHBOARD_PATH = "/dashboard";
+/** Signed-in users without RiskAI product entitlement (outside `(protected)`). */
+export const NO_ACCESS_PATH = "/no-access";
 
 /** Legacy URL prefix; permanent redirects map `/riskai/*` → flat routes. */
 export const LEGACY_RISKAI_PREFIX = "/riskai";
@@ -17,6 +19,7 @@ const AUTHENTICATED_APP_ROOTS = [
   "/not-found",
   "/dev",
   "/run-data",
+  NO_ACCESS_PATH,
 ] as const;
 
 /** Strip legacy `/riskai` prefix for comparisons and link builders. */

@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { OpenPortfolioOnboardingLink } from "@/components/onboarding/OpenPortfolioOnboardingLink";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
-import { Button, Callout, HelperText, Input, Label } from "@visualify/design-system";
+import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 
 const ACTIVE_PROJECT_KEY = "activeProjectId";
@@ -49,8 +50,13 @@ function CreateProjectForm() {
         const fromQuery =
           paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
         const validFromQuery = fromQuery && list.some((p) => p.id === fromQuery) ? fromQuery : null;
-        // Default to no portfolio unless ?portfolioId= points at a valid row.
-        setSelectedPortfolioId(validFromQuery ?? "");
+        if (list.length === 1) {
+          setSelectedPortfolioId(validFromQuery ?? list[0]!.id);
+        } else if (list.length > 1) {
+          setSelectedPortfolioId(validFromQuery ?? "");
+        } else {
+          setSelectedPortfolioId("");
+        }
       } catch {
         if (!cancelled) setLoadError("Could not load portfolios.");
       }
@@ -63,6 +69,11 @@ function CreateProjectForm() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
+    const portfolioId = selectedPortfolioId.trim();
+    if (!portfolioId) {
+      setMessage({ type: "error", text: "Select a portfolio." });
+      return;
+    }
     setLoading(true);
     const res = await fetch("/api/projects", {
       method: "POST",
@@ -70,7 +81,7 @@ function CreateProjectForm() {
       cache: "no-store",
       body: JSON.stringify({
         name,
-        ...(selectedPortfolioId.trim() ? { portfolioId: selectedPortfolioId.trim() } : {}),
+        portfolioId,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as {
@@ -129,18 +140,44 @@ function CreateProjectForm() {
     );
   }
 
+  if (portfolios.length === 0) {
+    return (
+      <div className="w-full px-4 py-10 sm:px-6">
+        <main className="mx-auto max-w-md">
+          <h1 className="mb-2 text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">
+            Create project
+          </h1>
+          <p className="mb-6 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
+            Every project belongs to a portfolio. Create a portfolio first, then add your project.
+          </p>
+          <OpenPortfolioOnboardingLink className="ds-dashboard-empty-primary">
+            Create portfolio
+          </OpenPortfolioOnboardingLink>
+          <p className="mt-8 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
+            <Link
+              href={DASHBOARD_PATH}
+              className="text-[var(--ds-text-secondary)] underline underline-offset-2 transition-colors hover:text-[var(--ds-text-primary)]"
+            >
+              ← Back to dashboard
+            </Link>
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full px-4 py-10 sm:px-6">
       <main className="mx-auto max-w-md">
         <h1 className="mb-2 text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">Create project</h1>
         <p className="mb-6 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-          Linking a project to a portfolio is optional. You can assign or change it later from the app.
+          Projects belong to a portfolio so workspace relationships stay consistent.
         </p>
         <form onSubmit={handleCreate} className="space-y-4">
-          {portfolios.length > 0 ? (
+          {portfolios.length > 1 ? (
             <div>
               <Label htmlFor="create-project-portfolio" className="text-[var(--ds-text-secondary)]">
-                Portfolio (optional)
+                Portfolio
               </Label>
               <select
                 id="create-project-portfolio"
@@ -148,8 +185,11 @@ function CreateProjectForm() {
                 onChange={(e) => setSelectedPortfolioId(e.target.value)}
                 className={SELECT_FIELD_CLASS}
                 disabled={loading}
+                required
               >
-                <option value="">No portfolio</option>
+                <option value="" disabled>
+                  Select a portfolio
+                </option>
                 {portfolios.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name || p.id}
@@ -158,10 +198,12 @@ function CreateProjectForm() {
               </select>
             </div>
           ) : (
-            <HelperText className="!mt-0">
-              No portfolios yet — this project will not be linked to one. You can create a portfolio from
-              the dashboard and assign it later.
-            </HelperText>
+            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+              Portfolio:{" "}
+              <span className="font-medium text-[var(--ds-text-primary)]">
+                {portfolios[0]?.name || portfolios[0]?.id}
+              </span>
+            </p>
           )}
           <div>
             <Label htmlFor="create-project-name">Project name</Label>
@@ -175,7 +217,7 @@ function CreateProjectForm() {
               disabled={loading}
             />
           </div>
-          <Button type="submit" variant="primary" disabled={loading}>
+          <Button type="submit" variant="primary" disabled={loading || !selectedPortfolioId.trim()}>
             {loading ? "Creating…" : "Create project"}
           </Button>
         </form>

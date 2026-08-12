@@ -1,11 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ProjectionScenarioProvider } from "@/context/ProjectionScenarioContext";
-import { AppShellLegalDocumentProvider, visualifyAppDocumentTitle } from "@visualify/app-shell";
+import {
+  AppShellLegalDocumentProvider,
+  VisualifyAppLaunchBrandMarkPreload,
+  VisualifyAppLaunchController,
+  VisualifyAppLaunchCriticalStyles,
+  visualifyAppDocumentTitle,
+  visualifyAppLaunchViewport,
+} from "@visualify/app-shell";
 import { RiskAiAppShellProviders } from "@/components/layout/RiskAiAppShellProviders";
 import { RiskRegisterProvider } from "@/store/risk-register.store";
 import { InactivityGuard } from "@/components/InactivityGuard";
@@ -18,6 +25,8 @@ export const metadata: Metadata = {
   title: visualifyAppDocumentTitle("RiskAI"),
   description: "AI-powered Risk Register",
 };
+
+export const viewport: Viewport = visualifyAppLaunchViewport;
 
 const themeScriptLightOnly = `
 (function() {
@@ -81,23 +90,27 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <VisualifyAppLaunchCriticalStyles />
+        <VisualifyAppLaunchBrandMarkPreload />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: sideNavPinnedCookieScript }} />
       </head>
       <body className={`antialiased font-sans ${geist.variable} ${geistMono.variable}`}>
-        <ThemeProvider>
-          <ProjectionScenarioProvider>
-            <RiskRegisterProvider>
-              <AppShellLegalDocumentProvider>
-                <RiskAiAppShellProviders>
-                  {children}
-                  <InactivityGuard />
-                  {singleSessionGuardEnabled ? <SingleSessionGuard /> : null}
-                </RiskAiAppShellProviders>
-              </AppShellLegalDocumentProvider>
-            </RiskRegisterProvider>
-          </ProjectionScenarioProvider>
-        </ThemeProvider>
+        <VisualifyAppLaunchController>
+          <ThemeProvider>
+            <ProjectionScenarioProvider>
+              <RiskRegisterProvider>
+                <AppShellLegalDocumentProvider>
+                  <RiskAiAppShellProviders>
+                    {children}
+                    <InactivityGuard />
+                    {singleSessionGuardEnabled ? <SingleSessionGuard /> : null}
+                  </RiskAiAppShellProviders>
+                </AppShellLegalDocumentProvider>
+              </RiskRegisterProvider>
+            </ProjectionScenarioProvider>
+          </ThemeProvider>
+        </VisualifyAppLaunchController>
       </body>
     </html>
   );

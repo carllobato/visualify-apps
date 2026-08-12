@@ -68,8 +68,8 @@ export function DashboardAccessBanner({
           </p>
           {isWorkspaceAdmin ? (
             <p className="m-0 mt-2 leading-relaxed text-[var(--ds-text-secondary)]">
-              As a workspace admin, you can create a portfolio here or manage members and apps in Visualify
-              HQ.
+              As a workspace admin, you can create a portfolio here and invite teammates from portfolio or
+              project settings.
             </p>
           ) : (
             <p className="m-0 mt-2 leading-relaxed text-[var(--ds-text-secondary)]">
