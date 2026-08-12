@@ -24,7 +24,7 @@ body {
   --color-foreground: var(--ds-text-primary);
   /* Used by contact modal (matches website coming-soon form tokens) */
   --color-muted: var(--ds-text-secondary);
-  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 

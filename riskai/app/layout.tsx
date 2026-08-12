@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 import { THEME_LIGHT_ONLY_MVP } from "@/config/themeLightOnly";
@@ -17,9 +18,6 @@ import { RiskAiAppShellProviders } from "@/components/layout/RiskAiAppShellProvi
 import { RiskRegisterProvider } from "@/store/risk-register.store";
 import { InactivityGuard } from "@/components/InactivityGuard";
 import { SingleSessionGuard } from "@/components/SingleSessionGuard";
-
-const geist = Geist({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-geist" });
-const geistMono = Geist_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-geist-mono" });
 
 export const metadata: Metadata = {
   title: visualifyAppDocumentTitle("RiskAI"),
@@ -95,7 +93,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <script dangerouslySetInnerHTML={{ __html: sideNavPinnedCookieScript }} />
       </head>
-      <body className={`antialiased font-sans ${geist.variable} ${geistMono.variable}`}>
+      <body className={`antialiased font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <VisualifyAppLaunchController>
           <ThemeProvider>
             <ProjectionScenarioProvider>

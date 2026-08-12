@@ -11,15 +11,16 @@
     "test": "node --test --import=./test-register.mjs --experimental-strip-types src/domain/simulation/monteCarlo.test.ts"
   },
   "dependencies": {
-    "@visualify/app-shell": "workspace:^",
-    "@visualify/workspace-product-access": "workspace:^",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.98.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.4",
+    "@visualify/app-shell": "workspace:^",
     "@visualify/design-system": "workspace:^",
     "@visualify/urls": "workspace:^",
+    "@visualify/workspace-product-access": "workspace:^",
     "framer-motion": "^12.38.0",
+    "geist": "^1.7.2",
     "next": "16.1.6",
     "openai": "^6.25.0",
     "react": "19.2.3",
