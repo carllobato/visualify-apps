@@ -3,6 +3,8 @@ import { requireUser } from "@/lib/auth/requireUser";
 import { getAccessiblePortfolios } from "@/lib/portfolios-server";
 import { getRiskAIProductId } from "@/lib/products";
 import type { OnboardingPortfolioInsertPayload } from "@/lib/onboarding/types";
+import { getCreatableRiskAiWorkspaces } from "@/lib/workspace/creatableWorkspaces";
+import { resolveWorkspaceForPortfolioCreate } from "@/lib/workspace/resolveWorkspaceForPortfolioCreate";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -17,6 +19,7 @@ const CACHE_HEADERS = {
  * POST /api/portfolios — Create a portfolio owned by the current user.
  * Uses the service-role client after `requireUser()` so the row is written reliably (same pattern as
  * `me/profile` demo clone). `owner_user_id` is always the authenticated user id from the session.
+ * `workspace_id` is resolved server-side from creatable RiskAI workspaces; client `workspaceId` is intent only.
  */
 export async function POST(request: Request) {
   const user = await requireUser();
@@ -45,6 +48,50 @@ export async function POST(request: Request) {
   const codeTrimmed =
     typeof rawCode === "string" && rawCode.trim().length > 0 ? rawCode.trim() : undefined;
 
+  const rawWorkspaceId =
+    typeof body === "object" && body !== null && "workspaceId" in body
+      ? (body as { workspaceId: unknown }).workspaceId
+      : undefined;
+  const requestedWorkspaceId =
+    typeof rawWorkspaceId === "string" && rawWorkspaceId.trim().length > 0
+      ? rawWorkspaceId.trim()
+      : undefined;
+
+  const supabase = await supabaseServerClient();
+  const creatable = await getCreatableRiskAiWorkspaces(supabase, user.id);
+  const resolved = resolveWorkspaceForPortfolioCreate({
+    creatableIds: creatable.map((w) => w.id),
+    requestedWorkspaceId,
+  });
+
+  if ("error" in resolved) {
+    if (resolved.error === "none") {
+      return NextResponse.json(
+        {
+          error: "You do not have permission to create a portfolio in any RiskAI workspace.",
+          code: "no_creatable_workspace",
+        },
+        { status: 403 },
+      );
+    }
+    if (resolved.error === "forbidden") {
+      return NextResponse.json(
+        {
+          error: "You cannot create a portfolio in that workspace.",
+          code: "workspace_forbidden",
+        },
+        { status: 403 },
+      );
+    }
+    return NextResponse.json(
+      {
+        error: "Select a workspace before creating a portfolio.",
+        code: "workspace_required",
+      },
+      { status: 400 },
+    );
+  }
+
   const admin = supabaseAdminClient();
   let productId: string;
   try {
@@ -60,13 +107,14 @@ export async function POST(request: Request) {
     name,
     product_id: productId,
     owner_user_id: user.id,
+    workspace_id: resolved.workspaceId,
     ...(codeTrimmed !== undefined ? { code: codeTrimmed } : {}),
   };
 
   const { data, error } = await admin
     .from("visualify_portfolios")
     .insert(insertPayload)
-    .select("id, name, created_at")
+    .select("id, name, created_at, workspace_id")
     .single();
 
   if (error) {

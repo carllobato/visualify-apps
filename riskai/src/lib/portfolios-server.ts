@@ -11,6 +11,8 @@ export type AccessiblePortfolio = {
   id: string;
   name: string;
   created_at: string | null;
+  /** Workspace the portfolio belongs to (null if unbound / legacy). */
+  workspace_id: string | null;
 };
 
 /** Full portfolio row for admin (includes owner_user_id, description, product). */
@@ -138,11 +140,17 @@ function rowToAccessiblePortfolio(p: {
   id: string;
   name: string | null;
   created_at: string | null;
+  workspace_id?: string | null;
 }): AccessiblePortfolio {
+  const workspaceId =
+    typeof p.workspace_id === "string" && p.workspace_id.trim().length > 0
+      ? p.workspace_id.trim()
+      : null;
   return {
     id: p.id,
     name: p.name ?? "",
     created_at: p.created_at ?? null,
+    workspace_id: workspaceId,
   };
 }
 
@@ -159,7 +167,7 @@ export async function getAccessiblePortfolios(
   const [portfoliosResult, membersResult, workspaceMembersResult] = await Promise.all([
     supabase
       .from("visualify_portfolios")
-      .select("id, name, created_at, owner_user_id")
+      .select("id, name, created_at, owner_user_id, workspace_id")
       .order("created_at", { ascending: true }),
     supabase.from("visualify_portfolio_members").select("portfolio_id").eq("user_id", userId),
     supabase
@@ -197,11 +205,16 @@ export async function getAccessiblePortfolios(
     (p) => p.owner_user_id === userId || memberPortfolioIds.has(p.id)
   );
 
-  let workspacePortfolios: { id: string; name: string | null; created_at: string | null }[] = [];
+  let workspacePortfolios: {
+    id: string;
+    name: string | null;
+    created_at: string | null;
+    workspace_id: string | null;
+  }[] = [];
   if (workspaceIds.length > 0) {
     const { data, error: workspacePortfoliosError } = await supabase
       .from("visualify_portfolios")
-      .select("id, name, created_at")
+      .select("id, name, created_at, workspace_id")
       .in("workspace_id", workspaceIds)
       .order("created_at", { ascending: true });
 

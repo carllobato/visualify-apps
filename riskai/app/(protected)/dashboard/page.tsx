@@ -21,6 +21,7 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
 import {
   WORKSPACE_INVITE_ACCEPTED_QP,
+  WORKSPACE_INVITE_WORKSPACE_ID_QP,
   WORKSPACE_SETUP_PORTFOLIO_QP,
 } from "@/lib/onboarding/types";
 import { Callout } from "@visualify/design-system";
@@ -45,6 +46,8 @@ export default async function DashboardPage({
     getSearchParam(resolvedSearchParams, WORKSPACE_INVITE_ACCEPTED_QP) === "1";
   const suggestPortfolioSetup =
     getSearchParam(resolvedSearchParams, WORKSPACE_SETUP_PORTFOLIO_QP) === "1";
+  const inviteWorkspaceId =
+    getSearchParam(resolvedSearchParams, WORKSPACE_INVITE_WORKSPACE_ID_QP).trim() || null;
 
   const supabase = await supabaseServerClient();
   const {
@@ -111,6 +114,7 @@ export default async function DashboardPage({
           isWorkspaceAdmin={isWorkspaceAdmin}
           showPostWorkspaceInvite={showPostWorkspaceInvite}
           suggestPortfolioSetup={suggestPortfolioSetup}
+          inviteWorkspaceId={inviteWorkspaceId}
         />
       </Suspense>
 
@@ -176,8 +180,6 @@ export default async function DashboardPage({
             hasAppAccess={hasAppAccess}
             workspaces={workspaces}
             isWorkspaceAdmin={isWorkspaceAdmin}
-            preferredPortfolioId={portfolios.length === 1 ? portfolios[0]!.id : null}
-            portfolioCount={portfolios.length}
           />
         ) : (
           <div className="flex flex-col gap-[var(--ds-space-4)]">
@@ -186,24 +188,12 @@ export default async function DashboardPage({
                 <ProjectTile key={payload.id} payload={payload} />
               ))}
             </div>
-            {portfolios.length === 0 ? (
-              <OpenPortfolioOnboardingLink className="ds-dashboard-inline-create">
-                <span className="ds-dashboard-inline-create-label">Create portfolio</span>
-                <span className="ds-dashboard-inline-create-plus" aria-hidden>
-                  +
-                </span>
-              </OpenPortfolioOnboardingLink>
-            ) : (
-              <OpenProjectOnboardingLink
-                className="ds-dashboard-inline-create"
-                portfolioId={portfolios.length === 1 ? portfolios[0]!.id : null}
-              >
-                <span className="ds-dashboard-inline-create-label">Create project</span>
-                <span className="ds-dashboard-inline-create-plus" aria-hidden>
-                  +
-                </span>
-              </OpenProjectOnboardingLink>
-            )}
+            <OpenProjectOnboardingLink className="ds-dashboard-inline-create">
+              <span className="ds-dashboard-inline-create-label">Create project</span>
+              <span className="ds-dashboard-inline-create-plus" aria-hidden>
+                +
+              </span>
+            </OpenProjectOnboardingLink>
           </div>
         )}
       </section>

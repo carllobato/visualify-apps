@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { OPEN_PORTFOLIO_ONBOARDING_EVENT } from "@/lib/onboarding/types";
 import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
 import type { FinancialUnit, ProjectCurrency, RiskAppetite } from "@/lib/projectContext";
 import type { WorkingDaysPerWeek } from "@/lib/workingDays";
@@ -24,7 +23,8 @@ type Props = {
 
 type CreateStep = 1 | 2 | 3 | 4 | 5;
 
-type PortfolioRow = { id: string; name: string };
+type PortfolioRow = { id: string; name: string; workspace_id?: string | null };
+type WorkspaceRow = { id: string; name: string; slug: string };
 
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
 
@@ -122,6 +122,9 @@ export function ProjectOnboardingCreateModal({
   const [showErrorCallout, setShowErrorCallout] = useState(false);
   const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
   const [portfoliosLoadError, setPortfoliosLoadError] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
+  const [workspacesLoadError, setWorkspacesLoadError] = useState<string | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
   const skipNextErrorAutoClearRef = useRef(false);
   const calendarRef = useRef<HTMLDivElement | null>(null);
@@ -148,6 +151,9 @@ export function ProjectOnboardingCreateModal({
     setShowErrorCallout(false);
     setPortfolios(null);
     setPortfoliosLoadError(null);
+    setWorkspaces(null);
+    setWorkspacesLoadError(null);
+    setSelectedWorkspaceId("");
     setSelectedPortfolioId("");
   }, [open, portfolioId, initialStep]);
 
@@ -156,29 +162,62 @@ export function ProjectOnboardingCreateModal({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/portfolios", { cache: "no-store", credentials: "include" });
-        const json = (await res.json()) as { portfolios?: PortfolioRow[]; error?: string };
+        const [portfoliosRes, workspacesRes] = await Promise.all([
+          fetch("/api/portfolios", { cache: "no-store", credentials: "include" }),
+          fetch("/api/workspaces/creatable", { cache: "no-store", credentials: "include" }),
+        ]);
+        const portfoliosJson = (await portfoliosRes.json().catch(() => ({}))) as {
+          portfolios?: PortfolioRow[];
+          error?: string;
+        };
+        const workspacesJson = (await workspacesRes.json().catch(() => ({}))) as {
+          workspaces?: WorkspaceRow[];
+          error?: string;
+        };
         if (cancelled) return;
-        if (!res.ok) {
-          setPortfoliosLoadError(json.error?.trim() || "Could not load portfolios.");
+
+        if (!portfoliosRes.ok) {
+          setPortfoliosLoadError(portfoliosJson.error?.trim() || "Could not load portfolios.");
           setPortfolios([]);
-          return;
-        }
-        const list = Array.isArray(json.portfolios) ? json.portfolios : [];
-        setPortfolios(list);
-        const propId = typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
-        const validProp = propId && list.some((p) => p.id === propId) ? propId : null;
-        if (list.length === 1) {
-          setSelectedPortfolioId(validProp ?? list[0]!.id);
-        } else if (list.length > 1) {
-          setSelectedPortfolioId(validProp ?? "");
         } else {
+          setPortfolios(Array.isArray(portfoliosJson.portfolios) ? portfoliosJson.portfolios : []);
+          setPortfoliosLoadError(null);
+        }
+
+        if (!workspacesRes.ok) {
+          setWorkspacesLoadError(workspacesJson.error?.trim() || "Could not load workspaces.");
+          setWorkspaces([]);
+        } else {
+          setWorkspaces(Array.isArray(workspacesJson.workspaces) ? workspacesJson.workspaces : []);
+          setWorkspacesLoadError(null);
+        }
+
+        const list = Array.isArray(portfoliosJson.portfolios) ? portfoliosJson.portfolios : [];
+        const wsList = Array.isArray(workspacesJson.workspaces) ? workspacesJson.workspaces : [];
+        const propId =
+          typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
+        const scoped = propId ? list.find((p) => p.id === propId) : undefined;
+
+        if (scoped) {
+          setSelectedPortfolioId(scoped.id);
+          const scopedWs =
+            typeof scoped.workspace_id === "string" && scoped.workspace_id.trim()
+              ? scoped.workspace_id.trim()
+              : "";
+          setSelectedWorkspaceId(scopedWs);
+        } else if (wsList.length === 1) {
+          setSelectedWorkspaceId(wsList[0]!.id);
+          setSelectedPortfolioId("");
+        } else {
+          setSelectedWorkspaceId("");
           setSelectedPortfolioId("");
         }
       } catch {
         if (!cancelled) {
           setPortfoliosLoadError("Could not load portfolios.");
           setPortfolios([]);
+          setWorkspacesLoadError("Could not load workspaces.");
+          setWorkspaces([]);
         }
       }
     })();
@@ -207,6 +246,7 @@ export function ProjectOnboardingCreateModal({
     workingDaysPerWeek,
     scheduleContingencyWorkingDays,
     riskAppetite,
+    selectedWorkspaceId,
     selectedPortfolioId,
   ]);
 
@@ -259,9 +299,20 @@ export function ProjectOnboardingCreateModal({
   if (!open) return null;
 
   function validateStep(current: CreateStep): boolean {
-    if (!selectedPortfolioId.trim()) {
-      setError("Select a portfolio.");
-      return false;
+    const scopedPropId =
+      typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
+    const hasValidScopedPortfolio = Boolean(
+      scopedPropId && (portfolios ?? []).some((p) => p.id === scopedPropId),
+    );
+
+    if (!hasValidScopedPortfolio) {
+      const workspaceReady =
+        selectedWorkspaceId.trim() ||
+        ((workspaces ?? []).length === 1 ? (workspaces ?? [])[0]!.id : "");
+      if (!workspaceReady) {
+        setError("Select a workspace.");
+        return false;
+      }
     }
     const trimmed = name.trim();
     if (current === 1 && !trimmed) {
@@ -345,13 +396,31 @@ export function ProjectOnboardingCreateModal({
 
     setCreating(true);
     try {
+      const scopedPropId =
+        typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
+      const hasValidScopedPortfolio = Boolean(
+        scopedPropId && (portfolios ?? []).some((p) => p.id === scopedPropId),
+      );
       const resolvedPortfolioId = selectedPortfolioId.trim();
+      const resolvedWorkspaceId =
+        selectedWorkspaceId.trim() ||
+        (!hasValidScopedPortfolio && (workspaces ?? []).length === 1
+          ? (workspaces ?? [])[0]!.id
+          : "");
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         credentials: "include",
-        body: JSON.stringify({ name: trimmed, portfolioId: resolvedPortfolioId }),
+        body: JSON.stringify({
+          name: trimmed,
+          ...(hasValidScopedPortfolio || resolvedPortfolioId
+            ? { portfolioId: hasValidScopedPortfolio ? scopedPropId : resolvedPortfolioId }
+            : {}),
+          ...(!hasValidScopedPortfolio && resolvedWorkspaceId
+            ? { workspaceId: resolvedWorkspaceId }
+            : {}),
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         project?: { id: string; name: string };
@@ -449,12 +518,10 @@ export function ProjectOnboardingCreateModal({
     };
   });
 
-  function openPortfolioOnboarding() {
-    onDismiss();
-    window.dispatchEvent(new Event(OPEN_PORTFOLIO_ONBOARDING_EVENT));
-  }
+  const scopesLoading = portfolios === null || workspaces === null;
+  const scopeLoadError = portfoliosLoadError || workspacesLoadError;
 
-  if (portfolios === null) {
+  if (scopesLoading) {
     return (
       <div
         className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
@@ -479,14 +546,14 @@ export function ProjectOnboardingCreateModal({
                 <OnboardingModalCloseIcon />
               </button>
             </div>
-            <p className="ds-onboarding-modal-lede">Loading portfolios…</p>
+            <p className="ds-onboarding-modal-lede">Loading…</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (portfoliosLoadError) {
+  if (scopeLoadError) {
     return (
       <div
         className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
@@ -512,7 +579,7 @@ export function ProjectOnboardingCreateModal({
               </button>
             </div>
             <Callout status="danger" role="alert" className="ds-onboarding-modal-callout">
-              {portfoliosLoadError}
+              {scopeLoadError}
             </Callout>
             <OnboardingStepActions
               forwardSlot={
@@ -527,7 +594,13 @@ export function ProjectOnboardingCreateModal({
     );
   }
 
-  if (portfolios.length === 0) {
+  const scopedPropId =
+    typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
+  const hasValidScopedPortfolio = Boolean(
+    scopedPropId && portfolios.some((p) => p.id === scopedPropId),
+  );
+
+  if (!hasValidScopedPortfolio && workspaces.length === 0) {
     return (
       <div
         className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
@@ -540,7 +613,7 @@ export function ProjectOnboardingCreateModal({
             <div className="ds-onboarding-modal-panel-header">
               <div className="min-w-0 flex-1 space-y-1">
                 <h2 id="project-onboarding-create-title" className="ds-onboarding-modal-title">
-                  Portfolio required
+                  Workspace required
                 </h2>
               </div>
               <button
@@ -553,12 +626,13 @@ export function ProjectOnboardingCreateModal({
               </button>
             </div>
             <p className="ds-onboarding-modal-lede">
-              Every project belongs to a portfolio. Create a portfolio first, then add your project.
+              You do not have permission to create a project in any RiskAI workspace. Ask a workspace
+              owner or admin for access.
             </p>
             <OnboardingStepActions
               forwardSlot={
-                <button type="button" onClick={openPortfolioOnboarding}>
-                  Create portfolio
+                <button type="button" onClick={onDismiss}>
+                  Close
                 </button>
               }
             />
@@ -567,6 +641,23 @@ export function ProjectOnboardingCreateModal({
       </div>
     );
   }
+
+  const resolvedWorkspaceId = hasValidScopedPortfolio
+    ? selectedWorkspaceId
+    : selectedWorkspaceId.trim() || (workspaces.length === 1 ? workspaces[0]!.id : "");
+
+  const portfoliosInWorkspace = resolvedWorkspaceId
+    ? portfolios.filter(
+        (p) =>
+          typeof p.workspace_id === "string" &&
+          p.workspace_id.trim() === resolvedWorkspaceId,
+      )
+    : [];
+
+  const showWorkspaceSelector = !hasValidScopedPortfolio && workspaces.length > 1;
+  /** Optional portfolio grouping — never required; never auto-bind the only portfolio. */
+  const showPortfolioSelector =
+    !hasValidScopedPortfolio && Boolean(resolvedWorkspaceId) && portfoliosInWorkspace.length > 0;
 
   return (
     <div
@@ -612,23 +703,47 @@ export function ProjectOnboardingCreateModal({
         <form onSubmit={handleFinalSubmit} className="ds-onboarding-modal-form">
           {step === 1 && (
             <>
-              {portfolios.length > 1 ? (
+              {showWorkspaceSelector ? (
+                <div>
+                  <label htmlFor="project-onboarding-workspace" className="ds-onboarding-modal-label">
+                    Workspace <span className="text-[var(--ds-status-danger)]">*</span>
+                  </label>
+                  <select
+                    id="project-onboarding-workspace"
+                    value={selectedWorkspaceId}
+                    onChange={(e) => {
+                      setSelectedWorkspaceId(e.target.value);
+                      setSelectedPortfolioId("");
+                    }}
+                    disabled={creating}
+                    required
+                    className="ds-onboarding-modal-select"
+                  >
+                    <option value="" disabled>
+                      Select a workspace
+                    </option>
+                    {workspaces.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name || w.slug || w.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+              {showPortfolioSelector ? (
                 <div>
                   <label htmlFor="project-onboarding-portfolio" className="ds-onboarding-modal-label">
-                    Portfolio <span className="text-[var(--ds-status-danger)]">*</span>
+                    Portfolio <span className="font-normal text-[var(--ds-text-muted)]">(optional)</span>
                   </label>
                   <select
                     id="project-onboarding-portfolio"
                     value={selectedPortfolioId}
                     onChange={(e) => setSelectedPortfolioId(e.target.value)}
                     disabled={creating}
-                    required
                     className="ds-onboarding-modal-select"
                   >
-                    <option value="" disabled>
-                      Select a portfolio
-                    </option>
-                    {portfolios.map((p) => (
+                    <option value="">No portfolio</option>
+                    {portfoliosInWorkspace.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name || p.id}
                       </option>

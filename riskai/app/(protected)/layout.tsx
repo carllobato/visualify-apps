@@ -13,6 +13,8 @@ import {
   parseSideNavPinnedCookie,
   SIDE_NAV_PINNED_COOKIE_NAME,
 } from "@/lib/sideNavPinnedCookie";
+import { resolveActiveRiskAiWorkspaceContext } from "@/lib/workspace/resolveActiveRiskAiWorkspaceContext";
+import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 
 export default async function ProtectedLayout({
   children,
@@ -30,6 +32,8 @@ export default async function ProtectedLayout({
   }
 
   let appCatalog: readonly AppShellRailAppCatalogEntry[] = [];
+  let workspaces: readonly EntitledWorkspace[] = [];
+  let selectedWorkspaceId: string | null = null;
 
   if (user) {
     const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
@@ -39,6 +43,10 @@ export default async function ProtectedLayout({
 
     const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
     appCatalog = buildEntitledAppShellCatalogForUser(workspaceEntitledProductKeys, user.email);
+
+    const workspaceContext = await resolveActiveRiskAiWorkspaceContext(user.id);
+    workspaces = workspaceContext.workspaces;
+    selectedWorkspaceId = workspaceContext.selectedWorkspaceId;
   }
 
   const cookieStore = await cookies();
@@ -47,7 +55,12 @@ export default async function ProtectedLayout({
   );
   const initialSideNavPinned = pinnedFromCookie ?? true;
   return (
-    <ProtectedShell initialSideNavPinned={initialSideNavPinned} appCatalog={appCatalog}>
+    <ProtectedShell
+      initialSideNavPinned={initialSideNavPinned}
+      appCatalog={appCatalog}
+      workspaces={workspaces}
+      selectedWorkspaceId={selectedWorkspaceId}
+    >
       {children}
     </ProtectedShell>
   );

@@ -12,7 +12,9 @@ import {
   OPEN_PROJECT_ONBOARDING_EVENT,
   OPEN_PORTFOLIO_ONBOARDING_EVENT,
   WORKSPACE_INVITE_ACCEPTED_QP,
+  WORKSPACE_INVITE_WORKSPACE_ID_QP,
   WORKSPACE_SETUP_PORTFOLIO_QP,
+  type OpenPortfolioOnboardingDetail,
 } from "@/lib/onboarding/types";
 import { ProjectOnboardingCreateModal } from "./ProjectOnboardingCreateModal";
 import { ProjectOnboardingInviteModal } from "./ProjectOnboardingInviteModal";
@@ -60,6 +62,10 @@ export function OnboardingHost() {
     id: string;
     name: string;
   } | null>(null);
+  /** Preferred workspace for new portfolio create (e.g. workspace invite). */
+  const [preferredPortfolioWorkspaceId, setPreferredPortfolioWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [initialFirstName, setInitialFirstName] = useState("");
   const [initialLastName, setInitialLastName] = useState("");
   const [initialCompany, setInitialCompany] = useState("");
@@ -69,15 +75,30 @@ export function OnboardingHost() {
     setPortfolioResumeForNameStep(null);
     setPortfolioWizardId(null);
     setPortfolioWizardName("");
+    setPreferredPortfolioWorkspaceId(null);
     setShowPortfolioNameModal(false);
     setShowPortfolioReportingModal(false);
     setShowPortfolioInviteModal(false);
   }, []);
 
-  const openPortfolioOnboardingModal = useCallback(() => {
-    resetPortfolioWizard();
+  /**
+   * Opens portfolio name step.
+   * - `workspaceId` string → preferred workspace for create
+   * - `null` → clear preferred (fresh create from dashboard link)
+   * - omit → keep existing preferred (e.g. invite QP already captured)
+   */
+  const openPortfolioOnboardingModal = useCallback((workspaceId?: string | null) => {
+    setPortfolioResumeForNameStep(null);
+    setPortfolioWizardId(null);
+    setPortfolioWizardName("");
+    setShowPortfolioReportingModal(false);
+    setShowPortfolioInviteModal(false);
+    if (workspaceId !== undefined) {
+      const preferred = typeof workspaceId === "string" ? workspaceId.trim() : "";
+      setPreferredPortfolioWorkspaceId(preferred || null);
+    }
     setShowPortfolioNameModal(true);
-  }, [resetPortfolioWizard]);
+  }, []);
 
   const resetProjectWizard = useCallback(() => {
     setShowProjectCreateModal(false);
@@ -116,9 +137,26 @@ export function OnboardingHost() {
   }, []);
 
   useEffect(() => {
-    const onOpen = () => openPortfolioOnboardingModal();
-    window.addEventListener(OPEN_PORTFOLIO_ONBOARDING_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_PORTFOLIO_ONBOARDING_EVENT, onOpen);
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<OpenPortfolioOnboardingDetail>).detail;
+      if (detail && typeof detail.workspaceId === "string" && detail.workspaceId.trim()) {
+        openPortfolioOnboardingModal(detail.workspaceId.trim());
+        return;
+      }
+      if (detail && Object.prototype.hasOwnProperty.call(detail, "workspaceId")) {
+        openPortfolioOnboardingModal(null);
+        return;
+      }
+      // Plain Event (dashboard create link) — fresh create, clear preferred.
+      if (!detail) {
+        openPortfolioOnboardingModal(null);
+        return;
+      }
+      // CustomEvent with empty detail — preserve invite preferred if already set.
+      openPortfolioOnboardingModal();
+    };
+    window.addEventListener(OPEN_PORTFOLIO_ONBOARDING_EVENT, onOpen as EventListener);
+    return () => window.removeEventListener(OPEN_PORTFOLIO_ONBOARDING_EVENT, onOpen as EventListener);
   }, [openPortfolioOnboardingModal]);
 
   useEffect(() => {
@@ -154,10 +192,15 @@ export function OnboardingHost() {
         searchParams.get(WORKSPACE_INVITE_ACCEPTED_QP) === "1"
       ) {
         inviteAcceptedSuppressRef.current = true;
+        const inviteWorkspaceId = searchParams.get(WORKSPACE_INVITE_WORKSPACE_ID_QP)?.trim() || null;
+        if (inviteWorkspaceId) {
+          setPreferredPortfolioWorkspaceId(inviteWorkspaceId);
+        }
         const params = new URLSearchParams(searchParams.toString());
         params.delete("invite_accepted");
         params.delete(WORKSPACE_INVITE_ACCEPTED_QP);
         params.delete(WORKSPACE_SETUP_PORTFOLIO_QP);
+        params.delete(WORKSPACE_INVITE_WORKSPACE_ID_QP);
         const qs = params.toString();
         router.replace(qs ? `${pathname}?${qs}` : pathname);
       }
@@ -207,7 +250,7 @@ export function OnboardingHost() {
       setShowProfileModal(false);
 
       if (searchParams.get(ONBOARDING_PORTFOLIO_QP) === "1") {
-        openPortfolioOnboardingModal();
+        openPortfolioOnboardingModal(null);
         const params = new URLSearchParams(searchParams.toString());
         params.delete(ONBOARDING_PORTFOLIO_QP);
         const qs = params.toString();
@@ -348,6 +391,7 @@ export function OnboardingHost() {
       <PortfolioSetupModal
         open={showPortfolioNameModal}
         resumePortfolio={portfolioResumeForNameStep}
+        preferredWorkspaceId={preferredPortfolioWorkspaceId}
         onCreated={onPortfolioNameContinue}
         onDismiss={onDismissPortfolioSetup}
       />

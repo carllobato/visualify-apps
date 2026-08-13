@@ -23,7 +23,9 @@ import {
   stripLegacyRiskAiPrefix,
 } from "@/lib/routes";
 import { RiskAiRailAccountMenu } from "@/components/layout/RiskAiRailAccountMenu";
+import { RiskAiWorkspaceRailList } from "@/components/layout/RiskAiWorkspaceRailList";
 import { useResolvedPortfolioId } from "@/hooks/useResolvedPortfolioId";
+import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 
 const RISKAI_APP_SHELL_RAIL_PINNED_KEY = "riskai-app-shell-rail-pinned";
 
@@ -297,15 +299,21 @@ function IconSimulation() {
   );
 }
 
+type RiskAiAppShellRailProps = {
+  workspaces: readonly EntitledWorkspace[];
+  selectedWorkspaceId: string | null;
+  appCatalog: readonly AppShellRailAppCatalogEntry[];
+};
+
 /**
  * RiskAI platform rail — compound `@visualify/app-shell` layout (HQ-aligned) with RiskAI nav destinations.
  * Shown when `NEXT_PUBLIC_RISKAI_ENABLE_APP_SHELL=1` via `ProtectedShell`.
  */
 export function RiskAiAppShellRail({
+  workspaces,
+  selectedWorkspaceId,
   appCatalog,
-}: {
-  appCatalog: readonly AppShellRailAppCatalogEntry[];
-}) {
+}: RiskAiAppShellRailProps) {
   const pathname = usePathname();
   const portfolioId = useResolvedPortfolioId(pathname);
   const projectIdInUrl = projectIdFromAppPathname(pathname);
@@ -347,6 +355,13 @@ export function RiskAiAppShellRail({
           <AppShellRailSeparator />
 
           <AppShellRailNavScroll>
+            <RiskAiWorkspaceRailList
+              workspaces={workspaces}
+              selectedWorkspaceId={selectedWorkspaceId}
+            />
+
+            <AppShellRailSeparator />
+
             <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
             <AppShellRailNavLink href={DASHBOARD_PATH} active={activeNav === "dashboard"} label="Dashboard">
               <IconDashboard />

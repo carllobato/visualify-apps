@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
+import { getCreatableRiskAiWorkspaces } from "@/lib/workspace/creatableWorkspaces";
+import {
+  assertRequestedWorkspaceMatchesPortfolio,
+  resolveCreatableWorkspaceId,
+} from "@/lib/workspace/resolveCreatableWorkspaceId";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -37,20 +42,30 @@ export async function GET() {
 type CreateProjectBody = {
   name?: unknown;
   portfolioId?: unknown;
+  workspaceId?: unknown;
 };
 
-type ResolveCreatablePortfolioResult =
-  | { portfolioId: string; workspaceId: string }
-  | { error: "not_found" | "forbidden" | "unbound_workspace" | "portfolio_required" };
+type ResolveProjectCreateResult =
+  | { portfolioId: string | null; workspaceId: string }
+  | {
+      error:
+        | "not_found"
+        | "forbidden"
+        | "unbound_workspace"
+        | "workspace_mismatch"
+        | "none"
+        | "workspace_required";
+    };
 
 /**
- * Authorises the preferred portfolio for create, then derives workspace_id from that parent row.
- * Never trusts a client-supplied workspace_id.
+ * Authorises optional portfolio + required workspace for project create.
+ * Never trusts client workspace/portfolio ids without server checks.
  */
-async function resolveCreatablePortfolioForUser(
+async function resolveProjectCreateTarget(
   userId: string,
-  preferredPortfolioId?: string,
-): Promise<ResolveCreatablePortfolioResult> {
+  preferredPortfolioId: string | undefined,
+  requestedWorkspaceId: string | undefined,
+): Promise<ResolveProjectCreateResult> {
   const supabase = await supabaseServerClient();
 
   if (preferredPortfolioId) {
@@ -73,11 +88,26 @@ async function resolveCreatablePortfolioForUser(
 
     if (!workspaceId) return { error: "unbound_workspace" };
 
+    const match = assertRequestedWorkspaceMatchesPortfolio({
+      portfolioWorkspaceId: workspaceId,
+      requestedWorkspaceId,
+    });
+    if ("error" in match) return { error: "workspace_mismatch" };
+
     return { portfolioId: preferredPortfolioId, workspaceId };
   }
 
-  // Projects require a parent portfolio so workspace_id can be derived server-side.
-  return { error: "portfolio_required" };
+  const creatable = await getCreatableRiskAiWorkspaces(supabase, userId);
+  const resolved = resolveCreatableWorkspaceId({
+    creatableIds: creatable.map((w) => w.id),
+    requestedWorkspaceId,
+  });
+
+  if ("error" in resolved) {
+    return { error: resolved.error };
+  }
+
+  return { portfolioId: null, workspaceId: resolved.workspaceId };
 }
 
 export async function POST(request: Request) {
@@ -101,7 +131,12 @@ export async function POST(request: Request) {
       ? body.portfolioId.trim()
       : undefined;
 
-  const target = await resolveCreatablePortfolioForUser(user.id, portfolioId);
+  const requestedWorkspaceId =
+    typeof body.workspaceId === "string" && body.workspaceId.trim().length > 0
+      ? body.workspaceId.trim()
+      : undefined;
+
+  const target = await resolveProjectCreateTarget(user.id, portfolioId, requestedWorkspaceId);
   if ("error" in target) {
     if (target.error === "forbidden") {
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
@@ -112,9 +147,27 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (target.error === "portfolio_required") {
+    if (target.error === "workspace_mismatch") {
       return NextResponse.json(
-        { error: "Select a portfolio before creating a project." },
+        { error: "Selected portfolio does not belong to that workspace." },
+        { status: 400 },
+      );
+    }
+    if (target.error === "none") {
+      return NextResponse.json(
+        {
+          error: "You do not have permission to create a project in any RiskAI workspace.",
+          code: "no_creatable_workspace",
+        },
+        { status: 403 },
+      );
+    }
+    if (target.error === "workspace_required") {
+      return NextResponse.json(
+        {
+          error: "Select a workspace before creating a project.",
+          code: "workspace_required",
+        },
         { status: 400 },
       );
     }
@@ -127,8 +180,8 @@ export async function POST(request: Request) {
     .insert({
       owner_user_id: user.id,
       name,
-      portfolio_id: target.portfolioId,
       workspace_id: target.workspaceId,
+      portfolio_id: target.portfolioId,
     })
     .select("id, name, portfolio_id, workspace_id, created_at")
     .single();

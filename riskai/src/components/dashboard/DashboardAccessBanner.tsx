@@ -6,7 +6,9 @@ import { Callout } from "@visualify/design-system";
 import {
   OPEN_PORTFOLIO_ONBOARDING_EVENT,
   WORKSPACE_INVITE_ACCEPTED_QP,
+  WORKSPACE_INVITE_WORKSPACE_ID_QP,
   WORKSPACE_SETUP_PORTFOLIO_QP,
+  type OpenPortfolioOnboardingDetail,
 } from "@/lib/onboarding/types";
 
 type Props = {
@@ -14,6 +16,8 @@ type Props = {
   isWorkspaceAdmin: boolean;
   showPostWorkspaceInvite: boolean;
   suggestPortfolioSetup: boolean;
+  /** Accepted workspace id from invite redirect (intent for portfolio setup). */
+  inviteWorkspaceId?: string | null;
 };
 
 export function DashboardAccessBanner({
@@ -21,6 +25,7 @@ export function DashboardAccessBanner({
   isWorkspaceAdmin,
   showPostWorkspaceInvite,
   suggestPortfolioSetup,
+  inviteWorkspaceId = null,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -43,16 +48,28 @@ export function DashboardAccessBanner({
       WORKSPACE_INVITE_ACCEPTED_QP,
       "invite_accepted",
       WORKSPACE_SETUP_PORTFOLIO_QP,
+      WORKSPACE_INVITE_WORKSPACE_ID_QP,
     ]);
   }, [stripQueryKeys]);
 
   useEffect(() => {
     if (!showPostWorkspaceInvite || !suggestPortfolioSetup || !isWorkspaceAdmin || dismissed) return;
+    const preferred = inviteWorkspaceId?.trim() || undefined;
     const t = window.setTimeout(() => {
-      window.dispatchEvent(new Event(OPEN_PORTFOLIO_ONBOARDING_EVENT));
+      window.dispatchEvent(
+        new CustomEvent<OpenPortfolioOnboardingDetail>(OPEN_PORTFOLIO_ONBOARDING_EVENT, {
+          detail: preferred ? { workspaceId: preferred } : {},
+        }),
+      );
     }, 400);
     return () => window.clearTimeout(t);
-  }, [dismissed, isWorkspaceAdmin, showPostWorkspaceInvite, suggestPortfolioSetup]);
+  }, [
+    dismissed,
+    inviteWorkspaceId,
+    isWorkspaceAdmin,
+    showPostWorkspaceInvite,
+    suggestPortfolioSetup,
+  ]);
 
   if (!showPostWorkspaceInvite || dismissed) return null;
 

@@ -74,6 +74,7 @@ async function ensureMinimalProfileRow(params: {
 /**
  * Clones the system-owned master demo portfolio + template projects into `userId`'s account.
  * On partial failure after portfolio insert, deletes the new portfolio.
+ * Portfolio and projects inherit `workspace_id` from the master template (required NOT NULL).
  */
 async function cloneRiskAiDemoWorkspaceFromMaster(params: {
   admin: ReturnType<typeof supabaseAdminClient>;
@@ -83,7 +84,7 @@ async function cloneRiskAiDemoWorkspaceFromMaster(params: {
 
   const { data: templatePortfolio, error: templatePortfolioErr } = await admin
     .from("visualify_portfolios")
-    .select("id, name, product_id")
+    .select("id, name, product_id, workspace_id")
     .eq("template_key", RISKAI_MASTER_DEMO_TEMPLATE_KEY)
     .eq("is_demo_template", true)
     .limit(1)
@@ -103,7 +104,18 @@ async function cloneRiskAiDemoWorkspaceFromMaster(params: {
     id: string;
     name: string;
     product_id: string | null;
+    workspace_id: string | null;
   };
+
+  const workspaceId =
+    typeof template.workspace_id === "string" && template.workspace_id.trim().length > 0
+      ? template.workspace_id.trim()
+      : null;
+
+  if (!workspaceId) {
+    logDemoWorkspaceCloneError("master template portfolio has no workspace_id");
+    return false;
+  }
 
   const { data: templateProjects, error: templateProjectsErr } = await admin
     .from("visualify_projects")
@@ -122,6 +134,7 @@ async function cloneRiskAiDemoWorkspaceFromMaster(params: {
       name: template.name,
       owner_user_id: userId,
       product_id: template.product_id,
+      workspace_id: workspaceId,
       is_demo_template: false,
       template_key: null,
     })
@@ -142,6 +155,7 @@ async function cloneRiskAiDemoWorkspaceFromMaster(params: {
         name: p.name,
         owner_user_id: userId,
         portfolio_id: newPortfolioId,
+        workspace_id: workspaceId,
         is_demo_template: false,
       })),
     );

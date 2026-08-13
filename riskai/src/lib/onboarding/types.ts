@@ -28,8 +28,20 @@ export const WORKSPACE_INVITE_ACCEPTED_QP = "workspace_invite_accepted";
  */
 export const WORKSPACE_SETUP_PORTFOLIO_QP = "workspace_setup_portfolio";
 
+/**
+ * Accepted workspace id after a workspace invitation (intent for portfolio setup).
+ * Server still authorises before insert — query value is never trusted alone.
+ */
+export const WORKSPACE_INVITE_WORKSPACE_ID_QP = "workspace_id";
+
 /** Dispatched on `window` so in-app links can open the portfolio modal without navigation. */
 export const OPEN_PORTFOLIO_ONBOARDING_EVENT = "riskai-open-portfolio-onboarding";
+
+/** Optional detail for {@link OPEN_PORTFOLIO_ONBOARDING_EVENT}. */
+export type OpenPortfolioOnboardingDetail = {
+  workspaceId?: string;
+};
+
 /** Dispatched on `window` so links can open project onboarding modal without navigation. */
 export const OPEN_PROJECT_ONBOARDING_EVENT = "riskai-open-project-onboarding";
 
@@ -39,10 +51,12 @@ export type OnboardingStepId = "profile" | "portfolio" | "dashboard";
 /**
  * Shape of a portfolio row insert on the server. `product_id` is always the RiskAI
  * product from `public.visualify_products` (key = 'riskai'); clients do not send it.
+ * `workspace_id` is always resolved server-side from creatable RiskAI workspaces.
  */
 export type OnboardingPortfolioInsertPayload = {
   name: string;
   code?: string;
   product_id: string;
   owner_user_id: string;
+  workspace_id: string;
 };

@@ -12,9 +12,9 @@ type Props = {
   hasAppAccess: boolean;
   workspaces: readonly DashboardWorkspaceContext[];
   isWorkspaceAdmin: boolean;
-  /** Parent portfolio for Create project when the dashboard already has exactly one. */
+  /** Parent portfolio for Create project when opened from a single-portfolio context. */
   preferredPortfolioId?: string | null;
-  /** Accessible portfolio count — used to choose Create portfolio vs Create project. */
+  /** Accessible portfolio count — informational only; projects no longer require a portfolio. */
   portfolioCount?: number;
 };
 
@@ -24,7 +24,6 @@ export function DashboardSectionEmptyState({
   workspaces,
   isWorkspaceAdmin,
   preferredPortfolioId = null,
-  portfolioCount = 0,
 }: Props) {
   const workspaceLabel = formatWorkspaceList(workspaces);
   const requestMailto = buildPortfolioAccessRequestMailto(workspaces.map((w) => w.name));
@@ -35,7 +34,6 @@ export function DashboardSectionEmptyState({
         kind={kind}
         isWorkspaceAdmin={isWorkspaceAdmin}
         preferredPortfolioId={preferredPortfolioId}
-        portfolioCount={portfolioCount}
       />
     );
   }
@@ -48,11 +46,11 @@ export function DashboardSectionEmptyState({
             {isWorkspaceAdmin ? "No portfolios yet" : "No portfolios assigned yet"}
           </p>
           <p className="mx-auto mt-2 max-w-lg text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-            You have <span className="font-medium">RiskAI app access</span> through {workspaceLabel}, but
-            portfolios and projects are permissioned separately.{" "}
+            You have <span className="font-medium">RiskAI app access</span> through {workspaceLabel}.
+            Portfolios are an optional way to group related projects.{" "}
             {isWorkspaceAdmin
-              ? "Create a portfolio to organise your projects."
-              : "Ask a workspace administrator or a portfolio owner to add you to a portfolio when you're ready to work."}
+              ? "Create a portfolio when you want to organise projects together."
+              : "Ask a workspace administrator or a portfolio owner to add you to a portfolio when you're ready."}
           </p>
           <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap">
             {isWorkspaceAdmin ? (
@@ -70,20 +68,6 @@ export function DashboardSectionEmptyState({
     );
   }
 
-  const projectsAdminCta =
-    portfolioCount === 0 ? (
-      <OpenPortfolioOnboardingLink className="ds-dashboard-empty-primary">
-        Create portfolio
-      </OpenPortfolioOnboardingLink>
-    ) : (
-      <OpenProjectOnboardingLink
-        className="ds-dashboard-empty-primary"
-        portfolioId={preferredPortfolioId}
-      >
-        Create project
-      </OpenProjectOnboardingLink>
-    );
-
   return (
     <Card variant="inset" className="!border-0 text-center">
       <CardBody className="py-[var(--ds-space-6)]">
@@ -92,14 +76,17 @@ export function DashboardSectionEmptyState({
         </p>
         <p className="mx-auto mt-2 max-w-lg text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
           {isWorkspaceAdmin
-            ? portfolioCount === 0
-              ? "Projects belong to portfolios. Create a portfolio first, then add your project."
-              : "Projects belong to portfolios. Create a project once you have a portfolio, or ask a portfolio owner to invite you to an existing project."
+            ? "Create a project in your workspace. You can optionally group it into a portfolio later."
             : `You can open RiskAI through ${workspaceLabel}, but you are not on any project team yet. Ask a workspace administrator or a portfolio or project owner to add you.`}
         </p>
         <div className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row sm:flex-wrap">
           {isWorkspaceAdmin ? (
-            projectsAdminCta
+            <OpenProjectOnboardingLink
+              className="ds-dashboard-empty-primary"
+              portfolioId={preferredPortfolioId}
+            >
+              Create project
+            </OpenProjectOnboardingLink>
           ) : (
             <a href={requestMailto} className="ds-dashboard-empty-primary no-underline">
               Request access
@@ -115,12 +102,10 @@ function LegacyEmpty({
   kind,
   isWorkspaceAdmin,
   preferredPortfolioId = null,
-  portfolioCount = 0,
 }: {
   kind: "portfolios" | "projects";
   isWorkspaceAdmin: boolean;
   preferredPortfolioId?: string | null;
-  portfolioCount?: number;
 }) {
   if (kind === "portfolios") {
     return (
@@ -142,18 +127,12 @@ function LegacyEmpty({
       <CardBody className="py-[var(--ds-space-6)]">
         <p className="ds-dashboard-empty-title">No projects yet</p>
         {isWorkspaceAdmin ? (
-          portfolioCount === 0 ? (
-            <OpenPortfolioOnboardingLink className="ds-dashboard-empty-primary">
-              Create portfolio
-            </OpenPortfolioOnboardingLink>
-          ) : (
-            <OpenProjectOnboardingLink
-              className="ds-dashboard-empty-primary"
-              portfolioId={preferredPortfolioId}
-            >
-              Create project
-            </OpenProjectOnboardingLink>
-          )
+          <OpenProjectOnboardingLink
+            className="ds-dashboard-empty-primary"
+            portfolioId={preferredPortfolioId}
+          >
+            Create project
+          </OpenProjectOnboardingLink>
         ) : null}
       </CardBody>
     </Card>

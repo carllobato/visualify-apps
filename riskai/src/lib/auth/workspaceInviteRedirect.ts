@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { productConfig } from "@/lib/product-config";
 import {
   WORKSPACE_INVITE_ACCEPTED_QP,
+  WORKSPACE_INVITE_WORKSPACE_ID_QP,
   WORKSPACE_SETUP_PORTFOLIO_QP,
 } from "@/lib/onboarding/types";
 
@@ -20,13 +21,21 @@ export function buildWorkspaceInviteAcceptedDashboardPath(basePath: string): str
 
 export function buildWorkspaceInviteAcceptedPath(
   path: string,
-  options?: { openPortfolioSetupForAdmin?: boolean },
+  options?: {
+    openPortfolioSetupForAdmin?: boolean;
+    /** Accepted workspace id — intent only; portfolio create still authorises server-side. */
+    workspaceId?: string | null;
+  },
 ): string {
   const u = new URL(path, "http://localhost");
   u.searchParams.set("invite_accepted", "1");
   u.searchParams.set(WORKSPACE_INVITE_ACCEPTED_QP, "1");
   if (options?.openPortfolioSetupForAdmin) {
     u.searchParams.set(WORKSPACE_SETUP_PORTFOLIO_QP, "1");
+  }
+  const workspaceId = options?.workspaceId?.trim();
+  if (workspaceId) {
+    u.searchParams.set(WORKSPACE_INVITE_WORKSPACE_ID_QP, workspaceId);
   }
   return `${u.pathname}${u.search}`;
 }

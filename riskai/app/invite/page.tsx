@@ -104,6 +104,7 @@ export default async function InvitePage({
       redirect(
         buildWorkspaceInviteAcceptedPath(DASHBOARD_PATH, {
           openPortfolioSetupForAdmin: openPortfolioSetup,
+          workspaceId: result.workspace_id,
         }),
       );
     }

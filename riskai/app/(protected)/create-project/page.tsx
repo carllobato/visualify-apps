@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { OpenPortfolioOnboardingLink } from "@/components/onboarding/OpenPortfolioOnboardingLink";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
@@ -12,7 +11,8 @@ const ACTIVE_PROJECT_KEY = "activeProjectId";
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type PortfolioRow = { id: string; name: string };
+type PortfolioRow = { id: string; name: string; workspace_id?: string | null };
+type WorkspaceRow = { id: string; name: string; slug: string };
 
 /** Matches {@link Input} / design-system field styling for native `<select>`. */
 const SELECT_FIELD_CLASS =
@@ -29,7 +29,9 @@ function CreateProjectForm() {
 
   const [name, setName] = useState("");
   const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>("");
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,27 +40,54 @@ function CreateProjectForm() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/portfolios");
-        const json = (await res.json()) as { portfolios?: PortfolioRow[]; error?: string };
-        if (!res.ok) {
-          if (!cancelled) setLoadError(json.error ?? "Could not load portfolios.");
+        const [portfoliosRes, workspacesRes] = await Promise.all([
+          fetch("/api/portfolios"),
+          fetch("/api/workspaces/creatable"),
+        ]);
+        const portfoliosJson = (await portfoliosRes.json().catch(() => ({}))) as {
+          portfolios?: PortfolioRow[];
+          error?: string;
+        };
+        const workspacesJson = (await workspacesRes.json().catch(() => ({}))) as {
+          workspaces?: WorkspaceRow[];
+          error?: string;
+        };
+        if (cancelled) return;
+
+        if (!portfoliosRes.ok) {
+          setLoadError(portfoliosJson.error ?? "Could not load portfolios.");
           return;
         }
-        const list = json.portfolios ?? [];
-        if (cancelled) return;
+        if (!workspacesRes.ok) {
+          setLoadError(workspacesJson.error ?? "Could not load workspaces.");
+          return;
+        }
+
+        const list = portfoliosJson.portfolios ?? [];
+        const wsList = workspacesJson.workspaces ?? [];
         setPortfolios(list);
+        setWorkspaces(wsList);
+
         const fromQuery =
           paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
-        const validFromQuery = fromQuery && list.some((p) => p.id === fromQuery) ? fromQuery : null;
-        if (list.length === 1) {
-          setSelectedPortfolioId(validFromQuery ?? list[0]!.id);
-        } else if (list.length > 1) {
-          setSelectedPortfolioId(validFromQuery ?? "");
+        const scoped = fromQuery ? list.find((p) => p.id === fromQuery) : undefined;
+
+        if (scoped) {
+          setSelectedPortfolioId(scoped.id);
+          const scopedWs =
+            typeof scoped.workspace_id === "string" && scoped.workspace_id.trim()
+              ? scoped.workspace_id.trim()
+              : "";
+          setSelectedWorkspaceId(scopedWs);
+        } else if (wsList.length === 1) {
+          setSelectedWorkspaceId(wsList[0]!.id);
+          setSelectedPortfolioId("");
         } else {
+          setSelectedWorkspaceId("");
           setSelectedPortfolioId("");
         }
       } catch {
-        if (!cancelled) setLoadError("Could not load portfolios.");
+        if (!cancelled) setLoadError("Could not load workspaces or portfolios.");
       }
     })();
     return () => {
@@ -69,11 +98,21 @@ function CreateProjectForm() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    const portfolioId = selectedPortfolioId.trim();
-    if (!portfolioId) {
-      setMessage({ type: "error", text: "Select a portfolio." });
+
+    const fromQuery =
+      paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
+    const hasValidScoped =
+      Boolean(fromQuery) && (portfolios ?? []).some((p) => p.id === fromQuery);
+
+    const workspaceId =
+      selectedWorkspaceId.trim() ||
+      (!hasValidScoped && workspaces?.length === 1 ? workspaces[0]!.id : "");
+    if (!hasValidScoped && !workspaceId) {
+      setMessage({ type: "error", text: "Select a workspace." });
       return;
     }
+
+    const portfolioId = selectedPortfolioId.trim();
     setLoading(true);
     const res = await fetch("/api/projects", {
       method: "POST",
@@ -81,7 +120,10 @@ function CreateProjectForm() {
       cache: "no-store",
       body: JSON.stringify({
         name,
-        portfolioId,
+        ...(hasValidScoped || portfolioId
+          ? { portfolioId: hasValidScoped ? fromQuery : portfolioId }
+          : {}),
+        ...(!hasValidScoped && workspaceId ? { workspaceId } : {}),
       }),
     });
     const json = (await res.json().catch(() => ({}))) as {
@@ -130,17 +172,21 @@ function CreateProjectForm() {
     );
   }
 
-  if (portfolios === null) {
+  if (portfolios === null || workspaces === null) {
     return (
       <div className="w-full px-4 py-10 sm:px-6">
         <div className="mx-auto flex min-h-[30vh] max-w-md flex-col justify-center">
-          <LoadingPlaceholder label="Loading portfolios" />
+          <LoadingPlaceholder label="Loading" />
         </div>
       </div>
     );
   }
 
-  if (portfolios.length === 0) {
+  const fromQuery =
+    paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
+  const hasValidScoped = Boolean(fromQuery && portfolios.some((p) => p.id === fromQuery));
+
+  if (!hasValidScoped && workspaces.length === 0) {
     return (
       <div className="w-full px-4 py-10 sm:px-6">
         <main className="mx-auto max-w-md">
@@ -148,11 +194,9 @@ function CreateProjectForm() {
             Create project
           </h1>
           <p className="mb-6 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-            Every project belongs to a portfolio. Create a portfolio first, then add your project.
+            You do not have permission to create a project in any RiskAI workspace. Ask a workspace
+            owner or admin for access.
           </p>
-          <OpenPortfolioOnboardingLink className="ds-dashboard-empty-primary">
-            Create portfolio
-          </OpenPortfolioOnboardingLink>
           <p className="mt-8 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
             <Link
               href={DASHBOARD_PATH}
@@ -166,18 +210,69 @@ function CreateProjectForm() {
     );
   }
 
+  const resolvedWorkspaceId = hasValidScoped
+    ? selectedWorkspaceId
+    : selectedWorkspaceId.trim() || (workspaces.length === 1 ? workspaces[0]!.id : "");
+
+  const portfoliosInWorkspace = resolvedWorkspaceId
+    ? portfolios.filter(
+        (p) =>
+          typeof p.workspace_id === "string" && p.workspace_id.trim() === resolvedWorkspaceId,
+      )
+    : [];
+
+  const showWorkspaceSelector = !hasValidScoped && workspaces.length > 1;
+  const showPortfolioSelector =
+    !hasValidScoped && Boolean(resolvedWorkspaceId) && portfoliosInWorkspace.length > 0;
+
   return (
     <div className="w-full px-4 py-10 sm:px-6">
       <main className="mx-auto max-w-md">
-        <h1 className="mb-2 text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">Create project</h1>
+        <h1 className="mb-2 text-2xl font-medium tracking-tight text-[var(--ds-text-primary)]">
+          Create project
+        </h1>
         <p className="mb-6 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-          Projects belong to a portfolio so workspace relationships stay consistent.
+          Projects belong to a workspace. Linking a portfolio is optional.
         </p>
         <form onSubmit={handleCreate} className="space-y-4">
-          {portfolios.length > 1 ? (
+          {showWorkspaceSelector ? (
+            <div>
+              <Label htmlFor="create-project-workspace" className="text-[var(--ds-text-secondary)]">
+                Workspace
+              </Label>
+              <select
+                id="create-project-workspace"
+                value={selectedWorkspaceId}
+                onChange={(e) => {
+                  setSelectedWorkspaceId(e.target.value);
+                  setSelectedPortfolioId("");
+                }}
+                className={SELECT_FIELD_CLASS}
+                disabled={loading}
+                required
+              >
+                <option value="" disabled>
+                  Select a workspace
+                </option>
+                {workspaces.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name || w.slug || w.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : workspaces.length === 1 && !hasValidScoped ? (
+            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+              Workspace:{" "}
+              <span className="font-medium text-[var(--ds-text-primary)]">
+                {workspaces[0]?.name || workspaces[0]?.slug || workspaces[0]?.id}
+              </span>
+            </p>
+          ) : null}
+          {showPortfolioSelector ? (
             <div>
               <Label htmlFor="create-project-portfolio" className="text-[var(--ds-text-secondary)]">
-                Portfolio
+                Portfolio (optional)
               </Label>
               <select
                 id="create-project-portfolio"
@@ -185,26 +280,16 @@ function CreateProjectForm() {
                 onChange={(e) => setSelectedPortfolioId(e.target.value)}
                 className={SELECT_FIELD_CLASS}
                 disabled={loading}
-                required
               >
-                <option value="" disabled>
-                  Select a portfolio
-                </option>
-                {portfolios.map((p) => (
+                <option value="">No portfolio</option>
+                {portfoliosInWorkspace.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name || p.id}
                   </option>
                 ))}
               </select>
             </div>
-          ) : (
-            <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
-              Portfolio:{" "}
-              <span className="font-medium text-[var(--ds-text-primary)]">
-                {portfolios[0]?.name || portfolios[0]?.id}
-              </span>
-            </p>
-          )}
+          ) : null}
           <div>
             <Label htmlFor="create-project-name">Project name</Label>
             <Input
@@ -217,19 +302,23 @@ function CreateProjectForm() {
               disabled={loading}
             />
           </div>
-          <Button type="submit" variant="primary" disabled={loading || !selectedPortfolioId.trim()}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={loading || (!hasValidScoped && !selectedWorkspaceId.trim() && workspaces.length !== 1)}
+          >
             {loading ? "Creating…" : "Create project"}
           </Button>
         </form>
-      {message && (
-        <Callout
-          status={message.type === "success" ? "success" : "danger"}
-          role="alert"
-          className="mt-3 text-[length:var(--ds-text-sm)]"
-        >
-          {message.text}
-        </Callout>
-      )}
+        {message && (
+          <Callout
+            status={message.type === "success" ? "success" : "danger"}
+            role="alert"
+            className="mt-3 text-[length:var(--ds-text-sm)]"
+          >
+            {message.text}
+          </Callout>
+        )}
         <p className="mt-8 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]">
           <Link
             href={DASHBOARD_PATH}

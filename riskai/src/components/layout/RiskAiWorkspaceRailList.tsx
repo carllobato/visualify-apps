@@ -1,0 +1,265 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import {
+  AppShellEntityAvatar,
+  appShellRailIconWellClassName,
+  appShellRailNavActionButtonProps,
+  appShellRailNavRowClass,
+  railBrandTitleClass,
+} from "@visualify/app-shell";
+import { setRiskAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
+import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import type { EntitledWorkspace } from "@/types/entitledWorkspace";
+
+/** Matches {@link AppShellRailBrandAppMenu} — not exported from app-shell package. */
+const RAIL_MOBILE_OPEN_ROW_GAP = "max-md:group-data-[mobile-open=true]:gap-2";
+
+/** Workspace name — larger type than project rows; matches rail brand title weight. */
+const RAIL_WORKSPACE_LABEL_CLASS =
+  `vf-app-shell-rail-expand-label min-w-0 shrink truncate text-left ${railBrandTitleClass} ` +
+  "w-0 overflow-hidden opacity-0 transition-[width,max-width,opacity] duration-[400ms] ease-out " +
+  "group-data-[pinned=true]:w-auto group-data-[pinned=true]:flex-1 group-data-[pinned=true]:max-w-[11rem] group-data-[pinned=true]:opacity-100 " +
+  "max-md:group-data-[mobile-open=true]:w-auto max-md:group-data-[mobile-open=true]:flex-1 max-md:group-data-[mobile-open=true]:max-w-[11rem] max-md:group-data-[mobile-open=true]:opacity-100";
+
+const RAIL_MINI_LINK_CLASS =
+  "text-left text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)] underline underline-offset-2 hover:text-[var(--ds-text-primary)]";
+
+const ACCOUNT_HREF = riskaiPath("/account");
+
+function workspaceInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return `${parts[0]![0] ?? ""}${parts[parts.length - 1]![0] ?? ""}`.toUpperCase();
+}
+
+function WorkspaceRailAvatar({
+  workspace,
+  fallbackLabel,
+}: {
+  workspace: EntitledWorkspace | null;
+  fallbackLabel: string;
+}) {
+  return (
+    <AppShellEntityAvatar
+      size="rail"
+      imageUrls={[workspace?.logo_url]}
+      initials={workspaceInitials(workspace?.name ?? fallbackLabel)}
+    />
+  );
+}
+
+function IconChevronDownSubtle() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+      <path
+        d="m6 9 6 6 6-6"
+        stroke="currentColor"
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+const RAIL_BRAND_ROW_WRAP_CLASS =
+  "relative vf-app-shell-rail-expand-row flex h-10 w-full min-w-0 shrink-0 items-center gap-0 rounded-[var(--ds-radius-md)] transition-[gap] duration-[400ms] ease-out group-data-[pinned=true]:gap-2 " +
+  RAIL_MOBILE_OPEN_ROW_GAP;
+
+const RAIL_WORKSPACE_HOME_LINK_CLASS = (active: boolean) =>
+  appShellRailNavRowClass(active) + " min-w-0 flex-1 no-underline";
+
+const RAIL_WORKSPACE_MENU_BUTTON_CLASS =
+  "flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 " +
+  "text-[color-mix(in_oklab,var(--ds-text-secondary)_58%,transparent)] transition-[color,background-color] duration-150 ease-out " +
+  "hover:bg-[color-mix(in_oklab,var(--ds-text-primary)_5%,var(--ds-canvas))] hover:text-[var(--ds-text-primary)] " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)] " +
+  "disabled:cursor-not-allowed disabled:opacity-60";
+
+export function RiskAiWorkspaceRailList({
+  workspaces,
+  selectedWorkspaceId,
+}: {
+  workspaces: readonly EntitledWorkspace[];
+  selectedWorkspaceId: string | null;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const selectedWorkspace =
+    workspaces.find((w) => w.id === selectedWorkspaceId) ?? null;
+  const needsSelection = workspaces.length > 1 && selectedWorkspace == null;
+
+  const triggerLabel = selectedWorkspace?.name ?? (needsSelection ? "Select workspace" : "Workspace");
+
+  const cancelScheduledClose = () => {
+    if (closeTimerRef.current != null) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    cancelScheduledClose();
+    closeTimerRef.current = setTimeout(() => setMenuOpen(false), 140);
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => () => cancelScheduledClose(), []);
+
+  async function selectWorkspace(id: string) {
+    if (busyId || id === selectedWorkspaceId) {
+      setMenuOpen(false);
+      return;
+    }
+    setBusyId(id);
+    const result = await setRiskAiActiveWorkspaceIdAction(id);
+    setBusyId(null);
+    setMenuOpen(false);
+    if (result.ok) {
+      router.push(DASHBOARD_PATH);
+      router.refresh();
+    }
+  }
+
+  function workspaceHomeActive(): boolean {
+    return pathname === DASHBOARD_PATH || pathname === `${DASHBOARD_PATH}/`;
+  }
+
+  if (workspaces.length === 0) {
+    return (
+      <div className="flex min-w-0 flex-col gap-1 px-0">
+        <p className="m-0 text-[length:var(--ds-text-xs)] leading-snug text-[var(--ds-text-tertiary)]">
+          No RiskAI workspaces are available for your account.
+        </p>
+        <Link href={ACCOUNT_HREF} className={RAIL_MINI_LINK_CLASS}>
+          Account
+        </Link>
+      </div>
+    );
+  }
+
+  if (workspaces.length === 1) {
+    const only = workspaces[0]!;
+    const homeActive = workspaceHomeActive();
+    return (
+      <Link
+        href={DASHBOARD_PATH}
+        className={RAIL_WORKSPACE_HOME_LINK_CLASS(homeActive)}
+        aria-label={`${only.name}, workspace home`}
+        aria-current={homeActive ? "page" : undefined}
+        title={only.name}
+      >
+        <span className={appShellRailIconWellClassName}>
+          <WorkspaceRailAvatar workspace={only} fallbackLabel={only.name} />
+        </span>
+        <span className={RAIL_WORKSPACE_LABEL_CLASS}>{only.name}</span>
+      </Link>
+    );
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      className={RAIL_BRAND_ROW_WRAP_CLASS}
+      onMouseLeave={scheduleClose}
+    >
+      <Link
+        href={DASHBOARD_PATH}
+        className={
+          RAIL_WORKSPACE_HOME_LINK_CLASS(workspaceHomeActive()) + (busyId ? " pointer-events-none opacity-60" : "")
+        }
+        aria-label={
+          needsSelection ? "Select workspace" : `${triggerLabel}, workspace home`
+        }
+        aria-current={workspaceHomeActive() ? "page" : undefined}
+        title={triggerLabel}
+        onClick={() => setMenuOpen(false)}
+      >
+        <span className={appShellRailIconWellClassName}>
+          <WorkspaceRailAvatar workspace={selectedWorkspace} fallbackLabel={triggerLabel} />
+        </span>
+        <span className={RAIL_WORKSPACE_LABEL_CLASS}>{triggerLabel}</span>
+      </Link>
+
+      <button
+        type="button"
+        className={RAIL_WORKSPACE_MENU_BUTTON_CLASS}
+        aria-expanded={menuOpen}
+        aria-haspopup="listbox"
+        aria-label={needsSelection ? "Select workspace" : "Switch workspace"}
+        title={needsSelection ? "Select workspace" : "Switch workspace"}
+        disabled={busyId !== null}
+        onClick={() => setMenuOpen((open) => !open)}
+        {...appShellRailNavActionButtonProps}
+      >
+        <IconChevronDownSubtle />
+      </button>
+
+      {menuOpen ? (
+        <div
+          role="listbox"
+          aria-label="Workspaces"
+          className="absolute inset-x-0 top-full z-[100] mt-[var(--ds-space-1)] w-full min-w-0 ds-app-menu-dropdown"
+          onMouseEnter={cancelScheduledClose}
+          onMouseLeave={scheduleClose}
+        >
+          <div
+            className="px-[var(--ds-space-4)] pb-[var(--ds-space-2)] pt-[var(--ds-space-3)]"
+            role="presentation"
+          >
+            <div className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-secondary)]">
+              Workspace
+            </div>
+            <div className="mt-[var(--ds-space-1)] truncate text-[length:var(--ds-text-sm)] font-medium leading-snug text-[var(--ds-text-primary)]">
+              {selectedWorkspace?.name ?? "Select a workspace"}
+            </div>
+          </div>
+
+          {workspaces.map((workspace) => {
+            const isSelected = workspace.id === selectedWorkspaceId;
+            return (
+              <button
+                key={workspace.id}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                disabled={busyId !== null}
+                className="ds-app-menu-dropdown__item text-left"
+                onClick={() => void selectWorkspace(workspace.id)}
+                {...appShellRailNavActionButtonProps}
+              >
+                {workspace.name}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}

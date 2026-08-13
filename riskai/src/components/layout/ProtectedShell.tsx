@@ -17,18 +17,23 @@ import { RiskAiAppShellRail } from "@/components/layout/RiskAiAppShellRail";
 import { TopNav } from "./TopNav";
 import { PageTransition } from "./PageTransition";
 import { Sidebar } from "./Sidebar";
+import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 
 type ProtectedShellProps = {
   children: React.ReactNode;
   /** From server cookie so sidebar SSR matches saved rail width. */
   initialSideNavPinned?: boolean;
   appCatalog: readonly AppShellRailAppCatalogEntry[];
+  workspaces?: readonly EntitledWorkspace[];
+  selectedWorkspaceId?: string | null;
 };
 
 export function ProtectedShell({
   children,
   initialSideNavPinned = true,
   appCatalog,
+  workspaces = [],
+  selectedWorkspaceId = null,
 }: ProtectedShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -37,7 +42,11 @@ export function ProtectedShell({
       <>
         <OnboardingHost />
         <AppShellOuterCanvas mobileHeaderExpected>
-          <RiskAiAppShellRail appCatalog={appCatalog} />
+          <RiskAiAppShellRail
+            workspaces={workspaces}
+            selectedWorkspaceId={selectedWorkspaceId}
+            appCatalog={appCatalog}
+          />
           <AppShellMainColumn>
             <AppShellMobileHeader
               appName="Risk AI"
