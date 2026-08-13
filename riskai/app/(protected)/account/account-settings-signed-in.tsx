@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AccountSettingsAppsPanel,
   AccountSettingsAuthenticationPanel,
   AccountSettingsHeader,
   AccountSettingsTabs,
@@ -18,7 +17,6 @@ export function AccountSettingsSignedIn(props: {
   lastName: string | null;
   company: string | null;
   role: string | null;
-  workspaceEntitledProductKeys: readonly string[];
   totpAlreadyEnabled: boolean;
   sessionUpdatedAt: string | null;
   sessionLastSeenAt: string | null;
@@ -31,7 +29,6 @@ export function AccountSettingsSignedIn(props: {
     lastName,
     company,
     role,
-    workspaceEntitledProductKeys,
     totpAlreadyEnabled,
     sessionUpdatedAt,
     sessionLastSeenAt,
@@ -62,16 +59,6 @@ export function AccountSettingsSignedIn(props: {
             id: "profile",
             label: "Profile",
             panel: profile.panel,
-          },
-          {
-            id: "apps",
-            label: "Apps",
-            panel: (
-              <AccountSettingsAppsPanel
-                workspaceEntitledProductKeys={workspaceEntitledProductKeys}
-                userEmail={email}
-              />
-            ),
           },
           {
             id: "authentication",

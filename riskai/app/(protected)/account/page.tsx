@@ -13,7 +13,6 @@ import { riskaiPath } from "@/lib/routes";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { listFactorsIndicatesVerifiedTotp } from "@/lib/auth/mfa";
 import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
-import { fetchWorkspaceEntitledProductKeysForUser } from "@visualify/workspace-product-access";
 
 /** User settings: authenticated users only (enforced by (protected) layout). */
 export default async function UserSettingsPage() {
@@ -49,15 +48,6 @@ export default async function UserSettingsPage() {
                     </div>
                   </section>
                 </>
-              ),
-            },
-            {
-              id: "apps",
-              label: "Apps",
-              panel: (
-                <p className="mb-10 text-sm text-[var(--ds-text-muted)]">
-                  Sign in to see Visualify apps enabled through your workspaces.
-                </p>
               ),
             },
             {
@@ -108,7 +98,6 @@ export default async function UserSettingsPage() {
   const lastName = profileRow?.surname ?? (meta?.last_name as string | undefined) ?? null;
   const company = profileRow?.company ?? (meta?.company as string | undefined) ?? null;
   const role = profileRow?.role ?? (meta?.role as string | undefined) ?? null;
-  const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
 
   return (
     <AccountSettingsPage legacyDocumentPadding={legacyDocumentPadding}>
@@ -119,7 +108,6 @@ export default async function UserSettingsPage() {
         lastName={lastName}
         company={company}
         role={role}
-        workspaceEntitledProductKeys={workspaceEntitledProductKeys}
         totpAlreadyEnabled={totpAlreadyEnabled}
         sessionUpdatedAt={sessionRow?.updated_at ?? null}
         sessionLastSeenAt={sessionRow?.last_seen_at ?? null}
