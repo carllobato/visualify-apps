@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { AppShellLegalDocumentLink } from "@visualify/app-shell";
 import { useEffect, useState, type FormEvent } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   AppLoginCardHeader,
   AppLoginCardLegalFooter,
@@ -15,6 +15,7 @@ import {
   appLoginSubmitLabelsForMode,
   AppLoginTabsSection,
   AppLoginTrustLine,
+  navigateAfterAppLoginSuccess,
 } from "@visualify/app-shell";
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
@@ -168,6 +169,7 @@ function LoginSocialProviders({
 }
 
 export function LoginClient() {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const next = normalizeAppPath(searchParams.get("next"), DASHBOARD_PATH);
@@ -202,12 +204,12 @@ export function LoginClient() {
     }
   }, [searchParams]);
 
-  const redirectAfterAuth = () => {
+  const redirectAfterAuth = async () => {
     if (inviteToken) {
       window.location.href = `/invite?invite_token=${encodeURIComponent(inviteToken)}`;
       return;
     }
-    window.location.href = next;
+    await navigateAfterAppLoginSuccess(router, next);
   };
 
   const handleSignIn = async (e: FormEvent) => {
@@ -240,7 +242,7 @@ export function LoginClient() {
         return;
       }
 
-      redirectAfterAuth();
+      await redirectAfterAuth();
     } catch (err) {
       setError(formatAuthError(err));
     } finally {
@@ -270,7 +272,7 @@ export function LoginClient() {
         return;
       }
       if (data.session) {
-        redirectAfterAuth();
+        await redirectAfterAuth();
         return;
       }
       setSignUpAwaitingEmail(true);

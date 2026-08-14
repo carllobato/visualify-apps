@@ -18,6 +18,7 @@ import {
 } from "@visualify/app-shell";
 import {
   DASHBOARD_PATH,
+  HOME_PATH,
   projectIdFromAppPathname,
   riskaiPath,
   stripLegacyRiskAiPrefix,
@@ -303,6 +304,8 @@ type RiskAiAppShellRailProps = {
   workspaces: readonly EntitledWorkspace[];
   selectedWorkspaceId: string | null;
   appCatalog: readonly AppShellRailAppCatalogEntry[];
+  /** Hide dashboard/portfolio/project nav until a workspace is selected. */
+  hidePrimaryNav?: boolean;
 };
 
 /**
@@ -313,6 +316,7 @@ export function RiskAiAppShellRail({
   workspaces,
   selectedWorkspaceId,
   appCatalog,
+  hidePrimaryNav = false,
 }: RiskAiAppShellRailProps) {
   const pathname = usePathname();
   const portfolioId = useResolvedPortfolioId(pathname);
@@ -342,27 +346,30 @@ export function RiskAiAppShellRail({
   const accountRailActive = isAccountSettingsRouteActive(pathname);
 
   return (
-    <AppShellRail ariaLabel="ControlsAI navigation" pinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}>
+    <AppShellRail ariaLabel="RiskAI navigation" pinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}>
       <AppShellRailBody>
         <AppShellRailHeader>
           <AppShellRailBrandAppMenu
-            appShortName="ControlsAI"
+            appShortName="RiskAI"
             currentAppId="riskai"
             catalog={appCatalog}
             brandIcon={<AppShellRailBrandMark alt="" />}
+            homeHref={workspaces.length > 1 ? HOME_PATH : DASHBOARD_PATH}
           />
 
-          <AppShellRailSeparator />
+          {hidePrimaryNav ? null : (
+            <>
+              <AppShellRailSeparator />
 
-          <AppShellRailNavScroll>
-            <RiskAiWorkspaceRailList
-              workspaces={workspaces}
-              selectedWorkspaceId={selectedWorkspaceId}
-            />
+              <AppShellRailNavScroll>
+                <RiskAiWorkspaceRailList
+                  workspaces={workspaces}
+                  selectedWorkspaceId={selectedWorkspaceId}
+                />
 
-            <AppShellRailSeparator />
+                <AppShellRailSeparator />
 
-            <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
+                <nav className={appShellRailPrimaryNavClassName} aria-label="Primary">
             <AppShellRailNavLink href={DASHBOARD_PATH} active={activeNav === "dashboard"} label="Dashboard">
               <IconDashboard />
             </AppShellRailNavLink>
@@ -443,8 +450,10 @@ export function RiskAiAppShellRail({
                 ) : null}
               </AppShellRailNavSection>
             ) : null}
-          </nav>
-          </AppShellRailNavScroll>
+                </nav>
+              </AppShellRailNavScroll>
+            </>
+          )}
         </AppShellRailHeader>
 
         <AppShellRailFooter pinCollapse>

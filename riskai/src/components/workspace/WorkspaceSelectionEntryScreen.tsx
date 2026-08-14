@@ -1,27 +1,40 @@
 "use client";
 
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { AppLoginFramedShell, AppShellRailFooterAccount } from "@visualify/app-shell";
-import { RiskAiRailAccountMenu } from "@/components/layout/RiskAiRailAccountMenu";
+import {
+  clearAppShellRouteTransitionState,
+  navigateAfterAppShellRouteTransition,
+} from "@visualify/app-shell";
 import { setRiskAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { DASHBOARD_PATH, HOME_PATH, isWorkspaceSelectionPath, normalizeAppPath } from "@/lib/routes";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
-
-/** Same key as `RiskAiAppShellRail` so pin state survives workspace selection. */
-const RISKAI_APP_SHELL_RAIL_PINNED_KEY = "riskai-app-shell-rail-pinned";
 
 const workspaceButtonClass =
   "w-full cursor-pointer rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-3 text-left text-sm font-semibold text-[var(--ds-text-primary)] transition-[background-color,border-color] duration-200 ease-out hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)] disabled:cursor-not-allowed disabled:opacity-50";
 
+function returnPathAfterSelection(next: string | null): string {
+  const raw = normalizeAppPath(next, DASHBOARD_PATH);
+  if (isWorkspaceSelectionPath(raw) || raw === HOME_PATH) {
+    return DASHBOARD_PATH;
+  }
+  return raw;
+}
+
 /**
- * Post-auth entry gate when the user has 2+ entitled workspaces and no valid
- * `visualify_active_workspace_id`. Selection uses {@link setRiskAiActiveWorkspaceIdAction}.
+ * Workspace selector shown on `/home`. Selection uses
+ * {@link setRiskAiActiveWorkspaceIdAction} and client-side navigation (no full reload).
  */
 export function WorkspaceSelectionEntryScreen({
   workspaces,
+  selectedWorkspaceId = null,
 }: {
   workspaces: readonly EntitledWorkspace[];
+  selectedWorkspaceId?: string | null;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,35 +49,34 @@ export function WorkspaceSelectionEntryScreen({
         setBusyId(null);
         return;
       }
-      window.location.assign(DASHBOARD_PATH);
+      const destination = returnPathAfterSelection(searchParams.get("next"));
+      if (pathname === destination || pathname === `${destination}/`) {
+        router.refresh();
+        return;
+      }
+      await navigateAfterAppShellRouteTransition(router, destination, { replace: true });
     } catch {
+      clearAppShellRouteTransitionState();
       setError("Could not select that workspace. Please try again.");
       setBusyId(null);
     }
   }
 
   return (
-    <AppLoginFramedShell
-      brandHref="/"
-      brandTitle="Visualify RiskAI"
-      brandAriaLabel="Visualify RiskAI"
-      railPinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}
-      railFooter={
-        <AppShellRailFooterAccount>
-          <RiskAiRailAccountMenu />
-        </AppShellRailFooterAccount>
-      }
-    >
-      <div className="w-full space-y-4 text-center">
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-4 py-8">
+      <div className="flex flex-col gap-1 text-center">
         <h1 className="text-xl font-semibold tracking-tight text-[var(--ds-text-primary)]">
           Select a workspace
         </h1>
         <p className="text-sm leading-relaxed text-[var(--ds-text-secondary)]">
-          Choose which workspace to open in RiskAI.
+          Choose which workspace to open in RiskAI. You can change this anytime from the left rail.
         </p>
+      </div>
 
-        <ul className="m-0 flex list-none flex-col gap-2 p-0 text-left" aria-label="Workspaces">
-          {workspaces.map((workspace) => (
+      <ul className="m-0 flex list-none flex-col gap-2 p-0 text-left" aria-label="Workspaces">
+        {workspaces.map((workspace) => {
+          const isSelected = workspace.id === selectedWorkspaceId;
+          return (
             <li key={workspace.id}>
               <button
                 type="button"
@@ -73,18 +85,25 @@ export function WorkspaceSelectionEntryScreen({
                 aria-busy={busyId === workspace.id}
                 onClick={() => void selectWorkspace(workspace.id)}
               >
-                {busyId === workspace.id ? "Opening…" : workspace.name}
+                <span className="flex items-center justify-between gap-3">
+                  <span>{busyId === workspace.id ? "Opening…" : workspace.name}</span>
+                  {isSelected && busyId !== workspace.id ? (
+                    <span className="shrink-0 text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
+                      Last used
+                    </span>
+                  ) : null}
+                </span>
               </button>
             </li>
-          ))}
-        </ul>
+          );
+        })}
+      </ul>
 
-        {error ? (
-          <p className="m-0 text-sm text-[var(--ds-status-danger-fg)]" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    </AppLoginFramedShell>
+      {error ? (
+        <p className="m-0 text-sm text-[var(--ds-status-danger-fg)]" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

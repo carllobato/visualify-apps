@@ -2,8 +2,10 @@
 
 import "./app-shell-app-menu.css";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { useAppShellRailMobileNav } from "./app-shell-rail-mobile-context";
 import { appShellRailMobileOpenFlexRevealClassName, appShellRailMobileOpenRowGapClassName } from "./rail-mobile-classes";
 import { appShellRailIconWellClassName, railBrandTitleClass } from "./rail-row-classes";
 
@@ -23,6 +25,11 @@ export type AppShellRailBrandAppMenuProps = {
   /** Brand mark in the collapsed rail slot (40×40). */
   brandIcon: ReactNode;
   brandLabel?: string;
+  /**
+   * When set, the brand mark navigates here (workspace selector / app home)
+   * and the app name is a static label — no app-switcher dropdown.
+   */
+  homeHref?: string;
 };
 
 function AppMenuCurrentPill() {
@@ -59,9 +66,13 @@ function IconChevronDownSubtle() {
   );
 }
 
+const BRAND_FOCUS_CLASS =
+  " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]";
+
 /**
  * Brand row with Visualify app switcher dropdown.
  * Collapsed rail: icon-only trigger; expanded/hover: {appShortName} + chevron.
+ * With {@link AppShellRailBrandAppMenuProps.homeHref}, the mark goes home and the name is static.
  */
 export function AppShellRailBrandAppMenu({
   appShortName,
@@ -69,7 +80,9 @@ export function AppShellRailBrandAppMenu({
   catalog,
   brandIcon,
   brandLabel = "Choose Visualify app",
+  homeHref,
 }: AppShellRailBrandAppMenuProps) {
+  const { closeMobile } = useAppShellRailMobileNav();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -113,43 +126,71 @@ export function AppShellRailBrandAppMenu({
       }
       onMouseLeave={scheduleClose}
     >
-      <button
-        type="button"
-        className={
-          "vf-app-shell-rail-expand-row relative flex h-10 min-h-0 min-w-0 flex-1 items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
-          "transition-[color,gap] duration-[400ms] ease-out " +
-          "group-data-[pinned=true]:gap-2 " +
-          appShellRailMobileOpenRowGapClassName +
-          " focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color-mix(in_oklab,var(--ds-text-primary)_22%,transparent)]"
-        }
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-        aria-label={brandLabel}
-        title="Apps"
-        onClick={() => setMenuOpen((o) => !o)}
-      >
-        <span className={appShellRailIconWellClassName}>{brandIcon}</span>
-        <span
-          className={
-            `hidden vf-app-shell-rail-expand-flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
-            "group-data-[pinned=true]:flex " + appShellRailMobileOpenFlexRevealClassName
-          }
-        >
-          <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">
-            {appShortName}
-          </span>
+      {homeHref ? (
+        <>
+          <Link
+            href={homeHref}
+            className={
+              "flex size-10 shrink-0 items-center justify-center rounded-[var(--ds-radius-md)] no-underline" +
+              BRAND_FOCUS_CLASS
+            }
+            aria-label="Select workspace"
+            title="Select workspace"
+            onClick={() => closeMobile()}
+          >
+            <span className={appShellRailIconWellClassName}>{brandIcon}</span>
+          </Link>
           <span
             className={
-              "flex shrink-0 items-center text-[color-mix(in_oklab,var(--ds-text-secondary)_58%,transparent)] " +
-              "opacity-[0.85] transition-[opacity,color] duration-150 ease-out"
+              `hidden vf-app-shell-rail-expand-flex min-w-0 flex-1 items-center overflow-hidden text-left ${railBrandTitleClass} ` +
+              "group-data-[pinned=true]:flex " +
+              appShellRailMobileOpenFlexRevealClassName
             }
           >
-            <IconChevronDownSubtle />
+            <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">
+              {appShortName}
+            </span>
           </span>
-        </span>
-      </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          className={
+            "vf-app-shell-rail-expand-row relative flex h-10 min-h-0 min-w-0 flex-1 items-center gap-0 rounded-[var(--ds-radius-md)] border-0 bg-transparent p-0 text-left " +
+            "transition-[color,gap] duration-[400ms] ease-out " +
+            "group-data-[pinned=true]:gap-2 " +
+            appShellRailMobileOpenRowGapClassName +
+            BRAND_FOCUS_CLASS
+          }
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-label={brandLabel}
+          title="Apps"
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          <span className={appShellRailIconWellClassName}>{brandIcon}</span>
+          <span
+            className={
+              `hidden vf-app-shell-rail-expand-flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden text-left ${railBrandTitleClass} ` +
+              "group-data-[pinned=true]:flex " + appShellRailMobileOpenFlexRevealClassName
+            }
+          >
+            <span className="min-w-0 flex-1 truncate whitespace-nowrap text-[var(--ds-text-primary)]">
+              {appShortName}
+            </span>
+            <span
+              className={
+                "flex shrink-0 items-center text-[color-mix(in_oklab,var(--ds-text-secondary)_58%,transparent)] " +
+                "opacity-[0.85] transition-[opacity,color] duration-150 ease-out"
+              }
+            >
+              <IconChevronDownSubtle />
+            </span>
+          </span>
+        </button>
+      )}
 
-      {menuOpen ? (
+      {!homeHref && menuOpen ? (
         <div
           role="menu"
           className="absolute inset-x-0 top-full z-[100] mt-[var(--ds-space-1)] w-full min-w-0 ds-app-menu-dropdown"

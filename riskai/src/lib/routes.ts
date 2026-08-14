@@ -1,6 +1,8 @@
 /** Authenticated RiskAI UI (served under app host, e.g. app.visualify.com.au). */
 export const RISKAI_BASE = "";
 export const DASHBOARD_PATH = "/dashboard";
+/** Signed-in workspace selector (2+ workspaces). Brand mark returns here. */
+export const HOME_PATH = "/home";
 /** Signed-in users without RiskAI product entitlement (outside `(protected)`). */
 export const NO_ACCESS_PATH = "/no-access";
 
@@ -8,6 +10,7 @@ export const NO_ACCESS_PATH = "/no-access";
 export const LEGACY_RISKAI_PREFIX = "/riskai";
 
 const AUTHENTICATED_APP_ROOTS = [
+  "/home",
   "/dashboard",
   "/portfolios",
   "/projects",
@@ -69,6 +72,13 @@ export function portfolioIdFromAppPathname(pathname: string | null): string | nu
 
 export function hasLegacyRiskAiPrefix(pathname: string): boolean {
   return pathname === LEGACY_RISKAI_PREFIX || pathname.startsWith(`${LEGACY_RISKAI_PREFIX}/`);
+}
+
+/** True for the workspace selector (`/home` or `/home/…`, including legacy `/riskai/home`). */
+export function isWorkspaceSelectionPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const flat = stripLegacyRiskAiPrefix(pathname);
+  return flat === HOME_PATH || flat.startsWith(`${HOME_PATH}/`);
 }
 
 /** True for account settings (`/account` or `/account/…`, including legacy `/riskai/account`). */

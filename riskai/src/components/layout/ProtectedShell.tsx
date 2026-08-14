@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import Link from "next/link";
 import {
   AppShellFrameGutter,
   AppShellFramedSurface,
   AppShellMainColumn,
   AppShellMobileHeader,
   AppShellOuterCanvas,
+  AppShellPageTransition,
+  AppShellPostLoginRevealEffect,
   AppShellRailBrandMark,
+  AppShellRouteTransitionEffect,
   AppShellScrollRegion,
   type AppShellRailAppCatalogEntry,
 } from "@visualify/app-shell";
 import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
 import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
+import { DASHBOARD_PATH, HOME_PATH } from "@/lib/routes";
 import { RiskAiAppShellRail } from "@/components/layout/RiskAiAppShellRail";
 import { TopNav } from "./TopNav";
 import { PageTransition } from "./PageTransition";
@@ -26,6 +31,8 @@ type ProtectedShellProps = {
   appCatalog: readonly AppShellRailAppCatalogEntry[];
   workspaces?: readonly EntitledWorkspace[];
   selectedWorkspaceId?: string | null;
+  /** Hide dashboard/portfolio/project nav until a workspace is selected. */
+  hidePrimaryNav?: boolean;
 };
 
 export function ProtectedShell({
@@ -34,6 +41,7 @@ export function ProtectedShell({
   appCatalog,
   workspaces = [],
   selectedWorkspaceId = null,
+  hidePrimaryNav = false,
 }: ProtectedShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -42,21 +50,38 @@ export function ProtectedShell({
       <>
         <OnboardingHost />
         <AppShellOuterCanvas mobileHeaderExpected>
+          <AppShellPostLoginRevealEffect />
           <RiskAiAppShellRail
             workspaces={workspaces}
             selectedWorkspaceId={selectedWorkspaceId}
             appCatalog={appCatalog}
+            hidePrimaryNav={hidePrimaryNav}
           />
           <AppShellMainColumn>
+            <AppShellRouteTransitionEffect />
             <AppShellMobileHeader
-              appName="Risk AI"
-              pageTitle="Dashboard"
-              appIcon={<AppShellRailBrandMark alt="" />}
+              appName="RiskAI"
+              pageTitle={hidePrimaryNav ? undefined : "Dashboard"}
+              appIdentity={
+                <Link
+                  href={workspaces.length > 1 ? HOME_PATH : DASHBOARD_PATH}
+                  className="vf-app-shell-mobile-header__identity"
+                >
+                  <span className="vf-app-shell-mobile-header__icon" aria-hidden>
+                    <AppShellRailBrandMark alt="" />
+                  </span>
+                  <div className="vf-app-shell-mobile-header__titles">
+                    <span className="vf-app-shell-mobile-header__app-name">RiskAI</span>
+                  </div>
+                </Link>
+              }
             />
             <AppShellFrameGutter>
               <AppShellFramedSurface>
                 <AppShellScrollRegion>
-                  <PageTransition>{children}</PageTransition>
+                  <AppShellPageTransition>
+                    <Suspense fallback={null}>{children}</Suspense>
+                  </AppShellPageTransition>
                 </AppShellScrollRegion>
               </AppShellFramedSurface>
             </AppShellFrameGutter>

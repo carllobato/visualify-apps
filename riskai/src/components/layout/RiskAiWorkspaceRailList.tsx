@@ -8,6 +8,8 @@ import {
   appShellRailIconWellClassName,
   appShellRailNavActionButtonProps,
   appShellRailNavRowClass,
+  clearAppShellRouteTransitionState,
+  navigateAfterAppShellRouteTransition,
   railBrandTitleClass,
 } from "@visualify/app-shell";
 import { setRiskAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
@@ -142,8 +144,16 @@ export function RiskAiWorkspaceRailList({
     setBusyId(null);
     setMenuOpen(false);
     if (result.ok) {
-      router.push(DASHBOARD_PATH);
-      router.refresh();
+      const onDashboard = pathname === DASHBOARD_PATH || pathname === `${DASHBOARD_PATH}/`;
+      if (onDashboard) {
+        router.refresh();
+        return;
+      }
+      try {
+        await navigateAfterAppShellRouteTransition(router, DASHBOARD_PATH);
+      } catch {
+        clearAppShellRouteTransitionState();
+      }
     }
   }
 
