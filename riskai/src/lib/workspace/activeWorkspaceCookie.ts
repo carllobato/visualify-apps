@@ -43,12 +43,22 @@ export async function writeVisualifyActiveWorkspaceIdCookie(workspaceId: string)
   store.set(VISUALIFY_ACTIVE_WORKSPACE_COOKIE, id, activeWorkspaceCookieOptions());
 }
 
+/**
+ * Removes the active workspace cookie regardless of value.
+ * Uses the same path/domain options as write so domain-scoped cookies clear reliably.
+ */
+export async function clearVisualifyActiveWorkspaceIdCookie(): Promise<void> {
+  const store = await cookies();
+  const opts = activeWorkspaceCookieOptions();
+  store.set(VISUALIFY_ACTIVE_WORKSPACE_COOKIE, "", { ...opts, maxAge: 0 });
+}
+
 export async function clearVisualifyActiveWorkspaceIdCookieIfMatches(workspaceId: string): Promise<void> {
   const id = workspaceId.trim();
   if (!id) return;
   const store = await cookies();
   const current = store.get(VISUALIFY_ACTIVE_WORKSPACE_COOKIE)?.value?.trim();
   if (current === id) {
-    store.delete(VISUALIFY_ACTIVE_WORKSPACE_COOKIE);
+    await clearVisualifyActiveWorkspaceIdCookie();
   }
 }

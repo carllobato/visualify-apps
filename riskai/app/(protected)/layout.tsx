@@ -14,6 +14,7 @@ import {
   SIDE_NAV_PINNED_COOKIE_NAME,
 } from "@/lib/sideNavPinnedCookie";
 import { resolveActiveRiskAiWorkspaceContext } from "@/lib/workspace/resolveActiveRiskAiWorkspaceContext";
+import { WorkspaceSelectionEntryScreen } from "@/components/workspace/WorkspaceSelectionEntryScreen";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
 
 export default async function ProtectedLayout({
@@ -41,12 +42,20 @@ export default async function ProtectedLayout({
       redirect(NO_ACCESS_PATH);
     }
 
-    const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
-    appCatalog = buildEntitledAppShellCatalogForUser(workspaceEntitledProductKeys, user.email);
-
     const workspaceContext = await resolveActiveRiskAiWorkspaceContext(user.id);
     workspaces = workspaceContext.workspaces;
     selectedWorkspaceId = workspaceContext.selectedWorkspaceId;
+
+    /**
+     * 2+ entitled workspaces with no valid active cookie: block App Shell / protected
+     * pages until the user selects via the validated server action.
+     */
+    if (workspaceContext.needsSelection) {
+      return <WorkspaceSelectionEntryScreen workspaces={workspaces} />;
+    }
+
+    const workspaceEntitledProductKeys = await fetchWorkspaceEntitledProductKeysForUser(supabase, user.id);
+    appCatalog = buildEntitledAppShellCatalogForUser(workspaceEntitledProductKeys, user.email);
   }
 
   const cookieStore = await cookies();
