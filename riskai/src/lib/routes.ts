@@ -71,6 +71,13 @@ export function hasLegacyRiskAiPrefix(pathname: string): boolean {
   return pathname === LEGACY_RISKAI_PREFIX || pathname.startsWith(`${LEGACY_RISKAI_PREFIX}/`);
 }
 
+/** True for account settings (`/account` or `/account/…`, including legacy `/riskai/account`). */
+export function isAccountSettingsPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const flat = stripLegacyRiskAiPrefix(pathname);
+  return flat === "/account" || flat.startsWith("/account/");
+}
+
 /** True for authenticated app surfaces (flat or legacy-prefixed). */
 export function isAuthenticatedAppPath(pathname: string | null): boolean {
   if (!pathname) return false;

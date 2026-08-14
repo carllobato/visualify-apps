@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { AppLoginFramedShell } from "@visualify/app-shell";
+import { AppLoginFramedShell, AppShellRailFooterAccount } from "@visualify/app-shell";
+import { RiskAiRailAccountMenu } from "@/components/layout/RiskAiRailAccountMenu";
 import { setRiskAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
 import { DASHBOARD_PATH } from "@/lib/routes";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
+
+/** Same key as `RiskAiAppShellRail` so pin state survives workspace selection. */
+const RISKAI_APP_SHELL_RAIL_PINNED_KEY = "riskai-app-shell-rail-pinned";
 
 const workspaceButtonClass =
   "w-full cursor-pointer rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-3 text-left text-sm font-semibold text-[var(--ds-text-primary)] transition-[background-color,border-color] duration-200 ease-out hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)] disabled:cursor-not-allowed disabled:opacity-50";
@@ -40,7 +44,17 @@ export function WorkspaceSelectionEntryScreen({
   }
 
   return (
-    <AppLoginFramedShell brandHref="/" brandTitle="Visualify RiskAI" brandAriaLabel="Visualify RiskAI">
+    <AppLoginFramedShell
+      brandHref="/"
+      brandTitle="Visualify RiskAI"
+      brandAriaLabel="Visualify RiskAI"
+      railPinnedStorageKey={RISKAI_APP_SHELL_RAIL_PINNED_KEY}
+      railFooter={
+        <AppShellRailFooterAccount>
+          <RiskAiRailAccountMenu />
+        </AppShellRailFooterAccount>
+      }
+    >
       <div className="w-full space-y-4 text-center">
         <h1 className="text-xl font-semibold tracking-tight text-[var(--ds-text-primary)]">
           Select a workspace

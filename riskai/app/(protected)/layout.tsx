@@ -8,7 +8,7 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 import { ProtectedShell } from "@/components/layout/ProtectedShell";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { productConfig } from "@/lib/product-config";
-import { NO_ACCESS_PATH } from "@/lib/routes";
+import { isAccountSettingsPath, NO_ACCESS_PATH } from "@/lib/routes";
 import {
   parseSideNavPinnedCookie,
   SIDE_NAV_PINNED_COOKIE_NAME,
@@ -49,8 +49,9 @@ export default async function ProtectedLayout({
     /**
      * 2+ entitled workspaces with no valid active cookie: block App Shell / protected
      * pages until the user selects via the validated server action.
+     * Account settings stay reachable from the selection rail.
      */
-    if (workspaceContext.needsSelection) {
+    if (workspaceContext.needsSelection && !isAccountSettingsPath(pathname)) {
       return <WorkspaceSelectionEntryScreen workspaces={workspaces} />;
     }
 

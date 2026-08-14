@@ -19,9 +19,23 @@
 
 .vf-app-login-rail-stack {
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   flex-direction: column;
   gap: 0.625rem;
   padding: 1.25rem 14px 0;
+}
+
+/* Matches signed-in `.vf-app-shell-rail-footer` inset so account sits on the framed edge. */
+.vf-app-login-rail-footer {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 1rem 14px var(--vf-app-shell-frame-edge-inset);
+  overflow: visible;
 }
 
 .vf-app-login-rail-brand-link {
@@ -331,10 +345,12 @@ html.vf-app-login-post-auth-enter-complete
   }
 
   /*
-   * Login has no mobile hamburger — skip the 3.25rem clearance reserved for
-   * `.vf-app-shell-mobile-nav-trigger` in `app-shell-frame.css`.
+   * Signed-out login has no mobile hamburger — skip the 3.25rem clearance reserved
+   * for `.vf-app-shell-mobile-nav-trigger` in `app-shell-frame.css`.
+   * Post-auth framed gates (`.vf-app-login-framed-shell--signed-in-rail`) keep the
+   * hamburger, so they inherit the default scroll-region top padding.
    */
-  .vf-app-login-framed-shell .vf-app-shell-scroll-region {
+  .vf-app-login-framed-shell:not(.vf-app-login-framed-shell--signed-in-rail) .vf-app-shell-scroll-region {
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   }
 

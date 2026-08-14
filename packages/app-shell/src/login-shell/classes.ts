@@ -48,12 +48,18 @@ export const appLoginCopyrightClassName = "vf-app-login-copyright";
 /** Root canvas modifier — scopes mobile login layout overrides in `app-login-shell.css`. */
 export const appLoginFramedShellClassName = "vf-app-login-framed-shell";
 
+/** Post-auth framed gate using the collapsible signed-in rail (pin, Help, account). */
+export const appLoginFramedShellSignedInRailClassName = "vf-app-login-framed-shell--signed-in-rail";
+
 /** Collapsed brand rail on signed-out framed login (matches HQ public shell). */
 export const appLoginFramedRailAsideClassName = "vf-app-login-rail-aside";
 
 export const appLoginFramedRailBrandLinkClassName = "vf-app-login-rail-brand-link";
 
 export const appLoginFramedRailStackClassName = "vf-app-login-rail-stack";
+
+/** Bottom of the collapsed login rail (account menu on post-auth gates). */
+export const appLoginFramedRailFooterClassName = "vf-app-login-rail-footer";
 
 export {
   APP_LOGIN_DEFAULT_BRAND_MARK_SRC,
