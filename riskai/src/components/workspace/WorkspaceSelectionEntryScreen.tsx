@@ -6,12 +6,10 @@ import {
   clearAppShellRouteTransitionState,
   navigateAfterAppShellRouteTransition,
 } from "@visualify/app-shell";
+import { Button } from "@visualify/design-system";
 import { setRiskAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
 import { DASHBOARD_PATH, HOME_PATH, isWorkspaceSelectionPath, normalizeAppPath } from "@/lib/routes";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
-
-const workspaceButtonClass =
-  "w-full cursor-pointer rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-3 text-left text-sm font-semibold text-[var(--ds-text-primary)] transition-[background-color,border-color] duration-200 ease-out hover:border-[var(--ds-border)] hover:bg-[var(--ds-surface-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ds-border)] disabled:cursor-not-allowed disabled:opacity-50";
 
 function returnPathAfterSelection(next: string | null): string {
   const raw = normalizeAppPath(next, DASHBOARD_PATH);
@@ -78,22 +76,23 @@ export function WorkspaceSelectionEntryScreen({
           const isSelected = workspace.id === selectedWorkspaceId;
           return (
             <li key={workspace.id}>
-              <button
+              <Button
                 type="button"
-                className={workspaceButtonClass}
+                variant="secondary"
+                className="h-auto w-full justify-between gap-3 px-4 py-3 text-left"
                 disabled={busyId !== null}
                 aria-busy={busyId === workspace.id}
                 onClick={() => void selectWorkspace(workspace.id)}
               >
-                <span className="flex items-center justify-between gap-3">
-                  <span>{busyId === workspace.id ? "Opening…" : workspace.name}</span>
-                  {isSelected && busyId !== workspace.id ? (
-                    <span className="shrink-0 text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
-                      Last used
-                    </span>
-                  ) : null}
+                <span className="min-w-0 truncate">
+                  {busyId === workspace.id ? "Opening…" : workspace.name}
                 </span>
-              </button>
+                {isSelected && busyId !== workspace.id ? (
+                  <span className="shrink-0 text-[length:var(--ds-text-xs)] font-medium text-[var(--ds-text-secondary)]">
+                    Last used
+                  </span>
+                ) : null}
+              </Button>
             </li>
           );
         })}
