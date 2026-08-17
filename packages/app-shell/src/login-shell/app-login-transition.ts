@@ -114,7 +114,7 @@ type LoginNavigationRouter = {
 /** Prefetch is unused after hard navigation; kept so existing imports compile. */
 export async function warmPostLoginRoute(_href: string, router: LoginNavigationRouter): Promise<void> {
   try {
-    router.prefetch?.(href);
+    router.prefetch?.(_href);
   } catch {
     /* prefetch is best-effort */
   }
