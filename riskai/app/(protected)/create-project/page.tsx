@@ -4,6 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import {
+  createProjectRequestFromForm,
+  projectCreateSelectorVisibility,
+  resolveProjectCreateFormParent,
+} from "@/lib/project/resolveWorkspaceProjectCreateParent";
 import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 
@@ -26,6 +31,7 @@ function CreateProjectForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paramPortfolioId = searchParams.get("portfolioId");
+  const paramWorkspaceId = searchParams.get("workspaceId");
 
   const [name, setName] = useState("");
   const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
@@ -68,24 +74,18 @@ function CreateProjectForm() {
         setPortfolios(list);
         setWorkspaces(wsList);
 
-        const fromQuery =
+        const fromQueryPortfolio =
           paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
-        const scoped = fromQuery ? list.find((p) => p.id === fromQuery) : undefined;
-
-        if (scoped) {
-          setSelectedPortfolioId(scoped.id);
-          const scopedWs =
-            typeof scoped.workspace_id === "string" && scoped.workspace_id.trim()
-              ? scoped.workspace_id.trim()
-              : "";
-          setSelectedWorkspaceId(scopedWs);
-        } else if (wsList.length === 1) {
-          setSelectedWorkspaceId(wsList[0]!.id);
-          setSelectedPortfolioId("");
-        } else {
-          setSelectedWorkspaceId("");
-          setSelectedPortfolioId("");
-        }
+        const fromQueryWorkspace =
+          paramWorkspaceId && UUID_REGEX.test(paramWorkspaceId) ? paramWorkspaceId : null;
+        const parent = resolveProjectCreateFormParent({
+          preferredWorkspaceId: fromQueryWorkspace,
+          preferredPortfolioId: fromQueryPortfolio,
+          workspaces: wsList,
+          portfolios: list,
+        });
+        setSelectedWorkspaceId(parent.selectedWorkspaceId);
+        setSelectedPortfolioId(parent.selectedPortfolioId);
       } catch {
         if (!cancelled) setLoadError("Could not load workspaces or portfolios.");
       }
@@ -93,38 +93,56 @@ function CreateProjectForm() {
     return () => {
       cancelled = true;
     };
-  }, [paramPortfolioId]);
+  }, [paramPortfolioId, paramWorkspaceId]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
 
-    const fromQuery =
+    const fromQueryPortfolio =
       paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
-    const hasValidScoped =
-      Boolean(fromQuery) && (portfolios ?? []).some((p) => p.id === fromQuery);
+    const fromQueryWorkspace =
+      paramWorkspaceId && UUID_REGEX.test(paramWorkspaceId) ? paramWorkspaceId : null;
+    const formParent = resolveProjectCreateFormParent({
+      preferredWorkspaceId: fromQueryWorkspace,
+      preferredPortfolioId: fromQueryPortfolio,
+      workspaces: workspaces ?? [],
+      portfolios: portfolios ?? [],
+    });
+    if (formParent.preferredWorkspaceDenied) {
+      setMessage({
+        type: "error",
+        text: "You do not have permission to create a project in this workspace.",
+      });
+      return;
+    }
 
     const workspaceId =
       selectedWorkspaceId.trim() ||
-      (!hasValidScoped && workspaces?.length === 1 ? workspaces[0]!.id : "");
-    if (!hasValidScoped && !workspaceId) {
+      formParent.selectedWorkspaceId ||
+      (!formParent.portfolioBound && workspaces?.length === 1 ? workspaces[0]!.id : "");
+    if (!formParent.portfolioBound && !workspaceId) {
       setMessage({ type: "error", text: "Select a workspace." });
       return;
     }
 
-    const portfolioId = selectedPortfolioId.trim();
+    const portfolioId = formParent.portfolioBound
+      ? formParent.selectedPortfolioId
+      : selectedPortfolioId.trim();
     setLoading(true);
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({
-        name,
-        ...(hasValidScoped || portfolioId
-          ? { portfolioId: hasValidScoped ? fromQuery : portfolioId }
-          : {}),
-        ...(!hasValidScoped && workspaceId ? { workspaceId } : {}),
-      }),
+      body: JSON.stringify(
+        createProjectRequestFromForm({
+          name,
+          resolvedWorkspaceId: workspaceId,
+          resolvedPortfolioId: portfolioId,
+          launchedWithWorkspaceId: Boolean(fromQueryWorkspace),
+          portfolioBound: formParent.portfolioBound,
+        }),
+      ),
     });
     const json = (await res.json().catch(() => ({}))) as {
       project?: { id: string };
@@ -182,11 +200,18 @@ function CreateProjectForm() {
     );
   }
 
-  const fromQuery =
+  const fromQueryPortfolio =
     paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
-  const hasValidScoped = Boolean(fromQuery && portfolios.some((p) => p.id === fromQuery));
+  const fromQueryWorkspace =
+    paramWorkspaceId && UUID_REGEX.test(paramWorkspaceId) ? paramWorkspaceId : null;
+  const formParent = resolveProjectCreateFormParent({
+    preferredWorkspaceId: fromQueryWorkspace,
+    preferredPortfolioId: fromQueryPortfolio,
+    workspaces,
+    portfolios,
+  });
 
-  if (!hasValidScoped && workspaces.length === 0) {
+  if (!formParent.portfolioBound && (workspaces.length === 0 || formParent.preferredWorkspaceDenied)) {
     return (
       <div className="w-full px-4 py-10 sm:px-6">
         <main className="mx-auto max-w-md">
@@ -210,9 +235,11 @@ function CreateProjectForm() {
     );
   }
 
-  const resolvedWorkspaceId = hasValidScoped
-    ? selectedWorkspaceId
-    : selectedWorkspaceId.trim() || (workspaces.length === 1 ? workspaces[0]!.id : "");
+  const resolvedWorkspaceId = formParent.portfolioBound
+    ? selectedWorkspaceId || formParent.selectedWorkspaceId
+    : selectedWorkspaceId.trim() ||
+      formParent.selectedWorkspaceId ||
+      (workspaces.length === 1 ? workspaces[0]!.id : "");
 
   const portfoliosInWorkspace = resolvedWorkspaceId
     ? portfolios.filter(
@@ -221,9 +248,22 @@ function CreateProjectForm() {
       )
     : [];
 
-  const showWorkspaceSelector = !hasValidScoped && workspaces.length > 1;
-  const showPortfolioSelector =
-    !hasValidScoped && Boolean(resolvedWorkspaceId) && portfoliosInWorkspace.length > 0;
+  const { showWorkspaceSelector, showPortfolioSelector } = projectCreateSelectorVisibility({
+    portfolioBound: formParent.portfolioBound,
+    workspaceBound: formParent.workspaceBound,
+    preferredWorkspaceDenied: formParent.preferredWorkspaceDenied,
+    workspacesCount: workspaces.length,
+    selectedWorkspaceId: resolvedWorkspaceId,
+    portfoliosInSelectedWorkspaceCount: portfoliosInWorkspace.length,
+  });
+
+  const boundWorkspace = resolvedWorkspaceId
+    ? workspaces.find((w) => w.id === resolvedWorkspaceId)
+    : workspaces.length === 1
+      ? workspaces[0]
+      : undefined;
+  const showBoundWorkspaceLabel =
+    !showWorkspaceSelector && Boolean(boundWorkspace) && !formParent.portfolioBound;
 
   return (
     <div className="w-full px-4 py-10 sm:px-6">
@@ -261,11 +301,11 @@ function CreateProjectForm() {
                 ))}
               </select>
             </div>
-          ) : workspaces.length === 1 && !hasValidScoped ? (
+          ) : showBoundWorkspaceLabel ? (
             <p className="text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
               Workspace:{" "}
               <span className="font-medium text-[var(--ds-text-primary)]">
-                {workspaces[0]?.name || workspaces[0]?.slug || workspaces[0]?.id}
+                {boundWorkspace?.name || boundWorkspace?.slug || boundWorkspace?.id}
               </span>
             </p>
           ) : null}
@@ -305,7 +345,10 @@ function CreateProjectForm() {
           <Button
             type="submit"
             variant="primary"
-            disabled={loading || (!hasValidScoped && !selectedWorkspaceId.trim() && workspaces.length !== 1)}
+            disabled={
+              loading ||
+              (!formParent.portfolioBound && !selectedWorkspaceId.trim() && !formParent.selectedWorkspaceId && workspaces.length !== 1)
+            }
           >
             {loading ? "Creating…" : "Create project"}
           </Button>

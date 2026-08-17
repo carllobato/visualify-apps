@@ -17,7 +17,7 @@ import {
 } from "@visualify/app-shell";
 import { OnboardingHost } from "@/components/onboarding/OnboardingHost";
 import { RISKAI_ENABLE_APP_SHELL } from "@/lib/riskai-app-shell-flag";
-import { DASHBOARD_PATH, HOME_PATH } from "@/lib/routes";
+import { HOME_PATH } from "@/lib/routes";
 import { RiskAiAppShellRail } from "@/components/layout/RiskAiAppShellRail";
 import { TopNav } from "./TopNav";
 import { PageTransition } from "./PageTransition";
@@ -64,7 +64,7 @@ export function ProtectedShell({
               pageTitle={hidePrimaryNav ? undefined : "Dashboard"}
               appIdentity={
                 <Link
-                  href={workspaces.length > 1 ? HOME_PATH : DASHBOARD_PATH}
+                  href={HOME_PATH}
                   className="vf-app-shell-mobile-header__identity"
                 >
                   <span className="vf-app-shell-mobile-header__icon" aria-hidden>

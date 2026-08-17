@@ -15,6 +15,7 @@ import {
   WORKSPACE_INVITE_WORKSPACE_ID_QP,
   WORKSPACE_SETUP_PORTFOLIO_QP,
   type OpenPortfolioOnboardingDetail,
+  type OpenProjectOnboardingDetail,
 } from "@/lib/onboarding/types";
 import { ProjectOnboardingCreateModal } from "./ProjectOnboardingCreateModal";
 import { ProjectOnboardingInviteModal } from "./ProjectOnboardingInviteModal";
@@ -54,6 +55,7 @@ export function OnboardingHost() {
   const [showProjectInviteModal, setShowProjectInviteModal] = useState(false);
   const [projectCreateInitialStep, setProjectCreateInitialStep] = useState<1 | 5>(1);
   const [projectPreferredPortfolioId, setProjectPreferredPortfolioId] = useState<string | null>(null);
+  const [projectPreferredWorkspaceId, setProjectPreferredWorkspaceId] = useState<string | null>(null);
   const [projectWizardId, setProjectWizardId] = useState<string | null>(null);
   const [portfolioWizardId, setPortfolioWizardId] = useState<string | null>(null);
   const [portfolioWizardName, setPortfolioWizardName] = useState("");
@@ -105,13 +107,17 @@ export function OnboardingHost() {
     setShowProjectInviteModal(false);
     setProjectCreateInitialStep(1);
     setProjectPreferredPortfolioId(null);
+    setProjectPreferredWorkspaceId(null);
     setProjectWizardId(null);
   }, []);
 
-  const openProjectOnboardingModal = useCallback((portfolioId?: string) => {
+  const openProjectOnboardingModal = useCallback((detail?: OpenProjectOnboardingDetail) => {
     resetProjectWizard();
     setProjectCreateInitialStep(1);
-    setProjectPreferredPortfolioId(portfolioId?.trim() ? portfolioId.trim() : null);
+    const portfolioId = detail?.portfolioId?.trim() ?? "";
+    const workspaceId = detail?.workspaceId?.trim() ?? "";
+    setProjectPreferredPortfolioId(portfolioId || null);
+    setProjectPreferredWorkspaceId(workspaceId || null);
     setShowProjectCreateModal(true);
   }, [resetProjectWizard]);
 
@@ -161,8 +167,8 @@ export function OnboardingHost() {
 
   useEffect(() => {
     const onOpen = (event: Event) => {
-      const detail = (event as CustomEvent<{ portfolioId?: string }>).detail;
-      openProjectOnboardingModal(detail?.portfolioId);
+      const detail = (event as CustomEvent<OpenProjectOnboardingDetail>).detail;
+      openProjectOnboardingModal(detail);
     };
     window.addEventListener(OPEN_PROJECT_ONBOARDING_EVENT, onOpen as EventListener);
     return () => window.removeEventListener(OPEN_PROJECT_ONBOARDING_EVENT, onOpen as EventListener);
@@ -415,6 +421,7 @@ export function OnboardingHost() {
       ) : null}
       <ProjectOnboardingCreateModal
         open={showProjectCreateModal}
+        workspaceId={projectPreferredWorkspaceId}
         portfolioId={projectPreferredPortfolioId}
         initialStep={projectCreateInitialStep}
         onCreated={onProjectCreateContinue}

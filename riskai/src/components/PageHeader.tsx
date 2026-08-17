@@ -16,32 +16,36 @@ const titleSeparatorClass =
 type PageHeaderProps = {
   projectId: string;
   projectName: string;
-  portfolioId?: string | null;
-  portfolioName?: string | null;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
 };
 
 /**
  * Shell header for project routes. Breadcrumb-style title with `|` separators:
- * `Portfolio | Project | page` when linked to a portfolio, otherwise `Project | page`.
- * Portfolio and project segments are links; child routes register the page segment and optional
- * trailing content via `PageHeaderExtrasProvider`.
+ * `Workspace | Project | page` when an authorised Workspace identity is available,
+ * otherwise `Project | page`. Workspace and project segments are links; child routes
+ * register the page segment and optional trailing content via `PageHeaderExtrasProvider`.
  */
 export function PageHeader({
   projectId,
   projectName,
-  portfolioId,
-  portfolioName,
+  workspaceId,
+  workspaceName,
 }: PageHeaderProps) {
   const { extras } = usePageHeaderExtras();
+  const showWorkspace = Boolean(workspaceId && workspaceName);
 
   return (
     <>
       <header className="flex min-h-[61px] shrink-0 items-center justify-between gap-[var(--ds-space-4)] px-[var(--ds-space-6)]">
         <h1 className="m-0 flex min-w-0 flex-1 items-center gap-[var(--ds-space-1)] text-[length:var(--ds-text-xl)] font-semibold text-[var(--ds-text-primary)]">
-          {portfolioName && portfolioId ? (
+          {showWorkspace ? (
             <>
-              <Link href={riskaiPath(`/portfolios/${portfolioId}`)} className={linkClass + " shrink-0"}>
-                {portfolioName}
+              <Link
+                href={riskaiPath(`/workspaces/${workspaceId}`)}
+                className={linkClass + " shrink-0"}
+              >
+                {workspaceName}
               </Link>
               <span className={titleSeparatorClass} aria-hidden>
                 |

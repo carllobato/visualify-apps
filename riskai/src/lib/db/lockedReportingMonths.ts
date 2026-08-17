@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { collectDistinctReportingMonthYearKeys, isValidReportingMonthYearKey } from "@/lib/reportingMonthSelection";
 import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
@@ -56,31 +57,47 @@ export type DistinctLockedReportingMonthsResult = {
   legacyLockedWithoutReportMonth: boolean;
 };
 
-function distinctLockedReportingMonthsCacheKey(scope: {
+export type DistinctLockedReportingMonthScope = {
   projectId?: string;
   portfolioId?: string;
-}): string | null {
+  /** Explicit project list; used when neither `projectId` nor `portfolioId` is set. */
+  projectIds?: readonly string[];
+};
+
+function emptyDistinctLockedReportingMonths(): DistinctLockedReportingMonthsResult {
+  return { monthYearKeys: [], legacyLockedWithoutReportMonth: false };
+}
+
+function uniqueTrimmedProjectIds(ids: readonly string[]): string[] {
+  return [...new Set(ids.map((id) => id.trim()).filter((id) => id.length > 0))];
+}
+
+function distinctLockedReportingMonthsCacheKey(scope: DistinctLockedReportingMonthScope): string | null {
   const pid = scope.projectId?.trim();
   const pfid = scope.portfolioId?.trim();
   if (pid) return `p:${pid}`;
   if (pfid) return `pf:${pfid}`;
+  if (Array.isArray(scope.projectIds)) {
+    const ids = uniqueTrimmedProjectIds(scope.projectIds);
+    if (ids.length === 0) return null;
+    return `ids:${[...ids].sort().join(",")}`;
+  }
   return null;
 }
 
 const distinctLockedReportingMonthsResultCache = new Map<string, DistinctLockedReportingMonthsResult>();
 const distinctLockedReportingMonthsInflight = new Map<string, Promise<DistinctLockedReportingMonthsResult>>();
 
-async function fetchDistinctLockedReportingMonthKeysUncached(scope: {
-  projectId?: string;
-  portfolioId?: string;
-}): Promise<DistinctLockedReportingMonthsResult> {
+/**
+ * Distinct locked reporting months for a project, portfolio, or explicit project ID list.
+ * `projectId` wins over `portfolioId` over `projectIds` when more than one is set.
+ */
+export async function fetchDistinctLockedReportingMonthKeysFromScope(
+  supabase: SupabaseClient,
+  scope: DistinctLockedReportingMonthScope
+): Promise<DistinctLockedReportingMonthsResult> {
   const pid = scope.projectId?.trim();
   const pfid = scope.portfolioId?.trim();
-  if (!pid && !pfid) {
-    return { monthYearKeys: [], legacyLockedWithoutReportMonth: false };
-  }
-
-  const supabase = supabaseBrowserClient();
 
   let projectIds: string[] = [];
   if (pid) {
@@ -91,9 +108,16 @@ async function fetchDistinctLockedReportingMonthKeysUncached(scope: {
       .select("id")
       .eq("portfolio_id", pfid);
     if (projErr || !projects?.length) {
-      return { monthYearKeys: [], legacyLockedWithoutReportMonth: false };
+      return emptyDistinctLockedReportingMonths();
     }
     projectIds = projects.map((p) => p.id as string);
+  } else if (Array.isArray(scope.projectIds)) {
+    projectIds = uniqueTrimmedProjectIds(scope.projectIds);
+    if (projectIds.length === 0) {
+      return emptyDistinctLockedReportingMonths();
+    }
+  } else {
+    return emptyDistinctLockedReportingMonths();
   }
 
   const { data: rows, error } = await supabase
@@ -103,7 +127,7 @@ async function fetchDistinctLockedReportingMonthKeysUncached(scope: {
     .in("project_id", projectIds);
 
   if (error || !rows?.length) {
-    return { monthYearKeys: [], legacyLockedWithoutReportMonth: false };
+    return emptyDistinctLockedReportingMonths();
   }
 
   const monthYearKeys = collectDistinctReportingMonthYearKeys(rows as { report_month?: string | null }[]);
@@ -113,18 +137,23 @@ async function fetchDistinctLockedReportingMonthKeysUncached(scope: {
   };
 }
 
+async function fetchDistinctLockedReportingMonthKeysUncached(
+  scope: DistinctLockedReportingMonthScope
+): Promise<DistinctLockedReportingMonthsResult> {
+  return fetchDistinctLockedReportingMonthKeysFromScope(supabaseBrowserClient(), scope);
+}
+
 /**
  * Distinct `YYYY-MM` keys from `report_month` on snapshots locked for reporting.
  * Newest months first (lexicographic sort works for ISO year-month).
- * Results are cached per project/portfolio for the session so header UI does not refetch on every route change.
+ * Results are cached per project/portfolio/project-id set for the session so header UI does not refetch on every route change.
  */
-export async function fetchDistinctLockedReportingMonthKeys(scope: {
-  projectId?: string;
-  portfolioId?: string;
-}): Promise<DistinctLockedReportingMonthsResult> {
+export async function fetchDistinctLockedReportingMonthKeys(
+  scope: DistinctLockedReportingMonthScope
+): Promise<DistinctLockedReportingMonthsResult> {
   const key = distinctLockedReportingMonthsCacheKey(scope);
   if (key === null) {
-    return { monthYearKeys: [], legacyLockedWithoutReportMonth: false };
+    return emptyDistinctLockedReportingMonths();
   }
   const cached = distinctLockedReportingMonthsResultCache.get(key);
   if (cached) return cached;

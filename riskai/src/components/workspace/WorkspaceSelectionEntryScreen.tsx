@@ -8,16 +8,8 @@ import {
 } from "@visualify/app-shell";
 import { Button } from "@visualify/design-system";
 import { setRiskAiActiveWorkspaceIdAction } from "@/lib/workspace/setActiveWorkspaceAction";
-import { DASHBOARD_PATH, HOME_PATH, isWorkspaceSelectionPath, normalizeAppPath } from "@/lib/routes";
+import { pathAfterWorkspaceSelection } from "@/lib/routes";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
-
-function returnPathAfterSelection(next: string | null): string {
-  const raw = normalizeAppPath(next, DASHBOARD_PATH);
-  if (isWorkspaceSelectionPath(raw) || raw === HOME_PATH) {
-    return DASHBOARD_PATH;
-  }
-  return raw;
-}
 
 /**
  * Workspace selector shown on `/home`. Selection uses
@@ -47,7 +39,7 @@ export function WorkspaceSelectionEntryScreen({
         setBusyId(null);
         return;
       }
-      const destination = returnPathAfterSelection(searchParams.get("next"));
+      const destination = pathAfterWorkspaceSelection(workspaceId, searchParams.get("next"));
       if (pathname === destination || pathname === `${destination}/`) {
         router.refresh();
         return;

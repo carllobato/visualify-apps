@@ -36,6 +36,11 @@ export type PortfolioReportingMonthSelectProps = {
   projectId?: string;
   /** Distinct months from locked reporting runs across projects in this portfolio */
   portfolioId?: string;
+  /**
+   * Distinct months from locked reporting runs for this explicit project list.
+   * Used when neither `projectId` nor `portfolioId` is set.
+   */
+  projectIds?: readonly string[];
   /** Project overview only: adds an `Unpublished` value to the same `reportingMonth` query param. */
   showUnpublishedOption?: boolean;
   /** Request query string (with `?`); from `headers().get("x-url-search")` for SSR alignment */
@@ -45,6 +50,7 @@ export type PortfolioReportingMonthSelectProps = {
 export function PortfolioReportingMonthSelect({
   projectId,
   portfolioId,
+  projectIds,
   showUnpublishedOption = false,
   initialUrlSearch = "",
 }: PortfolioReportingMonthSelectProps) {
@@ -55,17 +61,25 @@ export function PortfolioReportingMonthSelect({
   const [legacyLockedWithoutReportMonth, setLegacyLockedWithoutReportMonth] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const projectIdsKey = Array.isArray(projectIds)
+    ? [...new Set(projectIds.map((id) => id.trim()).filter((id) => id.length > 0))].sort().join(",")
+    : null;
 
   useEffect(() => {
     const pid = projectId?.trim();
     const pfid = portfolioId?.trim();
-    if (!pid && !pfid) {
+    const explicitProjectIds = projectIdsKey != null ? projectIdsKey.split(",").filter(Boolean) : null;
+    if (!pid && !pfid && (explicitProjectIds == null || explicitProjectIds.length === 0)) {
       setMonthKeys([]);
       setLegacyLockedWithoutReportMonth(false);
       return;
     }
     let cancelled = false;
-    void fetchDistinctLockedReportingMonthKeys({ projectId: pid, portfolioId: pfid }).then((result) => {
+    void fetchDistinctLockedReportingMonthKeys({
+      projectId: pid,
+      portfolioId: pfid,
+      ...(explicitProjectIds != null ? { projectIds: explicitProjectIds } : {}),
+    }).then((result) => {
       if (!cancelled) {
         setMonthKeys(result.monthYearKeys);
         setLegacyLockedWithoutReportMonth(result.legacyLockedWithoutReportMonth);
@@ -74,7 +88,7 @@ export function PortfolioReportingMonthSelect({
     return () => {
       cancelled = true;
     };
-  }, [projectId, portfolioId]);
+  }, [projectId, portfolioId, projectIdsKey]);
 
   const options = useMemo(() => {
     if (monthKeys === null) return [];

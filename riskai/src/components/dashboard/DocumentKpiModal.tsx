@@ -29,6 +29,10 @@ import {
 } from "@/lib/portfolio/reportingPreferences";
 import { riskaiPath } from "@/lib/routes";
 import {
+  workspaceUnreportedProjectsHeading,
+  type WorkspaceUnreportedProject,
+} from "@/lib/dashboard/overviewCustomerCopy";
+import {
   Button,
   Card,
   CardBody,
@@ -52,8 +56,31 @@ export const PORTFOLIO_HEALTH_KPI_TITLE = "Portfolio Health";
 /** Project overview KPI tile + modal — same health-run body as {@link PORTFOLIO_HEALTH_KPI_TITLE}. */
 export const PROJECT_HEALTH_KPI_TITLE = "Project Health";
 
+/** Portfolio overview KPI tile + modal — must match `kpiTiles` in `PortfolioOverviewContent`. */
+export const PORTFOLIO_RISK_RATING_KPI_TITLE = "Portfolio Risk Rating";
+/** Workspace Overview KPI tile + modal — same body as {@link PORTFOLIO_RISK_RATING_KPI_TITLE}. */
+export const WORKSPACE_RISK_RATING_KPI_TITLE = "Workspace Risk Rating";
+
 /** Project overview KPI tile + modal — same reporting-position table as the portfolio “Portfolio Risk Rating” modal. */
 export const PROJECT_RISK_RATING_KPI_TITLE = "Project Risk Rating";
+
+export type OverviewDocumentCopyScope = "portfolio" | "workspace";
+
+function overviewEntityLabel(copyScope: OverviewDocumentCopyScope): string {
+  return copyScope === "workspace" ? "Workspace" : "Portfolio";
+}
+
+function noProjectsYetSentence(copyScope: OverviewDocumentCopyScope): string {
+  return copyScope === "workspace"
+    ? "No projects in this workspace yet."
+    : "No projects in this portfolio yet.";
+}
+
+function noProjectsYetHeading(copyScope: OverviewDocumentCopyScope): string {
+  return copyScope === "workspace"
+    ? "No projects in this workspace yet"
+    : "No projects in this portfolio yet";
+}
 
 export type DocumentKpiTileItem = {
   title: string;
@@ -77,6 +104,19 @@ type DocumentKpiModalProps = {
   onClose: () => void;
   /** When set with `projectTilePayloads`, the Projects KPI shows the same list as `/portfolios/:id/projects`. */
   portfolioId?: string;
+  /** Workspace parent for Create project on Workspace Overview (does not require unique portfolioId). */
+  workspaceId?: string;
+  /**
+   * Customer-facing copy in overview KPI tables. Defaults to Portfolio so
+   * `/portfolios/[id]` and Project Report stay unchanged.
+   */
+  copyScope?: OverviewDocumentCopyScope;
+  /** Workspace Projects list URL. Replaces global `/projects` on Workspace Overview. */
+  workspaceProjectsHref?: string;
+  /** Workspace Projects omitted from the selected month (disclosure only). */
+  unreportedProjects?: WorkspaceUnreportedProject[];
+  /** Human label for the selected reporting month; used with {@link unreportedProjects}. */
+  reportingMonthLabel?: string | null;
   /** When false, hide portfolio-scoped “Create project” affordances (portfolio viewer). */
   canCreatePortfolioProject?: boolean;
   reportingUnit?: ReportingUnitOption;
@@ -418,10 +458,12 @@ function PortfolioRagKpiModalBody({
   projectTilePayloads,
   portfolioReportingFooter,
   reportingUnit = DEFAULT_REPORTING_UNIT,
+  copyScope = "portfolio",
 }: {
   projectTilePayloads: ProjectTilePayload[];
   portfolioReportingFooter: PortfolioReportingFooterRow | null;
   reportingUnit?: ReportingUnitOption;
+  copyScope?: OverviewDocumentCopyScope;
 }) {
   const router = useRouter();
   const rows = sortProjectTilesByRag([...projectTilePayloads]);
@@ -431,7 +473,7 @@ function PortfolioRagKpiModalBody({
   };
 
   if (rows.length === 0) {
-    return <p className="ds-kpi-modal-empty">No projects in this portfolio yet.</p>;
+    return <p className="ds-kpi-modal-empty">{noProjectsYetSentence(copyScope)}</p>;
   }
 
   const footer = portfolioReportingFooter;
@@ -523,7 +565,7 @@ function PortfolioRagKpiModalBody({
                   className={`${KPI_MODAL_REPORTING_PROJECT_COL} !text-left !normal-case tracking-normal align-top text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]`}
                 >
                   <div className="flex min-w-0 flex-col gap-0.5">
-                    <span>Portfolio</span>
+                    <span>{overviewEntityLabel(copyScope)}</span>
                     <span className="text-[length:var(--ds-text-xs)] font-normal leading-snug text-[var(--ds-text-muted)] tabular-nums">
                       {reportingPortfolioSupportingLine(footer, rows.length)}
                     </span>
@@ -563,38 +605,104 @@ function PortfolioRagKpiModalBody({
 
 function PortfolioProjectsKpiModalBody({
   portfolioId,
+  workspaceId,
   projectTilePayloads,
   canCreatePortfolioProject = true,
+  copyScope = "portfolio",
+  workspaceProjectsHref,
+  unreportedProjects = [],
+  reportingMonthLabel = null,
 }: {
-  portfolioId: string;
+  portfolioId?: string;
+  workspaceId?: string;
   projectTilePayloads: ProjectTilePayload[];
   canCreatePortfolioProject?: boolean;
+  copyScope?: OverviewDocumentCopyScope;
+  workspaceProjectsHref?: string;
+  unreportedProjects?: WorkspaceUnreportedProject[];
+  reportingMonthLabel?: string | null;
 }) {
-  return projectTilePayloads.length === 0 ? (
-    <Card variant="inset" className="w-full max-w-none text-center">
-      <CardBody className="py-[var(--ds-space-6)]">
-        <p className="ds-dashboard-empty-title">No projects in this portfolio yet</p>
-        {canCreatePortfolioProject ? (
-          <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
-            Create project
-          </OpenProjectOnboardingLink>
-        ) : null}
-        <div className="mt-5">
-          <Link href={riskaiPath("/projects")} className="ds-text-link-muted text-[length:var(--ds-text-sm)]">
-            View all your projects
-          </Link>
-        </div>
-      </CardBody>
-    </Card>
-  ) : (
-    <div className="flex flex-col gap-[var(--ds-space-4)]">
-      <div className="ds-dashboard-project-grid">
-        {projectTilePayloads.map((payload) => (
-          <ProjectTile key={payload.id} payload={payload} />
-        ))}
+  const trimmedWorkspaceId = workspaceId?.trim() || null;
+  const trimmedPortfolioId = portfolioId?.trim() || null;
+  const showCreate = Boolean(
+    canCreatePortfolioProject &&
+      (copyScope === "workspace" ? trimmedWorkspaceId : trimmedPortfolioId),
+  );
+  const viewProjectsHref =
+    copyScope === "workspace" ? workspaceProjectsHref : riskaiPath("/projects");
+  const viewProjectsLabel = copyScope === "workspace" ? "View projects" : "View all your projects";
+  const showUnreported =
+    copyScope === "workspace" &&
+    unreportedProjects.length > 0 &&
+    reportingMonthLabel != null &&
+    reportingMonthLabel.trim() !== "";
+  const unreportedHeading =
+    showUnreported && reportingMonthLabel != null
+      ? workspaceUnreportedProjectsHeading(reportingMonthLabel)
+      : null;
+
+  const unreportedSection =
+    showUnreported && unreportedHeading != null ? (
+      <div className="mt-[var(--ds-space-2)]">
+        <p className="m-0 text-[length:var(--ds-text-sm)] font-medium text-[var(--ds-text-secondary)]">
+          {unreportedHeading}
+        </p>
+        <ul className="mt-[var(--ds-space-2)] m-0 list-disc pl-[1.25rem] text-[length:var(--ds-text-sm)] text-[var(--ds-text-primary)]">
+          {unreportedProjects.map((project) => (
+            <li key={project.id} className="leading-snug">
+              {project.name}
+            </li>
+          ))}
+        </ul>
       </div>
-      {canCreatePortfolioProject ? (
-        <OpenProjectOnboardingLink className="ds-dashboard-inline-create" portfolioId={portfolioId}>
+    ) : null;
+
+  if (projectTilePayloads.length === 0 && !showUnreported) {
+    return (
+      <Card variant="inset" className="w-full max-w-none text-center">
+        <CardBody className="py-[var(--ds-space-6)]">
+          <p className="ds-dashboard-empty-title">{noProjectsYetHeading(copyScope)}</p>
+          {showCreate ? (
+            <OpenProjectOnboardingLink
+              className="ds-dashboard-empty-primary"
+              workspaceId={trimmedWorkspaceId}
+              portfolioId={trimmedPortfolioId}
+            >
+              Create project
+            </OpenProjectOnboardingLink>
+          ) : null}
+          {viewProjectsHref ? (
+            <div className="mt-5">
+              <Link href={viewProjectsHref} className="ds-text-link-muted text-[length:var(--ds-text-sm)]">
+                {viewProjectsLabel}
+              </Link>
+            </div>
+          ) : null}
+        </CardBody>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-[var(--ds-space-4)]">
+      {projectTilePayloads.length > 0 ? (
+        <div className="ds-dashboard-project-grid">
+          {projectTilePayloads.map((payload) => (
+            <ProjectTile key={payload.id} payload={payload} />
+          ))}
+        </div>
+      ) : (
+        <p className="m-0 text-[length:var(--ds-text-sm)] text-[var(--ds-text-secondary)]">
+          No projects have a locked report for this month.
+        </p>
+      )}
+      {unreportedSection}
+      {showCreate ? (
+        <OpenProjectOnboardingLink
+          className="ds-dashboard-inline-create"
+          workspaceId={trimmedWorkspaceId}
+          portfolioId={trimmedPortfolioId}
+        >
           <span className="ds-dashboard-inline-create-label">Create project</span>
           <span className="ds-dashboard-inline-create-plus" aria-hidden>
             +
@@ -605,11 +713,17 @@ function PortfolioProjectsKpiModalBody({
   );
 }
 
-function PortfolioActiveRisksKpiModalBody({ rows }: { rows: PortfolioProjectRiskStatusRow[] }) {
+function PortfolioActiveRisksKpiModalBody({
+  rows,
+  copyScope = "portfolio",
+}: {
+  rows: PortfolioProjectRiskStatusRow[];
+  copyScope?: OverviewDocumentCopyScope;
+}) {
   const router = useRouter();
 
   if (rows.length === 0) {
-    return <p className="ds-kpi-modal-empty">No projects in this portfolio yet.</p>;
+    return <p className="ds-kpi-modal-empty">{noProjectsYetSentence(copyScope)}</p>;
   }
 
   const totals = rows.reduce(
@@ -712,11 +826,17 @@ export const COST_COVERAGE_COMBINED_TILE_TITLE = "Cost Exposure & Coverage";
 /** Portfolio overview schedule KPI — must match `kpiTiles` title in `PortfolioOverviewContent`. */
 export const SCHEDULE_COVERAGE_COMBINED_TILE_TITLE = "Schedule Exposure & Coverage";
 
-function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: PortfolioProjectScheduleCoverageRow[] }) {
+function PortfolioScheduleCoverageCombinedKpiModalBody({
+  rows,
+  copyScope = "portfolio",
+}: {
+  rows: PortfolioProjectScheduleCoverageRow[];
+  copyScope?: OverviewDocumentCopyScope;
+}) {
   const router = useRouter();
 
   if (rows.length === 0) {
-    return <p className="ds-kpi-modal-empty">No projects in this portfolio yet.</p>;
+    return <p className="ds-kpi-modal-empty">{noProjectsYetSentence(copyScope)}</p>;
   }
 
   const goToProjectSettings = (projectId: string) => {
@@ -737,7 +857,7 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
     <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
       <Table className={KPI_MODAL_REGISTER_TABLE_CLASS}>
         <caption className="sr-only">
-          Schedule exposure, contingency, and coverage by project with portfolio totals
+          Schedule exposure, contingency, and coverage by project with {copyScope} totals
         </caption>
         <TableHead>
           <TableRow>
@@ -788,7 +908,7 @@ function PortfolioScheduleCoverageCombinedKpiModalBody({ rows }: { rows: Portfol
               scope="row"
               className="!text-left !normal-case tracking-normal align-middle text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
             >
-              Portfolio
+              {overviewEntityLabel(copyScope)}
             </TableHeaderCell>
             <TableCell className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]">
               {totalExpectedDelayWorkingDays > 0
@@ -902,14 +1022,16 @@ function PortfolioNeedsAttentionKpiModalBody({
 function PortfolioCostCoverageCombinedKpiModalBody({
   rows,
   reportingUnit,
+  copyScope = "portfolio",
 }: {
   rows: PortfolioProjectCoverageRow[];
   reportingUnit: ReportingUnitOption;
+  copyScope?: OverviewDocumentCopyScope;
 }) {
   const router = useRouter();
 
   if (rows.length === 0) {
-    return <p className="ds-kpi-modal-empty">No projects in this portfolio yet.</p>;
+    return <p className="ds-kpi-modal-empty">{noProjectsYetSentence(copyScope)}</p>;
   }
 
   const currencyList = [...new Set(rows.map((r) => r.currency))];
@@ -930,7 +1052,7 @@ function PortfolioCostCoverageCombinedKpiModalBody({
     <Card className="overflow-hidden border-[var(--ds-border-subtle)] p-0">
       <Table className={KPI_MODAL_REGISTER_TABLE_CLASS}>
         <caption className="sr-only">
-          Risk exposure, contingency, and coverage by project with portfolio totals
+          Risk exposure, contingency, and coverage by project with {copyScope} totals
         </caption>
         <TableHead>
           <TableRow>
@@ -981,7 +1103,7 @@ function PortfolioCostCoverageCombinedKpiModalBody({
               scope="row"
               className="!text-left !normal-case tracking-normal align-middle text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
             >
-              Portfolio
+              {overviewEntityLabel(copyScope)}
             </TableHeaderCell>
             <TableCell
               className="text-right tabular-nums align-middle font-semibold text-[var(--ds-text-secondary)]"
@@ -1022,6 +1144,11 @@ export function DocumentKpiModal({
   onIndexChange,
   onClose,
   portfolioId,
+  workspaceId,
+  copyScope = "portfolio",
+  workspaceProjectsHref,
+  unreportedProjects,
+  reportingMonthLabel = null,
   canCreatePortfolioProject = true,
   reportingUnit = DEFAULT_REPORTING_UNIT,
   projectTilePayloads,
@@ -1088,14 +1215,14 @@ export function DocumentKpiModal({
   if (typeof document === "undefined") return null;
 
   const showProjectsList =
-    current?.title === PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE &&
-    portfolioId != null &&
-    portfolioId !== "" &&
-    projectTilePayloads != null;
+    current?.title === PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE && projectTilePayloads != null;
 
   const showActiveRisksDetail = current?.title === "Active Risks" && activeRiskStatusSummaryRows != null;
 
-  const showPortfolioRagDetail = current?.title === "Portfolio Risk Rating" && projectTilePayloads != null;
+  const showPortfolioRagDetail =
+    (current?.title === PORTFOLIO_RISK_RATING_KPI_TITLE ||
+      current?.title === WORKSPACE_RISK_RATING_KPI_TITLE) &&
+    projectTilePayloads != null;
 
   const showProjectRagDetail =
     current?.title === PROJECT_RISK_RATING_KPI_TITLE && projectTilePayloads != null && projectTilePayloads.length > 0;
@@ -1166,17 +1293,25 @@ export function DocumentKpiModal({
           {current ? (
             slideBodyOverride != null ? (
               <div className="w-full min-w-0">{slideBodyOverride}</div>
-            ) : showProjectsList && portfolioId != null && projectTilePayloads != null ? (
+            ) : showProjectsList && projectTilePayloads != null ? (
               <div className="w-full min-w-0">
                 <PortfolioProjectsKpiModalBody
                   portfolioId={portfolioId}
+                  workspaceId={workspaceId}
                   projectTilePayloads={projectTilePayloads}
                   canCreatePortfolioProject={canCreatePortfolioProject}
+                  copyScope={copyScope}
+                  workspaceProjectsHref={workspaceProjectsHref}
+                  unreportedProjects={unreportedProjects}
+                  reportingMonthLabel={reportingMonthLabel}
                 />
               </div>
             ) : showActiveRisksDetail && activeRiskStatusSummaryRows != null ? (
               <div className="w-full min-w-0">
-                <PortfolioActiveRisksKpiModalBody rows={activeRiskStatusSummaryRows} />
+                <PortfolioActiveRisksKpiModalBody
+                  rows={activeRiskStatusSummaryRows}
+                  copyScope={copyScope}
+                />
               </div>
             ) : showNeedsAttentionDetail && needsAttentionHealthRun != null ? (
               <div className="w-full min-w-0">
@@ -1193,11 +1328,15 @@ export function DocumentKpiModal({
                 <PortfolioCostCoverageCombinedKpiModalBody
                   rows={coverageRatioRows}
                   reportingUnit={reportingUnit}
+                  copyScope={copyScope}
                 />
               </div>
             ) : showScheduleExposureDetail && scheduleCoverageRows != null ? (
               <div className="w-full min-w-0">
-                <PortfolioScheduleCoverageCombinedKpiModalBody rows={scheduleCoverageRows} />
+                <PortfolioScheduleCoverageCombinedKpiModalBody
+                  rows={scheduleCoverageRows}
+                  copyScope={copyScope}
+                />
               </div>
             ) : (showPortfolioRagDetail || showProjectRagDetail) && projectTilePayloads != null ? (
               <div className="w-full min-w-0">
@@ -1205,6 +1344,7 @@ export function DocumentKpiModal({
                   projectTilePayloads={projectTilePayloads}
                   portfolioReportingFooter={portfolioReportingFooter ?? null}
                   reportingUnit={reportingUnit}
+                  copyScope={showProjectRagDetail ? "portfolio" : copyScope}
                 />
               </div>
             ) : (

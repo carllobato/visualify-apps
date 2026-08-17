@@ -7,9 +7,18 @@ type Props = {
   open: boolean;
   onStartProjectOnboarding: () => void;
   onDismiss: () => void;
+  lede?: string;
 };
 
-export function FirstProjectPromptModal({ open, onStartProjectOnboarding, onDismiss }: Props) {
+const DEFAULT_LEDE =
+  "Your portfolio is ready. Add your first project to start building risk registers and simulations.";
+
+export function FirstProjectPromptModal({
+  open,
+  onStartProjectOnboarding,
+  onDismiss,
+  lede = DEFAULT_LEDE,
+}: Props) {
   if (!open) return null;
 
   return (
@@ -36,7 +45,7 @@ export function FirstProjectPromptModal({ open, onStartProjectOnboarding, onDism
           </button>
         </div>
         <p className="ds-onboarding-modal-lede">
-          Your portfolio is ready. Add your first project to start building risk registers and simulations.
+          {lede}
         </p>
         <div className="ds-onboarding-modal-form">
           <OnboardingStepActions

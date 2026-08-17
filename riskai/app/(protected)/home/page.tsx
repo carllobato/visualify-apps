@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { WorkspaceSelectionEntryScreen } from "@/components/workspace/WorkspaceSelectionEntryScreen";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { DASHBOARD_PATH, workspaceOverviewPath } from "@/lib/routes";
 import { resolveActiveRiskAiWorkspaceContext } from "@/lib/workspace/resolveActiveRiskAiWorkspaceContext";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -23,8 +23,9 @@ export default async function RiskAiHomePage() {
 
   const context = await resolveActiveRiskAiWorkspaceContext(user.id);
 
-  if (context.workspaces.length <= 1) {
-    redirect(DASHBOARD_PATH);
+  if (context.workspaces.length < 2) {
+    const onlyWorkspace = context.workspaces[0];
+    redirect(onlyWorkspace ? workspaceOverviewPath(onlyWorkspace.id) : DASHBOARD_PATH);
   }
 
   return (

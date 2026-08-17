@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 export type AppShellEntityAvatarSize = "rail" | "tile" | "page";
 
@@ -56,21 +56,54 @@ export type AppShellEntityAvatarProps = {
   imageUrls: readonly (string | null | undefined)[];
   initials?: string | null;
   size?: AppShellEntityAvatarSize;
+  /** When no image loads, shown instead of initials / the generic workspace icon. */
+  fallback?: ReactNode;
 };
 
+function isGoogleFaviconServiceUrl(src: string): boolean {
+  try {
+    const { hostname, pathname } = new URL(src);
+    if (hostname === "www.google.com" || hostname === "google.com") {
+      return pathname.includes("/s2/favicons");
+    }
+    return hostname.endsWith(".gstatic.com") && pathname.toLowerCase().includes("favicon");
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Entity mark for rails and tiles: try each image URL in order, then initials, then a generic icon.
- * Products supply URLs and initials; shell owns layout and fallback behaviour.
+ * Google’s missing-favicon globe is 16×16 even when `sz=128` is requested (often a 404 PNG body).
+ * Only skip that placeholder — real 16×16 `.ico` marks from the workspace site must still show.
+ */
+function isUsableAvatarImage(
+  img: Pick<HTMLImageElement, "naturalWidth" | "naturalHeight">,
+  src: string,
+): boolean {
+  const { naturalWidth: width, naturalHeight: height } = img;
+  if (width <= 0 || height <= 0) {
+    return false;
+  }
+  if (isGoogleFaviconServiceUrl(src) && width <= 16 && height <= 16) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Entity mark for rails and tiles: try each image URL in order, then `fallback`, then initials,
+ * then a generic icon. Products supply URLs and mark; shell owns layout and fallback behaviour.
  */
 export function AppShellEntityAvatar({
   imageUrls,
   initials = null,
   size = "tile",
+  fallback = null,
 }: AppShellEntityAvatarProps) {
   const styles = AVATAR_STYLES[size];
-  const imageClass = `${styles.frame} ${styles.image}`;
   const initialsClass = `${styles.frame} ${styles.content} ${styles.initials}`;
-  const fallbackClass = `${styles.frame} ${styles.content} text-[var(--ds-text-tertiary)]`;
+  const fallbackClass = `${styles.frame} ${styles.content}`;
+  const genericFallbackClass = `${fallbackClass} text-[var(--ds-text-tertiary)]`;
 
   const imageUrlsKey = imageUrls.map((u) => u?.trim() ?? "").join("\0");
 
@@ -80,37 +113,62 @@ export function AppShellEntityAvatar({
   );
 
   const [sourceIndex, setSourceIndex] = useState(0);
+  const [imageReady, setImageReady] = useState(false);
 
   useEffect(() => {
     setSourceIndex(0);
+    setImageReady(false);
   }, [imageUrlsKey]);
+
+  const rejectActiveSource = () => {
+    setImageReady(false);
+    setSourceIndex((i) => i + 1);
+  };
 
   const activeSrc = sources[sourceIndex];
 
-  if (activeSrc) {
-    return (
-      <img
-        src={activeSrc}
-        alt=""
-        width={styles.imgPx}
-        height={styles.imgPx}
-        className={imageClass}
-        onError={() => setSourceIndex((i) => i + 1)}
-      />
-    );
-  }
+  const fallbackInner = fallback ?? (initials ? initials : <IconWorkspaceFallback size={styles.iconPx} />);
+  const fallbackWrapClass = fallback
+    ? fallbackClass
+    : initials
+      ? initialsClass
+      : genericFallbackClass;
 
-  if (initials) {
+  if (!activeSrc) {
     return (
-      <span className={initialsClass} aria-hidden>
-        {initials}
+      <span className={fallbackWrapClass} aria-hidden>
+        {fallbackInner}
       </span>
     );
   }
 
   return (
-    <span className={fallbackClass} aria-hidden>
-      <IconWorkspaceFallback size={styles.iconPx} />
+    <span
+      className={imageReady ? `${styles.frame} relative ${styles.image}` : `${fallbackWrapClass} relative`}
+      aria-hidden
+    >
+      {imageReady ? null : fallbackInner}
+      <img
+        src={activeSrc}
+        alt=""
+        width={styles.imgPx}
+        height={styles.imgPx}
+        referrerPolicy="no-referrer"
+        decoding="async"
+        className={
+          imageReady
+            ? `size-full ${styles.image}`
+            : "pointer-events-none absolute left-0 top-0 size-px opacity-0"
+        }
+        onError={rejectActiveSource}
+        onLoad={(event) => {
+          if (!isUsableAvatarImage(event.currentTarget, activeSrc)) {
+            rejectActiveSource();
+            return;
+          }
+          setImageReady(true);
+        }}
+      />
     </span>
   );
 }

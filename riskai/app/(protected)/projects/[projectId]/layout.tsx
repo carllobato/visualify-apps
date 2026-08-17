@@ -9,6 +9,8 @@ import { SetActiveProjectClient } from "./SetActiveProjectClient";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { headers } from "next/headers";
+import { resolveProjectHeaderWorkspace } from "@/lib/project/resolveProjectHeaderWorkspace";
+import { getRiskAiEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +36,19 @@ export default async function ProjectLayout({
     redirect(riskaiPath("/not-found"));
   }
 
-  const { project, permissions, portfolioId } = access;
+  const { project, permissions, workspaceId: projectWorkspaceId } = access;
 
-  let portfolioName: string | null = null;
-  if (portfolioId) {
-    const supabase = await supabaseServerClient();
-    const { data: portfolio } = await supabase
-      .from("visualify_portfolios")
-      .select("name")
-      .eq("id", portfolioId)
-      .single();
-    portfolioName = portfolio?.name ?? null;
-  }
+  const supabase = await supabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const entitledWorkspaces = user
+    ? await getRiskAiEntitledWorkspaces(supabase, user.id)
+    : [];
+  const headerWorkspace = resolveProjectHeaderWorkspace({
+    projectWorkspaceId,
+    entitledWorkspaces,
+  });
 
   return (
     <ProjectPermissionsProvider permissions={permissions}>
@@ -54,8 +57,8 @@ export default async function ProjectLayout({
         <PageHeader
           projectId={projectId}
           projectName={project.name}
-          portfolioId={portfolioId}
-          portfolioName={portfolioName}
+          workspaceId={headerWorkspace?.id ?? null}
+          workspaceName={headerWorkspace?.name ?? null}
         />
         {children}
       </PageHeaderExtrasProvider>

@@ -45,6 +45,14 @@ export type OpenPortfolioOnboardingDetail = {
 /** Dispatched on `window` so links can open project onboarding modal without navigation. */
 export const OPEN_PROJECT_ONBOARDING_EVENT = "riskai-open-project-onboarding";
 
+/** Optional detail for {@link OPEN_PROJECT_ONBOARDING_EVENT}. */
+export type OpenProjectOnboardingDetail = {
+  /** Required Workspace parent when launched from a Workspace customer surface. */
+  workspaceId?: string;
+  /** Optional Portfolio association (legacy Portfolio launch or unique Workspace Portfolio). */
+  portfolioId?: string;
+};
+
 /** Future: drive checklist / product tours without renaming routes. */
 export type OnboardingStepId = "profile" | "portfolio" | "dashboard";
 

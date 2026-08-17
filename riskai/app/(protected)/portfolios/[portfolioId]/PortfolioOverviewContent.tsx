@@ -8,7 +8,9 @@ import {
   COST_COVERAGE_COMBINED_TILE_TITLE,
   DocumentKpiModal,
   PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE,
+  PORTFOLIO_RISK_RATING_KPI_TITLE,
   SCHEDULE_COVERAGE_COMBINED_TILE_TITLE,
+  WORKSPACE_RISK_RATING_KPI_TITLE,
   type DocumentKpiTileItem,
 } from "@/components/dashboard/DocumentKpiModal";
 import { PortfolioCostCoverageMetricsPanel } from "@/components/dashboard/PortfolioCostCoverageMetricsPanel";
@@ -47,7 +49,16 @@ import type {
 } from "@/lib/dashboard/projectTileServerData";
 import type { ReportingUnitOption } from "@/lib/portfolio/reportingPreferences";
 import type { PortfolioOverviewReportingTrendSet } from "@/lib/dashboard/portfolioOverviewReportingTrends";
-import { riskaiPath } from "@/lib/routes";
+import {
+  overviewProjectsHref,
+  overviewSettingsHref,
+  overviewSettingsLabel,
+  workspaceActiveProjectsCoverageSubtext,
+  workspaceOverviewEmptyBody,
+  workspaceOverviewEmptyTitle,
+  type OverviewCustomerScope,
+  type WorkspaceUnreportedProject,
+} from "@/lib/dashboard/overviewCustomerCopy";
 
 /** Screen-reader caption for Top 5 Cost Risks (combined register forward exposure and simulation delay-commercial rows). */
 function topFiveCostRisksTableCaption(reportingMonthLabel: string | null): string {
@@ -120,7 +131,8 @@ function portfolioRagTileCopy(
 /** Same overall label + colours as the Portfolio row in the KPI modal (`OverallRagCell`). */
 function portfolioReportingFooterTileCopy(
   footer: PortfolioReportingFooterRow,
-  reportingMonthLabel: string | null
+  reportingMonthLabel: string | null,
+  customerScope: OverviewCustomerScope
 ): {
   primary: string;
   subtext: string;
@@ -140,7 +152,9 @@ function portfolioReportingFooterTileCopy(
     primary: v !== "" && v !== "—" ? v : "—",
     subtext:
       reportingMonthLabel != null
-        ? "Aggregated portfolio position"
+        ? customerScope === "workspace"
+          ? "Aggregated workspace position"
+          : "Aggregated portfolio position"
         : "Aggregated risk across all projects",
     primaryValueClassName,
     primaryRagDot: footer.rag,
@@ -217,9 +231,23 @@ function PortfolioRiskByOwnerCard({
 }
 
 type PortfolioOverviewContentProps = {
-  portfolioId: string;
+  /** Internal Portfolio id for existing Projects/Settings links; null when none can be resolved uniquely. */
+  portfolioId: string | null;
+  /**
+   * When set, this component is Workspace Overview: Workspace wording and
+   * `/workspaces/[id]/…` destinations. Omit for legacy Portfolio Overview.
+   */
+  workspaceId?: string | null;
   canCreatePortfolioProject: boolean;
   reportingUnit: ReportingUnitOption;
+  /** Empty-state heading. Defaults to the existing Portfolio wording. */
+  emptyStateTitle?: string;
+  /** Unscoped Projects KPI subtext. Defaults to the existing Portfolio wording. */
+  projectsKpiUnscopedSubtext?: string;
+  /** All readable Workspace Projects — disclosure only; does not change KPI scope. */
+  workspaceProjectCount?: number;
+  /** Workspace Projects omitted from the selected month because they have no lock. */
+  unreportedProjects?: WorkspaceUnreportedProject[];
   /** Human label for the selected reporting month (e.g. “March 2026”); `null` when viewing latest / unscoped. */
   reportingMonthLabel: string | null;
   projectCount: number;
@@ -276,10 +304,59 @@ type PortfolioOverviewContentProps = {
   reportingVsPriorMonthTrends: PortfolioOverviewReportingTrendSet | null;
 };
 
+function topFiveScheduleRisksCaption(
+  reportingMonthLabel: string | null,
+  customerScope: OverviewCustomerScope
+): string {
+  if (customerScope === "workspace") {
+    return reportingMonthLabel != null
+      ? "Top five workspace schedule risks by expected delay (current register)"
+      : "Top five workspace schedule risks by expected delay";
+  }
+  return reportingMonthLabel != null
+    ? "Top five portfolio schedule risks by expected delay (current register)"
+    : "Top five portfolio schedule risks by expected delay";
+}
+
+function topFiveCostOpportunityCaption(customerScope: OverviewCustomerScope): string {
+  return customerScope === "workspace"
+    ? "Top five workspace cost opportunities from planned mitigation on monitoring risks"
+    : "Top five portfolio cost opportunities from planned mitigation on monitoring risks";
+}
+
+function topFiveScheduleOpportunityCaption(customerScope: OverviewCustomerScope): string {
+  return customerScope === "workspace"
+    ? "Top five workspace schedule opportunities from planned mitigation on monitoring risks"
+    : "Top five portfolio schedule opportunities from planned mitigation on monitoring risks";
+}
+
+function costOpportunityEmptyMessage(customerScope: OverviewCustomerScope): string {
+  return customerScope === "workspace"
+    ? "No cost opportunities in this workspace yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected cost is lower than the pre-mitigation expected cost."
+    : "No cost opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected cost is lower than the pre-mitigation expected cost.";
+}
+
+function scheduleOpportunityEmptyMessage(customerScope: OverviewCustomerScope): string {
+  return customerScope === "workspace"
+    ? "No schedule opportunities in this workspace yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected delay is lower than the pre-mitigation expected delay."
+    : "No schedule opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected delay is lower than the pre-mitigation expected delay.";
+}
+
+const DEFAULT_PROJECTS_KPI_UNSCOPED_SUBTEXT =
+  "Under this portfolio: only projects with a locked monthly reporting snapshot (saved run). Others are omitted from this view.";
+
+const DEFAULT_EMPTY_STATE_TITLE =
+  "Portfolio overview will appear once reporting data is available";
+
 export function PortfolioOverviewContent({
   portfolioId,
+  workspaceId = null,
   canCreatePortfolioProject,
   reportingUnit,
+  emptyStateTitle = DEFAULT_EMPTY_STATE_TITLE,
+  projectsKpiUnscopedSubtext = DEFAULT_PROJECTS_KPI_UNSCOPED_SUBTEXT,
+  workspaceProjectCount,
+  unreportedProjects = [],
   reportingMonthLabel,
   projectCount,
   activeRiskCount,
@@ -326,19 +403,39 @@ export function PortfolioOverviewContent({
     setCategoryOwnerBreakdownOpen((o) => !o);
   }, []);
 
+  const trimmedWorkspaceId = workspaceId?.trim() ? workspaceId.trim() : null;
+  const trimmedPortfolioId = portfolioId?.trim() ? portfolioId.trim() : null;
+  const customerScope: OverviewCustomerScope = trimmedWorkspaceId ? "workspace" : "portfolio";
+  const scopeId = customerScope === "workspace" ? trimmedWorkspaceId : trimmedPortfolioId;
+  const projectsHref = scopeId ? overviewProjectsHref(customerScope, scopeId) : null;
+  const settingsHref = scopeId ? overviewSettingsHref(customerScope, scopeId) : null;
+  const settingsLabel = overviewSettingsLabel(customerScope);
+  const riskRatingTitle =
+    customerScope === "workspace" ? WORKSPACE_RISK_RATING_KPI_TITLE : PORTFOLIO_RISK_RATING_KPI_TITLE;
+
   const kpiTiles = useMemo((): DocumentKpiTileItem[] => {
+    const workspaceTotal =
+      customerScope === "workspace" && typeof workspaceProjectCount === "number"
+        ? workspaceProjectCount
+        : null;
     const projectsSubtext =
-      reportingMonthLabel != null
-        ? "Projects within current report"
-        : "Under this portfolio: only projects with a locked monthly reporting snapshot (saved run). Others are omitted from this view.";
+      customerScope === "workspace" && reportingMonthLabel != null && workspaceTotal != null
+        ? workspaceActiveProjectsCoverageSubtext({
+            reportedCount: projectCount,
+            totalCount: workspaceTotal,
+            reportingMonthLabel,
+          })
+        : reportingMonthLabel != null
+          ? "Projects within current report"
+          : projectsKpiUnscopedSubtext;
     const risksSubtext = "Open, monitoring, or mitigating risks";
     const rag =
       portfolioReportingFooter != null
-        ? portfolioReportingFooterTileCopy(portfolioReportingFooter, reportingMonthLabel)
+        ? portfolioReportingFooterTileCopy(portfolioReportingFooter, reportingMonthLabel, customerScope)
         : portfolioRagTileCopy(portfolioRag, reportingMonthLabel);
     return [
       {
-        title: "Portfolio Risk Rating",
+        title: riskRatingTitle,
         primaryValue: rag.primary,
         primaryValueClassName: rag.primaryValueClassName,
         primaryRagDot: rag.primaryRagDot,
@@ -348,8 +445,12 @@ export function PortfolioOverviewContent({
         title: PORTFOLIO_ACTIVE_PROJECTS_KPI_TITLE,
         primaryValue: String(projectCount),
         subtext: projectsSubtext,
-        actionHref: riskaiPath(`/portfolios/${portfolioId}/projects`),
-        actionLabel: "View projects",
+        ...(projectsHref
+          ? {
+              actionHref: projectsHref,
+              actionLabel: "View projects",
+            }
+          : {}),
       },
       {
         title: "Active Risks",
@@ -377,8 +478,12 @@ export function PortfolioOverviewContent({
       },
     ];
   }, [
-    portfolioId,
+    customerScope,
+    riskRatingTitle,
+    projectsHref,
+    projectsKpiUnscopedSubtext,
     projectCount,
+    workspaceProjectCount,
     activeRiskCount,
     portfolioRag,
     portfolioReportingFooter,
@@ -445,11 +550,7 @@ export function PortfolioOverviewContent({
           return (
             <PortfolioTopRisksTable
               rows={topScheduleRiskRows}
-              caption={
-                reportingMonthLabel != null
-                  ? "Top five portfolio schedule risks by expected delay (current register)"
-                  : "Top five portfolio schedule risks by expected delay"
-              }
+              caption={topFiveScheduleRisksCaption(reportingMonthLabel, customerScope)}
               emptyMessage="No schedule risk data available. Add time-applicable risks with positive schedule impacts in your projects to populate this view."
               showOwnerColumn
             />
@@ -458,8 +559,8 @@ export function PortfolioOverviewContent({
           return (
             <PortfolioTopRisksTable
               rows={topCostOpportunityRows}
-              caption="Top five portfolio cost opportunities from planned mitigation on monitoring risks"
-              emptyMessage="No cost opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected cost is lower than the pre-mitigation expected cost."
+              caption={topFiveCostOpportunityCaption(customerScope)}
+              emptyMessage={costOpportunityEmptyMessage(customerScope)}
               primaryMetricLabel="Opportunity"
               showOwnerColumn
             />
@@ -468,8 +569,8 @@ export function PortfolioOverviewContent({
           return (
             <PortfolioTopRisksTable
               rows={topScheduleOpportunityRows}
-              caption="Top five portfolio schedule opportunities from planned mitigation on monitoring risks"
-              emptyMessage="No schedule opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected delay is lower than the pre-mitigation expected delay."
+              caption={topFiveScheduleOpportunityCaption(customerScope)}
+              emptyMessage={scheduleOpportunityEmptyMessage(customerScope)}
               primaryMetricLabel="Opportunity"
               showOwnerColumn
             />
@@ -489,14 +590,19 @@ export function PortfolioOverviewContent({
       topCostOpportunityRows,
       topScheduleOpportunityRows,
       reportingMonthLabel,
+      customerScope,
     ]
   );
 
   useEffect(() => {
+    const emptyCount =
+      customerScope === "workspace" && typeof workspaceProjectCount === "number"
+        ? workspaceProjectCount
+        : projectCount;
     const shouldPrompt =
-      projectCount === 0 && searchParams.get("onboarding_first_project") === "1";
+      emptyCount === 0 && searchParams.get("onboarding_first_project") === "1";
     setShowFirstProjectPrompt(shouldPrompt);
-  }, [projectCount, searchParams]);
+  }, [customerScope, projectCount, searchParams, workspaceProjectCount]);
 
   const clearFirstProjectQueryParam = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -514,8 +620,11 @@ export function PortfolioOverviewContent({
     if (!canCreatePortfolioProject) return;
     setShowFirstProjectPrompt(false);
     clearFirstProjectQueryParam();
-    dispatchOpenProjectOnboarding(portfolioId);
-  }, [canCreatePortfolioProject, clearFirstProjectQueryParam, portfolioId]);
+    dispatchOpenProjectOnboarding({
+      workspaceId: trimmedWorkspaceId,
+      portfolioId: trimmedPortfolioId,
+    });
+  }, [canCreatePortfolioProject, clearFirstProjectQueryParam, trimmedPortfolioId, trimmedWorkspaceId]);
 
   const kpiSummaryTrendSlots = [
     reportingVsPriorMonthTrends?.portfolioRiskRating ?? null,
@@ -525,6 +634,14 @@ export function PortfolioOverviewContent({
   ];
 
   const hasReportableData = projectTilePayloads.length > 0;
+  const emptyHeading =
+    customerScope === "workspace"
+      ? workspaceOverviewEmptyTitle((workspaceProjectCount ?? 0) > 0)
+      : emptyStateTitle;
+  const emptyBody =
+    customerScope === "workspace"
+      ? workspaceOverviewEmptyBody((workspaceProjectCount ?? 0) > 0)
+      : "Run and lock monthly reporting for at least one project to populate portfolio risk rating, exposure, health, drivers, and breakdowns.";
 
   if (!hasReportableData) {
     return (
@@ -533,26 +650,21 @@ export function PortfolioOverviewContent({
           <Card variant="inset" className="mx-auto max-w-2xl border-0 text-center">
             <CardBody className="py-[var(--ds-space-6)]">
               <p id="portfolio-overview-empty-heading" className="ds-dashboard-empty-title">
-                Portfolio overview will appear once reporting data is available
+                {emptyHeading}
               </p>
               <p className="mx-auto mt-2 max-w-xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]">
-                Run and lock monthly reporting for at least one project to populate portfolio risk
-                rating, exposure, health, drivers, and breakdowns.
+                {emptyBody}
               </p>
-              <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                <Link
-                  href={riskaiPath(`/portfolios/${portfolioId}/projects`)}
-                  className={primaryLinkButtonClass}
-                >
-                  Go to Projects
-                </Link>
-                <Link
-                  href={riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`)}
-                  className={secondaryLinkButtonClass}
-                >
-                  Portfolio Settings
-                </Link>
-              </div>
+              {projectsHref && settingsHref ? (
+                <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                  <Link href={projectsHref} className={primaryLinkButtonClass}>
+                    Go to Projects
+                  </Link>
+                  <Link href={settingsHref} className={secondaryLinkButtonClass}>
+                    {settingsLabel}
+                  </Link>
+                </div>
+              ) : null}
             </CardBody>
           </Card>
         </section>
@@ -560,6 +672,11 @@ export function PortfolioOverviewContent({
           open={showFirstProjectPrompt}
           onStartProjectOnboarding={onStartFirstProjectOnboarding}
           onDismiss={onDismissFirstProjectPrompt}
+          lede={
+            customerScope === "workspace"
+              ? "Your workspace is ready. Add your first project to start building risk registers and simulations."
+              : undefined
+          }
         />
       </main>
     );
@@ -570,7 +687,7 @@ export function PortfolioOverviewContent({
       {/* Section A — Portfolio KPI Summary */}
       <section className="mb-8" aria-labelledby="portfolio-kpi-heading">
         <h2 id="portfolio-kpi-heading" className="sr-only">
-          Portfolio KPI summary
+          {customerScope === "workspace" ? "Workspace KPI summary" : "Portfolio KPI summary"}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {kpiTiles.slice(0, 4).map((tile, i) => {
@@ -595,7 +712,9 @@ export function PortfolioOverviewContent({
       {/* Section B — Exposure by project + risk breakdown (donuts, then lifecycle status → severity → category → owner) */}
       <section className="mb-8 flex flex-col gap-4 lg:gap-6" aria-labelledby="portfolio-exposure-by-project-heading">
         <h2 id="portfolio-exposure-by-project-heading" className="sr-only">
-          Portfolio cost and schedule exposure
+          {customerScope === "workspace"
+            ? "Workspace cost and schedule exposure"
+            : "Portfolio cost and schedule exposure"}
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6">
           <DashboardCard
@@ -712,7 +831,7 @@ export function PortfolioOverviewContent({
         aria-labelledby="risk-concentration-heading"
       >
         <h2 id="risk-concentration-heading" className="sr-only">
-          Portfolio risk concentration
+          {customerScope === "workspace" ? "Workspace risk concentration" : "Portfolio risk concentration"}
         </h2>
         <DashboardCard
           title="Top 5 Cost Risks"
@@ -735,11 +854,7 @@ export function PortfolioOverviewContent({
         >
           <PortfolioTopRisksTable
             rows={topScheduleRiskRows}
-            caption={
-              reportingMonthLabel != null
-                ? "Top five portfolio schedule risks by expected delay (current register)"
-                : "Top five portfolio schedule risks by expected delay"
-            }
+            caption={topFiveScheduleRisksCaption(reportingMonthLabel, customerScope)}
             emptyMessage="No schedule risk data available. Add time-applicable risks with positive schedule impacts in your projects to populate this view."
             enableNavigation={false}
           />
@@ -749,7 +864,7 @@ export function PortfolioOverviewContent({
       {/* Section D — Derived opportunities (pre − modeled exposure) */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6" aria-labelledby="portfolio-opportunities-heading">
         <h2 id="portfolio-opportunities-heading" className="sr-only">
-          Portfolio opportunities
+          {customerScope === "workspace" ? "Workspace opportunities" : "Portfolio opportunities"}
         </h2>
         <DashboardCard
           title="Top 5 Cost Opportunities"
@@ -759,8 +874,8 @@ export function PortfolioOverviewContent({
         >
           <PortfolioTopRisksTable
             rows={topCostOpportunityRows}
-            caption="Top five portfolio cost opportunities from planned mitigation on monitoring risks"
-            emptyMessage="No cost opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected cost is lower than the pre-mitigation expected cost."
+            caption={topFiveCostOpportunityCaption(customerScope)}
+            emptyMessage={costOpportunityEmptyMessage(customerScope)}
             primaryMetricLabel="Opportunity"
             enableNavigation={false}
           />
@@ -773,8 +888,8 @@ export function PortfolioOverviewContent({
         >
           <PortfolioTopRisksTable
             rows={topScheduleOpportunityRows}
-            caption="Top five portfolio schedule opportunities from planned mitigation on monitoring risks"
-            emptyMessage="No schedule opportunities in this portfolio yet. Opportunities appear for Monitoring risks with mitigation plans and post-mitigation values, where the planned post-mitigation expected delay is lower than the pre-mitigation expected delay."
+            caption={topFiveScheduleOpportunityCaption(customerScope)}
+            emptyMessage={scheduleOpportunityEmptyMessage(customerScope)}
             primaryMetricLabel="Opportunity"
             enableNavigation={false}
           />
@@ -784,6 +899,11 @@ export function PortfolioOverviewContent({
         open={showFirstProjectPrompt && canCreatePortfolioProject}
         onStartProjectOnboarding={onStartFirstProjectOnboarding}
         onDismiss={onDismissFirstProjectPrompt}
+        lede={
+          customerScope === "workspace"
+            ? "Your workspace is ready. Add your first project to start building risk registers and simulations."
+            : undefined
+        }
       />
       <DocumentKpiModal
         open={overviewModalOpen}
@@ -791,10 +911,15 @@ export function PortfolioOverviewContent({
         index={overviewModalIndex}
         onIndexChange={setOverviewModalIndex}
         onClose={() => setOverviewModalOpen(false)}
-        portfolioId={portfolioId}
+        portfolioId={portfolioId ?? undefined}
+        workspaceId={trimmedWorkspaceId ?? undefined}
+        copyScope={customerScope}
+        workspaceProjectsHref={projectsHref ?? undefined}
         canCreatePortfolioProject={canCreatePortfolioProject}
         reportingUnit={reportingUnit}
         projectTilePayloads={projectTilePayloads}
+        unreportedProjects={customerScope === "workspace" ? unreportedProjects : undefined}
+        reportingMonthLabel={customerScope === "workspace" ? reportingMonthLabel : undefined}
         portfolioReportingFooter={portfolioReportingFooter}
         activeRiskStatusSummaryRows={activeRiskStatusSummaryRows}
         coverageRatioRows={coverageRatioRows}

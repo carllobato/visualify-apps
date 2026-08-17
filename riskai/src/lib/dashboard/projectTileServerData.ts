@@ -191,6 +191,17 @@ export type GetProjectTilePayloadsOptions = {
   reportingMonthYear?: string;
 };
 
+/** Project identity for overview loaders that only need id + display name. */
+export type OverviewLoaderProject = {
+  id: string;
+  name: string;
+};
+
+/** Project identity for overview tile loading (`created_at` is copied onto tile payloads). */
+export type OverviewLoaderProjectWithCreatedAt = OverviewLoaderProject & {
+  created_at: string | null;
+};
+
 /**
  * Loads per-project RAG for dashboard tiles (server-only; same access scope as project list).
  */
@@ -562,10 +573,28 @@ function buildPortfolioProjectRiskStatusRowsFromRiskRows(
 }
 
 /**
- * Active risks (Open / Monitoring / Mitigating only) in the portfolio, grouped by the same rating logic as the
+ * Active risks (Open / Monitoring / Mitigating only), grouped by the same rating logic as the
  * risk register: Open/Monitoring use pre-mitigation; Mitigating uses post-mitigation.
- * Prefer {@link loadPortfolioTopRiskConcentrationRows} when loading portfolio overview data to avoid duplicate queries.
+ * Prefer {@link loadTopRiskConcentrationRows} when loading overview data to avoid duplicate queries.
  */
+export async function loadProjectRiskSeveritySummary(
+  supabase: SupabaseClient,
+  projects: OverviewLoaderProject[]
+): Promise<PortfolioProjectRiskSeverityRow[]> {
+  if (!projects.length) return [];
+
+  const ids = projects.map((p) => p.id);
+
+  const { data: risksRaw, error: rErr } = await supabase
+    .from("riskai_risks")
+    .select(RISK_DB_SELECT_COLUMNS)
+    .in("project_id", ids);
+
+  if (rErr) return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, []);
+  return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, (risksRaw ?? []) as RiskRow[]);
+}
+
+/** Portfolio-scoped wrapper for {@link loadProjectRiskSeveritySummary}. */
 export async function loadPortfolioProjectRiskSeveritySummary(
   supabase: SupabaseClient,
   portfolioId: string
@@ -578,15 +607,13 @@ export async function loadPortfolioProjectRiskSeveritySummary(
 
   if (pErr || !projects?.length) return [];
 
-  const ids = projects.map((p) => p.id as string);
-
-  const { data: risksRaw, error: rErr } = await supabase
-    .from("riskai_risks")
-    .select(RISK_DB_SELECT_COLUMNS)
-    .in("project_id", ids);
-
-  if (rErr) return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, []);
-  return buildPortfolioProjectRiskSeverityRowsFromRiskRows(projects, (risksRaw ?? []) as RiskRow[]);
+  return loadProjectRiskSeveritySummary(
+    supabase,
+    projects.map((p) => ({
+      id: p.id as string,
+      name: typeof p.name === "string" ? p.name : "",
+    }))
+  );
 }
 
 function nonNegativeNumberFromRow(raw: unknown): number | null {
@@ -619,19 +646,13 @@ export type PortfolioProjectContingencyRow = {
   scheduleContingencyWorkingDays: number | null;
 };
 
-export async function loadPortfolioProjectContingencyTable(
+export async function loadProjectContingencyTable(
   supabase: SupabaseClient,
-  portfolioId: string
+  projects: OverviewLoaderProject[]
 ): Promise<PortfolioProjectContingencyRow[]> {
-  const { data: projects, error: pErr } = await supabase
-    .from("visualify_projects")
-    .select("id, name")
-    .eq("portfolio_id", portfolioId)
-    .order("name", { ascending: true });
+  if (!projects.length) return [];
 
-  if (pErr || !projects?.length) return [];
-
-  const ids = projects.map((p) => p.id as string);
+  const ids = projects.map((p) => p.id);
 
   const { data: settingsRows } = await supabase
     .from("visualify_project_settings")
@@ -663,7 +684,7 @@ export async function loadPortfolioProjectContingencyTable(
   }
 
   return projects.map((p) => {
-    const id = p.id as string;
+    const id = p.id;
     const s = byProject.get(id);
     const m = s ? contingencyMillionsFromSettingsRow(s) : 0;
     const contingencyAmountAbs = m * 1_000_000;
@@ -684,6 +705,28 @@ export async function loadPortfolioProjectContingencyTable(
       scheduleContingencyWorkingDays,
     };
   });
+}
+
+/** Portfolio-scoped wrapper for {@link loadProjectContingencyTable}. */
+export async function loadPortfolioProjectContingencyTable(
+  supabase: SupabaseClient,
+  portfolioId: string
+): Promise<PortfolioProjectContingencyRow[]> {
+  const { data: projects, error: pErr } = await supabase
+    .from("visualify_projects")
+    .select("id, name")
+    .eq("portfolio_id", portfolioId)
+    .order("name", { ascending: true });
+
+  if (pErr || !projects?.length) return [];
+
+  return loadProjectContingencyTable(
+    supabase,
+    projects.map((p) => ({
+      id: p.id as string,
+      name: typeof p.name === "string" ? p.name : "",
+    }))
+  );
 }
 
 /** Per-project coverage ratio row: contingency held vs forward cost exposure. */
@@ -890,17 +933,8 @@ export function reportingLockStaleForPortfolio(lockAt: string | null, nowMs: num
   return nowMs - t > REPORTING_LOCK_STALE_MS;
 }
 
-/**
- * Loads Top 5 cost (forward-exposure engine) and Top 5 schedule (expected delay in days) across the portfolio.
- * Single fetch of projects + risks.
- */
-export async function loadPortfolioTopRiskConcentrationRows(
-  supabase: SupabaseClient,
-  portfolioId: string,
-  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
-  options?: LoadPortfolioTopRiskConcentrationOptions
-): Promise<PortfolioTopRiskConcentration> {
-  const empty: PortfolioTopRiskConcentration = {
+function emptyTopRiskConcentration(): PortfolioTopRiskConcentration {
+  return {
     activeRiskCount: 0,
     activeRiskSummaryRows: [],
     activeRiskStatusSummaryRows: [],
@@ -925,18 +959,25 @@ export async function loadPortfolioTopRiskConcentrationRows(
       registerGapCount: 0,
     },
   };
+}
 
-  const { data: projects, error: pErr } = await supabase
-    .from("visualify_projects")
-    .select("id, name")
-    .eq("portfolio_id", portfolioId)
-    .order("name", { ascending: true });
+/**
+ * Loads Top 5 cost (forward-exposure engine) and Top 5 schedule (expected delay in days) across the given projects.
+ * Single fetch of risks (and related tables) for that project list.
+ */
+export async function loadTopRiskConcentrationRows(
+  supabase: SupabaseClient,
+  projects: OverviewLoaderProject[],
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
+  options?: LoadPortfolioTopRiskConcentrationOptions
+): Promise<PortfolioTopRiskConcentration> {
+  const empty = emptyTopRiskConcentration();
 
-  if (pErr || !projects?.length) return empty;
+  if (!projects.length) return empty;
 
   const projectNameById = new Map<string, string>();
   const projectIds = projects.map((p) => {
-    const id = p.id as string;
+    const id = p.id;
     const name = typeof p.name === "string" ? p.name.trim() : "";
     projectNameById.set(id, name || id);
     return id;
@@ -966,7 +1007,7 @@ export async function loadPortfolioTopRiskConcentrationRows(
     effectiveProjectIds.length > 0;
 
   const projectsForSummaryRows = projects.filter((p) =>
-    effectiveProjectIds.includes(p.id as string)
+    effectiveProjectIds.includes(p.id)
   );
 
   const { data: settingsRows } = await supabase
@@ -1432,21 +1473,41 @@ export async function loadPortfolioTopRiskConcentrationRows(
   };
 }
 
-export async function loadPortfolioProjectTilePayloads(
+/** Portfolio-scoped wrapper for {@link loadTopRiskConcentrationRows}. */
+export async function loadPortfolioTopRiskConcentrationRows(
   supabase: SupabaseClient,
   portfolioId: string,
+  reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
+  options?: LoadPortfolioTopRiskConcentrationOptions
+): Promise<PortfolioTopRiskConcentration> {
+  const { data: projects, error: pErr } = await supabase
+    .from("visualify_projects")
+    .select("id, name")
+    .eq("portfolio_id", portfolioId)
+    .order("name", { ascending: true });
+
+  if (pErr || !projects?.length) return emptyTopRiskConcentration();
+
+  return loadTopRiskConcentrationRows(
+    supabase,
+    projects.map((p) => ({
+      id: p.id as string,
+      name: typeof p.name === "string" ? p.name : "",
+    })),
+    reportingUnit,
+    options
+  );
+}
+
+export async function loadProjectTilePayloads(
+  supabase: SupabaseClient,
+  projects: OverviewLoaderProjectWithCreatedAt[],
   loadOptions?: {
     reportingMonthYear?: string | null;
     onlyProjectsWithLockedReporting?: boolean;
   }
 ): Promise<LoadPortfolioProjectTilePayloadsResult> {
-  const { data: projects, error } = await supabase
-    .from("visualify_projects")
-    .select("id, name, created_at")
-    .eq("portfolio_id", portfolioId)
-    .order("created_at", { ascending: true });
-
-  if (error || !projects?.length) {
+  if (!projects.length) {
     return { projectTilePayloads: [], portfolioReportingFooter: null, totalProjectsInPortfolio: 0 };
   }
 
@@ -1471,6 +1532,36 @@ export async function loadPortfolioProjectTilePayloads(
     portfolioReportingFooter,
     totalProjectsInPortfolio: projects.length,
   };
+}
+
+/** Portfolio-scoped wrapper for {@link loadProjectTilePayloads}. */
+export async function loadPortfolioProjectTilePayloads(
+  supabase: SupabaseClient,
+  portfolioId: string,
+  loadOptions?: {
+    reportingMonthYear?: string | null;
+    onlyProjectsWithLockedReporting?: boolean;
+  }
+): Promise<LoadPortfolioProjectTilePayloadsResult> {
+  const { data: projects, error } = await supabase
+    .from("visualify_projects")
+    .select("id, name, created_at")
+    .eq("portfolio_id", portfolioId)
+    .order("created_at", { ascending: true });
+
+  if (error || !projects?.length) {
+    return { projectTilePayloads: [], portfolioReportingFooter: null, totalProjectsInPortfolio: 0 };
+  }
+
+  return loadProjectTilePayloads(
+    supabase,
+    projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      created_at: p.created_at,
+    })),
+    loadOptions
+  );
 }
 
 export async function loadPortfolioControlScore({

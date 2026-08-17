@@ -13,6 +13,7 @@ const AUTHENTICATED_APP_ROOTS = [
   "/home",
   "/dashboard",
   "/portfolios",
+  "/workspaces",
   "/projects",
   "/account",
   "/matrix",
@@ -45,6 +46,11 @@ export function riskaiPath(path: string): string {
   return flat;
 }
 
+/** Overview for a specific workspace (`/workspaces/[id]`). */
+export function workspaceOverviewPath(workspaceId: string): string {
+  return riskaiPath(`/workspaces/${workspaceId}`);
+}
+
 /** Safe post-auth / `?next=` target: flat canonical path, or dashboard when invalid. */
 export function normalizeAppPath(path: string | null | undefined, fallback = DASHBOARD_PATH): string {
   if (!path || !path.startsWith("/") || path.startsWith("//")) return fallback;
@@ -70,6 +76,13 @@ export function portfolioIdFromAppPathname(pathname: string | null): string | nu
   return null;
 }
 
+/** Workspace id from `/workspaces/[id]/…` or legacy `/riskai/workspaces/[id]/…`. */
+export function workspaceIdFromAppPathname(pathname: string | null): string | null {
+  const segments = appPathSegments(pathname);
+  if (segments[0] === "workspaces" && segments[1]) return segments[1];
+  return null;
+}
+
 export function hasLegacyRiskAiPrefix(pathname: string): boolean {
   return pathname === LEGACY_RISKAI_PREFIX || pathname.startsWith(`${LEGACY_RISKAI_PREFIX}/`);
 }
@@ -79,6 +92,38 @@ export function isWorkspaceSelectionPath(pathname: string | null): boolean {
   if (!pathname) return false;
   const flat = stripLegacyRiskAiPrefix(pathname);
   return flat === HOME_PATH || flat.startsWith(`${HOME_PATH}/`);
+}
+
+/**
+ * Where to send the user after they pick a workspace on `/home`.
+ * Defaults to that workspace’s overview. Honours `?next=` unless it is the
+ * selector itself or the legacy `/dashboard` landing.
+ */
+export function pathAfterWorkspaceSelection(
+  workspaceId: string,
+  next: string | null | undefined
+): string {
+  const overview = workspaceOverviewPath(workspaceId);
+  const raw = normalizeAppPath(next, overview);
+  if (isWorkspaceSelectionPath(raw) || raw === DASHBOARD_PATH) {
+    return overview;
+  }
+  return raw;
+}
+
+/**
+ * Hide Workspace/Project rail presentation on `/home`.
+ * Workspace/project URLs always show their sections even if a shared layout
+ * still holds a stale `hidePrimaryNav` from a previous `/home` render.
+ */
+export function shouldHideAppShellPrimaryNav(
+  pathname: string | null,
+  hidePrimaryNav: boolean
+): boolean {
+  if (isWorkspaceSelectionPath(pathname)) return true;
+  if (workspaceIdFromAppPathname(pathname) != null) return false;
+  if (projectIdFromAppPathname(pathname) != null) return false;
+  return hidePrimaryNav;
 }
 
 /** True for account settings (`/account` or `/account/…`, including legacy `/riskai/account`). */
@@ -112,5 +157,41 @@ export function portfolioRouteTitleFromPathname(
   if (normalized === overview) return "Overview";
   if (normalized === projects) return "Projects";
   if (normalized === settings) return "Portfolio Settings";
+  return null;
+}
+
+/**
+ * True only for `/workspaces/[workspaceId]` (not Projects or Settings).
+ * Report Month belongs on Workspace Overview; other workspace pages are not month-scoped.
+ */
+export function isWorkspaceOverviewPathname(
+  pathname: string | null | undefined,
+  workspaceId: string
+): boolean {
+  const wid = workspaceId.trim();
+  if (!pathname || !wid) return false;
+  const normalized = stripLegacyRiskAiPrefix(pathname).replace(/\/+$/, "") || pathname;
+  const overview = workspaceOverviewPath(wid).replace(/\/+$/, "");
+  return normalized === overview;
+}
+
+/**
+ * Shell title suffix for known workspace routes, from the URL only.
+ * Overview uses customer-facing “Workspace Overview”; Projects stays “Projects”;
+ * Settings uses “Workspace Settings”.
+ */
+export function workspaceRouteTitleFromPathname(
+  pathname: string | null | undefined,
+  workspaceId: string
+): string | null {
+  const wid = workspaceId.trim();
+  if (!pathname || !wid) return null;
+  const normalized = stripLegacyRiskAiPrefix(pathname).replace(/\/+$/, "") || pathname;
+  const overview = workspaceOverviewPath(wid).replace(/\/+$/, "");
+  const projects = riskaiPath(`/workspaces/${wid}/projects`).replace(/\/+$/, "");
+  const settings = riskaiPath(`/workspaces/${wid}/settings`).replace(/\/+$/, "");
+  if (normalized === overview) return "Workspace Overview";
+  if (normalized === projects) return "Projects";
+  if (normalized === settings) return "Workspace Settings";
   return null;
 }

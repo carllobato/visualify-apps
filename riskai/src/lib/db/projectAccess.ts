@@ -20,6 +20,8 @@ export type ProjectAccessBundle = {
   permissions: ProjectPermissions;
   ownerUserId: string;
   portfolioId: string | null;
+  /** From `visualify_projects.workspace_id` on the loaded row; not inferred from Portfolio. */
+  workspaceId: string | null;
 };
 
 /**
@@ -295,6 +297,7 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
         permissions,
         ownerUserId: "",
         portfolioId: workspaceScope?.portfolio_id ?? null,
+        workspaceId: null,
       };
     }
   }
@@ -357,6 +360,10 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     },
     ownerUserId: data.owner_user_id as string,
     portfolioId: data.portfolio_id ?? null,
+    workspaceId:
+      typeof data.workspace_id === "string" && data.workspace_id.trim()
+        ? data.workspace_id.trim()
+        : null,
   };
 });
 

@@ -7,6 +7,11 @@ import type { FinancialUnit, ProjectCurrency, RiskAppetite } from "@/lib/project
 import type { WorkingDaysPerWeek } from "@/lib/workingDays";
 import { Callout } from "@visualify/design-system";
 import {
+  createProjectRequestFromForm,
+  projectCreateSelectorVisibility,
+  resolveProjectCreateFormParent,
+} from "@/lib/project/resolveWorkspaceProjectCreateParent";
+import {
   OnboardingStepLabel,
   PROJECT_ONBOARDING_STEP_TOTAL,
 } from "./OnboardingStepLabel";
@@ -15,6 +20,7 @@ import { OnboardingStepActions } from "./OnboardingStepActions";
 
 type Props = {
   open: boolean;
+  workspaceId?: string | null;
   portfolioId: string | null;
   initialStep?: CreateStep;
   onCreated: (project: { id: string; name: string }) => void | Promise<void>;
@@ -63,6 +69,7 @@ function formatDisplayDate(value: string): string {
 
 export function ProjectOnboardingCreateModal({
   open,
+  workspaceId = null,
   portfolioId,
   initialStep = 1,
   onCreated,
@@ -155,7 +162,7 @@ export function ProjectOnboardingCreateModal({
     setWorkspacesLoadError(null);
     setSelectedWorkspaceId("");
     setSelectedPortfolioId("");
-  }, [open, portfolioId, initialStep]);
+  }, [open, workspaceId, portfolioId, initialStep]);
 
   useEffect(() => {
     if (!open) return;
@@ -194,24 +201,14 @@ export function ProjectOnboardingCreateModal({
 
         const list = Array.isArray(portfoliosJson.portfolios) ? portfoliosJson.portfolios : [];
         const wsList = Array.isArray(workspacesJson.workspaces) ? workspacesJson.workspaces : [];
-        const propId =
-          typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
-        const scoped = propId ? list.find((p) => p.id === propId) : undefined;
-
-        if (scoped) {
-          setSelectedPortfolioId(scoped.id);
-          const scopedWs =
-            typeof scoped.workspace_id === "string" && scoped.workspace_id.trim()
-              ? scoped.workspace_id.trim()
-              : "";
-          setSelectedWorkspaceId(scopedWs);
-        } else if (wsList.length === 1) {
-          setSelectedWorkspaceId(wsList[0]!.id);
-          setSelectedPortfolioId("");
-        } else {
-          setSelectedWorkspaceId("");
-          setSelectedPortfolioId("");
-        }
+        const parent = resolveProjectCreateFormParent({
+          preferredWorkspaceId: workspaceId,
+          preferredPortfolioId: portfolioId,
+          workspaces: wsList,
+          portfolios: list,
+        });
+        setSelectedWorkspaceId(parent.selectedWorkspaceId);
+        setSelectedPortfolioId(parent.selectedPortfolioId);
       } catch {
         if (!cancelled) {
           setPortfoliosLoadError("Could not load portfolios.");
@@ -224,7 +221,7 @@ export function ProjectOnboardingCreateModal({
     return () => {
       cancelled = true;
     };
-  }, [open, portfolioId]);
+  }, [open, workspaceId, portfolioId]);
 
   useEffect(() => {
     if (!showErrorCallout) return;
@@ -299,15 +296,21 @@ export function ProjectOnboardingCreateModal({
   if (!open) return null;
 
   function validateStep(current: CreateStep): boolean {
-    const scopedPropId =
-      typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
-    const hasValidScopedPortfolio = Boolean(
-      scopedPropId && (portfolios ?? []).some((p) => p.id === scopedPropId),
-    );
+    const formParent = resolveProjectCreateFormParent({
+      preferredWorkspaceId: workspaceId,
+      preferredPortfolioId: portfolioId,
+      workspaces: workspaces ?? [],
+      portfolios: portfolios ?? [],
+    });
+    if (formParent.preferredWorkspaceDenied) {
+      setError("You do not have permission to create a project in this workspace.");
+      return false;
+    }
 
-    if (!hasValidScopedPortfolio) {
+    if (!formParent.portfolioBound) {
       const workspaceReady =
         selectedWorkspaceId.trim() ||
+        formParent.selectedWorkspaceId ||
         ((workspaces ?? []).length === 1 ? (workspaces ?? [])[0]!.id : "");
       if (!workspaceReady) {
         setError("Select a workspace.");
@@ -396,15 +399,19 @@ export function ProjectOnboardingCreateModal({
 
     setCreating(true);
     try {
-      const scopedPropId =
-        typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
-      const hasValidScopedPortfolio = Boolean(
-        scopedPropId && (portfolios ?? []).some((p) => p.id === scopedPropId),
-      );
-      const resolvedPortfolioId = selectedPortfolioId.trim();
+      const formParent = resolveProjectCreateFormParent({
+        preferredWorkspaceId: workspaceId,
+        preferredPortfolioId: portfolioId,
+        workspaces: workspaces ?? [],
+        portfolios: portfolios ?? [],
+      });
+      const resolvedPortfolioId = formParent.portfolioBound
+        ? formParent.selectedPortfolioId
+        : selectedPortfolioId.trim();
       const resolvedWorkspaceId =
         selectedWorkspaceId.trim() ||
-        (!hasValidScopedPortfolio && (workspaces ?? []).length === 1
+        formParent.selectedWorkspaceId ||
+        (!formParent.portfolioBound && (workspaces ?? []).length === 1
           ? (workspaces ?? [])[0]!.id
           : "");
       const res = await fetch("/api/projects", {
@@ -412,15 +419,17 @@ export function ProjectOnboardingCreateModal({
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
         credentials: "include",
-        body: JSON.stringify({
-          name: trimmed,
-          ...(hasValidScopedPortfolio || resolvedPortfolioId
-            ? { portfolioId: hasValidScopedPortfolio ? scopedPropId : resolvedPortfolioId }
-            : {}),
-          ...(!hasValidScopedPortfolio && resolvedWorkspaceId
-            ? { workspaceId: resolvedWorkspaceId }
-            : {}),
-        }),
+        body: JSON.stringify(
+          createProjectRequestFromForm({
+            name: trimmed,
+            resolvedWorkspaceId,
+            resolvedPortfolioId,
+            launchedWithWorkspaceId: Boolean(
+              typeof workspaceId === "string" && workspaceId.trim(),
+            ),
+            portfolioBound: formParent.portfolioBound,
+          }),
+        ),
       });
       const json = (await res.json().catch(() => ({}))) as {
         project?: { id: string; name: string };
@@ -594,13 +603,14 @@ export function ProjectOnboardingCreateModal({
     );
   }
 
-  const scopedPropId =
-    typeof portfolioId === "string" && portfolioId.trim() ? portfolioId.trim() : null;
-  const hasValidScopedPortfolio = Boolean(
-    scopedPropId && portfolios.some((p) => p.id === scopedPropId),
-  );
+  const formParent = resolveProjectCreateFormParent({
+    preferredWorkspaceId: workspaceId,
+    preferredPortfolioId: portfolioId,
+    workspaces,
+    portfolios,
+  });
 
-  if (!hasValidScopedPortfolio && workspaces.length === 0) {
+  if (!formParent.portfolioBound && (workspaces.length === 0 || formParent.preferredWorkspaceDenied)) {
     return (
       <div
         className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
@@ -642,9 +652,11 @@ export function ProjectOnboardingCreateModal({
     );
   }
 
-  const resolvedWorkspaceId = hasValidScopedPortfolio
-    ? selectedWorkspaceId
-    : selectedWorkspaceId.trim() || (workspaces.length === 1 ? workspaces[0]!.id : "");
+  const resolvedWorkspaceId = formParent.portfolioBound
+    ? selectedWorkspaceId || formParent.selectedWorkspaceId
+    : selectedWorkspaceId.trim() ||
+      formParent.selectedWorkspaceId ||
+      (workspaces.length === 1 ? workspaces[0]!.id : "");
 
   const portfoliosInWorkspace = resolvedWorkspaceId
     ? portfolios.filter(
@@ -654,10 +666,14 @@ export function ProjectOnboardingCreateModal({
       )
     : [];
 
-  const showWorkspaceSelector = !hasValidScopedPortfolio && workspaces.length > 1;
-  /** Optional portfolio grouping — never required; never auto-bind the only portfolio. */
-  const showPortfolioSelector =
-    !hasValidScopedPortfolio && Boolean(resolvedWorkspaceId) && portfoliosInWorkspace.length > 0;
+  const { showWorkspaceSelector, showPortfolioSelector } = projectCreateSelectorVisibility({
+    portfolioBound: formParent.portfolioBound,
+    workspaceBound: formParent.workspaceBound,
+    preferredWorkspaceDenied: formParent.preferredWorkspaceDenied,
+    workspacesCount: workspaces.length,
+    selectedWorkspaceId: resolvedWorkspaceId,
+    portfoliosInSelectedWorkspaceCount: portfoliosInWorkspace.length,
+  });
 
   return (
     <div

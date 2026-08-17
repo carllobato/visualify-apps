@@ -26,6 +26,7 @@ import {
   type RiskAppetite,
 } from "@/lib/projectContext";
 import { PortfolioReportingMonthSelect } from "@/components/PortfolioReportingMonthSelect";
+import { ProjectReportExtractButton } from "@/components/project/ProjectReportExtractButton";
 import type { SimulationSnapshotRow, SimulationSnapshotRowDb } from "@/lib/db/snapshots";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { formatDurationDays } from "@/lib/formatDuration";
@@ -88,6 +89,7 @@ import {
   reportingRunActiveRiskCount,
   reportingRunHighExtremeCount,
 } from "@/lib/projectOverviewReporting";
+import type { ProjectReportingPageInitialData } from "@/lib/project/loadProjectReportingPageData";
 import type {
   PortfolioProjectRiskSeverityRow,
   PortfolioRiskCategoryCount,
@@ -463,19 +465,12 @@ function exposureHistogramCurrentPGapStroke(
   return "var(--ds-status-danger)";
 }
 
-export type ProjectOverviewInitialData = {
-  projectId: string;
-  /** Primary overview row: locked snapshot for the selected month, or latest unlocked snapshot in unpublished mode. */
-  reportingSnapshot: SimulationSnapshotRow | null;
-  /** Latest locked reporting snapshot for stale/position comparison when `unpublishedMode` is true; otherwise null. */
-  lockedReportingBaselineSnapshot: SimulationSnapshotRow | null;
-  unpublishedMode: boolean;
-  /** From `x-url-search` (middleware) for reporting month control without Suspense. */
-  initialUrlSearch: string;
-};
+export type ProjectOverviewInitialData = ProjectReportingPageInitialData;
 
 type ProjectOverviewContentProps = {
   initialData: ProjectOverviewInitialData;
+  /** Shell title suffix. Overview keeps the existing default; Report passes `"Report"`. */
+  titleSuffix?: string;
 };
 
 function projectRiskRatingTileCopy(
@@ -814,7 +809,10 @@ function ProjectOverviewKpiDrilldownTable({
   );
 }
 
-export function ProjectOverviewContent({ initialData }: ProjectOverviewContentProps) {
+export function ProjectOverviewContent({
+  initialData,
+  titleSuffix = "Project Overview",
+}: ProjectOverviewContentProps) {
   const { projectId, reportingSnapshot, initialUrlSearch, unpublishedMode, lockedReportingBaselineSnapshot } =
     initialData ?? {
       projectId: "",
@@ -1700,22 +1698,28 @@ export function ProjectOverviewContent({ initialData }: ProjectOverviewContentPr
     const pid = projectId?.trim();
     if (!pid) return null;
     if (!unpublishedMode && !reportingRunRiskCountSnapshotRow) return null;
-    return (
+    const monthSelect = (
       <PortfolioReportingMonthSelect
         projectId={projectId}
         showUnpublishedOption
         initialUrlSearch={initialUrlSearch}
       />
     );
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {reportingRunRiskCountSnapshotRow ? <ProjectReportExtractButton /> : null}
+        {monthSelect}
+      </div>
+    );
   }, [initialUrlSearch, projectId, reportingRunRiskCountSnapshotRow, unpublishedMode]);
 
   useEffect(() => {
     setExtras({
-      titleSuffix: "Project Overview",
+      titleSuffix,
       end: overviewHeaderEnd,
     });
     return () => setExtras(null);
-  }, [overviewHeaderEnd, setExtras]);
+  }, [overviewHeaderEnd, setExtras, titleSuffix]);
 
   const simulationHref = projectId ? riskaiPath(`/projects/${projectId}/simulation`) : DASHBOARD_PATH;
   const riskRegisterHref = projectId ? riskaiPath(`/projects/${projectId}/risks`) : DASHBOARD_PATH;

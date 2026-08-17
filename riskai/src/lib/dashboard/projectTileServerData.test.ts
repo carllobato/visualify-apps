@@ -4,8 +4,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   applyStaleReportingLockRag,
   computeRag,
+  loadPortfolioProjectContingencyTable,
+  loadPortfolioProjectRiskSeveritySummary,
   loadPortfolioProjectTilePayloads,
   loadPortfolioTopRiskConcentrationRows,
+  loadProjectContingencyTable,
+  loadProjectRiskSeveritySummary,
+  loadProjectTilePayloads,
+  loadTopRiskConcentrationRows,
   REPORTING_LOCK_STALE_MS,
 } from "@/lib/dashboard/projectTileServerData";
 import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
@@ -16,8 +22,11 @@ type QueryResult<T> = { data: T; error: null };
 class FakeQuery<T extends Record<string, unknown>> {
   private readonly filters: Array<(row: T) => boolean> = [];
   private orderBy: { column: string; ascending: boolean } | null = null;
+  private readonly rows: T[];
 
-  constructor(private readonly rows: T[]) {}
+  constructor(rows: T[]) {
+    this.rows = rows;
+  }
 
   select(): this {
     return this;
@@ -69,9 +78,11 @@ class FakeQuery<T extends Record<string, unknown>> {
 }
 
 class FakeSupabase {
-  constructor(
-    private readonly tables: Record<string, Record<string, unknown>[]>
-  ) {}
+  private readonly tables: Record<string, Record<string, unknown>[]>;
+
+  constructor(tables: Record<string, Record<string, unknown>[]>) {
+    this.tables = tables;
+  }
 
   from(table: string): FakeQuery<Record<string, unknown>> {
     return new FakeQuery(this.tables[table] ?? []);
@@ -342,5 +353,222 @@ describe("computeRag + reporting lock staleness", () => {
       applyStaleReportingLockRag("red", { locked_at: staleIso } as SimulationSnapshotRow, Date.now()),
       "red"
     );
+  });
+});
+
+const PORTFOLIO_PROJECT = {
+  id: "project-1",
+  name: "Project 1",
+  created_at: "2026-01-01T00:00:00.000Z",
+  portfolio_id: "portfolio-1",
+};
+const UNLINKED_PROJECT = {
+  id: "project-unlinked",
+  name: "Unlinked Project",
+  created_at: "2026-01-04T00:00:00.000Z",
+  portfolio_id: null,
+};
+
+function makeMixedScopeSupabase(extra?: {
+  risks?: RiskRow[];
+  settings?: Record<string, unknown>[];
+  snapshots?: Record<string, unknown>[];
+}): SupabaseClient {
+  return new FakeSupabase({
+    visualify_projects: [PORTFOLIO_PROJECT, UNLINKED_PROJECT],
+    visualify_project_settings: extra?.settings ?? [
+      { project_id: PORTFOLIO_PROJECT.id, currency: "AUD" },
+      { project_id: UNLINKED_PROJECT.id, currency: "USD" },
+    ],
+    riskai_risks: extra?.risks ?? [
+      makeRiskRow({ id: "risk-portfolio", project_id: PORTFOLIO_PROJECT.id }),
+      makeRiskRow({
+        id: "risk-unlinked",
+        project_id: UNLINKED_PROJECT.id,
+        title: "Unlinked schedule risk",
+      }),
+    ],
+    riskai_simulation_snapshots: extra?.snapshots ?? [],
+  }) as unknown as SupabaseClient;
+}
+
+describe("project-list overview loaders", () => {
+  it("loadTopRiskConcentrationRows includes explicit projects that the portfolio wrapper omits", async () => {
+    const supabase = makeMixedScopeSupabase();
+
+    const portfolioResult = await loadPortfolioTopRiskConcentrationRows(supabase, "portfolio-1");
+    assert.deepStrictEqual(
+      portfolioResult.activeRiskSummaryRows.map((r) => r.projectId),
+      [PORTFOLIO_PROJECT.id]
+    );
+    assert.strictEqual(portfolioResult.scheduleRows.length, 1);
+    assert.strictEqual(portfolioResult.scheduleRows[0]?.projectId, PORTFOLIO_PROJECT.id);
+
+    const explicitResult = await loadTopRiskConcentrationRows(supabase, [
+      { id: PORTFOLIO_PROJECT.id, name: PORTFOLIO_PROJECT.name },
+      { id: UNLINKED_PROJECT.id, name: UNLINKED_PROJECT.name },
+    ]);
+    assert.deepStrictEqual(
+      explicitResult.activeRiskSummaryRows.map((r) => r.projectId),
+      [PORTFOLIO_PROJECT.id, UNLINKED_PROJECT.id]
+    );
+    assert.strictEqual(explicitResult.scheduleRows.length, 2);
+  });
+
+  it("loadPortfolioTopRiskConcentrationRows matches loadTopRiskConcentrationRows for the same portfolio projects", async () => {
+    const supabase = makeSupabase([makeRiskRow()]);
+    const fromPortfolio = await loadPortfolioTopRiskConcentrationRows(supabase, "portfolio-1");
+    const fromProjects = await loadTopRiskConcentrationRows(supabase, [
+      { id: "project-1", name: "Project 1" },
+    ]);
+    assert.deepStrictEqual(fromProjects, fromPortfolio);
+  });
+
+  it("loadProjectContingencyTable includes explicit projects that the portfolio wrapper omits", async () => {
+    const supabase = makeMixedScopeSupabase({
+      settings: [
+        {
+          project_id: PORTFOLIO_PROJECT.id,
+          contingency_value_input: 1_500_000,
+          financial_inputs_version: 2,
+          currency: "AUD",
+          schedule_contingency_working_days: 8,
+        },
+        {
+          project_id: UNLINKED_PROJECT.id,
+          contingency_value_input: 2_000_000,
+          financial_inputs_version: 2,
+          currency: "USD",
+          schedule_contingency_working_days: 12,
+        },
+      ],
+    });
+
+    const portfolioRows = await loadPortfolioProjectContingencyTable(supabase, "portfolio-1");
+    assert.deepStrictEqual(
+      portfolioRows.map((r) => r.projectId),
+      [PORTFOLIO_PROJECT.id]
+    );
+    assert.strictEqual(portfolioRows[0]?.contingencyAmountAbs, 1_500_000);
+    assert.strictEqual(portfolioRows[0]?.scheduleContingencyWorkingDays, 8);
+
+    const explicitRows = await loadProjectContingencyTable(supabase, [
+      { id: PORTFOLIO_PROJECT.id, name: PORTFOLIO_PROJECT.name },
+      { id: UNLINKED_PROJECT.id, name: UNLINKED_PROJECT.name },
+    ]);
+    assert.deepStrictEqual(
+      explicitRows.map((r) => ({ projectId: r.projectId, contingencyAmountAbs: r.contingencyAmountAbs })),
+      [
+        { projectId: PORTFOLIO_PROJECT.id, contingencyAmountAbs: 1_500_000 },
+        { projectId: UNLINKED_PROJECT.id, contingencyAmountAbs: 2_000_000 },
+      ]
+    );
+  });
+
+  it("loadPortfolioProjectContingencyTable matches loadProjectContingencyTable for the same portfolio projects", async () => {
+    const supabase = makeMixedScopeSupabase({
+      settings: [
+        {
+          project_id: PORTFOLIO_PROJECT.id,
+          contingency_value_input: 1_500_000,
+          financial_inputs_version: 2,
+          currency: "AUD",
+          schedule_contingency_working_days: 8,
+        },
+      ],
+    });
+    const fromPortfolio = await loadPortfolioProjectContingencyTable(supabase, "portfolio-1");
+    const fromProjects = await loadProjectContingencyTable(supabase, [
+      { id: PORTFOLIO_PROJECT.id, name: PORTFOLIO_PROJECT.name },
+    ]);
+    assert.deepStrictEqual(fromProjects, fromPortfolio);
+  });
+
+  it("loadProjectRiskSeveritySummary includes explicit projects that the portfolio wrapper omits", async () => {
+    const supabase = makeMixedScopeSupabase();
+    const portfolioRows = await loadPortfolioProjectRiskSeveritySummary(supabase, "portfolio-1");
+    assert.deepStrictEqual(
+      portfolioRows.map((r) => r.projectId),
+      [PORTFOLIO_PROJECT.id]
+    );
+
+    const explicitRows = await loadProjectRiskSeveritySummary(supabase, [
+      { id: PORTFOLIO_PROJECT.id, name: PORTFOLIO_PROJECT.name },
+      { id: UNLINKED_PROJECT.id, name: UNLINKED_PROJECT.name },
+    ]);
+    assert.deepStrictEqual(
+      explicitRows.map((r) => r.projectId),
+      [PORTFOLIO_PROJECT.id, UNLINKED_PROJECT.id]
+    );
+  });
+
+  it("loadProjectTilePayloads includes explicit projects that the portfolio wrapper omits", async () => {
+    const supabase = makeMixedScopeSupabase({
+      snapshots: [
+        {
+          project_id: PORTFOLIO_PROJECT.id,
+          locked_for_reporting: true,
+          locked_at: "2026-01-03T00:00:00.000Z",
+          created_at: "2026-01-03T00:00:00.000Z",
+        },
+        {
+          project_id: UNLINKED_PROJECT.id,
+          locked_for_reporting: true,
+          locked_at: "2026-01-05T00:00:00.000Z",
+          created_at: "2026-01-05T00:00:00.000Z",
+        },
+      ],
+    });
+
+    const portfolioResult = await loadPortfolioProjectTilePayloads(supabase, "portfolio-1");
+    assert.deepStrictEqual(
+      portfolioResult.projectTilePayloads.map((p) => p.id),
+      [PORTFOLIO_PROJECT.id]
+    );
+    assert.strictEqual(portfolioResult.totalProjectsInPortfolio, 1);
+
+    const explicitResult = await loadProjectTilePayloads(supabase, [
+      {
+        id: PORTFOLIO_PROJECT.id,
+        name: PORTFOLIO_PROJECT.name,
+        created_at: PORTFOLIO_PROJECT.created_at,
+      },
+      {
+        id: UNLINKED_PROJECT.id,
+        name: UNLINKED_PROJECT.name,
+        created_at: UNLINKED_PROJECT.created_at,
+      },
+    ]);
+    assert.deepStrictEqual(
+      explicitResult.projectTilePayloads.map((p) => p.id),
+      [PORTFOLIO_PROJECT.id, UNLINKED_PROJECT.id]
+    );
+    assert.strictEqual(explicitResult.totalProjectsInPortfolio, 2);
+  });
+
+  it("loadPortfolioProjectTilePayloads matches loadProjectTilePayloads for the same portfolio projects", async () => {
+    const supabase = new FakeSupabase({
+      visualify_projects: [PORTFOLIO_PROJECT],
+      visualify_project_settings: [{ project_id: PORTFOLIO_PROJECT.id, currency: "AUD" }],
+      riskai_risks: [],
+      riskai_simulation_snapshots: [
+        {
+          project_id: PORTFOLIO_PROJECT.id,
+          locked_for_reporting: true,
+          locked_at: "2026-01-03T00:00:00.000Z",
+          created_at: "2026-01-03T00:00:00.000Z",
+        },
+      ],
+    }) as unknown as SupabaseClient;
+
+    const fromPortfolio = await loadPortfolioProjectTilePayloads(supabase, "portfolio-1");
+    const fromProjects = await loadProjectTilePayloads(supabase, [
+      {
+        id: PORTFOLIO_PROJECT.id,
+        name: PORTFOLIO_PROJECT.name,
+        created_at: PORTFOLIO_PROJECT.created_at,
+      },
+    ]);
+    assert.deepStrictEqual(fromProjects, fromPortfolio);
   });
 });

@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
-import { getCreatableRiskAiWorkspaces } from "@/lib/workspace/creatableWorkspaces";
 import {
-  assertRequestedWorkspaceMatchesPortfolio,
-  resolveCreatableWorkspaceId,
-} from "@/lib/workspace/resolveCreatableWorkspaceId";
+  resolveUnscopedProjectCreateTarget,
+  resolveWorkspaceNativeProjectCreateTarget,
+  type OptionalCreatePortfolio,
+  type ResolveProjectCreateTargetResult,
+} from "@/lib/project/resolveWorkspaceNativeProjectCreateTarget";
+import { getCreatableRiskAiWorkspaces } from "@/lib/workspace/creatableWorkspaces";
+import { assertRequestedWorkspaceMatchesPortfolio } from "@/lib/workspace/resolveCreatableWorkspaceId";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -45,28 +48,45 @@ type CreateProjectBody = {
   workspaceId?: unknown;
 };
 
-type ResolveProjectCreateResult =
-  | { portfolioId: string | null; workspaceId: string }
-  | {
-      error:
-        | "not_found"
-        | "forbidden"
-        | "unbound_workspace"
-        | "workspace_mismatch"
-        | "none"
-        | "workspace_required";
-    };
-
 /**
  * Authorises optional portfolio + required workspace for project create.
- * Never trusts client workspace/portfolio ids without server checks.
+ * Workspace-native requests (`workspaceId` present) use creatable-workspace
+ * authorisation; Portfolio is an optional association. Legacy Portfolio-only
+ * create still uses portfolio `canInviteMembers`. Never trusts client ids alone.
  */
 async function resolveProjectCreateTarget(
   userId: string,
   preferredPortfolioId: string | undefined,
   requestedWorkspaceId: string | undefined,
-): Promise<ResolveProjectCreateResult> {
+): Promise<ResolveProjectCreateTargetResult> {
   const supabase = await supabaseServerClient();
+
+  if (requestedWorkspaceId) {
+    const creatable = await getCreatableRiskAiWorkspaces(supabase, userId);
+    let optionalPortfolio: OptionalCreatePortfolio = { status: "omitted" };
+    if (preferredPortfolioId) {
+      const { data: portfolio, error } = await supabase
+        .from("visualify_portfolios")
+        .select("workspace_id")
+        .eq("id", preferredPortfolioId)
+        .maybeSingle();
+      if (error || !portfolio) {
+        optionalPortfolio = { status: "missing" };
+      } else {
+        optionalPortfolio = {
+          status: "found",
+          id: preferredPortfolioId,
+          workspaceId:
+            typeof portfolio.workspace_id === "string" ? portfolio.workspace_id : null,
+        };
+      }
+    }
+    return resolveWorkspaceNativeProjectCreateTarget({
+      creatableIds: creatable.map((workspace) => workspace.id),
+      requestedWorkspaceId,
+      optionalPortfolio,
+    });
+  }
 
   if (preferredPortfolioId) {
     const viewer = await getPortfolioMembersViewerContext(supabase, preferredPortfolioId, userId);
@@ -98,16 +118,10 @@ async function resolveProjectCreateTarget(
   }
 
   const creatable = await getCreatableRiskAiWorkspaces(supabase, userId);
-  const resolved = resolveCreatableWorkspaceId({
-    creatableIds: creatable.map((w) => w.id),
+  return resolveUnscopedProjectCreateTarget({
+    creatableIds: creatable.map((workspace) => workspace.id),
     requestedWorkspaceId,
   });
-
-  if ("error" in resolved) {
-    return { error: resolved.error };
-  }
-
-  return { portfolioId: null, workspaceId: resolved.workspaceId };
 }
 
 export async function POST(request: Request) {

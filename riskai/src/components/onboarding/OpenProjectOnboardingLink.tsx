@@ -1,38 +1,48 @@
 "use client";
 
 import type { MouseEvent, ReactNode } from "react";
-import { OPEN_PROJECT_ONBOARDING_EVENT } from "@/lib/onboarding/types";
-import { riskaiPath } from "@/lib/routes";
+import {
+  OPEN_PROJECT_ONBOARDING_EVENT,
+  type OpenProjectOnboardingDetail,
+} from "@/lib/onboarding/types";
+import {
+  openProjectOnboardingDetail,
+  projectOnboardingHref,
+} from "@/lib/project/resolveWorkspaceProjectCreateParent";
 
 type Props = {
   className: string;
   children: ReactNode;
+  workspaceId?: string | null;
   portfolioId?: string | null;
 };
 
-type OpenProjectOnboardingDetail = {
-  portfolioId?: string;
-};
-
-export function dispatchOpenProjectOnboarding(portfolioId?: string | null) {
-  const detail: OpenProjectOnboardingDetail = {};
-  if (portfolioId && portfolioId.trim()) detail.portfolioId = portfolioId.trim();
-  window.dispatchEvent(new CustomEvent<OpenProjectOnboardingDetail>(OPEN_PROJECT_ONBOARDING_EVENT, { detail }));
+export function dispatchOpenProjectOnboarding(detail?: {
+  workspaceId?: string | null;
+  portfolioId?: string | null;
+}) {
+  const eventDetail: OpenProjectOnboardingDetail = openProjectOnboardingDetail(detail ?? {});
+  window.dispatchEvent(
+    new CustomEvent<OpenProjectOnboardingDetail>(OPEN_PROJECT_ONBOARDING_EVENT, { detail: eventDetail }),
+  );
 }
 
 /**
- * Same href as legacy create-project route, but normal click opens shell modal without navigation.
+ * Same href as create-project route, but normal click opens shell modal without navigation.
+ * `workspaceId` is the required parent from Workspace surfaces; `portfolioId` is optional.
  */
-export function OpenProjectOnboardingLink({ className, children, portfolioId = null }: Props) {
-  const href =
-    portfolioId && portfolioId.trim()
-      ? `${riskaiPath("/create-project")}?portfolioId=${encodeURIComponent(portfolioId)}`
-      : riskaiPath("/create-project");
+export function OpenProjectOnboardingLink({
+  className,
+  children,
+  workspaceId = null,
+  portfolioId = null,
+}: Props) {
+  const href = projectOnboardingHref({ workspaceId, portfolioId });
 
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
-    dispatchOpenProjectOnboarding(portfolioId);
+    dispatchOpenProjectOnboarding({ workspaceId, portfolioId });
   }
 
   return (

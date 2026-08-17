@@ -7,6 +7,7 @@ import {
 } from "@visualify/workspace-product-access";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { productConfig } from "@/lib/product-config";
+import { canCreateProjectInCreatableWorkspace } from "@/lib/project/resolveWorkspaceProjectCreateParent";
 
 /**
  * Workspace where the user may create a RiskAI portfolio or unscoped project
@@ -69,4 +70,20 @@ export async function getCreatableRiskAiWorkspaces(
   }
 
   return creatable.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Server UI gate for Workspace Create Project. Matches `POST /api/projects`
+ * creatable-workspace authorisation; the API remains authoritative.
+ */
+export async function userCanCreateProjectInWorkspace(
+  supabase: SupabaseClient,
+  userId: string,
+  workspaceId: string,
+): Promise<boolean> {
+  const creatable = await getCreatableRiskAiWorkspaces(supabase, userId);
+  return canCreateProjectInCreatableWorkspace(
+    creatable.map((workspace) => workspace.id),
+    workspaceId,
+  );
 }
