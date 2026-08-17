@@ -12,16 +12,11 @@ import {
 } from "@/lib/db/memberInviteRoles";
 import { getProjectMembersViewerContext } from "@/lib/db/projectMemberAccess";
 import type {
-  ProjectMemberRole,
   ProfileDisplayRow,
   ProjectMemberWithProfileRow,
-  ProjectWorkspaceRole,
 } from "@/types/projectMembers";
 import { coerceProfileFromUnknown } from "@/lib/profileDisplayCoerce";
-import {
-  normalizeWorkspaceRole,
-  type WorkspaceRole,
-} from "@visualify/workspace-product-access";
+import { mergeDirectAndInheritedProjectMemberRows } from "@/lib/db/mergeProjectMemberRows";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
 import {
   createVisualifyProjectInvitationAndInvite,
@@ -55,32 +50,9 @@ function isMissingServiceRoleMessage(raw: string): boolean {
   );
 }
 
-function isActiveWorkspaceMemberStatus(value: string | null | undefined): boolean {
-  if (value == null || value === "") return true;
-  return value.trim().toLowerCase() === "active";
-}
-
-function workspaceRoleLabel(role: WorkspaceRole): string {
-  switch (role) {
-    case "owner":
-      return "Workspace owner";
-    case "admin":
-      return "Workspace admin";
-    case "member":
-      return "Workspace member";
-    case "viewer":
-      return "Workspace viewer";
-    default:
-      return "Workspace member";
-  }
-}
-
-function syntheticWorkspaceMemberId(workspaceId: string, userId: string): string {
-  return `workspace:${workspaceId}:${userId}`;
-}
-
 /**
- * Merges direct project_members (authoritative) with active workspace members.
+ * Merges direct project_members (authoritative) with inherited workspace access.
+ * Workspace owner/admin/viewer inherit every Project; workspace member does not.
  * Dedupes by user_id; direct rows always win over inherited workspace rows.
  */
 async function loadMergedProjectMemberRows(
@@ -88,22 +60,13 @@ async function loadMergedProjectMemberRows(
   projectId: string,
   directRawRows: Record<string, unknown>[],
 ): Promise<ProjectMemberWithProfileRow[]> {
-  // Direct rows are authoritative for role, id, and edit/remove targets.
-  const shaped: ProjectMemberWithProfileRow[] = directRawRows.map((raw) => ({
-    id: raw.id as string,
-    project_id: raw.project_id as string,
-    user_id: raw.user_id as string,
-    role: raw.role as ProjectMemberRole,
-    created_at: raw.created_at as string,
-    updated_at: raw.updated_at as string,
-    profiles: null,
-    email: null,
-    resolvedProfile: null,
-    membershipSource: "direct",
-    isProjectMemberEditable: true,
-  }));
-
-  const directUserIds = new Set(shaped.map((r) => r.user_id));
+  const directOnly = () =>
+    mergeDirectAndInheritedProjectMemberRows({
+      projectId,
+      workspaceId: "",
+      directRawRows,
+      workspaceRows: [],
+    });
 
   const { data: project, error: projectErr } = await supabase
     .from("visualify_projects")
@@ -113,7 +76,7 @@ async function loadMergedProjectMemberRows(
 
   if (projectErr) {
     console.error("[project-members] GET project workspace scope:", projectErr.message);
-    return shaped;
+    return directOnly();
   }
 
   let workspaceId =
@@ -134,7 +97,7 @@ async function loadMergedProjectMemberRows(
         .maybeSingle();
       if (portfolioErr) {
         console.error("[project-members] GET portfolio workspace_id:", portfolioErr.message);
-        return shaped;
+        return directOnly();
       }
       workspaceId =
         typeof portfolio?.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
@@ -144,7 +107,7 @@ async function loadMergedProjectMemberRows(
   }
 
   if (!workspaceId) {
-    return shaped;
+    return directOnly();
   }
 
   const { data: workspaceRows, error: workspaceErr } = await supabase
@@ -154,47 +117,15 @@ async function loadMergedProjectMemberRows(
 
   if (workspaceErr) {
     console.error("[project-members] GET workspace members:", workspaceErr.message);
-    return shaped;
+    return directOnly();
   }
 
-  for (const row of workspaceRows ?? []) {
-    const userId = typeof row.user_id === "string" ? row.user_id.trim() : "";
-    if (!userId || directUserIds.has(userId)) {
-      continue;
-    }
-    if (!isActiveWorkspaceMemberStatus(row.status as string | null | undefined)) {
-      continue;
-    }
-
-    const workspaceRole = normalizeWorkspaceRole(row.role as string | null | undefined);
-    if (!workspaceRole) {
-      continue;
-    }
-
-    const createdAt =
-      typeof row.created_at === "string" && row.created_at.trim().length > 0
-        ? row.created_at
-        : "";
-
-    // Inherited workspace rows are read-only in the members UI (no project_members id).
-    shaped.push({
-      id: syntheticWorkspaceMemberId(workspaceId, userId),
-      project_id: projectId,
-      user_id: userId,
-      role: workspaceRole as ProjectMemberRole,
-      created_at: createdAt,
-      updated_at: createdAt,
-      profiles: null,
-      email: null,
-      resolvedProfile: null,
-      membershipSource: "workspace",
-      workspaceRole: workspaceRole as ProjectWorkspaceRole,
-      roleLabel: workspaceRoleLabel(workspaceRole),
-      isProjectMemberEditable: false,
-    });
-  }
-
-  return shaped;
+  return mergeDirectAndInheritedProjectMemberRows({
+    projectId,
+    workspaceId,
+    directRawRows,
+    workspaceRows,
+  });
 }
 
 /**

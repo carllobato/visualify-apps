@@ -40,6 +40,23 @@ export function asReportingUnit(raw: unknown): ReportingUnitOption {
     : DEFAULT_REPORTING_UNIT;
 }
 
+/**
+ * Portfolio dashboards follow Workspace Settings (`visualify_workspaces.reporting_unit`)
+ * when that value is set. The Portfolio column is only a fallback for unbound / legacy rows.
+ */
+export function reportingUnitForPortfolioDashboard(params: {
+  workspaceReportingUnit?: unknown;
+  portfolioReportingUnit?: unknown;
+}): ReportingUnitOption {
+  if (
+    typeof params.workspaceReportingUnit === "string" &&
+    REPORTING_UNIT_OPTIONS.includes(params.workspaceReportingUnit as ReportingUnitOption)
+  ) {
+    return params.workspaceReportingUnit as ReportingUnitOption;
+  }
+  return asReportingUnit(params.portfolioReportingUnit);
+}
+
 function reportingUnitFractionDigits(scaledAmount: number): number {
   if (!Number.isFinite(scaledAmount) || scaledAmount === 0) return 0;
   if (Math.abs(scaledAmount) >= 100) return 0;

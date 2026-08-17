@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
+import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { collectDistinctReportingMonthYearKeys, isValidReportingMonthYearKey } from "@/lib/reportingMonthSelection";
 import type { SimulationSnapshotRow } from "@/lib/db/snapshots";
 
@@ -103,10 +104,9 @@ export async function fetchDistinctLockedReportingMonthKeysFromScope(
   if (pid) {
     projectIds = [pid];
   } else if (pfid) {
-    const { data: projects, error: projErr } = await supabase
-      .from("visualify_projects")
-      .select("id")
-      .eq("portfolio_id", pfid);
+    const { data: projects, error: projErr } = await filterActiveProjects(
+      supabase.from("visualify_projects").select("id").eq("portfolio_id", pfid),
+    );
     if (projErr || !projects?.length) {
       return emptyDistinctLockedReportingMonths();
     }

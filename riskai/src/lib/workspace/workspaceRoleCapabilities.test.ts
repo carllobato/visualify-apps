@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   resolveWorkspacePortfolioCapabilities,
   resolveWorkspaceProjectCapabilities,
+  workspaceRoleCanCreateProject,
+  workspaceRoleCanArchiveProject,
 } from "./workspaceRoleCapabilities";
 
 describe("resolveWorkspacePortfolioCapabilities", () => {
@@ -35,6 +37,31 @@ describe("resolveWorkspacePortfolioCapabilities", () => {
       canChangeMemberRoles: false,
       canRemoveMembers: false,
     });
+  });
+});
+
+describe("workspaceRoleCanCreateProject", () => {
+  it("allows Workspace Owner and Admin", () => {
+    assert.equal(workspaceRoleCanCreateProject("owner"), true);
+    assert.equal(workspaceRoleCanCreateProject("admin"), true);
+  });
+
+  it("denies Workspace Member and Viewer", () => {
+    assert.equal(workspaceRoleCanCreateProject("member"), false);
+    assert.equal(workspaceRoleCanCreateProject("viewer"), false);
+  });
+});
+
+describe("workspaceRoleCanArchiveProject", () => {
+  it("allows Workspace Owner and Admin", () => {
+    assert.equal(workspaceRoleCanArchiveProject("owner"), true);
+    assert.equal(workspaceRoleCanArchiveProject("admin"), true);
+  });
+
+  it("denies Workspace Member, Viewer, and missing role", () => {
+    assert.equal(workspaceRoleCanArchiveProject("member"), false);
+    assert.equal(workspaceRoleCanArchiveProject("viewer"), false);
+    assert.equal(workspaceRoleCanArchiveProject(null), false);
   });
 });
 

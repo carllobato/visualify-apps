@@ -17,6 +17,7 @@ import {
   scheduleImpactDaysMLCappedForMonteCarlo,
 } from "@/domain/risk/riskFieldSemantics";
 import type { AccessibleProject } from "@/lib/portfolios-server";
+import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { RISK_DB_SELECT_COLUMNS, mapRiskRowToDomain } from "@/lib/db/risks";
 import { computePortfolioExposure } from "@/engine/forwardExposure";
 import { formatDurationWholeDays } from "@/lib/formatDuration";
@@ -599,11 +600,13 @@ export async function loadPortfolioProjectRiskSeveritySummary(
   supabase: SupabaseClient,
   portfolioId: string
 ): Promise<PortfolioProjectRiskSeverityRow[]> {
-  const { data: projects, error: pErr } = await supabase
-    .from("visualify_projects")
-    .select("id, name")
-    .eq("portfolio_id", portfolioId)
-    .order("name", { ascending: true });
+  const { data: projects, error: pErr } = await filterActiveProjects(
+    supabase
+      .from("visualify_projects")
+      .select("id, name")
+      .eq("portfolio_id", portfolioId)
+      .order("name", { ascending: true }),
+  );
 
   if (pErr || !projects?.length) return [];
 
@@ -712,11 +715,13 @@ export async function loadPortfolioProjectContingencyTable(
   supabase: SupabaseClient,
   portfolioId: string
 ): Promise<PortfolioProjectContingencyRow[]> {
-  const { data: projects, error: pErr } = await supabase
-    .from("visualify_projects")
-    .select("id, name")
-    .eq("portfolio_id", portfolioId)
-    .order("name", { ascending: true });
+  const { data: projects, error: pErr } = await filterActiveProjects(
+    supabase
+      .from("visualify_projects")
+      .select("id, name")
+      .eq("portfolio_id", portfolioId)
+      .order("name", { ascending: true }),
+  );
 
   if (pErr || !projects?.length) return [];
 
@@ -1480,11 +1485,13 @@ export async function loadPortfolioTopRiskConcentrationRows(
   reportingUnit: ReportingUnitOption = DEFAULT_REPORTING_UNIT,
   options?: LoadPortfolioTopRiskConcentrationOptions
 ): Promise<PortfolioTopRiskConcentration> {
-  const { data: projects, error: pErr } = await supabase
-    .from("visualify_projects")
-    .select("id, name")
-    .eq("portfolio_id", portfolioId)
-    .order("name", { ascending: true });
+  const { data: projects, error: pErr } = await filterActiveProjects(
+    supabase
+      .from("visualify_projects")
+      .select("id, name")
+      .eq("portfolio_id", portfolioId)
+      .order("name", { ascending: true }),
+  );
 
   if (pErr || !projects?.length) return emptyTopRiskConcentration();
 
@@ -1543,11 +1550,13 @@ export async function loadPortfolioProjectTilePayloads(
     onlyProjectsWithLockedReporting?: boolean;
   }
 ): Promise<LoadPortfolioProjectTilePayloadsResult> {
-  const { data: projects, error } = await supabase
-    .from("visualify_projects")
-    .select("id, name, created_at")
-    .eq("portfolio_id", portfolioId)
-    .order("created_at", { ascending: true });
+  const { data: projects, error } = await filterActiveProjects(
+    supabase
+      .from("visualify_projects")
+      .select("id, name, created_at")
+      .eq("portfolio_id", portfolioId)
+      .order("created_at", { ascending: true }),
+  );
 
   if (error || !projects?.length) {
     return { projectTilePayloads: [], portfolioReportingFooter: null, totalProjectsInPortfolio: 0 };

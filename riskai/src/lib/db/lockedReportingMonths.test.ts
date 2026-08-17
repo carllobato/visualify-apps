@@ -22,6 +22,14 @@ class FakeQuery<T extends Record<string, unknown>> {
     return this;
   }
 
+  is(column: string, value: unknown): this {
+    this.filters.push((row) => {
+      if (value === null) return row[column] == null;
+      return row[column] === value;
+    });
+    return this;
+  }
+
   in(column: string, values: unknown[]): this {
     this.filters.push((row) => values.includes(row[column]));
     return this;
@@ -55,10 +63,15 @@ class FakeSupabase {
 
 const PORTFOLIO_PROJECT = { id: "project-1", portfolio_id: "portfolio-1" };
 const UNLINKED_PROJECT = { id: "project-unlinked", portfolio_id: null };
+const ARCHIVED_PORTFOLIO_PROJECT = {
+  id: "project-archived",
+  portfolio_id: "portfolio-1",
+  archived_at: "2026-08-01T00:00:00Z",
+};
 
 function makeSupabase(): SupabaseClient {
   return new FakeSupabase({
-    visualify_projects: [PORTFOLIO_PROJECT, UNLINKED_PROJECT],
+    visualify_projects: [PORTFOLIO_PROJECT, UNLINKED_PROJECT, ARCHIVED_PORTFOLIO_PROJECT],
     riskai_simulation_snapshots: [
       {
         project_id: PORTFOLIO_PROJECT.id,
@@ -74,6 +87,11 @@ function makeSupabase(): SupabaseClient {
         project_id: PORTFOLIO_PROJECT.id,
         locked_for_reporting: false,
         report_month: "2026-05-01",
+      },
+      {
+        project_id: ARCHIVED_PORTFOLIO_PROJECT.id,
+        locked_for_reporting: true,
+        report_month: "2026-06-01",
       },
     ],
   }) as unknown as SupabaseClient;

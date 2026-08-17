@@ -73,23 +73,14 @@ export function buildCreateProjectRequestBody(params: {
 }
 
 /**
- * Legacy Portfolio-launched create omits workspaceId so `POST /api/projects`
- * keeps using portfolio `canInviteMembers`. Workspace-native and dashboard
- * unscoped create always send workspaceId.
+ * Always send the resolved Workspace so `POST /api/projects` authorises against
+ * Workspace Owner/Admin. Do not omit workspaceId to force a Portfolio-capability path.
  */
 export function createProjectRequestFromForm(params: {
   name: string;
   resolvedWorkspaceId: string;
   resolvedPortfolioId: string;
-  launchedWithWorkspaceId: boolean;
-  portfolioBound: boolean;
 }): ProjectCreateRequestFields {
-  if (params.portfolioBound && !params.launchedWithWorkspaceId) {
-    return buildCreateProjectRequestBody({
-      name: params.name,
-      portfolioId: params.resolvedPortfolioId,
-    });
-  }
   return buildCreateProjectRequestBody({
     name: params.name,
     workspaceId: params.resolvedWorkspaceId,

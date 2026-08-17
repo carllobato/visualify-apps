@@ -15,15 +15,14 @@ export type ProjectMemberCapabilityFlags = {
   canRemoveMembers: boolean;
 };
 
-/** Aligns with project RLS: owners (table or role) full member admin; editors may invite only. */
+/** Owners (table or role) full member admin; editor/viewer cannot invite, change roles, or remove. */
 export function resolveProjectMemberCapabilityFlags(
   isTableOwner: boolean,
   rowRole: ProjectMemberRole | undefined
 ): ProjectMemberCapabilityFlags {
   const ownerCaps = isTableOwner || rowRole === "owner";
-  const editorOnly = !ownerCaps && rowRole === "editor";
   return {
-    canInviteMembers: ownerCaps || editorOnly,
+    canInviteMembers: ownerCaps,
     canChangeMemberRoles: ownerCaps,
     canRemoveMembers: ownerCaps,
   };

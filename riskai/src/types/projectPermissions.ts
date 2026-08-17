@@ -11,7 +11,7 @@ export type ProjectPermissions = {
   canEditContent: boolean;
   /** project_members CRUD */
   canManageMembers: boolean;
-  /** Destructive project deletion; requires owner access on both the project and its portfolio. */
-  canDeleteProject: boolean;
+  /** Archive or restore the Project. Workspace Owner/Admin only; never Portfolio or Project Editor. */
+  canArchiveProject: boolean;
   accessMode: ProjectAccessMode;
 };

@@ -4,6 +4,7 @@ import {
   type PortfolioMemberCapabilityFlags,
 } from "@/lib/db/portfolioMemberAccess";
 import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
+import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { resolveWorkspacePortfolioCapabilities } from "@/lib/workspace/workspaceRoleCapabilities";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -26,6 +27,7 @@ export type PortfolioForAdmin = {
   updated_at: string | null;
   reporting_currency: string | null;
   reporting_unit: string | null;
+  workspace_id: string | null;
 };
 
 export type PortfolioMemberRow = {
@@ -79,6 +81,10 @@ export async function assertPortfolioAdminAccess(
     reporting_currency:
       typeof portfolio.reporting_currency === "string" ? portfolio.reporting_currency : null,
     reporting_unit: typeof portfolio.reporting_unit === "string" ? portfolio.reporting_unit : null,
+    workspace_id:
+      typeof portfolio.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
+        ? portfolio.workspace_id.trim()
+        : null,
   };
 
   const isTableOwner = portfolio.owner_user_id === userId;
@@ -274,11 +280,13 @@ export async function getAccessibleProjects(
   ];
 
   const [ownedResult, membersIndexResult, workspaceMembersResult] = await Promise.all([
-    supabase
-      .from("visualify_projects")
-      .select(PROJECT_LIST_SELECT)
-      .eq("owner_user_id", userId)
-      .order("created_at", { ascending: true }),
+    filterActiveProjects(
+      supabase
+        .from("visualify_projects")
+        .select(PROJECT_LIST_SELECT)
+        .eq("owner_user_id", userId)
+        .order("created_at", { ascending: true }),
+    ),
     supabase.from("visualify_project_members").select("project_id").eq("user_id", userId),
     supabase
       .from("visualify_workspace_members")
@@ -323,25 +331,31 @@ export async function getAccessibleProjects(
   const [memberProjectsResult, portfolioProjectsResult, workspaceProjectsResult] =
     await Promise.all([
       memberProjectIds.length > 0
-        ? supabase
-            .from("visualify_projects")
-            .select(PROJECT_LIST_SELECT)
-            .in("id", memberProjectIds)
-            .order("created_at", { ascending: true })
+        ? filterActiveProjects(
+            supabase
+              .from("visualify_projects")
+              .select(PROJECT_LIST_SELECT)
+              .in("id", memberProjectIds)
+              .order("created_at", { ascending: true }),
+          )
         : emptyProjectList,
       portfolioIds.length > 0
-        ? supabase
-            .from("visualify_projects")
-            .select(PROJECT_LIST_SELECT)
-            .in("portfolio_id", portfolioIds)
-            .order("created_at", { ascending: true })
+        ? filterActiveProjects(
+            supabase
+              .from("visualify_projects")
+              .select(PROJECT_LIST_SELECT)
+              .in("portfolio_id", portfolioIds)
+              .order("created_at", { ascending: true }),
+          )
         : emptyProjectList,
       workspaceIds.length > 0
-        ? supabase
-            .from("visualify_projects")
-            .select(PROJECT_LIST_SELECT)
-            .in("workspace_id", workspaceIds)
-            .order("created_at", { ascending: true })
+        ? filterActiveProjects(
+            supabase
+              .from("visualify_projects")
+              .select(PROJECT_LIST_SELECT)
+              .in("workspace_id", workspaceIds)
+              .order("created_at", { ascending: true }),
+          )
         : emptyProjectList,
     ]);
 

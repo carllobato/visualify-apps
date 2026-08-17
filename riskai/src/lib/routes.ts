@@ -1,7 +1,7 @@
 /** Authenticated RiskAI UI (served under app host, e.g. app.visualify.com.au). */
 export const RISKAI_BASE = "";
 export const DASHBOARD_PATH = "/dashboard";
-/** Signed-in workspace selector (2+ workspaces). Brand mark returns here. */
+/** Signed-in workspace selector and Create Workspace entry. Brand mark returns here. */
 export const HOME_PATH = "/home";
 /** Signed-in users without RiskAI product entitlement (outside `(protected)`). */
 export const NO_ACCESS_PATH = "/no-access";

@@ -53,6 +53,23 @@ export function resolveWorkspacePortfolioCapabilities(
 }
 
 /**
+ * Project creation is Workspace Owner/Admin only.
+ * Portfolio ownership/membership never grants this.
+ */
+export function workspaceRoleCanCreateProject(role: WorkspaceRole): boolean {
+  return isWorkspaceRoleAtLeast(role, "admin");
+}
+
+/**
+ * Project archive/restore is Workspace Owner/Admin only.
+ * Direct Project roles and Portfolio membership never grant this.
+ */
+export function workspaceRoleCanArchiveProject(role: WorkspaceRole | null | undefined): boolean {
+  if (!role) return false;
+  return isWorkspaceRoleAtLeast(role, "admin");
+}
+
+/**
  * Maps a workspace role to project content/metadata/member capabilities.
  * Member may edit content and manage users but not project metadata; viewer is read-only.
  */

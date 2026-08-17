@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { collectDistinctReportingMonthYearKeys } from "@/lib/reportingMonthSelection";
 
 export type ReportingMonthYearKeyScope =
@@ -26,10 +27,9 @@ export async function fetchLatestReportingMonthYearKeyForScope(
   } else if ("portfolioId" in scope) {
     const pfid = scope.portfolioId.trim();
     if (!pfid) return null;
-    const { data: projects, error } = await supabase
-      .from("visualify_projects")
-      .select("id")
-      .eq("portfolio_id", pfid);
+    const { data: projects, error } = await filterActiveProjects(
+      supabase.from("visualify_projects").select("id").eq("portfolio_id", pfid),
+    );
     if (error || !projects?.length) return null;
     projectIds = projects.map((p) => p.id as string);
   } else {

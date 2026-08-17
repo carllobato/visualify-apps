@@ -2,12 +2,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
+import { RestoreArchivedProjectButton } from "@/components/workspace/RestoreArchivedProjectButton";
 import { loadProjectTilePayloads } from "@/lib/dashboard/projectTileServerData";
+import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
 import { resolveWorkspaceProjectCreateParent } from "@/lib/project/resolveWorkspaceProjectCreateParent";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
 import { userCanCreateProjectInWorkspace } from "@/lib/workspace/creatableWorkspaces";
 import { resolveWorkspaceOverviewContext } from "@/lib/workspace/resolveWorkspaceOverviewContext";
+import {
+  loadWorkspaceArchivedProjects,
+  type WorkspaceArchivedProject,
+} from "@/lib/workspace/resolveWorkspaceOverviewScope";
+import { workspaceRoleCanArchiveProject } from "@/lib/workspace/workspaceRoleCapabilities";
 import { Card, CardBody } from "@visualify/design-system";
 
 /**
@@ -39,6 +46,8 @@ export default async function WorkspaceProjectsPage({
     user.id,
     overview.workspace.id,
   );
+  const workspaceRole = await fetchWorkspaceMemberRole(supabase, overview.workspace.id, user.id);
+  const canRestoreArchivedProjects = workspaceRoleCanArchiveProject(workspaceRole);
   const createParent = resolveWorkspaceProjectCreateParent({
     workspaceId: overview.workspace.id,
     uniquePortfolioId: overview.uniquePortfolio?.id ?? null,
@@ -51,8 +60,11 @@ export default async function WorkspaceProjectsPage({
     overview.projects,
     { onlyProjectsWithLockedReporting: false }
   );
+  const archivedProjects = canRestoreArchivedProjects
+    ? await loadWorkspaceArchivedProjects(supabase, overview.workspace.id)
+    : [];
 
-  if (projectTiles.length === 0) {
+  if (projectTiles.length === 0 && archivedProjects.length === 0) {
     return (
       <main className="ds-document-page">
         <section aria-labelledby="workspace-projects-empty-heading">
@@ -88,19 +100,30 @@ export default async function WorkspaceProjectsPage({
   return (
     <main className="ds-document-page">
       <section aria-labelledby="workspace-projects-heading">
-        <p
-          id="workspace-projects-heading"
-          className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]"
-        >
-          Open a project for its overview, risk register, and simulation. Create a new project to add it to
-          this workspace.
-        </p>
+        {projectTiles.length === 0 ? (
+          <p
+            id="workspace-projects-heading"
+            className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]"
+          >
+            No active projects in this workspace.
+          </p>
+        ) : (
+          <p
+            id="workspace-projects-heading"
+            className="m-0 mb-6 max-w-3xl text-[length:var(--ds-text-sm)] leading-snug text-[var(--ds-text-secondary)]"
+          >
+            Open a project for its overview, risk register, and simulation. Create a new project to add it to
+            this workspace.
+          </p>
+        )}
         <div className="flex flex-col gap-[var(--ds-space-4)]">
-          <div className="ds-dashboard-project-grid">
-            {projectTiles.map((payload) => (
-              <ProjectTile key={payload.id} payload={payload} />
-            ))}
-          </div>
+          {projectTiles.length > 0 ? (
+            <div className="ds-dashboard-project-grid">
+              {projectTiles.map((payload) => (
+                <ProjectTile key={payload.id} payload={payload} />
+              ))}
+            </div>
+          ) : null}
           {canCreateWorkspaceProject ? (
             <OpenProjectOnboardingLink
               className="ds-dashboard-inline-create"
@@ -115,6 +138,35 @@ export default async function WorkspaceProjectsPage({
           ) : null}
         </div>
       </section>
+      <ArchivedProjectsSection projects={archivedProjects} />
     </main>
+  );
+}
+
+function ArchivedProjectsSection({ projects }: { projects: WorkspaceArchivedProject[] }) {
+  if (projects.length === 0) return null;
+
+  return (
+    <section aria-labelledby="workspace-archived-projects-heading" className="mt-10">
+      <h2
+        id="workspace-archived-projects-heading"
+        className="m-0 mb-3 text-[length:var(--ds-text-sm)] font-semibold text-[var(--ds-text-primary)]"
+      >
+        Archived projects
+      </h2>
+      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+        {projects.map((project) => (
+          <li
+            key={project.id}
+            className="flex items-center justify-between gap-3 rounded-[var(--ds-radius-md)] bg-[var(--ds-surface-tile)] px-[1.125rem] py-3"
+          >
+            <span className="min-w-0 truncate font-medium text-[var(--ds-text-primary)]">
+              {project.name || project.id}
+            </span>
+            <RestoreArchivedProjectButton projectId={project.id} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

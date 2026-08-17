@@ -2,7 +2,6 @@ import { isWorkspaceRoleAtLeast } from "@visualify/workspace-product-access";
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { resolvePortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAccess";
 import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import type { ProjectPermissions } from "@/types/projectPermissions";
@@ -11,7 +10,10 @@ import {
   resolveInheritedProjectReadPermissions,
   resolveProjectPermissions,
 } from "@/lib/db/projectPermissions.logic";
-import { resolveWorkspaceProjectCapabilities } from "@/lib/workspace/workspaceRoleCapabilities";
+import {
+  resolveWorkspaceProjectCapabilities,
+  workspaceRoleCanArchiveProject,
+} from "@/lib/workspace/workspaceRoleCapabilities";
 
 export type ProjectRow = { id: string; name: string; created_at: string | null };
 
@@ -96,7 +98,7 @@ function projectPermissionsFromWorkspaceProjectCapabilities(
     canEditProjectMetadata: workspaceCaps.canEditProjectMetadata,
     canEditContent: workspaceCaps.canEditContent,
     canManageMembers: workspaceCaps.canChangeMemberRoles || workspaceCaps.canRemoveMembers,
-    canDeleteProject: false,
+    canArchiveProject: false,
     accessMode: workspaceCaps.accessMode,
   };
 }
@@ -252,6 +254,18 @@ async function resolveInheritedPermissionsWithWorkspaceSupplement(
   return permissions;
 }
 
+async function resolveCanArchiveProject(
+  supabase: SupabaseClient,
+  userId: string,
+  projectScope: ProjectWorkspaceScope | null,
+): Promise<boolean> {
+  if (!projectScope) return false;
+  const workspaceId = await resolveWorkspaceIdForProject(supabase, projectScope);
+  if (!workspaceId) return false;
+  const workspaceRole = await fetchWorkspaceMemberRole(supabase, workspaceId, userId);
+  return workspaceRoleCanArchiveProject(workspaceRole);
+}
+
 export const getProjectAccessForUser = cache(async function getProjectAccessForUser(
   projectId: string,
   userId: string
@@ -292,9 +306,10 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
         userId,
         workspaceScope,
       );
+      const canArchiveProject = await resolveCanArchiveProject(supabase, userId, workspaceScope);
       return {
         project: { id: projectId, name: "", created_at: null },
-        permissions,
+        permissions: { ...permissions, canArchiveProject },
         ownerUserId: "",
         portfolioId: workspaceScope?.portfolio_id ?? null,
         workspaceId: null,
@@ -324,29 +339,7 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     permissions = await resolveInheritedPermissionsWithWorkspaceSupplement(supabase, userId, data);
   }
 
-  const isDirectProjectOwner =
-    data.owner_user_id === userId || memberRole === "owner";
-
-  let canEditPortfolioDetails = false;
-  if (isDirectProjectOwner && data.portfolio_id) {
-    const { data: portfolio } = await supabase
-      .from("visualify_portfolios")
-      .select("owner_user_id")
-      .eq("id", data.portfolio_id)
-      .maybeSingle();
-
-    const { data: portfolioMemberRow } = await supabase
-      .from("visualify_portfolio_members")
-      .select("role")
-      .eq("portfolio_id", data.portfolio_id)
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    canEditPortfolioDetails = resolvePortfolioMemberCapabilityFlags(
-      portfolio?.owner_user_id === userId,
-      portfolioMemberRow?.role as string | undefined
-    ).canEditPortfolioDetails;
-  }
+  const canArchiveProject = await resolveCanArchiveProject(supabase, userId, data);
 
   return {
     project: {
@@ -356,7 +349,7 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     },
     permissions: {
       ...permissions,
-      canDeleteProject: isDirectProjectOwner && canEditPortfolioDetails,
+      canArchiveProject,
     },
     ownerUserId: data.owner_user_id as string,
     portfolioId: data.portfolio_id ?? null,

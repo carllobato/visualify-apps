@@ -37,6 +37,14 @@ class FakeQuery<T extends Record<string, unknown>> {
     return this;
   }
 
+  is(column: string, value: unknown): this {
+    this.filters.push((row) => {
+      if (value === null) return row[column] == null;
+      return row[column] === value;
+    });
+    return this;
+  }
+
   in(column: string, values: unknown[]): this {
     this.filters.push((row) => values.includes(row[column]));
     return this;
@@ -368,6 +376,13 @@ const UNLINKED_PROJECT = {
   created_at: "2026-01-04T00:00:00.000Z",
   portfolio_id: null,
 };
+const ARCHIVED_PORTFOLIO_PROJECT = {
+  id: "project-archived",
+  name: "Archived Project",
+  created_at: "2026-01-02T00:00:00.000Z",
+  portfolio_id: "portfolio-1",
+  archived_at: "2026-08-01T00:00:00.000Z",
+};
 
 function makeMixedScopeSupabase(extra?: {
   risks?: RiskRow[];
@@ -375,7 +390,7 @@ function makeMixedScopeSupabase(extra?: {
   snapshots?: Record<string, unknown>[];
 }): SupabaseClient {
   return new FakeSupabase({
-    visualify_projects: [PORTFOLIO_PROJECT, UNLINKED_PROJECT],
+    visualify_projects: [PORTFOLIO_PROJECT, UNLINKED_PROJECT, ARCHIVED_PORTFOLIO_PROJECT],
     visualify_project_settings: extra?.settings ?? [
       { project_id: PORTFOLIO_PROJECT.id, currency: "AUD" },
       { project_id: UNLINKED_PROJECT.id, currency: "USD" },
@@ -570,5 +585,16 @@ describe("project-list overview loaders", () => {
       },
     ]);
     assert.deepStrictEqual(fromProjects, fromPortfolio);
+  });
+
+  it("loadPortfolioProjectTilePayloads excludes archived Projects", async () => {
+    const result = await loadPortfolioProjectTilePayloads(makeMixedScopeSupabase(), "portfolio-1", {
+      onlyProjectsWithLockedReporting: false,
+    });
+    assert.equal(
+      result.projectTilePayloads.some((p) => p.id === ARCHIVED_PORTFOLIO_PROJECT.id),
+      false,
+    );
+    assert.equal(result.totalProjectsInPortfolio, 1);
   });
 });

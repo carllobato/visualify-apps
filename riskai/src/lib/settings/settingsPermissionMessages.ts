@@ -18,7 +18,7 @@ export function getPortfolioSettingsPermissionNotice(
   return "You can view settings and invite members. Only the portfolio owner can edit portfolio details, change roles, or remove members.";
 }
 
-/** Workspace Settings banner when reporting unit cannot be edited (member / viewer). */
+/** Workspace Settings banner when name and reporting unit cannot be edited (member / viewer). */
 export function getWorkspaceSettingsPermissionNotice(canEditWorkspaceDetails: boolean): string | null {
   return canEditWorkspaceDetails ? null : PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE;
 }

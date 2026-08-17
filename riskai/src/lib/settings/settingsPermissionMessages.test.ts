@@ -6,7 +6,7 @@ import {
 } from "./settingsPermissionMessages";
 
 describe("getWorkspaceSettingsPermissionNotice", () => {
-  it("hides the banner when the viewer may edit reporting unit", () => {
+  it("hides the banner when the viewer may edit Workspace Settings", () => {
     assert.equal(getWorkspaceSettingsPermissionNotice(true), null);
   });
 

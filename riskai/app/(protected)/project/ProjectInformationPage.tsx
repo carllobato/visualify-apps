@@ -32,6 +32,7 @@ import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import { postArchiveNavigatePath } from "@/lib/project/projectArchiveLifecycle";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   Button,
@@ -242,7 +243,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const riskUiReadOnly =
     Boolean(projectId) &&
     (projectPermissions == null || !projectPermissions.canEditContent);
-  const canDeleteProject = Boolean(projectId && projectPermissions?.canDeleteProject);
+  const canArchiveProject = Boolean(projectId && projectPermissions?.canArchiveProject);
 
   const [mounted, setMounted] = useState(false);
   const [form, setForm] = useState<ProjectContext>(defaultContext());
@@ -253,9 +254,9 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showArchivedReviewModal, setShowArchivedReviewModal] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProjectSettingsTab>("overview");
   const [validation, setValidation] = useState<Record<string, string>>({});
   const router = useRouter();
@@ -531,36 +532,42 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     setValidation({});
   }, [projectId, settingsReadOnly]);
 
-  const confirmDeleteProject = useCallback(async () => {
-    if (!projectId || !canDeleteProject) return;
-    setDeleteError(null);
-    setDeleting(true);
+  const confirmArchiveProject = useCallback(async () => {
+    if (!projectId || !canArchiveProject) return;
+    setArchiveError(null);
+    setArchiving(true);
     try {
       const res = await fetch(`/api/projects/${projectId}`, {
-        method: "DELETE",
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ archived: true }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
-        portfolioId?: string | null;
+        workspaceId?: string | null;
       };
       if (!res.ok) {
-        setDeleteError(data.error ?? "Could not delete project.");
-        setDeleting(false);
+        setArchiveError(data.error ?? "Could not archive project.");
+        setArchiving(false);
         return;
       }
-      setDeleting(false);
-      if (data.portfolioId) {
-        router.replace(riskaiPath(`/portfolios/${data.portfolioId}/projects`));
+      setArchiving(false);
+      const workspaceId =
+        typeof data.workspaceId === "string" && data.workspaceId.trim()
+          ? data.workspaceId.trim()
+          : "";
+      if (workspaceId) {
+        router.replace(riskaiPath(postArchiveNavigatePath(workspaceId)));
       } else {
-        router.replace(riskaiPath("/portfolios"));
+        router.replace(riskaiPath("/projects"));
       }
       router.refresh();
     } catch {
-      setDeleteError("Something went wrong. Try again.");
-      setDeleting(false);
+      setArchiveError("Something went wrong. Try again.");
+      setArchiving(false);
     }
-  }, [canDeleteProject, projectId, router]);
+  }, [canArchiveProject, projectId, router]);
 
   const currentSettingsFingerprint = useMemo(
     () => projectSettingsPersistFingerprint(form, rawNumericFields),
@@ -629,7 +636,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
           <Tab active={activeTab === "archive"} onClick={() => setActiveTab("archive")}>
             Archive
           </Tab>
-          {canDeleteProject && (
+          {canArchiveProject && (
             <Tab active={activeTab === "danger"} onClick={() => setActiveTab("danger")}>
               Danger Zone
             </Tab>
@@ -991,26 +998,26 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         </Card>
       )}
 
-      {activeTab === "danger" && canDeleteProject && (
+      {activeTab === "danger" && canArchiveProject && (
         <Card className="ds-project-settings-section-card">
           <CardHeader className="ds-project-settings-card-header">
             <h2 className="ds-project-settings-card-title text-[var(--ds-status-danger-fg)]">Danger Zone</h2>
           </CardHeader>
           <CardBody className="ds-project-settings-card-body">
             <p className="mb-3 text-sm text-[var(--ds-text-secondary)]">
-              Permanently delete this project. This removes project risks, simulation runs, settings,
-              team membership, and pending invitations.
+              Archive this project. It is removed from active Workspace views, but all project data
+              is kept and can be restored later.
             </p>
             <Button
               type="button"
               variant="secondary"
               onClick={() => {
-                setDeleteError(null);
-                setDeleteOpen(true);
+                setArchiveError(null);
+                setArchiveOpen(true);
               }}
               className="border-[var(--ds-status-danger-border)] text-[var(--ds-status-danger-fg)] hover:border-[var(--ds-status-danger-border)] hover:bg-[var(--ds-status-danger-bg)]"
             >
-              Delete project
+              Archive project
             </Button>
           </CardBody>
         </Card>
@@ -1083,52 +1090,51 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         </div>
       )}
 
-      {deleteOpen && canDeleteProject ? (
+      {archiveOpen && canArchiveProject ? (
         <div
           className="ds-modal-backdrop z-[120]"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="delete-project-title"
-          aria-describedby="delete-project-desc"
-          onClick={() => !deleting && setDeleteOpen(false)}
+          aria-labelledby="archive-project-title"
+          aria-describedby="archive-project-desc"
+          onClick={() => !archiving && setArchiveOpen(false)}
         >
           <div
             className="w-full max-w-md rounded-[var(--ds-radius-md)] border border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)] bg-[var(--ds-surface-elevated)] p-6 shadow-xl dark:border-[color-mix(in_oklab,var(--ds-border)_90%,transparent)]"
             onClick={(e) => e.stopPropagation()}
           >
             <h3
-              id="delete-project-title"
+              id="archive-project-title"
               className="text-lg font-semibold tracking-tight text-[var(--ds-text-primary)]"
             >
-              Delete project?
+              Archive project?
             </h3>
-            <p id="delete-project-desc" className="mt-2 text-sm text-[var(--ds-text-secondary)]">
-              Are you sure? This can&apos;t be undone. The project
-              {form.projectName.trim() ? ` "${form.projectName.trim()}"` : ""} will be deleted,
-              including its risks, simulation runs, settings, team membership, and pending invitations.
+            <p id="archive-project-desc" className="mt-2 text-sm text-[var(--ds-text-secondary)]">
+              {form.projectName.trim() ? `"${form.projectName.trim()}"` : "This project"} will be
+              removed from active Workspace views. Its data is kept and can be restored later.
             </p>
-            {deleteError && (
+            {archiveError && (
               <Callout status="danger" role="alert" className="mt-3 text-[length:var(--ds-text-sm)] leading-relaxed">
-                {deleteError}
+                {archiveError}
               </Callout>
             )}
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
               <Button
                 type="button"
                 variant="secondary"
-                disabled={deleting}
-                onClick={() => setDeleteOpen(false)}
+                disabled={archiving}
+                onClick={() => setArchiveOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 type="button"
                 variant="primary"
-                disabled={deleting}
-                onClick={() => void confirmDeleteProject()}
+                disabled={archiving}
+                onClick={() => void confirmArchiveProject()}
                 className="bg-[var(--ds-status-danger-strong-bg)] text-[var(--ds-status-danger-strong-fg)] shadow-none hover:bg-[var(--ds-status-danger-strong-bg)] hover:opacity-90"
               >
-                {deleting ? "Deleting…" : "Yes, delete this project"}
+                {archiving ? "Archiving…" : "Yes, archive this project"}
               </Button>
             </div>
           </div>

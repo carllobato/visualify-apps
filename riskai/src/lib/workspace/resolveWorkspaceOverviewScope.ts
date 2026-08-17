@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { filterActiveProjects, filterArchivedProjects } from "@/lib/db/activeProjectList";
 import {
-  DEFAULT_REPORTING_UNIT,
-  asReportingUnit,
+  reportingUnitForPortfolioDashboard,
   type ReportingUnitOption,
 } from "@/lib/portfolio/reportingPreferences";
 import type { EntitledWorkspace } from "@/types/entitledWorkspace";
@@ -25,12 +25,16 @@ export type ResolveWorkspaceOverviewScopeResult =
       workspace: EntitledWorkspace;
       projects: WorkspaceOverviewProject[];
       /**
-       * Internal Portfolio used only for Overview metadata such as `reporting_unit`.
+       * Unique internal Portfolio, used only for Create Project compatibility.
        * Null when none exist, or when more than one exists (no multi-Portfolio selection).
        */
       uniquePortfolio: UniqueWorkspacePortfolio | null;
       /** True when 2+ Portfolio rows belong to this Workspace; metadata is not selected. */
       multiplePortfolios: boolean;
+      /**
+       * Workspace Settings unit when set; otherwise the unique Portfolio fallback
+       * Settings and Portfolio Overview already use.
+       */
       reportingUnit: ReportingUnitOption;
     };
 
@@ -58,17 +62,24 @@ export async function resolveWorkspaceOverviewScope(params: {
     return { ok: false, error: "forbidden" };
   }
 
-  const [projectsResult, portfoliosResult] = await Promise.all([
-    params.supabase
-      .from("visualify_projects")
-      .select("id, name, created_at, portfolio_id")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: true }),
+  const [projectsResult, portfoliosResult, workspaceRowResult] = await Promise.all([
+    filterActiveProjects(
+      params.supabase
+        .from("visualify_projects")
+        .select("id, name, created_at, portfolio_id")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: true }),
+    ),
     params.supabase
       .from("visualify_portfolios")
       .select("id, reporting_unit")
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: true }),
+    params.supabase
+      .from("visualify_workspaces")
+      .select("reporting_unit")
+      .eq("id", workspaceId)
+      .maybeSingle(),
   ]);
 
   const projects: WorkspaceOverviewProject[] = [];
@@ -102,6 +113,82 @@ export async function resolveWorkspaceOverviewScope(params: {
     projects,
     uniquePortfolio,
     multiplePortfolios,
-    reportingUnit: uniquePortfolio ? asReportingUnit(uniquePortfolio.reporting_unit) : DEFAULT_REPORTING_UNIT,
+    reportingUnit: reportingUnitForPortfolioDashboard({
+      workspaceReportingUnit: workspaceRowResult.error
+        ? undefined
+        : workspaceRowResult.data?.reporting_unit,
+      portfolioReportingUnit: uniquePortfolio?.reporting_unit,
+    }),
   };
+}
+
+export type WorkspaceArchivedProject = {
+  id: string;
+  name: string;
+  archived_at: string;
+};
+
+/**
+ * Archived Projects for a Workspace. Used only on `/workspaces/[id]/projects` Restore UI.
+ * Does not feed Overview KPIs or active tiles.
+ *
+ * Matches archive auth: `visualify_projects.workspace_id`, or a null project workspace_id
+ * with a linked Portfolio in this Workspace (legacy portfolio-linked rows).
+ */
+export async function loadWorkspaceArchivedProjects(
+  supabase: SupabaseClient,
+  workspaceId: string,
+): Promise<WorkspaceArchivedProject[]> {
+  const id = trimId(workspaceId);
+  if (!id) return [];
+
+  const portfoliosResult = await supabase
+    .from("visualify_portfolios")
+    .select("id")
+    .eq("workspace_id", id);
+  const portfolioIds: string[] = [];
+  if (!portfoliosResult.error) {
+    for (const row of portfoliosResult.data ?? []) {
+      const portfolioId = trimId(typeof row.id === "string" ? row.id : "");
+      if (portfolioId) portfolioIds.push(portfolioId);
+    }
+  }
+
+  const [byWorkspaceResult, byLegacyPortfolioResult] = await Promise.all([
+    filterArchivedProjects(
+      supabase
+        .from("visualify_projects")
+        .select("id, name, archived_at")
+        .eq("workspace_id", id)
+        .order("archived_at", { ascending: false }),
+    ),
+    portfolioIds.length > 0
+      ? filterArchivedProjects(
+          supabase
+            .from("visualify_projects")
+            .select("id, name, archived_at")
+            .is("workspace_id", null)
+            .in("portfolio_id", portfolioIds)
+            .order("archived_at", { ascending: false }),
+        )
+      : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
+  ]);
+
+  const merged = new Map<string, WorkspaceArchivedProject>();
+  for (const result of [byWorkspaceResult, byLegacyPortfolioResult]) {
+    if (result.error) continue;
+    for (const row of result.data ?? []) {
+      const projectId = trimId(typeof row.id === "string" ? row.id : "");
+      if (!projectId || merged.has(projectId)) continue;
+      const archivedAt = typeof row.archived_at === "string" ? row.archived_at : "";
+      if (!archivedAt) continue;
+      merged.set(projectId, {
+        id: projectId,
+        name: typeof row.name === "string" ? row.name : "",
+        archived_at: archivedAt,
+      });
+    }
+  }
+
+  return [...merged.values()].sort((a, b) => b.archived_at.localeCompare(a.archived_at));
 }

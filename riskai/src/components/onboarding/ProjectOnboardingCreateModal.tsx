@@ -424,10 +424,6 @@ export function ProjectOnboardingCreateModal({
             name: trimmed,
             resolvedWorkspaceId,
             resolvedPortfolioId,
-            launchedWithWorkspaceId: Boolean(
-              typeof workspaceId === "string" && workspaceId.trim(),
-            ),
-            portfolioBound: formParent.portfolioBound,
           }),
         ),
       });

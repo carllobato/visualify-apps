@@ -11,18 +11,22 @@ import {
 } from "@/components/project/projectSettingsDsFormClasses";
 import { getWorkspaceSettingsPermissionNotice } from "@/lib/settings/settingsPermissionMessages";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
-import { canPersistWorkspaceReportingUnit } from "@/lib/workspace/canPersistWorkspaceReportingUnit";
 import {
   REPORTING_UNIT_LABELS,
   REPORTING_UNIT_OPTIONS,
   type ReportingUnitOption,
 } from "@/lib/portfolio/reportingPreferences";
 import {
+  workspaceSettingsPatchBody,
+  workspaceSettingsPatchPath,
+} from "@/lib/workspace/workspaceSettingsUpdate";
+import {
   Button,
   Callout,
   Card,
   CardBody,
   CardHeader,
+  FieldError,
   Label,
   Tab,
   Tabs,
@@ -40,29 +44,24 @@ export type WorkspaceSettingsContentProps = {
   workspaceId: string;
   workspaceSlug: string;
   reportingUnit: ReportingUnitOption;
-  uniquePortfolioId: string | null;
   canEditWorkspaceDetails: boolean;
 };
 
 export function WorkspaceSettingsContent({
-  workspaceName,
+  workspaceName: initialWorkspaceName,
   workspaceId,
   workspaceSlug,
   reportingUnit: initialReportingUnit,
-  uniquePortfolioId,
   canEditWorkspaceDetails,
 }: WorkspaceSettingsContentProps) {
   const router = useRouter();
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
-  const canEditReportingUnit = canPersistWorkspaceReportingUnit({
-    canEditWorkspaceDetails,
-    uniquePortfolioId,
-  });
   const permissionNotice = useMemo(
     () => getWorkspaceSettingsPermissionNotice(canEditWorkspaceDetails),
     [canEditWorkspaceDetails]
   );
 
+  const [workspaceName, setWorkspaceName] = useState(initialWorkspaceName);
   const [reportingUnit, setReportingUnit] = useState(initialReportingUnit);
   const [saved, setSaved] = useState(false);
   const [validation, setValidation] = useState<Record<string, string>>({});
@@ -70,22 +69,35 @@ export function WorkspaceSettingsContent({
   const [activeTab, setActiveTab] = useState<WorkspaceSettingsTab>("general");
 
   useEffect(() => {
+    setWorkspaceName(initialWorkspaceName);
     setReportingUnit(initialReportingUnit);
-  }, [initialReportingUnit]);
+  }, [initialWorkspaceName, initialReportingUnit]);
 
-  const isDirty = reportingUnit !== initialReportingUnit;
+  const isFormValid = workspaceName.trim().length > 0;
+  const isDirty =
+    workspaceName.trim() !== initialWorkspaceName.trim() || reportingUnit !== initialReportingUnit;
 
   const onSave = useCallback(async () => {
-    if (!canEditReportingUnit || !uniquePortfolioId) return;
+    if (!canEditWorkspaceDetails) return;
+    const trimmedName = workspaceName.trim();
+    if (!trimmedName) {
+      setValidation({ name: "Name is required" });
+      return;
+    }
     setValidation({});
     setSaving(true);
     try {
-      const res = await fetch(`/api/portfolios/${uniquePortfolioId}`, {
+      const res = await fetch(workspaceSettingsPatchPath(workspaceId), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reporting_unit: reportingUnit,
-        }),
+        body: JSON.stringify(
+          workspaceSettingsPatchBody({
+            name: trimmedName,
+            initialName: initialWorkspaceName,
+            reportingUnit,
+            initialReportingUnit,
+          }),
+        ),
         credentials: "include",
       });
       if (!res.ok) {
@@ -99,7 +111,15 @@ export function WorkspaceSettingsContent({
     } finally {
       setSaving(false);
     }
-  }, [canEditReportingUnit, uniquePortfolioId, reportingUnit, router]);
+  }, [
+    canEditWorkspaceDetails,
+    workspaceId,
+    workspaceName,
+    initialWorkspaceName,
+    reportingUnit,
+    initialReportingUnit,
+    router,
+  ]);
 
   const headerActions = useMemo(
     () => (
@@ -107,15 +127,17 @@ export function WorkspaceSettingsContent({
         type="button"
         variant="primary"
         onClick={onSave}
-        disabled={!canEditReportingUnit || saving || !isDirty}
+        disabled={!canEditWorkspaceDetails || !isFormValid || saving || !isDirty}
         title={
-          canEditReportingUnit && !saving && !isDirty ? "No changes to save" : undefined
+          canEditWorkspaceDetails && isFormValid && !saving && !isDirty
+            ? "No changes to save"
+            : undefined
         }
       >
         {saving ? "Saving…" : "Save"}
       </Button>
     ),
-    [onSave, canEditReportingUnit, isDirty, saving]
+    [onSave, canEditWorkspaceDetails, isFormValid, isDirty, saving]
   );
 
   useEffect(() => {
@@ -124,7 +146,8 @@ export function WorkspaceSettingsContent({
     return () => setPageHeaderExtras(null);
   }, [headerActions, setPageHeaderExtras]);
 
-  const reportingUnitDisabled = !canEditReportingUnit;
+  const fieldsDisabled = !canEditWorkspaceDetails;
+  const readOnlyChrome = fieldsDisabled ? ` ${projectSettingsReadOnlyFieldClass}` : "";
 
   return (
     <main className="w-full px-4 py-6 sm:px-6">
@@ -158,10 +181,16 @@ export function WorkspaceSettingsContent({
                   <input
                     id="workspace-name"
                     type="text"
-                    readOnly
+                    readOnly={fieldsDisabled}
                     value={workspaceName}
-                    className={projectSettingsInputClass(false) + ` ${projectSettingsReadOnlyFieldClass}`}
+                    onChange={(e) => {
+                      setWorkspaceName(e.target.value);
+                      setValidation((prev) => ({ ...prev, name: "" }));
+                    }}
+                    aria-invalid={!!validation.name}
+                    className={projectSettingsInputClass(!!validation.name) + readOnlyChrome}
                   />
+                  {validation.name ? <FieldError className="!mt-1">{validation.name}</FieldError> : null}
                 </div>
                 <div className={projectSettingsFieldWidthClass("sm")}>
                   <Label htmlFor="workspace-reporting-unit" className="!mb-1">
@@ -171,10 +200,10 @@ export function WorkspaceSettingsContent({
                     id="workspace-reporting-unit"
                     value={reportingUnit}
                     onChange={(e) => setReportingUnit(e.target.value as ReportingUnitOption)}
-                    disabled={reportingUnitDisabled}
+                    disabled={fieldsDisabled}
                     className={
                       projectSettingsSelectClass(false, "sm") +
-                      (reportingUnitDisabled ? ` ${projectSettingsReadOnlyFieldClass}` : "")
+                      (fieldsDisabled ? ` ${projectSettingsReadOnlyFieldClass}` : "")
                     }
                   >
                     {REPORTING_UNIT_OPTIONS.map((u) => (

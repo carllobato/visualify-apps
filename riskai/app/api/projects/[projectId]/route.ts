@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
-import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
+import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
+import {
+  authorizeProjectArchive,
+  parseProjectPatchBody,
+  PROJECT_HARD_DELETE_DISABLED,
+  projectLifecycleArchivedAtUpdate,
+  projectLifecycleRevalidatePaths,
+  resolveAuthoritativeProjectWorkspaceId,
+} from "@/lib/project/projectArchiveLifecycle";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -31,12 +39,39 @@ export async function GET(
   return NextResponse.json({
     ...bundle.project,
     permissions: bundle.permissions,
+    workspaceId: bundle.workspaceId,
   });
 }
 
+async function resolveLinkedPortfolioWorkspaceId(
+  portfolioId: string | null,
+): Promise<string | null> {
+  const id = portfolioId?.trim();
+  if (!id) return null;
+  const supabase = await supabaseServerClient();
+  const { data } = await supabase
+    .from("visualify_portfolios")
+    .select("workspace_id")
+    .eq("id", id)
+    .maybeSingle();
+  const workspaceId = typeof data?.workspace_id === "string" ? data.workspace_id.trim() : "";
+  return workspaceId || null;
+}
+
+function revalidateProjectLifecyclePaths(
+  projectId: string,
+  workspaceId: string | null,
+  portfolioId: string | null,
+) {
+  for (const path of projectLifecycleRevalidatePaths({ projectId, workspaceId, portfolioId })) {
+    revalidatePath(path);
+  }
+}
+
 /**
- * PATCH /api/projects/[projectId] — Update project name. Body: { name: string }.
- * Allowed for table owner or project_members with role owner/editor (matches RLS).
+ * PATCH /api/projects/[projectId]
+ * - `{ name }` — project metadata (existing authenticated update)
+ * - `{ archived: true | false }` — Workspace Owner/Admin lifecycle; service-role write of `archived_at` only
  */
 export async function PATCH(
   request: Request,
@@ -55,26 +90,83 @@ export async function PATCH(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
-  if (!bundle.permissions.canEditProjectMetadata) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  let body: { name?: string };
+  let rawBody: unknown;
   try {
-    body = (await request.json()) as { name?: string };
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const name = typeof body?.name === "string" ? body.name.trim() : "";
-  if (!name) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  const parsed = parseProjectPatchBody(rawBody);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  if (parsed.kind === "lifecycle") {
+    const linkedPortfolioWorkspaceId = await resolveLinkedPortfolioWorkspaceId(bundle.portfolioId);
+    const workspaceId = resolveAuthoritativeProjectWorkspaceId({
+      projectWorkspaceId: bundle.workspaceId,
+      linkedPortfolioWorkspaceId,
+    });
+    if (!workspaceId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const supabase = await supabaseServerClient();
+    const workspaceRole = await fetchWorkspaceMemberRole(supabase, workspaceId, user.id);
+    if (!authorizeProjectArchive({ workspaceRole })) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    let admin;
+    try {
+      admin = supabaseAdminClient();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const serviceRoleMissing = message.includes("SUPABASE_SERVICE_ROLE_KEY");
+      return NextResponse.json(
+        {
+          error: serviceRoleMissing
+            ? "Project archive is not configured: add SUPABASE_SERVICE_ROLE_KEY to the server environment."
+            : "Project archive is not configured.",
+          code: serviceRoleMissing ? "SERVICE_ROLE_MISSING" : "CONFIGURATION_ERROR",
+        },
+        { status: 503 },
+      );
+    }
+
+    const update = projectLifecycleArchivedAtUpdate(parsed.archived, new Date().toISOString());
+    const { data, error } = await admin
+      .from("visualify_projects")
+      .update(update)
+      .eq("id", projectId)
+      .select("id, archived_at, workspace_id")
+      .maybeSingle();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    if (!data) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    revalidateProjectLifecyclePaths(projectId, workspaceId, bundle.portfolioId);
+
+    return NextResponse.json({
+      id: data.id,
+      archived_at: data.archived_at ?? null,
+      workspaceId,
+    });
+  }
+
+  if (!bundle.permissions.canEditProjectMetadata) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const supabase = await supabaseServerClient();
   const { error } = await supabase
     .from("visualify_projects")
-    .update({ name })
+    .update({ name: parsed.name })
     .eq("id", projectId);
 
   if (error) {
@@ -84,96 +176,17 @@ export async function PATCH(
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/settings`);
 
-  return NextResponse.json({ id: projectId, name });
+  return NextResponse.json({ id: projectId, name: parsed.name });
 }
 
 /**
- * DELETE /api/projects/[projectId] — Delete a project and its child rows.
- * Requires owner access on both the project and its portfolio.
+ * DELETE /api/projects/[projectId] — disabled. Projects must be archived, never hard-deleted.
  */
-export async function DELETE(
-  _request: Request,
-  context: { params: Promise<{ projectId: string }> }
-) {
+export async function DELETE() {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
-  const { projectId } = await context.params;
-  if (!projectId) {
-    return NextResponse.json({ error: "Project ID required" }, { status: 400 });
-  }
-
-  const supabase = await supabaseServerClient();
-  const bundle = await getProjectAccessForUser(projectId, user.id);
-  if (!bundle) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  }
-
-  if (bundle.permissions.accessMode !== "owner" || !bundle.portfolioId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const portfolioAccess = await assertPortfolioAdminAccess(bundle.portfolioId, supabase, user.id);
-  if ("error" in portfolioAccess) {
-    return NextResponse.json(
-      {
-        error: portfolioAccess.error === "not_found" ? "Portfolio not found" : "Forbidden",
-      },
-      { status: portfolioAccess.error === "not_found" ? 404 : 403 }
-    );
-  }
-  if (!portfolioAccess.canEditPortfolioDetails) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  let admin;
-  try {
-    admin = supabaseAdminClient();
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const serviceRoleMissing = message.includes("SUPABASE_SERVICE_ROLE_KEY");
-    return NextResponse.json(
-      {
-        error: serviceRoleMissing
-          ? "Project deletion is not configured: add SUPABASE_SERVICE_ROLE_KEY to the server environment."
-          : "Project deletion is not configured.",
-        code: serviceRoleMissing ? "SERVICE_ROLE_MISSING" : "CONFIGURATION_ERROR",
-      },
-      { status: 503 }
-    );
-  }
-
-  const deleteSteps = [
-    admin
-      .from("visualify_invitations")
-      .delete()
-      .eq("resource_type", "project")
-      .eq("resource_id", projectId),
-    admin.from("riskai_simulation_snapshots").delete().eq("project_id", projectId),
-    admin.from("riskai_risks").delete().eq("project_id", projectId),
-    admin.from("riskai_project_owners").delete().eq("project_id", projectId),
-    admin.from("visualify_project_members").delete().eq("project_id", projectId),
-    admin.from("visualify_project_settings").delete().eq("project_id", projectId),
-  ];
-
-  for (const step of deleteSteps) {
-    const { error } = await step;
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-  }
-
-  const { error: deleteError } = await admin
-    .from("visualify_projects")
-    .delete()
-    .eq("id", projectId);
-
-  if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
-  }
-
-  revalidatePath(`/portfolios/${bundle.portfolioId}`);
-  revalidatePath(`/portfolios/${bundle.portfolioId}/projects`);
-
-  return NextResponse.json({ ok: true, portfolioId: bundle.portfolioId });
+  return NextResponse.json(PROJECT_HARD_DELETE_DISABLED.body, {
+    status: PROJECT_HARD_DELETE_DISABLED.status,
+  });
 }

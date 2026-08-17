@@ -67,3 +67,48 @@ export function resolveUnscopedProjectCreateTarget(params: {
   if ("error" in resolved) return { error: resolved.error };
   return { portfolioId: null, workspaceId: resolved.workspaceId };
 }
+
+function trimRequestedWorkspaceId(value?: string | null): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+/**
+ * Authorises every Project create request from the creatable-Workspace set
+ * (Owner/Admin). Portfolio is never an independent authority; if present it is
+ * resolved to a Workspace, authorised against that Workspace, then attached as
+ * an optional association.
+ */
+export function resolveAuthorizedProjectCreateTarget(params: {
+  creatableIds: readonly string[];
+  requestedWorkspaceId?: string | null;
+  optionalPortfolio?: OptionalCreatePortfolio;
+}): ResolveProjectCreateTargetResult {
+  const requestedWorkspaceId = trimRequestedWorkspaceId(params.requestedWorkspaceId);
+  const optionalPortfolio = params.optionalPortfolio ?? { status: "omitted" };
+
+  if (requestedWorkspaceId) {
+    return resolveWorkspaceNativeProjectCreateTarget({
+      creatableIds: params.creatableIds,
+      requestedWorkspaceId,
+      optionalPortfolio,
+    });
+  }
+
+  if (optionalPortfolio.status === "omitted") {
+    return resolveUnscopedProjectCreateTarget({ creatableIds: params.creatableIds });
+  }
+
+  if (optionalPortfolio.status === "missing") {
+    return { error: "not_found" };
+  }
+
+  const portfolioWorkspaceId =
+    typeof optionalPortfolio.workspaceId === "string" ? optionalPortfolio.workspaceId.trim() : "";
+  if (!portfolioWorkspaceId) return { error: "unbound_workspace" };
+
+  return resolveWorkspaceNativeProjectCreateTarget({
+    creatableIds: params.creatableIds,
+    requestedWorkspaceId: portfolioWorkspaceId,
+    optionalPortfolio,
+  });
+}

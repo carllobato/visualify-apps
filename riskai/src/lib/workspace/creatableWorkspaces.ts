@@ -2,12 +2,12 @@ import "server-only";
 
 import {
   fetchWorkspaceProductAccessForUser,
-  isWorkspaceRoleAtLeast,
   normalizeWorkspaceRole,
 } from "@visualify/workspace-product-access";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { productConfig } from "@/lib/product-config";
 import { canCreateProjectInCreatableWorkspace } from "@/lib/project/resolveWorkspaceProjectCreateParent";
+import { workspaceRoleCanCreateProject } from "@/lib/workspace/workspaceRoleCapabilities";
 
 /**
  * Workspace where the user may create a RiskAI portfolio or unscoped project
@@ -36,7 +36,7 @@ export async function getCreatableRiskAiWorkspaces(
   for (const row of rows) {
     if (row.productKey !== productKey) continue;
     const role = normalizeWorkspaceRole(row.memberRole);
-    if (!role || !isWorkspaceRoleAtLeast(role, "admin")) continue;
+    if (!role || !workspaceRoleCanCreateProject(role)) continue;
     const slug = row.workspaceSlug?.trim();
     if (!slug || bySlug.has(slug)) continue;
     bySlug.set(slug, row.workspaceName?.trim() || slug);

@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
-import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
 import {
-  resolveUnscopedProjectCreateTarget,
-  resolveWorkspaceNativeProjectCreateTarget,
+  resolveAuthorizedProjectCreateTarget,
   type OptionalCreatePortfolio,
   type ResolveProjectCreateTargetResult,
 } from "@/lib/project/resolveWorkspaceNativeProjectCreateTarget";
+import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { getCreatableRiskAiWorkspaces } from "@/lib/workspace/creatableWorkspaces";
-import { assertRequestedWorkspaceMatchesPortfolio } from "@/lib/workspace/resolveCreatableWorkspaceId";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -19,19 +17,20 @@ const CACHE_HEADERS = {
 };
 
 /**
- * GET /api/projects — Returns projects the user can access (id, name, created_at) ordered by created_at asc.
- * Used by home redirect to resolve last-active or first project. Rows are filtered by RLS (owner,
- * project_members, portfolio).
+ * GET /api/projects — Returns active projects the user can access (id, name, created_at)
+ * ordered by created_at asc. Archived Projects (`archived_at IS NOT NULL`) are excluded.
  */
 export async function GET() {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
   const supabase = await supabaseServerClient();
-  const { data: projects, error } = await supabase
-    .from("visualify_projects")
-    .select("id, name, created_at")
-    .order("created_at", { ascending: true });
+  const { data: projects, error } = await filterActiveProjects(
+    supabase
+      .from("visualify_projects")
+      .select("id, name, created_at")
+      .order("created_at", { ascending: true }),
+  );
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -49,10 +48,10 @@ type CreateProjectBody = {
 };
 
 /**
- * Authorises optional portfolio + required workspace for project create.
- * Workspace-native requests (`workspaceId` present) use creatable-workspace
- * authorisation; Portfolio is an optional association. Legacy Portfolio-only
- * create still uses portfolio `canInviteMembers`. Never trusts client ids alone.
+ * Authorises Project create from the target Workspace only
+ * (`getCreatableRiskAiWorkspaces` = Owner/Admin). Portfolio is an optional
+ * association after that check. Never trusts client ids or portfolio
+ * `canInviteMembers`. `owner_user_id` is set from the session, not the body.
  */
 async function resolveProjectCreateTarget(
   userId: string,
@@ -61,66 +60,30 @@ async function resolveProjectCreateTarget(
 ): Promise<ResolveProjectCreateTargetResult> {
   const supabase = await supabaseServerClient();
 
-  if (requestedWorkspaceId) {
-    const creatable = await getCreatableRiskAiWorkspaces(supabase, userId);
-    let optionalPortfolio: OptionalCreatePortfolio = { status: "omitted" };
-    if (preferredPortfolioId) {
-      const { data: portfolio, error } = await supabase
-        .from("visualify_portfolios")
-        .select("workspace_id")
-        .eq("id", preferredPortfolioId)
-        .maybeSingle();
-      if (error || !portfolio) {
-        optionalPortfolio = { status: "missing" };
-      } else {
-        optionalPortfolio = {
-          status: "found",
-          id: preferredPortfolioId,
-          workspaceId:
-            typeof portfolio.workspace_id === "string" ? portfolio.workspace_id : null,
-        };
-      }
-    }
-    return resolveWorkspaceNativeProjectCreateTarget({
-      creatableIds: creatable.map((workspace) => workspace.id),
-      requestedWorkspaceId,
-      optionalPortfolio,
-    });
-  }
-
+  let optionalPortfolio: OptionalCreatePortfolio = { status: "omitted" };
   if (preferredPortfolioId) {
-    const viewer = await getPortfolioMembersViewerContext(supabase, preferredPortfolioId, userId);
-    if (!viewer) return { error: "not_found" };
-    if (!viewer.canInviteMembers) return { error: "forbidden" };
-
     const { data: portfolio, error } = await supabase
       .from("visualify_portfolios")
       .select("workspace_id")
       .eq("id", preferredPortfolioId)
       .maybeSingle();
-
-    if (error || !portfolio) return { error: "not_found" };
-
-    const workspaceId =
-      typeof portfolio.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
-        ? portfolio.workspace_id.trim()
-        : null;
-
-    if (!workspaceId) return { error: "unbound_workspace" };
-
-    const match = assertRequestedWorkspaceMatchesPortfolio({
-      portfolioWorkspaceId: workspaceId,
-      requestedWorkspaceId,
-    });
-    if ("error" in match) return { error: "workspace_mismatch" };
-
-    return { portfolioId: preferredPortfolioId, workspaceId };
+    if (error || !portfolio) {
+      optionalPortfolio = { status: "missing" };
+    } else {
+      optionalPortfolio = {
+        status: "found",
+        id: preferredPortfolioId,
+        workspaceId:
+          typeof portfolio.workspace_id === "string" ? portfolio.workspace_id : null,
+      };
+    }
   }
 
   const creatable = await getCreatableRiskAiWorkspaces(supabase, userId);
-  return resolveUnscopedProjectCreateTarget({
+  return resolveAuthorizedProjectCreateTarget({
     creatableIds: creatable.map((workspace) => workspace.id),
     requestedWorkspaceId,
+    optionalPortfolio,
   });
 }
 

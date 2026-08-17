@@ -139,8 +139,6 @@ function CreateProjectForm() {
           name,
           resolvedWorkspaceId: workspaceId,
           resolvedPortfolioId: portfolioId,
-          launchedWithWorkspaceId: Boolean(fromQueryWorkspace),
-          portfolioBound: formParent.portfolioBound,
         }),
       ),
     });

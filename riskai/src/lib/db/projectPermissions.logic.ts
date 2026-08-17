@@ -2,7 +2,7 @@
  * Access summary:
  * - Table owner → full project + content + members (roles, remove, invite).
  * - project_members.owner → same as table owner for app checks.
- * - project_members.editor → edit project row + risks/snapshots; may invite members (not change roles / remove).
+ * - project_members.editor → working user: edit risks/snapshots; no project metadata or member admin.
  * - project_members.viewer → read-only project + risks.
  * - Inherited read (workspace/portfolio via `can_read_project`) → viewer only; no edits.
  */
@@ -25,7 +25,7 @@ export function resolveInheritedProjectReadPermissions(): ProjectPermissions {
     canEditProjectMetadata: false,
     canEditContent: false,
     canManageMembers: false,
-    canDeleteProject: false,
+    canArchiveProject: false,
     accessMode: "viewer",
   };
 }
@@ -45,7 +45,7 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: true,
       canEditContent: true,
       canManageMembers: true,
-      canDeleteProject: false,
+      canArchiveProject: false,
       accessMode: "owner",
     };
   }
@@ -55,17 +55,17 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: true,
       canEditContent: true,
       canManageMembers: true,
-      canDeleteProject: false,
+      canArchiveProject: false,
       accessMode: "owner",
     };
   }
 
   if (memberRole === "editor") {
     return {
-      canEditProjectMetadata: true,
+      canEditProjectMetadata: false,
       canEditContent: true,
       canManageMembers: false,
-      canDeleteProject: false,
+      canArchiveProject: false,
       accessMode: "editor",
     };
   }
@@ -75,7 +75,7 @@ export function resolveProjectPermissions({
       canEditProjectMetadata: false,
       canEditContent: false,
       canManageMembers: false,
-      canDeleteProject: false,
+      canArchiveProject: false,
       accessMode: "viewer",
     };
   }

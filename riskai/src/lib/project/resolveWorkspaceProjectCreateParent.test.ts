@@ -75,7 +75,7 @@ describe("buildCreateProjectRequestBody", () => {
     );
   });
 
-  it("keeps legacy Portfolio-launched create (portfolioId only)", () => {
+  it("keeps optional Portfolio-only body construction for API fallback", () => {
     assert.deepEqual(
       buildCreateProjectRequestBody({ name: "North corridor", portfolioId: "pf-1" }),
       { name: "North corridor", portfolioId: "pf-1" },
@@ -84,16 +84,14 @@ describe("buildCreateProjectRequestBody", () => {
 });
 
 describe("createProjectRequestFromForm", () => {
-  it("omits workspaceId for legacy Portfolio-bound create so the portfolio permission path remains", () => {
+  it("sends Workspace even for Portfolio-launched create so authority is Workspace Owner/Admin", () => {
     assert.deepEqual(
       createProjectRequestFromForm({
         name: "North corridor",
         resolvedWorkspaceId: "ws-1",
         resolvedPortfolioId: "pf-1",
-        launchedWithWorkspaceId: false,
-        portfolioBound: true,
       }),
-      { name: "North corridor", portfolioId: "pf-1" },
+      { name: "North corridor", workspaceId: "ws-1", portfolioId: "pf-1" },
     );
   });
 
@@ -103,8 +101,6 @@ describe("createProjectRequestFromForm", () => {
         name: "North corridor",
         resolvedWorkspaceId: "ws-1",
         resolvedPortfolioId: "pf-unique",
-        launchedWithWorkspaceId: true,
-        portfolioBound: true,
       }),
       { name: "North corridor", workspaceId: "ws-1", portfolioId: "pf-unique" },
     );
@@ -113,8 +109,6 @@ describe("createProjectRequestFromForm", () => {
         name: "North corridor",
         resolvedWorkspaceId: "ws-1",
         resolvedPortfolioId: "",
-        launchedWithWorkspaceId: true,
-        portfolioBound: false,
       }),
       { name: "North corridor", workspaceId: "ws-1" },
     );

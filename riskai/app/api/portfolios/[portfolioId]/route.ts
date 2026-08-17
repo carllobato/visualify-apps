@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
+import { planPortfolioDeleteProjectHandling } from "@/lib/portfolio/preserveProjectsOnPortfolioDelete";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -159,8 +160,9 @@ export async function PATCH(
 /**
  * DELETE /api/portfolios/[portfolioId] — Delete the portfolio container. Owner-level only.
  *
- * Projects under the portfolio are deleted too. Child tables are removed explicitly so the behaviour
- * does not depend on mixed historical FK cascade definitions.
+ * Linked Projects are unlinked (`portfolio_id = null`) and kept. Legacy rows with a
+ * null `workspace_id` receive this Portfolio's workspace first so they stay on the
+ * Workspace after unlink. Project rows and Project child data are never physically deleted.
  */
 export async function DELETE(
   _request: Request,
@@ -205,48 +207,29 @@ export async function DELETE(
     );
   }
 
-  const { data: projectRows, error: projectsLoadError } = await admin
-    .from("visualify_projects")
-    .select("id")
-    .eq("portfolio_id", portfolioId);
+  const unlink = planPortfolioDeleteProjectHandling({
+    portfolioWorkspaceId: result.portfolio.workspace_id,
+  });
 
-  if (projectsLoadError) {
-    return NextResponse.json({ error: projectsLoadError.message }, { status: 500 });
+  if (unlink.legacyProjectUpdate) {
+    const { error: legacyUnlinkError } = await admin
+      .from("visualify_projects")
+      .update(unlink.legacyProjectUpdate)
+      .eq("portfolio_id", portfolioId)
+      .is("workspace_id", null);
+
+    if (legacyUnlinkError) {
+      return NextResponse.json({ error: legacyUnlinkError.message }, { status: 500 });
+    }
   }
 
-  const projectIds = (projectRows ?? [])
-    .map((row) => (typeof row.id === "string" ? row.id : null))
-    .filter((id): id is string => Boolean(id));
+  const { error: unlinkError } = await admin
+    .from("visualify_projects")
+    .update(unlink.projectUpdate)
+    .eq("portfolio_id", portfolioId);
 
-  if (projectIds.length > 0) {
-    const projectDeleteSteps = [
-      admin
-        .from("visualify_invitations")
-        .delete()
-        .eq("resource_type", "project")
-        .in("resource_id", projectIds),
-      admin.from("riskai_simulation_snapshots").delete().in("project_id", projectIds),
-      admin.from("riskai_risks").delete().in("project_id", projectIds),
-      admin.from("riskai_project_owners").delete().in("project_id", projectIds),
-      admin.from("visualify_project_members").delete().in("project_id", projectIds),
-      admin.from("visualify_project_settings").delete().in("project_id", projectIds),
-    ];
-
-    for (const step of projectDeleteSteps) {
-      const { error } = await step;
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-    }
-
-    const { error: projectsDeleteError } = await admin
-      .from("visualify_projects")
-      .delete()
-      .in("id", projectIds);
-
-    if (projectsDeleteError) {
-      return NextResponse.json({ error: projectsDeleteError.message }, { status: 500 });
-    }
+  if (unlinkError) {
+    return NextResponse.json({ error: unlinkError.message }, { status: 500 });
   }
 
   const { error: invitationsError } = await admin

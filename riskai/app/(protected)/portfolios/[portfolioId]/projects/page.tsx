@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import { loadPortfolioProjectTilePayloads } from "@/lib/dashboard/projectTileServerData";
-import { getPortfolioMembersViewerContext } from "@/lib/db/portfolioMemberAccess";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { riskaiPath } from "@/lib/routes";
+import { userCanCreateProjectInWorkspace } from "@/lib/workspace/creatableWorkspaces";
 import { Card, CardBody } from "@visualify/design-system";
 
 /** Portfolio and project list access are enforced by Supabase RLS (owner or portfolio_members). */
@@ -19,21 +19,25 @@ export default async function PortfolioProjectsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const portfolioViewer =
-    user != null
-      ? await getPortfolioMembersViewerContext(supabase, portfolioId, user.id)
-      : null;
-  const canCreatePortfolioProject = portfolioViewer?.canInviteMembers ?? false;
 
   const { data: portfolio, error: portfolioError } = await supabase
     .from("visualify_portfolios")
-    .select("id, name")
+    .select("id, name, workspace_id")
     .eq("id", portfolioId)
     .single();
 
   if (portfolioError || !portfolio) {
     redirect(riskaiPath("/not-found"));
   }
+
+  const createWorkspaceId =
+    typeof portfolio.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
+      ? portfolio.workspace_id.trim()
+      : null;
+  const canCreatePortfolioProject =
+    user != null && createWorkspaceId != null
+      ? await userCanCreateProjectInWorkspace(supabase, user.id, createWorkspaceId)
+      : false;
 
   const { projectTilePayloads: projectTiles } = await loadPortfolioProjectTilePayloads(supabase, portfolioId, {
     onlyProjectsWithLockedReporting: false,
@@ -49,7 +53,11 @@ export default async function PortfolioProjectsPage({
                 No projects in this portfolio yet
               </p>
               {canCreatePortfolioProject ? (
-                <OpenProjectOnboardingLink className="ds-dashboard-empty-primary" portfolioId={portfolioId}>
+                <OpenProjectOnboardingLink
+                  className="ds-dashboard-empty-primary"
+                  workspaceId={createWorkspaceId}
+                  portfolioId={portfolioId}
+                >
                   Create project
                 </OpenProjectOnboardingLink>
               ) : null}
@@ -87,6 +95,7 @@ export default async function PortfolioProjectsPage({
           {canCreatePortfolioProject ? (
             <OpenProjectOnboardingLink
               className="ds-dashboard-inline-create"
+              workspaceId={createWorkspaceId}
               portfolioId={portfolioId}
             >
               <span className="ds-dashboard-inline-create-label">Create project</span>

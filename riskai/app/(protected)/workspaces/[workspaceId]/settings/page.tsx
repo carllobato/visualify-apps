@@ -2,13 +2,16 @@ import { redirect } from "next/navigation";
 import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
 import { riskaiPath } from "@/lib/routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { resolveWorkspaceOverviewContext } from "@/lib/workspace/resolveWorkspaceOverviewContext";
-import { resolveWorkspacePortfolioCapabilities } from "@/lib/workspace/workspaceRoleCapabilities";
+import { getRiskAiEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
+import { resolveWorkspaceSettingsScope } from "@/lib/workspace/resolveWorkspaceSettingsScope";
+import { canEditWorkspaceSettings } from "@/lib/workspace/workspaceSettingsUpdate";
 import { WorkspaceSettingsContent } from "../WorkspaceSettingsContent";
 
 /**
  * Workspace Settings: `/workspaces/[workspaceId]/settings`.
  * Access uses the existing Workspace entitlement gate, not Portfolio membership.
+ * Identity is loaded from `visualify_workspaces`. Reporting unit uses that
+ * Workspace value when set, otherwise the unique Portfolio fallback.
  */
 export default async function WorkspaceSettingsPage({
   params,
@@ -24,24 +27,25 @@ export default async function WorkspaceSettingsPage({
     redirect(riskaiPath("/not-found"));
   }
 
-  const overview = await resolveWorkspaceOverviewContext(workspaceId, user.id);
-  if (!overview.ok) {
+  const entitledWorkspaces = await getRiskAiEntitledWorkspaces(supabase, user.id);
+  const settings = await resolveWorkspaceSettingsScope({
+    supabase,
+    workspaceId,
+    entitledWorkspaces,
+  });
+  if (!settings.ok) {
     redirect(riskaiPath("/not-found"));
   }
 
-  const workspaceRole = await fetchWorkspaceMemberRole(supabase, overview.workspace.id, user.id);
-  const canEditWorkspaceDetails = workspaceRole
-    ? resolveWorkspacePortfolioCapabilities(workspaceRole).canEditPortfolioDetails
-    : false;
+  const workspaceRole = await fetchWorkspaceMemberRole(supabase, settings.workspaceId, user.id);
 
   return (
     <WorkspaceSettingsContent
-      workspaceName={overview.workspace.name}
-      workspaceId={overview.workspace.id}
-      workspaceSlug={overview.workspace.slug}
-      reportingUnit={overview.reportingUnit}
-      uniquePortfolioId={overview.uniquePortfolio?.id ?? null}
-      canEditWorkspaceDetails={canEditWorkspaceDetails}
+      workspaceName={settings.workspaceName}
+      workspaceId={settings.workspaceId}
+      workspaceSlug={settings.workspaceSlug}
+      reportingUnit={settings.reportingUnit}
+      canEditWorkspaceDetails={canEditWorkspaceSettings(workspaceRole)}
     />
   );
 }

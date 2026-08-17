@@ -17,12 +17,13 @@ import {
   type PortfolioOverviewReportingTrendSet,
 } from "@/lib/dashboard/portfolioOverviewReportingTrends";
 import { fetchLatestReportingMonthYearKeyForScope } from "@/lib/db/fetchLatestReportingMonthYearKeyForScope";
+import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { formatReportMonthLabel } from "@/lib/db/snapshots";
-import { assertPortfolioAdminAccess } from "@/lib/portfolios-server";
 import { supabaseServerClient } from "@/lib/supabase/server";
+import { userCanCreateProjectInWorkspace } from "@/lib/workspace/creatableWorkspaces";
 import type { ProjectCurrency } from "@/lib/projectContext";
 import { computeCoverageRatioByCurrency, sumContingencyByCurrency } from "@/lib/portfolioContingencyAggregate";
-import { asReportingUnit } from "@/lib/portfolio/reportingPreferences";
+import { reportingUnitForPortfolioDashboard } from "@/lib/portfolio/reportingPreferences";
 import {
   contingencyHeldTileCopy,
   coverageRatioRagStatus,
@@ -66,12 +67,6 @@ export default async function PortfolioOverviewPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const portfolioAccess =
-    user != null ? await assertPortfolioAdminAccess(portfolioId, supabase, user.id) : null;
-  const canCreatePortfolioProject =
-    portfolioAccess != null && "portfolio" in portfolioAccess
-      ? portfolioAccess.canInviteMembers
-      : false;
 
   const defaultReportingMonthYear = await fetchLatestReportingMonthYearKeyForScope(supabase, {
     portfolioId,
@@ -81,20 +76,42 @@ export default async function PortfolioOverviewPage({
 
   const { data: portfolioRow } = await supabase
     .from("visualify_portfolios")
-    .select("reporting_unit")
+    .select("reporting_unit, workspace_id")
     .eq("id", portfolioId)
     .maybeSingle();
-  const reportingUnit = asReportingUnit(portfolioRow?.reporting_unit);
+  const createWorkspaceId =
+    typeof portfolioRow?.workspace_id === "string" && portfolioRow.workspace_id.trim().length > 0
+      ? portfolioRow.workspace_id.trim()
+      : null;
+  const workspaceReportingUnit =
+    createWorkspaceId != null
+      ? (
+          await supabase
+            .from("visualify_workspaces")
+            .select("reporting_unit")
+            .eq("id", createWorkspaceId)
+            .maybeSingle()
+        ).data?.reporting_unit
+      : undefined;
+  const reportingUnit = reportingUnitForPortfolioDashboard({
+    workspaceReportingUnit,
+    portfolioReportingUnit: portfolioRow?.reporting_unit,
+  });
+  const canCreatePortfolioProject =
+    user != null && createWorkspaceId != null
+      ? await userCanCreateProjectInWorkspace(supabase, user.id, createWorkspaceId)
+      : false;
 
-  const { count: portfolioProjectCount } = await supabase
-    .from("visualify_projects")
-    .select("id", { count: "exact", head: true })
-    .eq("portfolio_id", portfolioId);
+  const { count: portfolioProjectCount } = await filterActiveProjects(
+    supabase
+      .from("visualify_projects")
+      .select("id", { count: "exact", head: true })
+      .eq("portfolio_id", portfolioId),
+  );
 
-  const { data: projectRows } = await supabase
-    .from("visualify_projects")
-    .select("id")
-    .eq("portfolio_id", portfolioId);
+  const { data: projectRows } = await filterActiveProjects(
+    supabase.from("visualify_projects").select("id").eq("portfolio_id", portfolioId),
+  );
 
   const projectIds = (projectRows ?? []).map((p) => p.id as string);
 
