@@ -11,6 +11,7 @@ import {
   endAppLoginExit,
   hasAppLoginPostAuthEnter,
   waitForPostLoginDestinationShell,
+  waitForPostLoginLaunchComplete,
 } from "./app-login-transition";
 
 /** Mount in the signed-in shell — holds the app hidden until ready, then fades it in. */
@@ -30,6 +31,7 @@ export function AppShellPostLoginRevealEffect() {
 
     void (async () => {
       await waitForPostLoginDestinationShell();
+      await waitForPostLoginLaunchComplete();
 
       if (cancelled || !consumeAppLoginPostAuthEnter()) {
         root.classList.remove(APP_LOGIN_POST_AUTH_HOLD_HTML_CLASS);

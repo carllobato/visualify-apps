@@ -20,6 +20,7 @@ import {
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { DASHBOARD_PATH, normalizeAppPath } from "@/lib/routes";
+import { waitForBrowserAuthCookies } from "@/lib/supabase/waitForBrowserAuthCookies";
 import { APP_ORIGIN } from "@/lib/host";
 
 type LoginTabId = "signin" | "signup";
@@ -227,6 +228,8 @@ export function LoginClient() {
         return;
       }
 
+      await waitForBrowserAuthCookies();
+
       const { data: aalData, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (
         !aalErr &&
@@ -272,6 +275,7 @@ export function LoginClient() {
         return;
       }
       if (data.session) {
+        await waitForBrowserAuthCookies();
         await redirectAfterAuth();
         return;
       }

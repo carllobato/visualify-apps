@@ -16,11 +16,19 @@ export const APP_LOGIN_ENTER_MS = 720;
 
 export const APP_LOGIN_ENTER_DELAY_MS = 60;
 
+/** @deprecated Warming via RSC fetch raced cookies and could cache a login redirect. */
 export const APP_LOGIN_WARM_MAX_MS = 15_000;
 
 export const APP_LOGIN_DESTINATION_MAX_WAIT_MS = 10_000;
 
 export const APP_LOGIN_DESTINATION_POLL_MS = 50;
+
+export const APP_LOGIN_PAINT_TIMEOUT_MS = 250;
+
+export const APP_LOGIN_LAUNCH_MAX_WAIT_MS = 8_000;
+
+/** Yield so `@supabase/ssr` can flush auth cookies before `location.assign`. */
+export const APP_LOGIN_COOKIE_YIELD_MS = 80;
 
 const APP_LOGIN_POST_AUTH_SESSION_KEY = "vf-app-login-post-auth-enter";
 
@@ -76,41 +84,39 @@ function wait(ms: number): Promise<void> {
 }
 
 function waitForNextPaint(): Promise<void> {
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => resolve());
-    });
-  });
+  return Promise.race([
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    }),
+    wait(APP_LOGIN_PAINT_TIMEOUT_MS),
+  ]);
 }
 
-/** Prefetch the destination route while the login form stays visible. */
-export async function warmPostLoginRoute(href: string, router: LoginNavigationRouter): Promise<void> {
+/**
+ * True when the launch splash is still covering the app. Used so post-auth reveal
+ * does not fade the shell in underneath an active splash.
+ * Class names must match `VISUALIFY_APP_LAUNCH_*_HTML_CLASS` in app-launch-splash.ts.
+ */
+export function isLaunchSplashBlockingReveal(classList: {
+  contains: (token: string) => boolean;
+}): boolean {
+  return classList.contains("vf-app-launch-active") && !classList.contains("vf-app-launch-complete");
+}
+
+type LoginNavigationRouter = {
+  push: (href: string) => void;
+  refresh: () => void;
+  prefetch?: (href: string) => void;
+};
+
+/** Prefetch is unused after hard navigation; kept so existing imports compile. */
+export async function warmPostLoginRoute(_href: string, router: LoginNavigationRouter): Promise<void> {
   try {
     router.prefetch?.(href);
   } catch {
     /* prefetch is best-effort */
-  }
-
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), APP_LOGIN_WARM_MAX_MS);
-
-  try {
-    const response = await fetch(href, {
-      credentials: "same-origin",
-      signal: controller.signal,
-      headers: {
-        RSC: "1",
-        "Next-Router-Prefetch": "1",
-      },
-    });
-
-    if (response.ok) {
-      await response.text();
-    }
-  } catch {
-    /* Warm is best-effort — navigation still proceeds after the cap. */
-  } finally {
-    window.clearTimeout(timeoutId);
   }
 }
 
@@ -138,31 +144,41 @@ export async function waitForPostLoginDestinationShell(
   return false;
 }
 
-type LoginNavigationRouter = {
-  push: (href: string) => void;
-  refresh: () => void;
-  prefetch?: (href: string) => void;
-};
+/** Wait until splash is gone so the post-auth fade-in is visible. */
+export async function waitForPostLoginLaunchComplete(
+  maxWaitMs = APP_LOGIN_LAUNCH_MAX_WAIT_MS,
+): Promise<boolean> {
+  const started = Date.now();
+
+  while (Date.now() - started < maxWaitMs) {
+    if (!isLaunchSplashBlockingReveal(document.documentElement.classList)) {
+      return true;
+    }
+    await wait(APP_LOGIN_DESTINATION_POLL_MS);
+  }
+
+  return !isLaunchSplashBlockingReveal(document.documentElement.classList);
+}
 
 /**
- * Keep login visible (Signing in…) while the destination warms, fade out, navigate,
- * then {@link AppShellPostLoginRevealEffect} reveals the app once the shell has painted.
+ * Fade the login shell out, then load the destination as a full document so auth
+ * cookies from `signInWithPassword` are on the request. Client `router.push` plus
+ * an RSC prefetch raced cookie writes and could cache the unauthenticated redirect.
  */
 export async function navigateAfterAppLoginSuccess(
-  router: LoginNavigationRouter,
+  _router: LoginNavigationRouter,
   href: string,
 ): Promise<void> {
-  await warmPostLoginRoute(href, router);
-
   markAppLoginPostAuthEnter();
+  await wait(0);
+  await wait(APP_LOGIN_COOKIE_YIELD_MS);
 
   if (!prefersReducedLoginMotion()) {
     beginAppLoginExit();
     await wait(APP_LOGIN_EXIT_MS);
   }
 
-  router.push(href);
-  router.refresh();
+  window.location.assign(href);
 }
 
 /** Clears stuck overlay state from older builds — does not affect active post-auth fades. */

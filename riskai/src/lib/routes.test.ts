@@ -22,6 +22,12 @@ describe("authenticated RiskAI routes", () => {
   it("keeps /portfolios/[id] as an authenticated app path", () => {
     assert.equal(isAuthenticatedAppPath("/portfolios/pf-1"), true);
   });
+
+  it("does not treat signed-out routes as authenticated app paths", () => {
+    assert.equal(isAuthenticatedAppPath("/login"), false);
+    assert.equal(isAuthenticatedAppPath("/forgot-password"), false);
+    assert.equal(isAuthenticatedAppPath("/auth/callback"), false);
+  });
 });
 
 describe("shouldHideAppShellPrimaryNav", () => {

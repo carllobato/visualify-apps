@@ -96,8 +96,10 @@ export {
   endAppLoginExit,
   hasAppLoginPostAuthEnter,
   markAppLoginPostAuthEnter,
+  isLaunchSplashBlockingReveal,
   navigateAfterAppLoginSuccess,
   waitForPostLoginDestinationShell,
+  waitForPostLoginLaunchComplete,
   warmPostLoginRoute,
 } from "./app-login-transition";
 

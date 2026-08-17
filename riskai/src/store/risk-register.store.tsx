@@ -42,7 +42,7 @@ import {
 import { DEBUG_FORWARD_PROJECTION } from "@/config/debug";
 import { runForwardProjectionGuards } from "@/lib/forwardProjectionGuards";
 import { dlog, dwarn } from "@/lib/debug";
-import { projectIdFromAppPathname } from "@/lib/routes";
+import { isAuthenticatedAppPath, projectIdFromAppPathname } from "@/lib/routes";
 import { resolveScheduleSettingsForSimulation } from "@/lib/resolveDelayCostPerDayForSimulation";
 import { binSamplesIntoHistogram, binSamplesIntoTimeHistogram } from "@/lib/simulationDisplayUtils";
 import {
@@ -650,9 +650,12 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
     const hasSnapshot = !!neutralSnapshot;
     const neutralP80 = neutralSnapshot?.p80Cost ?? null;
     const t = setTimeout(() => {
+      const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+      if (!isAuthenticatedAppPath(pathname)) {
+        return;
+      }
       dlog("[store] sync -> /api/simulation-context", { riskCount, hasSnapshot, neutralP80 });
-      const syncProjectId =
-        typeof window !== "undefined" ? projectIdFromAppPathname(window.location.pathname) : null;
+      const syncProjectId = projectIdFromAppPathname(pathname);
       fetch("/api/simulation-context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -22,5 +22,8 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "typescript": "^5"
+  },
+  "scripts": {
+    "test": "node --test --experimental-strip-types src/login-shell/app-login-transition.test.ts"
   }
 }

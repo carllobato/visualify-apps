@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS } from "../app-launch-splash";
+import { endAppLoginExit } from "./app-login-transition";
 
 function isLaunchComplete(): boolean {
   return document.documentElement.classList.contains(VISUALIFY_APP_LAUNCH_COMPLETE_HTML_CLASS);
@@ -16,12 +17,14 @@ export function AppLaunchGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLaunchComplete()) {
+      endAppLoginExit();
       setReady(true);
       return;
     }
 
     const observer = new MutationObserver(() => {
       if (!isLaunchComplete()) return;
+      endAppLoginExit();
       setReady(true);
       observer.disconnect();
     });
