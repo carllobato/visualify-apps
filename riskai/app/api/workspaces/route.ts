@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
-import { hasProductAccess } from "@/lib/auth/hasProductAccess";
-import { productConfig } from "@/lib/product-config";
 import { writeVisualifyActiveWorkspaceIdCookie } from "@/lib/workspace/activeWorkspaceCookie";
 import { createRiskAiWorkspace } from "@/lib/workspace/createWorkspace";
 import {
@@ -19,19 +17,14 @@ const CACHE_HEADERS = {
 /**
  * POST /api/workspaces — Create a Workspace owned by the signed-in RiskAI user.
  * `owner_user_id`, membership role, and RiskAI entitlement are server-controlled.
+ * Does not require an existing Workspace, Workspace RiskAI entitlement, or user-level grant.
  * Does not inspect the caller's role in any existing Workspace.
  */
 export async function POST(request: Request) {
   const user = await requireUser();
   if (user instanceof NextResponse) return user;
 
-  const hasRiskAiProductAccess = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
-  if (
-    !canCreateRiskAiWorkspace({
-      authenticated: true,
-      hasRiskAiProductAccess,
-    })
-  ) {
+  if (!canCreateRiskAiWorkspace({ authenticated: true })) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403, headers: CACHE_HEADERS });
   }
 

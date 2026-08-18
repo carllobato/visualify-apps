@@ -7,10 +7,9 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Signed-in workspace selector. Reachable from the rail brand mark after a workspace
- * is already open, and used as the post-auth gate when no workspace cookie is set.
- * Always rendered so Create Workspace is available regardless of current Workspace role
- * or how many entitled Workspaces the user already has.
+ * Signed-in workspace selector and Create Workspace entry.
+ * Zero-Workspace users land here. Brand mark returns here after a Workspace is open.
+ * Create Workspace stays available regardless of current Workspace role or count.
  */
 export default async function RiskAiHomePage() {
   const supabase = await supabaseServerClient();

@@ -126,11 +126,11 @@ describe("fetchLatestReportingMonthYearKeyForScope", () => {
     assert.strictEqual(latest, null);
   });
 
-  it("keeps existing portfolioId behaviour: only projects in that portfolio", async () => {
+  it("does not accept a portfolioId scope", async () => {
     const latest = await fetchLatestReportingMonthYearKeyForScope(makeSupabase(), {
-      portfolioId: "portfolio-1",
+      projectIds: [],
     });
-    assert.strictEqual(latest, "2026-03");
+    assert.strictEqual(latest, null);
   });
 
   it("keeps existing projectId behaviour: only that project", async () => {

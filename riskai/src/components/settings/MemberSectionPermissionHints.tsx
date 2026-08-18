@@ -19,8 +19,9 @@ export function MemberSectionPermissionHints({
     <>
       {!canInviteMembers && (
         <p className={hintClass}>
-          You can view members. Only owners and editors can invite; only owners can change roles or remove
-          members.
+          {resource === "project"
+            ? "You can view members. Only Workspace owners and admins can invite, change roles, or remove members."
+            : "You can view members. Only owners and editors can invite; only owners can change roles or remove members."}
         </p>
       )}
       {canInviteMembers && !canChangeMemberRoles && (

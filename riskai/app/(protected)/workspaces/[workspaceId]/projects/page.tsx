@@ -50,10 +50,8 @@ export default async function WorkspaceProjectsPage({
   const canRestoreArchivedProjects = workspaceRoleCanArchiveProject(workspaceRole);
   const createParent = resolveWorkspaceProjectCreateParent({
     workspaceId: overview.workspace.id,
-    uniquePortfolioId: overview.uniquePortfolio?.id ?? null,
   });
   const createWorkspaceId = "error" in createParent ? overview.workspace.id : createParent.workspaceId;
-  const createPortfolioId = "error" in createParent ? null : createParent.portfolioId;
 
   const { projectTilePayloads: projectTiles } = await loadProjectTilePayloads(
     supabase,
@@ -77,7 +75,6 @@ export default async function WorkspaceProjectsPage({
                 <OpenProjectOnboardingLink
                   className="ds-dashboard-empty-primary"
                   workspaceId={createWorkspaceId}
-                  portfolioId={createPortfolioId}
                 >
                   Create project
                 </OpenProjectOnboardingLink>
@@ -128,7 +125,6 @@ export default async function WorkspaceProjectsPage({
             <OpenProjectOnboardingLink
               className="ds-dashboard-inline-create"
               workspaceId={createWorkspaceId}
-              portfolioId={createPortfolioId}
             >
               <span className="ds-dashboard-inline-create-label">Create project</span>
               <span className="ds-dashboard-inline-create-plus" aria-hidden>

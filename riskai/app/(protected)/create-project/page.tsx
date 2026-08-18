@@ -16,7 +16,6 @@ const ACTIVE_PROJECT_KEY = "activeProjectId";
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type PortfolioRow = { id: string; name: string; workspace_id?: string | null };
 type WorkspaceRow = { id: string; name: string; slug: string };
 
 /** Matches {@link Input} / design-system field styling for native `<select>`. */
@@ -30,14 +29,11 @@ const SELECT_FIELD_CLASS =
 function CreateProjectForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const paramPortfolioId = searchParams.get("portfolioId");
   const paramWorkspaceId = searchParams.get("workspaceId");
 
   const [name, setName] = useState("");
-  const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -46,68 +42,46 @@ function CreateProjectForm() {
     let cancelled = false;
     (async () => {
       try {
-        const [portfoliosRes, workspacesRes] = await Promise.all([
-          fetch("/api/portfolios"),
-          fetch("/api/workspaces/creatable"),
-        ]);
-        const portfoliosJson = (await portfoliosRes.json().catch(() => ({}))) as {
-          portfolios?: PortfolioRow[];
-          error?: string;
-        };
+        const workspacesRes = await fetch("/api/workspaces/creatable");
         const workspacesJson = (await workspacesRes.json().catch(() => ({}))) as {
           workspaces?: WorkspaceRow[];
           error?: string;
         };
         if (cancelled) return;
 
-        if (!portfoliosRes.ok) {
-          setLoadError(portfoliosJson.error ?? "Could not load portfolios.");
-          return;
-        }
         if (!workspacesRes.ok) {
           setLoadError(workspacesJson.error ?? "Could not load workspaces.");
           return;
         }
 
-        const list = portfoliosJson.portfolios ?? [];
         const wsList = workspacesJson.workspaces ?? [];
-        setPortfolios(list);
         setWorkspaces(wsList);
 
-        const fromQueryPortfolio =
-          paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
         const fromQueryWorkspace =
           paramWorkspaceId && UUID_REGEX.test(paramWorkspaceId) ? paramWorkspaceId : null;
         const parent = resolveProjectCreateFormParent({
           preferredWorkspaceId: fromQueryWorkspace,
-          preferredPortfolioId: fromQueryPortfolio,
           workspaces: wsList,
-          portfolios: list,
         });
         setSelectedWorkspaceId(parent.selectedWorkspaceId);
-        setSelectedPortfolioId(parent.selectedPortfolioId);
       } catch {
-        if (!cancelled) setLoadError("Could not load workspaces or portfolios.");
+        if (!cancelled) setLoadError("Could not load workspaces.");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [paramPortfolioId, paramWorkspaceId]);
+  }, [paramWorkspaceId]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
 
-    const fromQueryPortfolio =
-      paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
     const fromQueryWorkspace =
       paramWorkspaceId && UUID_REGEX.test(paramWorkspaceId) ? paramWorkspaceId : null;
     const formParent = resolveProjectCreateFormParent({
       preferredWorkspaceId: fromQueryWorkspace,
-      preferredPortfolioId: fromQueryPortfolio,
       workspaces: workspaces ?? [],
-      portfolios: portfolios ?? [],
     });
     if (formParent.preferredWorkspaceDenied) {
       setMessage({
@@ -120,15 +94,12 @@ function CreateProjectForm() {
     const workspaceId =
       selectedWorkspaceId.trim() ||
       formParent.selectedWorkspaceId ||
-      (!formParent.portfolioBound && workspaces?.length === 1 ? workspaces[0]!.id : "");
-    if (!formParent.portfolioBound && !workspaceId) {
+      (workspaces?.length === 1 ? workspaces[0]!.id : "");
+    if (!workspaceId) {
       setMessage({ type: "error", text: "Select a workspace." });
       return;
     }
 
-    const portfolioId = formParent.portfolioBound
-      ? formParent.selectedPortfolioId
-      : selectedPortfolioId.trim();
     setLoading(true);
     const res = await fetch("/api/projects", {
       method: "POST",
@@ -138,7 +109,6 @@ function CreateProjectForm() {
         createProjectRequestFromForm({
           name,
           resolvedWorkspaceId: workspaceId,
-          resolvedPortfolioId: portfolioId,
         }),
       ),
     });
@@ -188,7 +158,7 @@ function CreateProjectForm() {
     );
   }
 
-  if (portfolios === null || workspaces === null) {
+  if (workspaces === null) {
     return (
       <div className="w-full px-4 py-10 sm:px-6">
         <div className="mx-auto flex min-h-[30vh] max-w-md flex-col justify-center">
@@ -198,18 +168,14 @@ function CreateProjectForm() {
     );
   }
 
-  const fromQueryPortfolio =
-    paramPortfolioId && UUID_REGEX.test(paramPortfolioId) ? paramPortfolioId : null;
   const fromQueryWorkspace =
     paramWorkspaceId && UUID_REGEX.test(paramWorkspaceId) ? paramWorkspaceId : null;
   const formParent = resolveProjectCreateFormParent({
     preferredWorkspaceId: fromQueryWorkspace,
-    preferredPortfolioId: fromQueryPortfolio,
     workspaces,
-    portfolios,
   });
 
-  if (!formParent.portfolioBound && (workspaces.length === 0 || formParent.preferredWorkspaceDenied)) {
+  if (workspaces.length === 0 || formParent.preferredWorkspaceDenied) {
     return (
       <div className="w-full px-4 py-10 sm:px-6">
         <main className="mx-auto max-w-md">
@@ -233,26 +199,15 @@ function CreateProjectForm() {
     );
   }
 
-  const resolvedWorkspaceId = formParent.portfolioBound
-    ? selectedWorkspaceId || formParent.selectedWorkspaceId
-    : selectedWorkspaceId.trim() ||
-      formParent.selectedWorkspaceId ||
-      (workspaces.length === 1 ? workspaces[0]!.id : "");
+  const resolvedWorkspaceId =
+    selectedWorkspaceId.trim() ||
+    formParent.selectedWorkspaceId ||
+    (workspaces.length === 1 ? workspaces[0]!.id : "");
 
-  const portfoliosInWorkspace = resolvedWorkspaceId
-    ? portfolios.filter(
-        (p) =>
-          typeof p.workspace_id === "string" && p.workspace_id.trim() === resolvedWorkspaceId,
-      )
-    : [];
-
-  const { showWorkspaceSelector, showPortfolioSelector } = projectCreateSelectorVisibility({
-    portfolioBound: formParent.portfolioBound,
+  const { showWorkspaceSelector } = projectCreateSelectorVisibility({
     workspaceBound: formParent.workspaceBound,
     preferredWorkspaceDenied: formParent.preferredWorkspaceDenied,
     workspacesCount: workspaces.length,
-    selectedWorkspaceId: resolvedWorkspaceId,
-    portfoliosInSelectedWorkspaceCount: portfoliosInWorkspace.length,
   });
 
   const boundWorkspace = resolvedWorkspaceId
@@ -260,8 +215,7 @@ function CreateProjectForm() {
     : workspaces.length === 1
       ? workspaces[0]
       : undefined;
-  const showBoundWorkspaceLabel =
-    !showWorkspaceSelector && Boolean(boundWorkspace) && !formParent.portfolioBound;
+  const showBoundWorkspaceLabel = !showWorkspaceSelector && Boolean(boundWorkspace);
 
   return (
     <div className="w-full px-4 py-10 sm:px-6">
@@ -270,7 +224,7 @@ function CreateProjectForm() {
           Create project
         </h1>
         <p className="mb-6 text-[length:var(--ds-text-sm)] leading-relaxed text-[var(--ds-text-secondary)]">
-          Projects belong to a workspace. Linking a portfolio is optional.
+          Projects belong to a workspace.
         </p>
         <form onSubmit={handleCreate} className="space-y-4">
           {showWorkspaceSelector ? (
@@ -283,7 +237,6 @@ function CreateProjectForm() {
                 value={selectedWorkspaceId}
                 onChange={(e) => {
                   setSelectedWorkspaceId(e.target.value);
-                  setSelectedPortfolioId("");
                 }}
                 className={SELECT_FIELD_CLASS}
                 disabled={loading}
@@ -307,27 +260,6 @@ function CreateProjectForm() {
               </span>
             </p>
           ) : null}
-          {showPortfolioSelector ? (
-            <div>
-              <Label htmlFor="create-project-portfolio" className="text-[var(--ds-text-secondary)]">
-                Portfolio (optional)
-              </Label>
-              <select
-                id="create-project-portfolio"
-                value={selectedPortfolioId}
-                onChange={(e) => setSelectedPortfolioId(e.target.value)}
-                className={SELECT_FIELD_CLASS}
-                disabled={loading}
-              >
-                <option value="">No portfolio</option>
-                {portfoliosInWorkspace.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || p.id}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
           <div>
             <Label htmlFor="create-project-name">Project name</Label>
             <Input
@@ -345,7 +277,7 @@ function CreateProjectForm() {
             variant="primary"
             disabled={
               loading ||
-              (!formParent.portfolioBound && !selectedWorkspaceId.trim() && !formParent.selectedWorkspaceId && workspaces.length !== 1)
+              (!selectedWorkspaceId.trim() && !formParent.selectedWorkspaceId && workspaces.length !== 1)
             }
           >
             {loading ? "Creating…" : "Create project"}

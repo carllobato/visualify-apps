@@ -63,22 +63,13 @@ export function authorizeProjectArchive(args: AuthorizeProjectArchiveArgs): bool
   return workspaceRoleCanArchiveProject(args.workspaceRole);
 }
 
-/**
- * Prefer `visualify_projects.workspace_id`. Fall back to the linked Portfolio's
- * workspace only to locate the Workspace — never to use Portfolio role.
- */
+/** `visualify_projects.workspace_id` only. */
 export function resolveAuthoritativeProjectWorkspaceId(params: {
   projectWorkspaceId: string | null | undefined;
-  linkedPortfolioWorkspaceId: string | null | undefined;
 }): string | null {
   const fromProject =
     typeof params.projectWorkspaceId === "string" ? params.projectWorkspaceId.trim() : "";
-  if (fromProject) return fromProject;
-  const fromPortfolio =
-    typeof params.linkedPortfolioWorkspaceId === "string"
-      ? params.linkedPortfolioWorkspaceId.trim()
-      : "";
-  return fromPortfolio || null;
+  return fromProject || null;
 }
 
 export function postArchiveNavigatePath(workspaceId: string): string {
@@ -86,13 +77,11 @@ export function postArchiveNavigatePath(workspaceId: string): string {
 }
 
 /**
- * Paths to revalidate after archive/restore. Includes Portfolio overview and
- * project-list routes (same as the former hard-delete handler) when linked.
+ * Paths to revalidate after archive/restore.
  */
 export function projectLifecycleRevalidatePaths(params: {
   projectId: string;
   workspaceId: string | null;
-  portfolioId: string | null;
 }): string[] {
   const projectId = params.projectId.trim();
   const paths = [
@@ -105,11 +94,6 @@ export function projectLifecycleRevalidatePaths(params: {
   if (workspaceId) {
     paths.push(`/workspaces/${workspaceId}`);
     paths.push(postArchiveNavigatePath(workspaceId));
-  }
-  const portfolioId = params.portfolioId?.trim() ?? "";
-  if (portfolioId) {
-    paths.push(`/portfolios/${portfolioId}`);
-    paths.push(`/portfolios/${portfolioId}/projects`);
   }
   return paths;
 }

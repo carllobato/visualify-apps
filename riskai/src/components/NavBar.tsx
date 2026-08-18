@@ -78,7 +78,6 @@ const ALL_NAV_ITEMS: {
   icon?: "cog" | "home";
   hideInMvp?: boolean;
 }[] = [
-  { href: riskaiPath("/portfolios"), label: "Portfolios" },
   { href: riskaiPath("/projects"), label: "Projects" },
   { href: riskaiPath("/projects"), projectSlug: "project-home", label: "Project Home", icon: "home" },
   { href: riskaiPath("/projects"), projectSlug: "risks", label: "Risk Register" },

@@ -54,7 +54,6 @@ export default async function WorkspaceOverviewPage({
   });
   const reportingMonthYear = reportingMonthYearFromUrl ?? defaultReportingMonthYear ?? null;
 
-  const uniquePortfolioId = overview.uniquePortfolio?.id ?? null;
   const canCreatePortfolioProject = await userCanCreateProjectInWorkspace(
     supabase,
     user.id,
@@ -71,7 +70,6 @@ export default async function WorkspaceOverviewPage({
   return (
     <PortfolioOverviewContent
       workspaceId={overview.workspace.id}
-      portfolioId={uniquePortfolioId}
       canCreatePortfolioProject={canCreatePortfolioProject}
       reportingUnit={overview.reportingUnit}
       reportingMonthLabel={presentation.reportingMonthLabel}

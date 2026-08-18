@@ -1,10 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { filterActiveProjects } from "@/lib/db/activeProjectList";
 import { collectDistinctReportingMonthYearKeys } from "@/lib/reportingMonthSelection";
 
 export type ReportingMonthYearKeyScope =
   | { projectId: string }
-  | { portfolioId: string }
   | { projectIds: readonly string[] };
 
 function uniqueTrimmedProjectIds(ids: readonly string[]): string[] {
@@ -24,14 +22,6 @@ export async function fetchLatestReportingMonthYearKeyForScope(
     const pid = scope.projectId.trim();
     if (!pid) return null;
     projectIds = [pid];
-  } else if ("portfolioId" in scope) {
-    const pfid = scope.portfolioId.trim();
-    if (!pfid) return null;
-    const { data: projects, error } = await filterActiveProjects(
-      supabase.from("visualify_projects").select("id").eq("portfolio_id", pfid),
-    );
-    if (error || !projects?.length) return null;
-    projectIds = projects.map((p) => p.id as string);
   } else {
     projectIds = uniqueTrimmedProjectIds(scope.projectIds);
     if (projectIds.length === 0) return null;

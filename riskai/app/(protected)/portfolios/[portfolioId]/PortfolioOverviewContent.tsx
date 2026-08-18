@@ -231,11 +231,9 @@ function PortfolioRiskByOwnerCard({
 }
 
 type PortfolioOverviewContentProps = {
-  /** Internal Portfolio id for existing Projects/Settings links; null when none can be resolved uniquely. */
-  portfolioId: string | null;
   /**
    * When set, this component is Workspace Overview: Workspace wording and
-   * `/workspaces/[id]/…` destinations. Omit for legacy Portfolio Overview.
+   * `/workspaces/[id]/…` destinations.
    */
   workspaceId?: string | null;
   canCreatePortfolioProject: boolean;
@@ -349,7 +347,6 @@ const DEFAULT_EMPTY_STATE_TITLE =
   "Portfolio overview will appear once reporting data is available";
 
 export function PortfolioOverviewContent({
-  portfolioId,
   workspaceId = null,
   canCreatePortfolioProject,
   reportingUnit,
@@ -404,9 +401,8 @@ export function PortfolioOverviewContent({
   }, []);
 
   const trimmedWorkspaceId = workspaceId?.trim() ? workspaceId.trim() : null;
-  const trimmedPortfolioId = portfolioId?.trim() ? portfolioId.trim() : null;
-  const customerScope: OverviewCustomerScope = trimmedWorkspaceId ? "workspace" : "portfolio";
-  const scopeId = customerScope === "workspace" ? trimmedWorkspaceId : trimmedPortfolioId;
+  const customerScope: OverviewCustomerScope = "workspace";
+  const scopeId = trimmedWorkspaceId;
   const projectsHref = scopeId ? overviewProjectsHref(customerScope, scopeId) : null;
   const settingsHref = scopeId ? overviewSettingsHref(customerScope, scopeId) : null;
   const settingsLabel = overviewSettingsLabel(customerScope);
@@ -622,9 +618,8 @@ export function PortfolioOverviewContent({
     clearFirstProjectQueryParam();
     dispatchOpenProjectOnboarding({
       workspaceId: trimmedWorkspaceId,
-      portfolioId: trimmedPortfolioId,
     });
-  }, [canCreatePortfolioProject, clearFirstProjectQueryParam, trimmedPortfolioId, trimmedWorkspaceId]);
+  }, [canCreatePortfolioProject, clearFirstProjectQueryParam, trimmedWorkspaceId]);
 
   const kpiSummaryTrendSlots = [
     reportingVsPriorMonthTrends?.portfolioRiskRating ?? null,
@@ -911,7 +906,6 @@ export function PortfolioOverviewContent({
         index={overviewModalIndex}
         onIndexChange={setOverviewModalIndex}
         onClose={() => setOverviewModalOpen(false)}
-        portfolioId={portfolioId ?? undefined}
         workspaceId={trimmedWorkspaceId ?? undefined}
         copyScope={customerScope}
         workspaceProjectsHref={projectsHref ?? undefined}

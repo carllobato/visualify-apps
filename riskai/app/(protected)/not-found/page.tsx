@@ -19,7 +19,7 @@ export default function AccessNotFoundPage() {
     <main className="min-h-[40vh] flex flex-col items-center justify-center px-4">
       <div className="max-w-md text-center space-y-4">
         <h1 className="text-xl font-semibold text-[var(--ds-text-primary)]">
-          Project or portfolio not found
+          Project not found
         </h1>
         <p className="text-sm text-[var(--ds-text-secondary)]">
           The item you requested does not exist or you do not have access to it.
@@ -32,10 +32,10 @@ export default function AccessNotFoundPage() {
             Go to projects
           </Link>
           <Link
-            href={riskaiPath("/portfolios")}
+            href={riskaiPath("/home")}
             className="px-4 py-2 text-sm font-medium rounded-[var(--ds-radius-sm)] border border-[var(--ds-status-success-border)] bg-[var(--ds-status-success-subtle-bg)] text-[var(--ds-status-success-fg)] hover:bg-[var(--ds-status-success-bg)]"
           >
-            Go to portfolios
+            Go to home
           </Link>
         </div>
       </div>

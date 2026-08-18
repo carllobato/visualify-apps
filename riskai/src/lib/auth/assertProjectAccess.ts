@@ -30,9 +30,7 @@ export function permissionDeniedResponse(message = "Permission denied"): NextRes
 export type AssertProjectAccessOk = {
   project: ProjectRow;
   permissions: ProjectPermissions;
-  /** From the same `visualify_projects` row as access resolution; avoids a second project query in layout. */
-  portfolioId: string | null;
-  /** From `visualify_projects.workspace_id` on the same access row; not inferred from Portfolio. */
+  /** From `visualify_projects.workspace_id` on the same access row. */
   workspaceId: string | null;
 };
 export type AssertProjectAccessDenied =
@@ -66,7 +64,6 @@ export async function assertProjectAccess(
   return {
     project: bundle.project,
     permissions: bundle.permissions,
-    portfolioId: bundle.portfolioId,
     workspaceId: bundle.workspaceId,
   };
 }

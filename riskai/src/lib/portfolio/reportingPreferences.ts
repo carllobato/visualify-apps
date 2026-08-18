@@ -41,20 +41,16 @@ export function asReportingUnit(raw: unknown): ReportingUnitOption {
 }
 
 /**
- * Portfolio dashboards follow Workspace Settings (`visualify_workspaces.reporting_unit`)
- * when that value is set. The Portfolio column is only a fallback for unbound / legacy rows.
+ * Overview / Project Settings reporting unit comes from
+ * `visualify_workspaces.reporting_unit` (default when unset).
+ * Does not read Portfolio reporting unit.
  */
 export function reportingUnitForPortfolioDashboard(params: {
   workspaceReportingUnit?: unknown;
+  /** Ignored. Portfolio reporting unit is not a runtime fallback. */
   portfolioReportingUnit?: unknown;
 }): ReportingUnitOption {
-  if (
-    typeof params.workspaceReportingUnit === "string" &&
-    REPORTING_UNIT_OPTIONS.includes(params.workspaceReportingUnit as ReportingUnitOption)
-  ) {
-    return params.workspaceReportingUnit as ReportingUnitOption;
-  }
-  return asReportingUnit(params.portfolioReportingUnit);
+  return asReportingUnit(params.workspaceReportingUnit);
 }
 
 function reportingUnitFractionDigits(scaledAmount: number): number {

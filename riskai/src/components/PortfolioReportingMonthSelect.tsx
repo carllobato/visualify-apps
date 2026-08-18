@@ -34,11 +34,8 @@ const ChevronIcon = () => (
 export type PortfolioReportingMonthSelectProps = {
   /** Distinct months from locked reporting runs for this project only */
   projectId?: string;
-  /** Distinct months from locked reporting runs across projects in this portfolio */
-  portfolioId?: string;
   /**
    * Distinct months from locked reporting runs for this explicit project list.
-   * Used when neither `projectId` nor `portfolioId` is set.
    */
   projectIds?: readonly string[];
   /** Project overview only: adds an `Unpublished` value to the same `reportingMonth` query param. */
@@ -49,7 +46,6 @@ export type PortfolioReportingMonthSelectProps = {
 
 export function PortfolioReportingMonthSelect({
   projectId,
-  portfolioId,
   projectIds,
   showUnpublishedOption = false,
   initialUrlSearch = "",
@@ -67,9 +63,8 @@ export function PortfolioReportingMonthSelect({
 
   useEffect(() => {
     const pid = projectId?.trim();
-    const pfid = portfolioId?.trim();
     const explicitProjectIds = projectIdsKey != null ? projectIdsKey.split(",").filter(Boolean) : null;
-    if (!pid && !pfid && (explicitProjectIds == null || explicitProjectIds.length === 0)) {
+    if (!pid && (explicitProjectIds == null || explicitProjectIds.length === 0)) {
       setMonthKeys([]);
       setLegacyLockedWithoutReportMonth(false);
       return;
@@ -77,7 +72,6 @@ export function PortfolioReportingMonthSelect({
     let cancelled = false;
     void fetchDistinctLockedReportingMonthKeys({
       projectId: pid,
-      portfolioId: pfid,
       ...(explicitProjectIds != null ? { projectIds: explicitProjectIds } : {}),
     }).then((result) => {
       if (!cancelled) {
@@ -88,7 +82,7 @@ export function PortfolioReportingMonthSelect({
     return () => {
       cancelled = true;
     };
-  }, [projectId, portfolioId, projectIdsKey]);
+  }, [projectId, projectIdsKey]);
 
   const options = useMemo(() => {
     if (monthKeys === null) return [];

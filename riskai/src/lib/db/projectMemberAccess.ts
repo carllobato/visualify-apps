@@ -1,11 +1,12 @@
-import { isWorkspaceRoleAtLeast } from "@visualify/workspace-product-access";
+import { isWorkspaceRoleAtLeast, type WorkspaceRole } from "@visualify/workspace-product-access";
 import type {
   ProjectMemberRole,
   ProjectMembersViewerContext,
 } from "@/types/projectMembers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
-import { resolveWorkspaceProjectCapabilities } from "@/lib/workspace/workspaceRoleCapabilities";
+import { resolveAuthoritativeProjectWorkspaceId } from "@/lib/project/projectArchiveLifecycle";
+import { workspaceRoleCanManageProjectMembers } from "@/lib/workspace/workspaceRoleCapabilities";
 
 export type { ProjectMemberRole, ProjectMembersViewerContext };
 
@@ -15,67 +16,108 @@ export type ProjectMemberCapabilityFlags = {
   canRemoveMembers: boolean;
 };
 
-/** Owners (table or role) full member admin; editor/viewer cannot invite, change roles, or remove. */
+/**
+ * Mutation flags for Project members. True only when `canManageProjectMembers` is true
+ * (active Workspace Owner/Admin). Direct Project roles never grant these.
+ */
 export function resolveProjectMemberCapabilityFlags(
-  isTableOwner: boolean,
-  rowRole: ProjectMemberRole | undefined
+  canManageProjectMembers: boolean,
 ): ProjectMemberCapabilityFlags {
-  const ownerCaps = isTableOwner || rowRole === "owner";
   return {
-    canInviteMembers: ownerCaps,
-    canChangeMemberRoles: ownerCaps,
-    canRemoveMembers: ownerCaps,
+    canInviteMembers: canManageProjectMembers,
+    canChangeMemberRoles: canManageProjectMembers,
+    canRemoveMembers: canManageProjectMembers,
   };
 }
 
-/** Workspace on the project row, else the linked portfolio (member UI workspace inheritance). */
-async function resolveWorkspaceIdForProject(
-  supabase: SupabaseClient,
-  project: {
-    portfolio_id: string | null;
-    workspace_id: string | null;
-  },
-): Promise<string | null> {
-  if (typeof project.workspace_id === "string" && project.workspace_id.trim().length > 0) {
-    return project.workspace_id.trim();
-  }
+export type AuthorizeProjectMemberMutationArgs = {
+  /** `visualify_projects.workspace_id` only. */
+  projectWorkspaceId: string | null | undefined;
+  /** Active Workspace role for the actor. */
+  workspaceRole: WorkspaceRole | null | undefined;
+  /** Ignored. Table owner never grants member administration. */
+  isTableOwner?: boolean;
+  /** Ignored. Direct Project owner never grants member administration. */
+  isDirectProjectOwner?: boolean;
+  /** Ignored. Direct Project editor never grants member administration. */
+  isDirectProjectEditor?: boolean;
+  /** Ignored. Client-provided role claims are never an authority. */
+  clientClaimedRole?: string | null;
+};
 
-  const portfolioId = project.portfolio_id?.trim();
-  if (!portfolioId) {
-    return null;
-  }
-
-  const { data: portfolio } = await supabase
-    .from("visualify_portfolios")
-    .select("workspace_id")
-    .eq("id", portfolioId)
-    .maybeSingle();
-
-  const workspaceId = portfolio?.workspace_id;
-  if (typeof workspaceId === "string" && workspaceId.trim().length > 0) {
-    return workspaceId.trim();
-  }
-
-  return null;
+/**
+ * Project membership mutation (add / invite / change role / remove).
+ * Requires the Project's `workspace_id` and an active Workspace Owner/Admin.
+ */
+export function authorizeProjectMemberMutation(args: AuthorizeProjectMemberMutationArgs): boolean {
+  const workspaceId = resolveAuthoritativeProjectWorkspaceId({
+    projectWorkspaceId: args.projectWorkspaceId,
+  });
+  if (!workspaceId) return false;
+  return workspaceRoleCanManageProjectMembers(args.workspaceRole);
 }
 
-function viewerContextFromWorkspaceProjectCapabilities(
+function viewerContextFromMemberAdminFlags(
   userId: string,
-  workspaceCaps: ReturnType<typeof resolveWorkspaceProjectCapabilities>,
+  memberRole: ProjectMemberRole | null,
+  canManageProjectMembers: boolean,
 ): ProjectMembersViewerContext {
+  const caps = resolveProjectMemberCapabilityFlags(canManageProjectMembers);
   return {
     currentUserId: userId,
-    canManageMembers: workspaceCaps.canChangeMemberRoles || workspaceCaps.canRemoveMembers,
-    memberRole: null,
-    canInviteMembers: workspaceCaps.canInviteMembers,
-    canChangeMemberRoles: workspaceCaps.canChangeMemberRoles,
-    canRemoveMembers: workspaceCaps.canRemoveMembers,
+    canManageMembers: canManageProjectMembers,
+    memberRole,
+    ...caps,
   };
+}
+
+export type ProjectMemberMutationAuthority =
+  | { ok: true; workspaceId: string }
+  | { ok: false; status: 403 | 404; error: string };
+
+/**
+ * Independently loads `visualify_projects.workspace_id` and requires an active
+ * Workspace Owner/Admin. Does not consult Project role, `owner_user_id`, or client claims.
+ */
+export async function requireProjectMemberMutationAuthority(
+  supabase: SupabaseClient,
+  projectId: string,
+  userId: string,
+): Promise<ProjectMemberMutationAuthority> {
+  const { data: project, error } = await supabase
+    .from("visualify_projects")
+    .select("workspace_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (error || !project) {
+    return { ok: false, status: 404, error: "Project not found" };
+  }
+
+  const workspaceId = resolveAuthoritativeProjectWorkspaceId({
+    projectWorkspaceId:
+      typeof project.workspace_id === "string" ? project.workspace_id : null,
+  });
+  if (!workspaceId) {
+    return { ok: false, status: 403, error: "Permission denied" };
+  }
+
+  const workspaceRole = await fetchWorkspaceMemberRole(supabase, workspaceId, userId);
+  if (
+    !authorizeProjectMemberMutation({
+      projectWorkspaceId: workspaceId,
+      workspaceRole,
+    })
+  ) {
+    return { ok: false, status: 403, error: "Permission denied" };
+  }
+
+  return { ok: true, workspaceId };
 }
 
 /**
- * Server-side: member list UI + API capability flags (invite vs role/remove), aligned with RLS.
- * Direct project membership remains authoritative; workspace owner/admin supplements when absent.
+ * Server-side: member list UI + API capability flags (invite vs role/remove).
+ * List visibility follows Project access. Mutation flags are Workspace Owner/Admin only.
  */
 export async function getProjectMembersViewerContext(
   supabase: SupabaseClient,
@@ -84,7 +126,7 @@ export async function getProjectMembersViewerContext(
 ): Promise<ProjectMembersViewerContext | null> {
   const { data: project, error: pErr } = await supabase
     .from("visualify_projects")
-    .select("owner_user_id, portfolio_id, workspace_id")
+    .select("owner_user_id, workspace_id")
     .eq("id", projectId)
     .single();
 
@@ -101,47 +143,30 @@ export async function getProjectMembersViewerContext(
     .maybeSingle();
 
   const rowRole = memberRow?.role as ProjectMemberRole | undefined;
+  const workspaceId = resolveAuthoritativeProjectWorkspaceId({
+    projectWorkspaceId:
+      typeof project.workspace_id === "string" ? project.workspace_id : null,
+  });
+  const workspaceRole = workspaceId
+    ? await fetchWorkspaceMemberRole(supabase, workspaceId, userId)
+    : null;
+  const canManageProjectMembers = authorizeProjectMemberMutation({
+    projectWorkspaceId: workspaceId,
+    workspaceRole,
+  });
 
   if (isTableOwner) {
-    const caps = resolveProjectMemberCapabilityFlags(true, rowRole);
-    return {
-      currentUserId: userId,
-      canManageMembers: caps.canChangeMemberRoles || caps.canRemoveMembers,
-      memberRole: "owner",
-      ...caps,
-    };
+    return viewerContextFromMemberAdminFlags(userId, "owner", canManageProjectMembers);
   }
 
   if (!memberRow) {
-    const workspaceId = await resolveWorkspaceIdForProject(supabase, {
-      portfolio_id:
-        typeof project.portfolio_id === "string" ? project.portfolio_id : null,
-      workspace_id:
-        typeof project.workspace_id === "string" ? project.workspace_id : null,
-    });
-
-    if (workspaceId) {
-      const workspaceRole = await fetchWorkspaceMemberRole(supabase, workspaceId, userId);
-      if (workspaceRole && isWorkspaceRoleAtLeast(workspaceRole, "admin")) {
-        return viewerContextFromWorkspaceProjectCapabilities(
-          userId,
-          resolveWorkspaceProjectCapabilities(workspaceRole),
-        );
-      }
+    if (workspaceRole && isWorkspaceRoleAtLeast(workspaceRole, "admin")) {
+      return viewerContextFromMemberAdminFlags(userId, null, canManageProjectMembers);
     }
-
     return null;
   }
 
-  const memberRole: ProjectMemberRole | null = rowRole ?? null;
-  const caps = resolveProjectMemberCapabilityFlags(false, rowRole);
-
-  return {
-    currentUserId: userId,
-    canManageMembers: caps.canChangeMemberRoles || caps.canRemoveMembers,
-    memberRole,
-    ...caps,
-  };
+  return viewerContextFromMemberAdminFlags(userId, rowRole ?? null, canManageProjectMembers);
 }
 
 export async function countProjectOwners(

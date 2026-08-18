@@ -9,8 +9,11 @@ export type ProjectPermissions = {
   canEditProjectMetadata: boolean;
   /** Risks, simulation snapshots, AI merge review, etc. */
   canEditContent: boolean;
-  /** project_members CRUD */
-  canManageMembers: boolean;
+  /**
+   * Add / invite / change role / remove Project members.
+   * True only for active Workspace Owner/Admin. Direct Project roles never grant this.
+   */
+  canManageProjectMembers: boolean;
   /** Archive or restore the Project. Workspace Owner/Admin only; never Portfolio or Project Editor. */
   canArchiveProject: boolean;
   accessMode: ProjectAccessMode;

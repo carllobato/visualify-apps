@@ -1,114 +1,57 @@
 import { resolveCreatableWorkspaceId } from "@/lib/workspace/resolveCreatableWorkspaceId";
 
 export type ResolveProjectCreateTargetResult =
-  | { portfolioId: string | null; workspaceId: string }
-  | {
-      error:
-        | "not_found"
-        | "forbidden"
-        | "unbound_workspace"
-        | "workspace_mismatch"
-        | "none"
-        | "workspace_required";
-    };
-
-export type OptionalCreatePortfolio =
-  | { status: "omitted" }
-  | { status: "missing" }
-  | { status: "found"; id: string; workspaceId: string | null };
+  | { workspaceId: string }
+  | { error: "forbidden" | "none" | "workspace_required" };
 
 /**
  * Authorises Workspace-native Project create: Workspace is the required parent,
  * authorised via the same creatable-workspace set as `POST /api/projects`.
- * Portfolio is an optional association that must belong to that Workspace.
- * Never picks a Portfolio when none was supplied.
+ * Portfolio is never an authority, association, or insert field.
  */
 export function resolveWorkspaceNativeProjectCreateTarget(params: {
   creatableIds: readonly string[];
   requestedWorkspaceId: string;
-  optionalPortfolio?: OptionalCreatePortfolio;
 }): ResolveProjectCreateTargetResult {
   const workspace = resolveCreatableWorkspaceId({
     creatableIds: params.creatableIds,
     requestedWorkspaceId: params.requestedWorkspaceId,
   });
   if ("error" in workspace) return { error: workspace.error };
-
-  const optional = params.optionalPortfolio ?? { status: "omitted" };
-  if (optional.status === "omitted") {
-    return { portfolioId: null, workspaceId: workspace.workspaceId };
-  }
-  if (optional.status === "missing") {
-    return { error: "not_found" };
-  }
-
-  const portfolioWorkspaceId =
-    typeof optional.workspaceId === "string" ? optional.workspaceId.trim() : "";
-  if (!portfolioWorkspaceId) return { error: "unbound_workspace" };
-  if (portfolioWorkspaceId !== workspace.workspaceId) {
-    return { error: "workspace_mismatch" };
-  }
-
-  const portfolioId = optional.id.trim();
-  if (!portfolioId) return { error: "not_found" };
-
-  return { portfolioId, workspaceId: workspace.workspaceId };
+  return { workspaceId: workspace.workspaceId };
 }
 
 /**
- * Unscoped create when the client sent no Workspace and no Portfolio.
+ * Unscoped create when the client sent no Workspace.
  * Auto-binds only when the user has exactly one creatable Workspace.
  */
 export function resolveUnscopedProjectCreateTarget(params: {
   creatableIds: readonly string[];
   requestedWorkspaceId?: string | null;
 }): ResolveProjectCreateTargetResult {
-  const resolved = resolveCreatableWorkspaceId(params);
-  if ("error" in resolved) return { error: resolved.error };
-  return { portfolioId: null, workspaceId: resolved.workspaceId };
-}
-
-function trimRequestedWorkspaceId(value?: string | null): string {
-  return typeof value === "string" ? value.trim() : "";
+  return resolveCreatableWorkspaceId(params);
 }
 
 /**
  * Authorises every Project create request from the creatable-Workspace set
- * (Owner/Admin). Portfolio is never an independent authority; if present it is
- * resolved to a Workspace, authorised against that Workspace, then attached as
- * an optional association.
+ * (Owner/Admin). Portfolio input is ignored and never consulted.
  */
 export function resolveAuthorizedProjectCreateTarget(params: {
   creatableIds: readonly string[];
   requestedWorkspaceId?: string | null;
-  optionalPortfolio?: OptionalCreatePortfolio;
 }): ResolveProjectCreateTargetResult {
-  const requestedWorkspaceId = trimRequestedWorkspaceId(params.requestedWorkspaceId);
-  const optionalPortfolio = params.optionalPortfolio ?? { status: "omitted" };
+  return resolveCreatableWorkspaceId(params);
+}
 
-  if (requestedWorkspaceId) {
-    return resolveWorkspaceNativeProjectCreateTarget({
-      creatableIds: params.creatableIds,
-      requestedWorkspaceId,
-      optionalPortfolio,
-    });
-  }
-
-  if (optionalPortfolio.status === "omitted") {
-    return resolveUnscopedProjectCreateTarget({ creatableIds: params.creatableIds });
-  }
-
-  if (optionalPortfolio.status === "missing") {
-    return { error: "not_found" };
-  }
-
-  const portfolioWorkspaceId =
-    typeof optionalPortfolio.workspaceId === "string" ? optionalPortfolio.workspaceId.trim() : "";
-  if (!portfolioWorkspaceId) return { error: "unbound_workspace" };
-
-  return resolveWorkspaceNativeProjectCreateTarget({
-    creatableIds: params.creatableIds,
-    requestedWorkspaceId: portfolioWorkspaceId,
-    optionalPortfolio,
-  });
+/** Insert payload for `visualify_projects`. Does not write `portfolio_id`. */
+export function buildProjectCreateInsert(params: {
+  ownerUserId: string;
+  name: string;
+  workspaceId: string;
+}): { owner_user_id: string; name: string; workspace_id: string } {
+  return {
+    owner_user_id: params.ownerUserId,
+    name: params.name,
+    workspace_id: params.workspaceId,
+  };
 }

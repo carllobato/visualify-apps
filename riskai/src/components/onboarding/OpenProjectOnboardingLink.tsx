@@ -14,12 +14,10 @@ type Props = {
   className: string;
   children: ReactNode;
   workspaceId?: string | null;
-  portfolioId?: string | null;
 };
 
 export function dispatchOpenProjectOnboarding(detail?: {
   workspaceId?: string | null;
-  portfolioId?: string | null;
 }) {
   const eventDetail: OpenProjectOnboardingDetail = openProjectOnboardingDetail(detail ?? {});
   window.dispatchEvent(
@@ -29,20 +27,19 @@ export function dispatchOpenProjectOnboarding(detail?: {
 
 /**
  * Same href as create-project route, but normal click opens shell modal without navigation.
- * `workspaceId` is the required parent from Workspace surfaces; `portfolioId` is optional.
+ * `workspaceId` is the required parent from Workspace surfaces.
  */
 export function OpenProjectOnboardingLink({
   className,
   children,
   workspaceId = null,
-  portfolioId = null,
 }: Props) {
-  const href = projectOnboardingHref({ workspaceId, portfolioId });
+  const href = projectOnboardingHref({ workspaceId });
 
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
-    dispatchOpenProjectOnboarding({ workspaceId, portfolioId });
+    dispatchOpenProjectOnboarding({ workspaceId });
   }
 
   return (

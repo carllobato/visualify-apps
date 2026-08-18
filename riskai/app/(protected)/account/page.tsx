@@ -71,10 +71,10 @@ export default async function UserSettingsPage() {
           ]}
         />
         <Link
-          href={riskaiPath("/portfolios")}
+          href={riskaiPath("/home")}
           className="inline-flex rounded-[var(--ds-radius-sm)] border border-[var(--ds-border)] bg-[var(--ds-surface-default)] px-4 py-2 text-sm font-medium text-[var(--ds-text-secondary)] hover:bg-[var(--ds-surface-hover)]"
         >
-          ← Back to portfolios
+          ← Back to home
         </Link>
       </AccountSettingsPage>
     );

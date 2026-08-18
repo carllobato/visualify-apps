@@ -17,7 +17,7 @@ import { supabaseServerClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/projects/[projectId] — Project row + `permissions` (owner/editor/viewer/portfolio) for UI gating.
+ * GET /api/projects/[projectId] — Project row + `permissions` for UI gating.
  */
 export async function GET(
   _request: Request,
@@ -43,27 +43,11 @@ export async function GET(
   });
 }
 
-async function resolveLinkedPortfolioWorkspaceId(
-  portfolioId: string | null,
-): Promise<string | null> {
-  const id = portfolioId?.trim();
-  if (!id) return null;
-  const supabase = await supabaseServerClient();
-  const { data } = await supabase
-    .from("visualify_portfolios")
-    .select("workspace_id")
-    .eq("id", id)
-    .maybeSingle();
-  const workspaceId = typeof data?.workspace_id === "string" ? data.workspace_id.trim() : "";
-  return workspaceId || null;
-}
-
 function revalidateProjectLifecyclePaths(
   projectId: string,
   workspaceId: string | null,
-  portfolioId: string | null,
 ) {
-  for (const path of projectLifecycleRevalidatePaths({ projectId, workspaceId, portfolioId })) {
+  for (const path of projectLifecycleRevalidatePaths({ projectId, workspaceId })) {
     revalidatePath(path);
   }
 }
@@ -103,10 +87,8 @@ export async function PATCH(
   }
 
   if (parsed.kind === "lifecycle") {
-    const linkedPortfolioWorkspaceId = await resolveLinkedPortfolioWorkspaceId(bundle.portfolioId);
     const workspaceId = resolveAuthoritativeProjectWorkspaceId({
       projectWorkspaceId: bundle.workspaceId,
-      linkedPortfolioWorkspaceId,
     });
     if (!workspaceId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -150,7 +132,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    revalidateProjectLifecyclePaths(projectId, workspaceId, bundle.portfolioId);
+    revalidateProjectLifecyclePaths(projectId, workspaceId);
 
     return NextResponse.json({
       id: data.id,

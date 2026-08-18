@@ -9,7 +9,6 @@ import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { setSideNavPinnedCookie } from "@/lib/sideNavPinnedCookie";
 import {
   DASHBOARD_PATH,
-  portfolioIdFromAppPathname,
   projectIdFromAppPathname,
   riskaiPath,
   stripLegacyRiskAiPrefix,
@@ -79,37 +78,6 @@ const LayoutGridIcon = () => (
     <rect width="7" height="5" x="14" y="3" rx="1" />
     <rect width="7" height="9" x="14" y="12" rx="1" />
     <rect width="7" height="5" x="3" y="16" rx="1" />
-  </svg>
-);
-
-const LayersIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="shrink-0"
-    aria-hidden
-  >
-    <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
-    <path d="m22 17.65-9.05 4.32a2 2 0 0 1-1.9 0L2 17.65" />
-    <path d="m2 12 9.05 4.32a2 2 0 0 0 1.9 0L22 12" />
-  </svg>
-);
-
-const ProjectsListIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-    <path d="M8 6h13" />
-    <path d="M8 12h13" />
-    <path d="M8 18h13" />
-    <path d="M3 6h.01" />
-    <path d="M3 12h.01" />
-    <path d="M3 18h.01" />
   </svg>
 );
 
@@ -236,18 +204,10 @@ export function Sidebar({
   );
 
   const visuallyCollapsed = collapsed && !hoverPeek;
-  const portfolioIdFromUrl = portfolioIdFromAppPathname(pathname);
   const projectIdFromUrl = projectIdFromAppPathname(pathname);
-  const projectIdFromUrlRef = useRef(projectIdFromUrl);
-  const [portfolioIdForProject, setPortfolioIdForProject] = useState<string | null>(null);
   const [projectIdFromStorage, setProjectIdFromStorage] = useState<string | null>(null);
   const [showDebugNav, setShowDebugNav] = useState(false);
   const [helpFeedbackOpen, setHelpFeedbackOpen] = useState(false);
-
-  useEffect(() => {
-    projectIdFromUrlRef.current = projectIdFromUrl;
-  }, [projectIdFromUrl]);
-
   const supabase = useMemo(() => supabaseBrowserClient(), []);
 
   useEffect(() => {
@@ -317,58 +277,17 @@ export function Sidebar({
     }
   }, [pathname]);
 
-  useEffect(() => {
-    if (!projectIdFromUrl) {
-      setPortfolioIdForProject(null);
-      return;
-    }
-    let cancelled = false;
-    const requestedId = projectIdFromUrl;
-    supabase
-      .from("visualify_projects")
-      .select("portfolio_id")
-      .eq("id", requestedId)
-      .single()
-      .then(({ data, error }) => {
-        if (cancelled || projectIdFromUrlRef.current !== requestedId) return;
-        if (error || !data?.portfolio_id) {
-          setPortfolioIdForProject(null);
-          return;
-        }
-        setPortfolioIdForProject(data.portfolio_id);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [projectIdFromUrl, supabase]);
-
-  const portfolioId = portfolioIdFromUrl ?? portfolioIdForProject;
   const projectId = projectIdFromUrl ?? projectIdFromStorage;
-
-  /** Portfolio nav: only on a portfolio route, or on a project that belongs to a portfolio. */
-  const showPortfolioNav =
-    portfolioIdFromUrl != null || portfolioIdForProject != null;
 
   /** Project nav: only while viewing a project URL (`/projects/[id]/…`). */
   const projectIdInUrl = projectIdFromAppPathname(pathname);
   const showProjectNav = projectIdInUrl != null;
   const projectNavBase = projectIdInUrl ? riskaiPath(`/projects/${projectIdInUrl}`) : null;
 
-  const portfolioOverviewHref = portfolioId ? riskaiPath(`/portfolios/${portfolioId}`) : riskaiPath("/portfolios");
   const projectBase = projectId ? riskaiPath(`/projects/${projectId}`) : null;
 
   const path = stripLegacyRiskAiPrefix(pathname ?? "");
   const dashboardActive = path === DASHBOARD_PATH;
-  const portfolioOverviewPath =
-    portfolioId != null ? riskaiPath(`/portfolios/${portfolioId}`).replace(/\/+$/, "") : null;
-  const portfolioOverviewActive =
-    portfolioOverviewPath != null &&
-    (path === portfolioOverviewPath || path === `${portfolioOverviewPath}/`);
-  const portfolioProjectsActive =
-    portfolioId != null && path.startsWith(riskaiPath(`/portfolios/${portfolioId}/projects`));
-  const portfolioSettingsActive =
-    portfolioId != null &&
-    path.startsWith(riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`));
 
   const projectOverviewActive =
     projectBase != null && (path === projectBase || path === `${projectBase}/`);
@@ -490,47 +409,6 @@ export function Sidebar({
               </Link>
             </li>
           </ul>
-
-          {showPortfolioNav ? (
-            <>
-              {sectionHeader("Portfolio", false)}
-              <ul className="space-y-0.5">
-                <li>
-                  <Link
-                    href={portfolioOverviewHref}
-                    className={linkClass(portfolioOverviewActive)}
-                    title={visuallyCollapsed ? "Portfolio Overview" : undefined}
-                    onClick={onMobileClose}
-                  >
-                    <LayersIcon />
-                    <span className={navLabelClass}>Portfolio Overview</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={riskaiPath(`/portfolios/${portfolioId}/projects`)}
-                    className={linkClass(portfolioProjectsActive)}
-                    title={visuallyCollapsed ? "Projects" : undefined}
-                    onClick={onMobileClose}
-                  >
-                    <ProjectsListIcon />
-                    <span className={navLabelClass}>Projects</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href={riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`)}
-                    className={linkClass(portfolioSettingsActive)}
-                    title={visuallyCollapsed ? "Portfolio Settings" : undefined}
-                    onClick={onMobileClose}
-                  >
-                    <CogIcon />
-                    <span className={navLabelClass}>Portfolio Settings</span>
-                  </Link>
-                </li>
-              </ul>
-            </>
-          ) : null}
 
           {showProjectNav && projectNavBase ? (
             <>

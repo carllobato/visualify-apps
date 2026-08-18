@@ -125,23 +125,21 @@ describe("PROJECT_HARD_DELETE_DISABLED", () => {
 });
 
 describe("resolveAuthoritativeProjectWorkspaceId", () => {
-  it("uses visualify_projects.workspace_id when present, including portfolio_id null", () => {
+  it("uses visualify_projects.workspace_id when present", () => {
     assert.equal(
       resolveAuthoritativeProjectWorkspaceId({
         projectWorkspaceId: "ws-1",
-        linkedPortfolioWorkspaceId: "ws-from-portfolio",
       }),
       "ws-1",
     );
   });
 
-  it("falls back to the linked Portfolio workspace only to locate the Workspace", () => {
+  it("does not fall back to a linked Portfolio workspace", () => {
     assert.equal(
       resolveAuthoritativeProjectWorkspaceId({
         projectWorkspaceId: null,
-        linkedPortfolioWorkspaceId: "ws-from-portfolio",
       }),
-      "ws-from-portfolio",
+      null,
     );
   });
 });
@@ -155,25 +153,13 @@ describe("postArchiveNavigatePath", () => {
 });
 
 describe("projectLifecycleRevalidatePaths", () => {
-  it("revalidates Portfolio overview and project-list routes when the Project is linked", () => {
+  it("revalidates Workspace overview and project-list routes, never Portfolio routes", () => {
     const paths = projectLifecycleRevalidatePaths({
       projectId: "project-1",
       workspaceId: "ws-green",
-      portfolioId: "pf-1",
     });
-    assert.equal(paths.includes("/portfolios/pf-1"), true);
-    assert.equal(paths.includes("/portfolios/pf-1/projects"), true);
     assert.equal(paths.includes("/workspaces/ws-green"), true);
     assert.equal(paths.includes("/workspaces/ws-green/projects"), true);
-  });
-
-  it("omits Portfolio routes when portfolio_id is null", () => {
-    const paths = projectLifecycleRevalidatePaths({
-      projectId: "project-1",
-      workspaceId: "ws-green",
-      portfolioId: null,
-    });
     assert.equal(paths.some((path) => path.includes("/portfolios/")), false);
-    assert.equal(paths.includes("/workspaces/ws-green/projects"), true);
   });
 });

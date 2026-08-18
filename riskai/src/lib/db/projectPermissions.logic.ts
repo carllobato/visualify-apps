@@ -1,10 +1,11 @@
 /**
  * Access summary:
- * - Table owner → full project + content + members (roles, remove, invite).
- * - project_members.owner → same as table owner for app checks.
+ * - Table owner → project content + metadata. Member administration is not granted here.
+ * - project_members.owner → same content/metadata as table owner; no member administration.
  * - project_members.editor → working user: edit risks/snapshots; no project metadata or member admin.
  * - project_members.viewer → read-only project + risks.
- * - Inherited read (workspace/portfolio via `can_read_project`) → viewer only; no edits.
+ * - Inherited read (workspace via `can_read_project`) → viewer only; no edits.
+ * - `canManageProjectMembers` is overlaid from active Workspace Owner/Admin only.
  */
 import type { ProjectMemberRole } from "@/types/projectMembers";
 import type { ProjectPermissions } from "@/types/projectPermissions";
@@ -18,13 +19,13 @@ type ResolveArgs = {
 
 /**
  * Read-only permissions when `can_read_project` is true but the user is not table owner
- * and has no direct project_members row (workspace/portfolio inheritance).
+ * and has no direct project_members row (workspace inheritance).
  */
 export function resolveInheritedProjectReadPermissions(): ProjectPermissions {
   return {
     canEditProjectMetadata: false,
     canEditContent: false,
-    canManageMembers: false,
+    canManageProjectMembers: false,
     canArchiveProject: false,
     accessMode: "viewer",
   };
@@ -44,7 +45,7 @@ export function resolveProjectPermissions({
     return {
       canEditProjectMetadata: true,
       canEditContent: true,
-      canManageMembers: true,
+      canManageProjectMembers: false,
       canArchiveProject: false,
       accessMode: "owner",
     };
@@ -54,7 +55,7 @@ export function resolveProjectPermissions({
     return {
       canEditProjectMetadata: true,
       canEditContent: true,
-      canManageMembers: true,
+      canManageProjectMembers: false,
       canArchiveProject: false,
       accessMode: "owner",
     };
@@ -64,7 +65,7 @@ export function resolveProjectPermissions({
     return {
       canEditProjectMetadata: false,
       canEditContent: true,
-      canManageMembers: false,
+      canManageProjectMembers: false,
       canArchiveProject: false,
       accessMode: "editor",
     };
@@ -74,7 +75,7 @@ export function resolveProjectPermissions({
     return {
       canEditProjectMetadata: false,
       canEditContent: false,
-      canManageMembers: false,
+      canManageProjectMembers: false,
       canArchiveProject: false,
       accessMode: "viewer",
     };

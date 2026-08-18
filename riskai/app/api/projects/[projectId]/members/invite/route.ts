@@ -6,12 +6,8 @@ import {
 } from "@/lib/auth/projectInviteByEmail";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectIfAccessible } from "@/lib/db/projectAccess";
-import {
-  canAssignProjectInviteRole,
-  isProjectMemberRole,
-} from "@/lib/db/memberInviteRoles";
-import { getProjectMembersViewerContext } from "@/lib/db/projectMemberAccess";
-import type { ProjectMemberRole } from "@/types/projectMembers";
+import { isProjectMemberRole } from "@/lib/db/memberInviteRoles";
+import { requireProjectMemberMutationAuthority } from "@/lib/db/projectMemberAccess";
 import { firstRpcTableRow } from "@/lib/supabase/rpcTableFirstRow";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
@@ -68,12 +64,15 @@ export async function POST(
   }
 
   const supabase = await supabaseServerClient();
-  const viewer = await getProjectMembersViewerContext(supabase, projectId, user.id);
-  if (!viewer) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  }
-  if (!viewer.canInviteMembers) {
-    return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+  const authority = await requireProjectMemberMutationAuthority(supabase, projectId, user.id);
+  if (!authority.ok) {
+    if (authority.status === 404) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: "PERMISSION_DENIED", message: "Permission denied" },
+      { status: 403 },
+    );
   }
 
   const project = await getProjectIfAccessible(projectId);
@@ -106,12 +105,6 @@ export async function POST(
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   const role = body.role;
-  if (!canAssignProjectInviteRole(viewer.memberRole, role)) {
-    return NextResponse.json(
-      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
-      { status: 403 }
-    );
-  }
 
   const { data: found, error: rpcErr } = await supabase.rpc(
     "riskai_find_profile_by_email_for_project",

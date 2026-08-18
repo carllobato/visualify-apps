@@ -68,12 +68,14 @@ class FakeQuery<T extends Record<string, unknown>> {
 
 class FakeSupabase {
   private readonly tables: Record<string, Record<string, unknown>[]>;
+  queriedTables: string[] = [];
 
   constructor(tables: Record<string, Record<string, unknown>[]>) {
     this.tables = tables;
   }
 
   from(table: string): FakeQuery<Record<string, unknown>> {
+    this.queriedTables.push(table);
     return new FakeQuery(this.tables[table] ?? []);
   }
 }
@@ -104,14 +106,16 @@ describe("getAccessibleProjects", () => {
       visualify_projects: [ACTIVE, ARCHIVED],
       visualify_project_members: [],
       visualify_workspace_members: [{ workspace_id: "ws-1", user_id: USER_ID, status: "active" }],
-    }) as unknown as SupabaseClient;
+    });
 
-    const result = await getAccessibleProjects(supabase, USER_ID, ["portfolio-1"]);
+    const result = await getAccessibleProjects(supabase as unknown as SupabaseClient, USER_ID);
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(
       result.projects.map((p) => p.id),
       [ACTIVE.id],
     );
+    assert.equal(supabase.queriedTables.includes("visualify_portfolios"), false);
+    assert.equal(supabase.queriedTables.includes("visualify_portfolio_members"), false);
   });
 });

@@ -90,6 +90,7 @@ class FakeQuery<T extends Record<string, unknown>> {
 class FakeSupabase {
   private readonly tables: Record<string, Record<string, unknown>[]>;
   private readonly tableErrors: Record<string, { message: string }>;
+  queriedTables: string[] = [];
 
   constructor(
     tables: Record<string, Record<string, unknown>[]>,
@@ -100,6 +101,7 @@ class FakeSupabase {
   }
 
   from(table: string): FakeQuery<Record<string, unknown>> {
+    this.queriedTables.push(table);
     return new FakeQuery(this.tables[table] ?? [], this.tableErrors[table] ?? null);
   }
 }
@@ -198,7 +200,7 @@ function makeSupabase(options?: {
   reportingUnit?: string | null;
   portfolios?: Record<string, unknown>[];
   tableErrors?: Record<string, { message: string }>;
-}): SupabaseClient {
+}): FakeSupabase {
   return new FakeSupabase(
     {
       visualify_projects: [
@@ -215,7 +217,11 @@ function makeSupabase(options?: {
       ],
     },
     options?.tableErrors
-  ) as unknown as SupabaseClient;
+  );
+}
+
+function client(options?: Parameters<typeof makeSupabase>[0]): SupabaseClient {
+  return makeSupabase(options) as unknown as SupabaseClient;
 }
 
 function assertGreenSquareProjects(
@@ -227,14 +233,13 @@ function assertGreenSquareProjects(
     result.projects.map((p) => p.id),
     [LINKED_PROJECT.id, UNLINKED_PROJECT.id]
   );
-  assert.equal(result.projects.some((p) => p.portfolio_id === null), true);
   assert.equal(result.projects.some((p) => p.id === OTHER_WS_PROJECT.id), false);
 }
 
 describe("resolveWorkspaceOverviewScope", () => {
   it("rejects a blank workspace id without loading Projects", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase(),
+      supabase: client(),
       workspaceId: "  ",
       entitledWorkspaces: [GREEN_SQUARE],
     });
@@ -243,29 +248,32 @@ describe("resolveWorkspaceOverviewScope", () => {
 
   it("rejects a Workspace id that is not in the entitled set", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase(),
+      supabase: client(),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [OTHER_WORKSPACE],
     });
     assert.deepEqual(result, { ok: false, error: "forbidden" });
   });
 
-  it("loads Workspace Projects by workspace_id, including portfolio_id null", async () => {
+  it("loads Workspace Projects by workspace_id and does not query visualify_portfolios", async () => {
+    const supabase = makeSupabase();
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase(),
+      supabase: supabase as unknown as SupabaseClient,
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE, OTHER_WORKSPACE],
     });
+    assert.equal(supabase.queriedTables.includes("visualify_portfolios"), false);
+    assert.equal(supabase.queriedTables.includes("visualify_projects"), true);
+    assert.equal(supabase.queriedTables.includes("visualify_workspaces"), true);
     assertGreenSquareProjects(result);
     if (!result.ok) return;
     assert.equal(result.workspace.name, "GreenSquare");
-    assert.equal(result.multiplePortfolios, false);
-    assert.equal(result.uniquePortfolio?.id, "portfolio-1");
+    assert.equal(result.reportingUnit, "MILLIONS");
   });
 
   it("uses visualify_workspaces THOUSANDS as reportingUnit", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({ reportingUnit: "THOUSANDS" }),
+      supabase: client({ reportingUnit: "THOUSANDS" }),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE],
     });
@@ -276,7 +284,7 @@ describe("resolveWorkspaceOverviewScope", () => {
 
   it("uses visualify_workspaces MILLIONS as reportingUnit", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({ reportingUnit: "MILLIONS" }),
+      supabase: client({ reportingUnit: "MILLIONS" }),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE],
     });
@@ -287,7 +295,7 @@ describe("resolveWorkspaceOverviewScope", () => {
 
   it("uses visualify_workspaces BILLIONS as reportingUnit", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({ reportingUnit: "BILLIONS" }),
+      supabase: client({ reportingUnit: "BILLIONS" }),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE],
     });
@@ -298,20 +306,18 @@ describe("resolveWorkspaceOverviewScope", () => {
 
   it("uses the Workspace reporting unit when the Workspace has no internal Portfolio", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({ reportingUnit: "BILLIONS", portfolios: [] }),
+      supabase: client({ reportingUnit: "BILLIONS", portfolios: [] }),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE],
     });
     assertGreenSquareProjects(result);
     if (!result.ok) return;
-    assert.equal(result.uniquePortfolio, null);
-    assert.equal(result.multiplePortfolios, false);
     assert.equal(result.reportingUnit, "BILLIONS");
   });
 
   it("uses the Workspace reporting unit when a unique Portfolio has a different unit", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({
+      supabase: client({
         reportingUnit: "MILLIONS",
         portfolios: [PORTFOLIO_THOUSANDS],
       }),
@@ -320,14 +326,12 @@ describe("resolveWorkspaceOverviewScope", () => {
     });
     assertGreenSquareProjects(result);
     if (!result.ok) return;
-    assert.equal(result.uniquePortfolio?.id, "portfolio-1");
-    assert.equal(result.multiplePortfolios, false);
     assert.equal(result.reportingUnit, "MILLIONS");
   });
 
   it("uses the Workspace reporting unit when multiple Portfolios exist", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({
+      supabase: client({
         reportingUnit: "THOUSANDS",
         portfolios: [PORTFOLIO_THOUSANDS, PORTFOLIO_BILLIONS],
       }),
@@ -336,14 +340,12 @@ describe("resolveWorkspaceOverviewScope", () => {
     });
     assertGreenSquareProjects(result);
     if (!result.ok) return;
-    assert.equal(result.uniquePortfolio, null);
-    assert.equal(result.multiplePortfolios, true);
     assert.equal(result.reportingUnit, "THOUSANDS");
   });
 
-  it("uses the unique Portfolio reporting unit when the Workspace value is missing", async () => {
+  it("uses the default reporting unit when the Workspace value is missing", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({
+      supabase: client({
         reportingUnit: null,
         portfolios: [PORTFOLIO_THOUSANDS],
       }),
@@ -352,25 +354,23 @@ describe("resolveWorkspaceOverviewScope", () => {
     });
     assertGreenSquareProjects(result);
     if (!result.ok) return;
-    assert.equal(result.uniquePortfolio?.id, "portfolio-1");
-    assert.equal(result.reportingUnit, "THOUSANDS");
+    assert.equal(result.reportingUnit, "MILLIONS");
   });
 
   it("uses the default reporting unit when Workspace and unique Portfolio values are missing", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({ reportingUnit: null, portfolios: [] }),
+      supabase: client({ reportingUnit: null, portfolios: [] }),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE],
     });
     assertGreenSquareProjects(result);
     if (!result.ok) return;
-    assert.equal(result.uniquePortfolio, null);
     assert.equal(result.reportingUnit, "MILLIONS");
   });
 
   it("does not pick a Portfolio fallback when more than one Portfolio exists", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({
+      supabase: client({
         reportingUnit: null,
         portfolios: [PORTFOLIO_THOUSANDS, PORTFOLIO_BILLIONS],
       }),
@@ -379,14 +379,12 @@ describe("resolveWorkspaceOverviewScope", () => {
     });
     assertGreenSquareProjects(result);
     if (!result.ok) return;
-    assert.equal(result.uniquePortfolio, null);
-    assert.equal(result.multiplePortfolios, true);
     assert.equal(result.reportingUnit, "MILLIONS");
   });
 
   it("fails safely to empty Projects when the Project query errors", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase({
+      supabase: client({
         tableErrors: { visualify_projects: { message: "boom" } },
       }),
       workspaceId: GREEN_SQUARE.id,
@@ -399,7 +397,7 @@ describe("resolveWorkspaceOverviewScope", () => {
 
   it("excludes archived Projects from the active Workspace list", async () => {
     const result = await resolveWorkspaceOverviewScope({
-      supabase: makeSupabase(),
+      supabase: client(),
       workspaceId: GREEN_SQUARE.id,
       entitledWorkspaces: [GREEN_SQUARE],
     });
@@ -409,23 +407,23 @@ describe("resolveWorkspaceOverviewScope", () => {
   });
 
   it("includes archived Projects in the Workspace archived section list", async () => {
-    const archived = await loadWorkspaceArchivedProjects(makeSupabase(), GREEN_SQUARE.id);
+    const archived = await loadWorkspaceArchivedProjects(client(), GREEN_SQUARE.id);
     assert.deepEqual(
       archived.map((p) => p.id),
-      [LEGACY_ARCHIVED_PORTFOLIO_LINKED.id, ARCHIVED_PROJECT.id],
+      [ARCHIVED_PROJECT.id],
     );
   });
 
-  it("includes legacy portfolio-linked archived Projects with a null workspace_id", async () => {
-    const archived = await loadWorkspaceArchivedProjects(makeSupabase(), GREEN_SQUARE.id);
+  it("does not include legacy portfolio-linked archived Projects with a null workspace_id", async () => {
+    const archived = await loadWorkspaceArchivedProjects(client(), GREEN_SQUARE.id);
     assert.equal(
       archived.some((p) => p.id === LEGACY_ARCHIVED_PORTFOLIO_LINKED.id),
-      true,
+      false,
     );
   });
 
   it("does not include archived Projects whose project workspace_id is a different Workspace", async () => {
-    const archived = await loadWorkspaceArchivedProjects(makeSupabase(), GREEN_SQUARE.id);
+    const archived = await loadWorkspaceArchivedProjects(client(), GREEN_SQUARE.id);
     assert.equal(
       archived.some((p) => p.id === ARCHIVED_OTHER_WS_ON_THIS_PORTFOLIO.id),
       false,

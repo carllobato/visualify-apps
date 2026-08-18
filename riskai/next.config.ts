@@ -58,16 +58,6 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/portfolios/:portfolioId/settings",
-        destination: "/portfolios/:portfolioId/portfolio-settings",
-        permanent: true,
-      },
-      {
-        source: "/portfolios/:portfolioId/admin",
-        destination: "/portfolios/:portfolioId/portfolio-settings",
-        permanent: true,
-      },
-      {
         source: "/settings",
         destination: "/account",
         permanent: true,

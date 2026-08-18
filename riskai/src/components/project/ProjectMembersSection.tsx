@@ -175,8 +175,11 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
   const canRemove = viewer?.canRemoveMembers ?? false;
   const showRowActions = canChangeRole || canRemove;
   const assignableInviteRoles = useMemo(
-    () => getAssignableProjectInviteRoles(viewer?.memberRole ?? null),
-    [viewer?.memberRole]
+    () =>
+      getAssignableProjectInviteRoles(viewer?.memberRole ?? null, {
+        canManageProjectMembers: viewer?.canManageMembers ?? false,
+      }),
+    [viewer?.canManageMembers, viewer?.memberRole]
   );
   const inviteRoleOptions = useMemo(
     () => ROLE_OPTIONS.filter((o) => assignableInviteRoles.includes(o.value)),
@@ -195,8 +198,8 @@ export function ProjectMembersSection({ projectId }: { projectId: string }) {
 
   const roleSemanticsTooltip = useMemo(() => {
     const fallback: Record<ProjectMemberRole, string> = {
-      owner: "Full access",
-      editor: "Can view settings, edit project details, invite members",
+      owner: "Can edit project content",
+      editor: "Can edit project content",
       viewer: "View only",
     };
     const semantics = roleSemantics ?? fallback;

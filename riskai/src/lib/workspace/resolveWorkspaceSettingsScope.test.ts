@@ -170,7 +170,19 @@ describe("resolveWorkspaceSettingsScope", () => {
     assert.equal(result.reportingUnit, "BILLIONS");
   });
 
-  it("uses the unique Portfolio reporting unit when the Workspace value is missing", async () => {
+  it("does not query visualify_portfolios", async () => {
+    const supabase = makeSupabase();
+    const result = await resolveWorkspaceSettingsScope({
+      supabase: supabase as unknown as SupabaseClient,
+      workspaceId: GREEN_SQUARE.id,
+      entitledWorkspaces: [GREEN_SQUARE],
+    });
+    assert.equal(result.ok, true);
+    assert.equal(supabase.queriedTables.includes("visualify_portfolios"), false);
+    assert.equal(supabase.queriedTables.includes("visualify_workspaces"), true);
+  });
+
+  it("uses the default reporting unit when the Workspace value is missing", async () => {
     const supabase = makeSupabase({
       workspaces: [
         {
@@ -195,7 +207,8 @@ describe("resolveWorkspaceSettingsScope", () => {
     });
     assert.equal(result.ok, true);
     if (!result.ok) return;
-    assert.equal(result.reportingUnit, "BILLIONS");
+    assert.equal(result.reportingUnit, DEFAULT_REPORTING_UNIT);
+    assert.equal(supabase.queriedTables.includes("visualify_portfolios"), false);
   });
 
   it("keeps the Workspace reporting unit when a unique Portfolio has a different unit", async () => {

@@ -11,8 +11,9 @@ const primaryButtonClass =
   "dark:border-[var(--ds-border)]/50 dark:bg-[var(--ds-surface-elevated)] dark:text-[var(--ds-text-primary)] dark:hover:border-[var(--ds-border)]/75 dark:hover:bg-[var(--ds-surface-hover)] dark:active:border-[var(--ds-border)]/85 dark:active:bg-[var(--ds-surface-muted)] dark:focus-visible:outline-[var(--ds-border)]";
 
 /**
- * MVP no-access UI for signed-in users without RiskAI entitlement.
- * Sign-out matches TopNav / rail: `POST /auth/sign-out`, then client clear, then login.
+ * Legacy no-access UI. The `/no-access` route now redirects authenticated users
+ * through Workspace resolution; this screen is retained only if a remaining
+ * access-denial case is wired back up.
  */
 export function NoAccessClient() {
   const [pending, setPending] = useState(false);

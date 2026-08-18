@@ -1,15 +1,18 @@
 import { redirect } from "next/navigation";
-import { hasProductAccess } from "@/lib/auth/hasProductAccess";
-import { productConfig } from "@/lib/product-config";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { HOME_PATH } from "@/lib/routes";
+import { resolveRiskAiAuthenticatedLayoutState } from "@/lib/workspace/resolveRiskAiAuthenticatedEntry";
+import { resolveActiveRiskAiWorkspaceContext } from "@/lib/workspace/resolveActiveRiskAiWorkspaceContext";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { NoAccessClient } from "./NoAccessClient";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Outside `(protected)` so the entitlement gate does not redirect here in a loop.
- * Auth required; entitled users are sent to the dashboard.
+ * Outside `(protected)`. Authenticated users are sent through Workspace resolution
+ * instead of being denied for having zero Workspaces or no existing RiskAI
+ * Workspace entitlement. Unauthenticated visitors still go to login.
+ *
+ * The route is kept so bookmarks and old links do not 404. There is no remaining
+ * focused-MVP runtime case that should render a RiskAI access-denial screen.
  */
 export default async function NoAccessPage() {
   const supabase = await supabaseServerClient();
@@ -21,10 +24,12 @@ export default async function NoAccessPage() {
     redirect("/login");
   }
 
-  const entitled = await hasProductAccess(user.id, productConfig.PRODUCT_KEY);
-  if (entitled) {
-    redirect(DASHBOARD_PATH);
-  }
-
-  return <NoAccessClient />;
+  const workspaceContext = await resolveActiveRiskAiWorkspaceContext(user.id);
+  const entry = resolveRiskAiAuthenticatedLayoutState({
+    pathname: "/no-access",
+    workspaceCount: workspaceContext.workspaces.length,
+    selectedWorkspaceId: workspaceContext.selectedWorkspaceId,
+    needsSelection: workspaceContext.needsSelection,
+  });
+  redirect(entry.redirectTo ?? HOME_PATH);
 }

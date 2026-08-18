@@ -19,7 +19,7 @@ import {
 } from "@visualify/app-shell";
 import { Button, Callout, Input, Label, Tab, Tabs } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { DASHBOARD_PATH, normalizeAppPath } from "@/lib/routes";
+import { POST_AUTH_ENTRY_PATH, normalizeAppPath } from "@/lib/routes";
 import { waitForBrowserAuthCookies } from "@/lib/supabase/waitForBrowserAuthCookies";
 import { APP_ORIGIN } from "@/lib/host";
 
@@ -173,7 +173,7 @@ export function LoginClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const next = normalizeAppPath(searchParams.get("next"), DASHBOARD_PATH);
+  const next = normalizeAppPath(searchParams.get("next"), POST_AUTH_ENTRY_PATH);
   const inviteTokenRaw = searchParams.get("invite_token");
   const inviteToken = typeof inviteTokenRaw === "string" ? inviteTokenRaw.trim() : "";
   const invitedEmailRaw = searchParams.get("invited_email");

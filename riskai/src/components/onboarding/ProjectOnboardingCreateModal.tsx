@@ -21,15 +21,12 @@ import { OnboardingStepActions } from "./OnboardingStepActions";
 type Props = {
   open: boolean;
   workspaceId?: string | null;
-  portfolioId: string | null;
   initialStep?: CreateStep;
   onCreated: (project: { id: string; name: string }) => void | Promise<void>;
   onDismiss: () => void;
 };
 
 type CreateStep = 1 | 2 | 3 | 4 | 5;
-
-type PortfolioRow = { id: string; name: string; workspace_id?: string | null };
 type WorkspaceRow = { id: string; name: string; slug: string };
 
 const WEEKDAY_LABELS = ["M", "T", "W", "T", "F", "S", "S"] as const;
@@ -70,7 +67,6 @@ function formatDisplayDate(value: string): string {
 export function ProjectOnboardingCreateModal({
   open,
   workspaceId = null,
-  portfolioId,
   initialStep = 1,
   onCreated,
   onDismiss,
@@ -127,12 +123,9 @@ export function ProjectOnboardingCreateModal({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showErrorCallout, setShowErrorCallout] = useState(false);
-  const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
-  const [portfoliosLoadError, setPortfoliosLoadError] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
   const [workspacesLoadError, setWorkspacesLoadError] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
   const skipNextErrorAutoClearRef = useRef(false);
   const calendarRef = useRef<HTMLDivElement | null>(null);
   const calendarPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -156,40 +149,25 @@ export function ProjectOnboardingCreateModal({
     setRiskAppetite("P80");
     setError(null);
     setShowErrorCallout(false);
-    setPortfolios(null);
-    setPortfoliosLoadError(null);
     setWorkspaces(null);
     setWorkspacesLoadError(null);
     setSelectedWorkspaceId("");
-    setSelectedPortfolioId("");
-  }, [open, workspaceId, portfolioId, initialStep]);
+  }, [open, workspaceId, initialStep]);
 
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     (async () => {
       try {
-        const [portfoliosRes, workspacesRes] = await Promise.all([
-          fetch("/api/portfolios", { cache: "no-store", credentials: "include" }),
-          fetch("/api/workspaces/creatable", { cache: "no-store", credentials: "include" }),
-        ]);
-        const portfoliosJson = (await portfoliosRes.json().catch(() => ({}))) as {
-          portfolios?: PortfolioRow[];
-          error?: string;
-        };
+        const workspacesRes = await fetch("/api/workspaces/creatable", {
+          cache: "no-store",
+          credentials: "include",
+        });
         const workspacesJson = (await workspacesRes.json().catch(() => ({}))) as {
           workspaces?: WorkspaceRow[];
           error?: string;
         };
         if (cancelled) return;
-
-        if (!portfoliosRes.ok) {
-          setPortfoliosLoadError(portfoliosJson.error?.trim() || "Could not load portfolios.");
-          setPortfolios([]);
-        } else {
-          setPortfolios(Array.isArray(portfoliosJson.portfolios) ? portfoliosJson.portfolios : []);
-          setPortfoliosLoadError(null);
-        }
 
         if (!workspacesRes.ok) {
           setWorkspacesLoadError(workspacesJson.error?.trim() || "Could not load workspaces.");
@@ -199,20 +177,14 @@ export function ProjectOnboardingCreateModal({
           setWorkspacesLoadError(null);
         }
 
-        const list = Array.isArray(portfoliosJson.portfolios) ? portfoliosJson.portfolios : [];
         const wsList = Array.isArray(workspacesJson.workspaces) ? workspacesJson.workspaces : [];
         const parent = resolveProjectCreateFormParent({
           preferredWorkspaceId: workspaceId,
-          preferredPortfolioId: portfolioId,
           workspaces: wsList,
-          portfolios: list,
         });
         setSelectedWorkspaceId(parent.selectedWorkspaceId);
-        setSelectedPortfolioId(parent.selectedPortfolioId);
       } catch {
         if (!cancelled) {
-          setPortfoliosLoadError("Could not load portfolios.");
-          setPortfolios([]);
           setWorkspacesLoadError("Could not load workspaces.");
           setWorkspaces([]);
         }
@@ -221,7 +193,7 @@ export function ProjectOnboardingCreateModal({
     return () => {
       cancelled = true;
     };
-  }, [open, workspaceId, portfolioId]);
+  }, [open, workspaceId]);
 
   useEffect(() => {
     if (!showErrorCallout) return;
@@ -244,7 +216,6 @@ export function ProjectOnboardingCreateModal({
     scheduleContingencyWorkingDays,
     riskAppetite,
     selectedWorkspaceId,
-    selectedPortfolioId,
   ]);
 
   useEffect(() => {
@@ -298,24 +269,20 @@ export function ProjectOnboardingCreateModal({
   function validateStep(current: CreateStep): boolean {
     const formParent = resolveProjectCreateFormParent({
       preferredWorkspaceId: workspaceId,
-      preferredPortfolioId: portfolioId,
       workspaces: workspaces ?? [],
-      portfolios: portfolios ?? [],
     });
     if (formParent.preferredWorkspaceDenied) {
       setError("You do not have permission to create a project in this workspace.");
       return false;
     }
 
-    if (!formParent.portfolioBound) {
-      const workspaceReady =
-        selectedWorkspaceId.trim() ||
-        formParent.selectedWorkspaceId ||
-        ((workspaces ?? []).length === 1 ? (workspaces ?? [])[0]!.id : "");
-      if (!workspaceReady) {
-        setError("Select a workspace.");
-        return false;
-      }
+    const workspaceReady =
+      selectedWorkspaceId.trim() ||
+      formParent.selectedWorkspaceId ||
+      ((workspaces ?? []).length === 1 ? (workspaces ?? [])[0]!.id : "");
+    if (!workspaceReady) {
+      setError("Select a workspace.");
+      return false;
     }
     const trimmed = name.trim();
     if (current === 1 && !trimmed) {
@@ -401,19 +368,12 @@ export function ProjectOnboardingCreateModal({
     try {
       const formParent = resolveProjectCreateFormParent({
         preferredWorkspaceId: workspaceId,
-        preferredPortfolioId: portfolioId,
         workspaces: workspaces ?? [],
-        portfolios: portfolios ?? [],
       });
-      const resolvedPortfolioId = formParent.portfolioBound
-        ? formParent.selectedPortfolioId
-        : selectedPortfolioId.trim();
       const resolvedWorkspaceId =
         selectedWorkspaceId.trim() ||
         formParent.selectedWorkspaceId ||
-        (!formParent.portfolioBound && (workspaces ?? []).length === 1
-          ? (workspaces ?? [])[0]!.id
-          : "");
+        ((workspaces ?? []).length === 1 ? (workspaces ?? [])[0]!.id : "");
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -423,7 +383,6 @@ export function ProjectOnboardingCreateModal({
           createProjectRequestFromForm({
             name: trimmed,
             resolvedWorkspaceId,
-            resolvedPortfolioId,
           }),
         ),
       });
@@ -523,8 +482,8 @@ export function ProjectOnboardingCreateModal({
     };
   });
 
-  const scopesLoading = portfolios === null || workspaces === null;
-  const scopeLoadError = portfoliosLoadError || workspacesLoadError;
+  const scopesLoading = workspaces === null;
+  const scopeLoadError = workspacesLoadError;
 
   if (scopesLoading) {
     return (
@@ -601,12 +560,10 @@ export function ProjectOnboardingCreateModal({
 
   const formParent = resolveProjectCreateFormParent({
     preferredWorkspaceId: workspaceId,
-    preferredPortfolioId: portfolioId,
     workspaces,
-    portfolios,
   });
 
-  if (!formParent.portfolioBound && (workspaces.length === 0 || formParent.preferredWorkspaceDenied)) {
+  if (workspaces.length === 0 || formParent.preferredWorkspaceDenied) {
     return (
       <div
         className="ds-onboarding-modal-backdrop ds-onboarding-modal-backdrop--raised !z-[104]"
@@ -648,27 +605,10 @@ export function ProjectOnboardingCreateModal({
     );
   }
 
-  const resolvedWorkspaceId = formParent.portfolioBound
-    ? selectedWorkspaceId || formParent.selectedWorkspaceId
-    : selectedWorkspaceId.trim() ||
-      formParent.selectedWorkspaceId ||
-      (workspaces.length === 1 ? workspaces[0]!.id : "");
-
-  const portfoliosInWorkspace = resolvedWorkspaceId
-    ? portfolios.filter(
-        (p) =>
-          typeof p.workspace_id === "string" &&
-          p.workspace_id.trim() === resolvedWorkspaceId,
-      )
-    : [];
-
-  const { showWorkspaceSelector, showPortfolioSelector } = projectCreateSelectorVisibility({
-    portfolioBound: formParent.portfolioBound,
+  const { showWorkspaceSelector } = projectCreateSelectorVisibility({
     workspaceBound: formParent.workspaceBound,
     preferredWorkspaceDenied: formParent.preferredWorkspaceDenied,
     workspacesCount: workspaces.length,
-    selectedWorkspaceId: resolvedWorkspaceId,
-    portfoliosInSelectedWorkspaceCount: portfoliosInWorkspace.length,
   });
 
   return (
@@ -725,7 +665,6 @@ export function ProjectOnboardingCreateModal({
                     value={selectedWorkspaceId}
                     onChange={(e) => {
                       setSelectedWorkspaceId(e.target.value);
-                      setSelectedPortfolioId("");
                     }}
                     disabled={creating}
                     required
@@ -737,27 +676,6 @@ export function ProjectOnboardingCreateModal({
                     {workspaces.map((w) => (
                       <option key={w.id} value={w.id}>
                         {w.name || w.slug || w.id}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              {showPortfolioSelector ? (
-                <div>
-                  <label htmlFor="project-onboarding-portfolio" className="ds-onboarding-modal-label">
-                    Portfolio <span className="font-normal text-[var(--ds-text-muted)]">(optional)</span>
-                  </label>
-                  <select
-                    id="project-onboarding-portfolio"
-                    value={selectedPortfolioId}
-                    onChange={(e) => setSelectedPortfolioId(e.target.value)}
-                    disabled={creating}
-                    className="ds-onboarding-modal-select"
-                  >
-                    <option value="">No portfolio</option>
-                    {portfoliosInWorkspace.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name || p.id}
                       </option>
                     ))}
                   </select>

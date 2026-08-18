@@ -3,8 +3,10 @@ export const RISKAI_BASE = "";
 export const DASHBOARD_PATH = "/dashboard";
 /** Signed-in workspace selector and Create Workspace entry. Brand mark returns here. */
 export const HOME_PATH = "/home";
-/** Signed-in users without RiskAI product entitlement (outside `(protected)`). */
+/** Legacy signed-in denial route (outside `(protected)`). Authenticated users are redirected through Workspace resolution. */
 export const NO_ACCESS_PATH = "/no-access";
+/** Bare post-auth entry; resolves 0 / 1 / 2+ Workspaces. */
+export const POST_AUTH_ENTRY_PATH = "/";
 
 /** Legacy URL prefix; permanent redirects map `/riskai/*` → flat routes. */
 export const LEGACY_RISKAI_PREFIX = "/riskai";

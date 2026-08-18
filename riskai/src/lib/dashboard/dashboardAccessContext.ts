@@ -4,9 +4,7 @@ import { fetchWorkspaceProductAccessForUser } from "@visualify/workspace-product
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { productConfig } from "@/lib/product-config";
 import {
-  getAccessiblePortfolios,
   getAccessibleProjects,
-  type AccessiblePortfolio,
   type AccessibleProject,
 } from "@/lib/portfolios-server";
 
@@ -20,7 +18,6 @@ export type DashboardAccessContext = {
   hasAppAccess: boolean;
   workspaces: DashboardWorkspaceContext[];
   isWorkspaceAdmin: boolean;
-  portfolios: AccessiblePortfolio[];
   projects: AccessibleProject[];
 };
 
@@ -51,27 +48,21 @@ export async function getDashboardAccessContext(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<DashboardAccessContext> {
-  const [workspaceRows, portfoliosResult] = await Promise.all([
-    fetchWorkspaceProductAccessForUser(supabase, userId),
-    getAccessiblePortfolios(supabase, userId),
-  ]);
+  const workspaceRows = await fetchWorkspaceProductAccessForUser(supabase, userId);
 
   const workspaces = dedupeWorkspaces(workspaceRows);
-  const portfolios = portfoliosResult.ok ? portfoliosResult.portfolios : [];
-  const portfolioIds = portfolios.map((p) => p.id);
-  const projectsResult = await getAccessibleProjects(supabase, userId, portfolioIds);
+  const projectsResult = await getAccessibleProjects(supabase, userId);
   const projects = projectsResult.ok ? projectsResult.projects : [];
 
   return {
     hasAppAccess: workspaces.length > 0,
     workspaces,
     isWorkspaceAdmin: workspaces.some((w) => isWorkspaceAdminRole(w.memberRole)),
-    portfolios,
     projects,
   };
 }
 
-/** Prefilled mailto for members who need portfolio/project assignment. */
+/** Prefilled mailto for members who need project assignment. */
 export function buildPortfolioAccessRequestMailto(workspaceNames: readonly string[]): string {
   const label =
     workspaceNames.length === 0
@@ -79,9 +70,9 @@ export function buildPortfolioAccessRequestMailto(workspaceNames: readonly strin
       : workspaceNames.length === 1
         ? workspaceNames[0]!
         : workspaceNames.join(", ");
-  const subject = encodeURIComponent("RiskAI portfolio or project access");
+  const subject = encodeURIComponent("RiskAI project access");
   const body = encodeURIComponent(
-    `Hi,\n\nI've joined ${label} and can open RiskAI, but I don't have any portfolios or projects assigned yet.\n\nCould you add me to the relevant portfolio or project in RiskAI?\n\nThanks`,
+    `Hi,\n\nI've joined ${label} and can open RiskAI, but I don't have any projects assigned yet.\n\nCould you add me to the relevant project in RiskAI?\n\nThanks`,
   );
   return `mailto:?subject=${subject}&body=${body}`;
 }

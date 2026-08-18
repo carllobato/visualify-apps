@@ -70,14 +70,27 @@ export function workspaceRoleCanArchiveProject(role: WorkspaceRole | null | unde
 }
 
 /**
+ * Project membership administration (add / invite / change role / remove).
+ * Workspace Owner/Admin only. Direct Project roles never grant this.
+ */
+export function workspaceRoleCanManageProjectMembers(
+  role: WorkspaceRole | null | undefined,
+): boolean {
+  if (!role) return false;
+  return isWorkspaceRoleAtLeast(role, "admin");
+}
+
+/**
  * Maps a workspace role to project content/metadata/member capabilities.
- * Member may edit content and manage users but not project metadata; viewer is read-only.
+ * Member may edit content when this mapping is applied; viewer is read-only.
+ * Project member administration is Owner/Admin only.
  */
 export function resolveWorkspaceProjectCapabilities(
   role: WorkspaceRole,
 ): WorkspaceProjectCapabilities {
   const canEditContent = isWorkspaceRoleAtLeast(role, "member");
   const canEditProjectMetadata = isWorkspaceRoleAtLeast(role, "admin");
+  const canManageProjectMembers = workspaceRoleCanManageProjectMembers(role);
 
   let accessMode: ProjectAccessMode = "viewer";
   if (isWorkspaceRoleAtLeast(role, "admin")) {
@@ -89,7 +102,9 @@ export function resolveWorkspaceProjectCapabilities(
   return {
     canEditContent,
     canEditProjectMetadata,
-    ...resolveMemberManagementCapabilities(role),
+    canInviteMembers: canManageProjectMembers,
+    canChangeMemberRoles: canManageProjectMembers,
+    canRemoveMembers: canManageProjectMembers,
     accessMode,
   };
 }

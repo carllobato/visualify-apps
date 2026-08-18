@@ -26,7 +26,6 @@ describe("canCreateRiskAiWorkspace", () => {
       assert.equal(
         canCreateRiskAiWorkspace({
           authenticated: true,
-          hasRiskAiProductAccess: true,
           currentWorkspaceRole,
         }),
         true,
@@ -35,22 +34,24 @@ describe("canCreateRiskAiWorkspace", () => {
     }
   });
 
+  it("allows an authenticated user with zero Workspaces to create their first Workspace", () => {
+    assert.equal(
+      canCreateRiskAiWorkspace({
+        authenticated: true,
+        currentWorkspaceRole: null,
+      }),
+      true,
+    );
+  });
+
+  it("does not require an existing RiskAI Workspace entitlement or user-level product grant", () => {
+    assert.equal(canCreateRiskAiWorkspace({ authenticated: true }), true);
+  });
+
   it("does not allow an unauthenticated user to create", () => {
     assert.equal(
       canCreateRiskAiWorkspace({
         authenticated: false,
-        hasRiskAiProductAccess: true,
-        currentWorkspaceRole: "owner",
-      }),
-      false,
-    );
-  });
-
-  it("does not allow an authenticated user without RiskAI access to create", () => {
-    assert.equal(
-      canCreateRiskAiWorkspace({
-        authenticated: true,
-        hasRiskAiProductAccess: false,
         currentWorkspaceRole: "owner",
       }),
       false,
@@ -233,6 +234,22 @@ describe("createRiskAiWorkspaceForOwner", () => {
     assert.equal(product?.row.subscription_status, "active");
     assert.equal(product?.row.expires_at, null);
     assert.notEqual(product?.row.product_id, OTHER_PRODUCT_ID);
+  });
+
+  it("does not write a user-level product grant", async () => {
+    const deps = makeDeps();
+    await createRiskAiWorkspaceForOwner(deps, {
+      ownerUserId: AUTHENTICATED_USER_ID,
+      name: "Northwind",
+    });
+    assert.equal(
+      deps.writes.some((write) => write.table === "visualify_user_product_grants"),
+      false,
+    );
+    assert.equal(
+      deps.writes.some((write) => write.table === "visualify_user_product_access"),
+      false,
+    );
   });
 
   it("does not write a Portfolio", async () => {

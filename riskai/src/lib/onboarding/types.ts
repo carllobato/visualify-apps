@@ -49,8 +49,6 @@ export const OPEN_PROJECT_ONBOARDING_EVENT = "riskai-open-project-onboarding";
 export type OpenProjectOnboardingDetail = {
   /** Required Workspace parent when launched from a Workspace customer surface. */
   workspaceId?: string;
-  /** Optional Portfolio association (legacy Portfolio launch or unique Workspace Portfolio). */
-  portfolioId?: string;
 };
 
 /** Future: drive checklist / product tours without renaming routes. */

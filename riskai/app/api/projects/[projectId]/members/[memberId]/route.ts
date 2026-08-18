@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectIfAccessible } from "@/lib/db/projectAccess";
-import {
-  canAssignProjectInviteRole,
-  isProjectMemberRole,
-} from "@/lib/db/memberInviteRoles";
+import { isProjectMemberRole } from "@/lib/db/memberInviteRoles";
 import {
   countProjectOwners,
-  getProjectMembersViewerContext,
+  requireProjectMemberMutationAuthority,
 } from "@/lib/db/projectMemberAccess";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 /**
- * PATCH /api/projects/[projectId]/members/[memberId] — Update role (owners only; not self).
+ * PATCH /api/projects/[projectId]/members/[memberId] — Update role (Workspace Owner/Admin; not self).
  */
 export async function PATCH(
   request: Request,
@@ -29,11 +26,14 @@ export async function PATCH(
   }
 
   const supabase = await supabaseServerClient();
-  const viewer = await getProjectMembersViewerContext(supabase, projectId, user.id);
-  if (!viewer?.canChangeMemberRoles) {
+  const authority = await requireProjectMemberMutationAuthority(supabase, projectId, user.id);
+  if (!authority.ok) {
+    if (authority.status === 404) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json(
       { error: "PERMISSION_DENIED", message: "Permission denied" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -53,12 +53,6 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   const nextRole = body.role;
-  if (!canAssignProjectInviteRole(viewer.memberRole, nextRole)) {
-    return NextResponse.json(
-      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
-      { status: 403 }
-    );
-  }
 
   const { data: row, error: fetchErr } = await supabase
     .from("visualify_project_members")
@@ -116,7 +110,7 @@ export async function PATCH(
 }
 
 /**
- * DELETE /api/projects/[projectId]/members/[memberId] — Remove member (owners only).
+ * DELETE /api/projects/[projectId]/members/[memberId] — Remove member (Workspace Owner/Admin).
  */
 export async function DELETE(
   _request: Request,
@@ -131,11 +125,14 @@ export async function DELETE(
   }
 
   const supabase = await supabaseServerClient();
-  const viewer = await getProjectMembersViewerContext(supabase, projectId, user.id);
-  if (!viewer?.canRemoveMembers) {
+  const authority = await requireProjectMemberMutationAuthority(supabase, projectId, user.id);
+  if (!authority.ok) {
+    if (authority.status === 404) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
     return NextResponse.json(
       { error: "PERMISSION_DENIED", message: "Permission denied" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 

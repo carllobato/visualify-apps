@@ -5,6 +5,7 @@ import {
   resolveWorkspaceProjectCapabilities,
   workspaceRoleCanCreateProject,
   workspaceRoleCanArchiveProject,
+  workspaceRoleCanManageProjectMembers,
 } from "./workspaceRoleCapabilities";
 
 describe("resolveWorkspacePortfolioCapabilities", () => {
@@ -65,6 +66,19 @@ describe("workspaceRoleCanArchiveProject", () => {
   });
 });
 
+describe("workspaceRoleCanManageProjectMembers", () => {
+  it("allows Workspace Owner and Admin", () => {
+    assert.equal(workspaceRoleCanManageProjectMembers("owner"), true);
+    assert.equal(workspaceRoleCanManageProjectMembers("admin"), true);
+  });
+
+  it("denies Workspace Member, Viewer, and missing role", () => {
+    assert.equal(workspaceRoleCanManageProjectMembers("member"), false);
+    assert.equal(workspaceRoleCanManageProjectMembers("viewer"), false);
+    assert.equal(workspaceRoleCanManageProjectMembers(null), false);
+  });
+});
+
 describe("resolveWorkspaceProjectCapabilities", () => {
   it("grants full project capabilities to owner and admin", () => {
     for (const role of ["owner", "admin"] as const) {
@@ -72,15 +86,19 @@ describe("resolveWorkspaceProjectCapabilities", () => {
       assert.equal(caps.canEditContent, true);
       assert.equal(caps.canEditProjectMetadata, true);
       assert.equal(caps.canInviteMembers, true);
+      assert.equal(caps.canChangeMemberRoles, true);
+      assert.equal(caps.canRemoveMembers, true);
       assert.equal(caps.accessMode, "owner");
     }
   });
 
-  it("allows content edit and invites for member only", () => {
+  it("allows content edit without member administration for member only", () => {
     const caps = resolveWorkspaceProjectCapabilities("member");
     assert.equal(caps.canEditContent, true);
     assert.equal(caps.canEditProjectMetadata, false);
-    assert.equal(caps.canInviteMembers, true);
+    assert.equal(caps.canInviteMembers, false);
+    assert.equal(caps.canChangeMemberRoles, false);
+    assert.equal(caps.canRemoveMembers, false);
     assert.equal(caps.accessMode, "editor");
   });
 

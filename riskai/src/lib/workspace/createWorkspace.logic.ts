@@ -62,15 +62,16 @@ export type RiskAiWorkspaceCreateRecords = {
 };
 
 /**
- * Creating a Workspace is a user/account-level action. Existing Workspace role is ignored.
+ * Creating a Workspace is a signed-in RiskAI account action.
+ * Existing Workspace role and existing Workspace RiskAI entitlement are ignored
+ * so the first user of a new customer can create their first Workspace.
  */
 export function canCreateRiskAiWorkspace(input: {
   authenticated: boolean;
-  hasRiskAiProductAccess: boolean;
   currentWorkspaceRole?: WorkspaceRole | null;
 }): boolean {
   void input.currentWorkspaceRole;
-  return input.authenticated && input.hasRiskAiProductAccess;
+  return input.authenticated;
 }
 
 /**

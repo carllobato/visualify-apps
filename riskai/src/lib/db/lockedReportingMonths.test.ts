@@ -124,11 +124,11 @@ describe("fetchDistinctLockedReportingMonthKeysFromScope", () => {
     assert.strictEqual(result.legacyLockedWithoutReportMonth, false);
   });
 
-  it("keeps existing portfolioId behaviour: only projects in that portfolio", async () => {
+  it("does not accept a portfolioId scope", async () => {
     const result = await fetchDistinctLockedReportingMonthKeysFromScope(makeSupabase(), {
-      portfolioId: "portfolio-1",
+      projectIds: [],
     });
-    assert.deepStrictEqual(result.monthYearKeys, ["2026-03"]);
+    assert.deepStrictEqual(result.monthYearKeys, []);
   });
 
   it("keeps existing projectId behaviour: only that project", async () => {

@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { Suspense } from "react";
-import { OpenPortfolioOnboardingLink } from "@/components/onboarding/OpenPortfolioOnboardingLink";
 import { OpenProjectOnboardingLink } from "@/components/onboarding/OpenProjectOnboardingLink";
 import { GreetingHeader } from "@/components/GreetingHeader";
-import { PROJECT_TILE_LIST_LINK_CLASSES, ProjectTile } from "@/components/dashboard/ProjectTile";
+import { ProjectTile } from "@/components/dashboard/ProjectTile";
 import { DashboardAccessBanner } from "@/components/dashboard/DashboardAccessBanner";
 import { DashboardSectionEmptyState } from "@/components/dashboard/DashboardSectionEmptyState";
 import {
@@ -18,7 +16,6 @@ import {
 import { isDevAuthBypassEnabled } from "@/lib/dev/devAuthBypass";
 import { fetchPublicProfile, type PublicProfileRow } from "@/lib/profiles/profileDb";
 import { supabaseServerClient } from "@/lib/supabase/server";
-import { riskaiPath } from "@/lib/routes";
 import {
   WORKSPACE_INVITE_ACCEPTED_QP,
   WORKSPACE_INVITE_WORKSPACE_ID_QP,
@@ -56,7 +53,6 @@ export default async function DashboardPage({
 
   const devBypass = isDevAuthBypassEnabled();
 
-  let portfolios = [] as Awaited<ReturnType<typeof getDashboardAccessContext>>["portfolios"];
   let projects = [] as Awaited<ReturnType<typeof getDashboardAccessContext>>["projects"];
   let projectTiles: ProjectTilePayload[] = [];
   let profileRow: PublicProfileRow | null = null;
@@ -73,9 +69,6 @@ export default async function DashboardPage({
     hasAppAccess = access.hasAppAccess;
     isWorkspaceAdmin = access.isWorkspaceAdmin;
     workspaces = access.workspaces;
-    portfolios = [...access.portfolios].sort((a, b) =>
-      (a.name || a.id).toLocaleLowerCase().localeCompare((b.name || b.id).toLocaleLowerCase()),
-    );
     projects = access.projects;
     projectTiles = sortProjectTilesAlphabetically(
       (await getProjectTilePayloads(supabase, projects)).projectTilePayloads,
@@ -88,12 +81,7 @@ export default async function DashboardPage({
     typeof rawFirst === "string" && rawFirst.trim() ? rawFirst.trim() : null;
 
   const workspaceLabel = formatWorkspaceList(workspaces);
-  const showAccessExplainer =
-    hasAppAccess && portfolios.length === 0 && !showPostWorkspaceInvite;
-
-  const portfolioLauncherGridClass =
-    "ds-dashboard-portfolio-grid" +
-    (portfolios.length >= 2 ? " ds-dashboard-portfolio-grid--multi" : "");
+  const showAccessExplainer = hasAppAccess && projects.length === 0 && !showPostWorkspaceInvite;
 
   return (
     <div className="ds-dashboard-page">
@@ -122,51 +110,13 @@ export default async function DashboardPage({
         <Callout status="info" className="mb-[var(--ds-space-5)] text-[length:var(--ds-text-sm)]">
           <p className="m-0 leading-relaxed text-[var(--ds-text-secondary)]">
             <span className="font-medium text-[var(--ds-text-primary)]">App access is active</span> for{" "}
-            {workspaceLabel}. Portfolios and projects listed below are assigned separately—an empty
-            dashboard usually means you still need a portfolio or project invitation.
+            {workspaceLabel}. Projects listed below are assigned separately—an empty dashboard usually
+            means you still need a project invitation or workspace project access.
           </p>
         </Callout>
       ) : null}
 
       <GreetingHeader firstName={dashboardFirstName} />
-
-      <section
-        aria-labelledby="dashboard-portfolios-heading"
-        className="mb-[var(--ds-space-8)]"
-      >
-        <div className="mb-[var(--ds-space-2)]">
-          <h2 id="dashboard-portfolios-heading" className="ds-dashboard-section-heading">
-            Portfolios
-          </h2>
-        </div>
-        {portfolios.length === 0 ? (
-          <DashboardSectionEmptyState
-            kind="portfolios"
-            hasAppAccess={hasAppAccess}
-            workspaces={workspaces}
-            isWorkspaceAdmin={isWorkspaceAdmin}
-          />
-        ) : (
-          <div className="flex flex-col gap-[var(--ds-space-4)]">
-            <ul className={portfolioLauncherGridClass}>
-              {portfolios.map((p) => (
-                <li key={p.id} className="min-w-0">
-                  <Link href={riskaiPath(`/portfolios/${p.id}`)} className={PROJECT_TILE_LIST_LINK_CLASSES}>
-                    <span className="ds-dashboard-launcher-primary">{p.name || p.id}</span>
-                    <span className="ds-dashboard-launcher-chevron">Open →</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-            <OpenPortfolioOnboardingLink className="ds-dashboard-inline-create">
-              <span className="ds-dashboard-inline-create-label">Create portfolio</span>
-              <span className="ds-dashboard-inline-create-plus" aria-hidden>
-                +
-              </span>
-            </OpenPortfolioOnboardingLink>
-          </div>
-        )}
-      </section>
 
       <section aria-labelledby="dashboard-projects-heading">
         <div className="mb-[var(--ds-space-2)]">

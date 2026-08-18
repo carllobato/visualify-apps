@@ -41,7 +41,10 @@ export type ProjectMemberWithProfileRow = ProjectMemberRow & {
 
 export type ProjectMembersViewerContext = {
   currentUserId: string;
-  /** True when the viewer may change roles or remove members (project owner capabilities). */
+  /**
+   * True when the viewer may add/invite, change roles, or remove members.
+   * Workspace Owner/Admin only (`canManageProjectMembers`). Direct Project roles never grant this.
+   */
   canManageMembers: boolean;
   memberRole: ProjectMemberRole | null;
   canInviteMembers: boolean;

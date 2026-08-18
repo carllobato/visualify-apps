@@ -13,6 +13,7 @@ import {
 import {
   resolveWorkspaceProjectCapabilities,
   workspaceRoleCanArchiveProject,
+  workspaceRoleCanManageProjectMembers,
 } from "@/lib/workspace/workspaceRoleCapabilities";
 
 export type ProjectRow = { id: string; name: string; created_at: string | null };
@@ -21,8 +22,7 @@ export type ProjectAccessBundle = {
   project: ProjectRow;
   permissions: ProjectPermissions;
   ownerUserId: string;
-  portfolioId: string | null;
-  /** From `visualify_projects.workspace_id` on the loaded row; not inferred from Portfolio. */
+  /** From `visualify_projects.workspace_id` on the loaded row. */
   workspaceId: string | null;
 };
 
@@ -47,6 +47,7 @@ export async function getProjectIfAccessible(
 /**
  * Project row + permission flags for the given user (must match session for RLS).
  * Direct owner/project_members roles first; workspace owner/admin may supplement inherited read.
+ * `canManageProjectMembers` and `canArchiveProject` are overlaid from the Project workspace role.
  * Request-cached per (projectId, userId).
  */
 type ProjectAccessRow = {
@@ -54,42 +55,23 @@ type ProjectAccessRow = {
   name: string;
   created_at: string | null;
   owner_user_id: string;
-  portfolio_id: string | null;
   workspace_id: string | null;
 };
 
 const PROJECT_ACCESS_ROW_SELECT =
-  "id, name, created_at, owner_user_id, portfolio_id, workspace_id" as const;
+  "id, name, created_at, owner_user_id, workspace_id" as const;
 
-/** Workspace on the project row, else the linked portfolio (for inherited-access capability checks). */
-async function resolveWorkspaceIdForProject(
-  supabase: SupabaseClient,
-  project: Pick<ProjectAccessRow, "portfolio_id" | "workspace_id">,
-): Promise<string | null> {
+/** Workspace on the project row (`visualify_projects.workspace_id`). */
+function resolveWorkspaceIdForProject(
+  project: Pick<ProjectAccessRow, "workspace_id">,
+): string | null {
   if (typeof project.workspace_id === "string" && project.workspace_id.trim().length > 0) {
     return project.workspace_id.trim();
   }
-
-  const portfolioId = project.portfolio_id?.trim();
-  if (!portfolioId) {
-    return null;
-  }
-
-  const { data: portfolio } = await supabase
-    .from("visualify_portfolios")
-    .select("workspace_id")
-    .eq("id", portfolioId)
-    .maybeSingle();
-
-  const workspaceId = portfolio?.workspace_id;
-  if (typeof workspaceId === "string" && workspaceId.trim().length > 0) {
-    return workspaceId.trim();
-  }
-
   return null;
 }
 
-type ProjectWorkspaceScope = Pick<ProjectAccessRow, "portfolio_id" | "workspace_id">;
+type ProjectWorkspaceScope = Pick<ProjectAccessRow, "workspace_id">;
 
 function projectPermissionsFromWorkspaceProjectCapabilities(
   workspaceCaps: ReturnType<typeof resolveWorkspaceProjectCapabilities>,
@@ -97,7 +79,7 @@ function projectPermissionsFromWorkspaceProjectCapabilities(
   return {
     canEditProjectMetadata: workspaceCaps.canEditProjectMetadata,
     canEditContent: workspaceCaps.canEditContent,
-    canManageMembers: workspaceCaps.canChangeMemberRoles || workspaceCaps.canRemoveMembers,
+    canManageProjectMembers: workspaceCaps.canChangeMemberRoles || workspaceCaps.canRemoveMembers,
     canArchiveProject: false,
     accessMode: workspaceCaps.accessMode,
   };
@@ -109,7 +91,7 @@ function isActiveWorkspaceMemberStatus(value: string | null | undefined): boolea
 }
 
 /**
- * When the full project row is RLS-hidden, resolve portfolio/workspace ids via workspace-scoped lookups.
+ * When the full project row is RLS-hidden, resolve workspace id via workspace-scoped lookups.
  */
 async function resolveProjectWorkspaceScopeWhenRowHidden(
   supabase: SupabaseClient,
@@ -118,13 +100,12 @@ async function resolveProjectWorkspaceScopeWhenRowHidden(
 ): Promise<ProjectWorkspaceScope | null> {
   const { data: partial } = await supabase
     .from("visualify_projects")
-    .select("portfolio_id, workspace_id")
+    .select("workspace_id")
     .eq("id", projectId)
     .maybeSingle();
 
   if (partial) {
     return {
-      portfolio_id: partial.portfolio_id ?? null,
       workspace_id: partial.workspace_id ?? null,
     };
   }
@@ -150,54 +131,17 @@ async function resolveProjectWorkspaceScopeWhenRowHidden(
 
   const { data: byWorkspace } = await supabase
     .from("visualify_projects")
-    .select("portfolio_id, workspace_id")
+    .select("workspace_id")
     .eq("id", projectId)
     .in("workspace_id", workspaceIds)
     .maybeSingle();
 
-  if (byWorkspace) {
-    return {
-      portfolio_id: byWorkspace.portfolio_id ?? null,
-      workspace_id: byWorkspace.workspace_id ?? null,
-    };
-  }
-
-  const { data: portfolios } = await supabase
-    .from("visualify_portfolios")
-    .select("id, workspace_id")
-    .in("workspace_id", workspaceIds);
-
-  const portfolioIds = (portfolios ?? [])
-    .map((p) => p.id)
-    .filter((id): id is string => typeof id === "string" && id.trim().length > 0);
-
-  if (portfolioIds.length === 0) {
+  if (!byWorkspace) {
     return null;
   }
-
-  const { data: byPortfolio } = await supabase
-    .from("visualify_projects")
-    .select("portfolio_id, workspace_id")
-    .eq("id", projectId)
-    .in("portfolio_id", portfolioIds)
-    .maybeSingle();
-
-  if (!byPortfolio) {
-    return null;
-  }
-
-  const linkedPortfolio = portfolios?.find((p) => p.id === byPortfolio.portfolio_id);
-  const portfolioWorkspaceId =
-    typeof linkedPortfolio?.workspace_id === "string" && linkedPortfolio.workspace_id.trim().length > 0
-      ? linkedPortfolio.workspace_id.trim()
-      : null;
 
   return {
-    portfolio_id: byPortfolio.portfolio_id ?? null,
-    workspace_id:
-      typeof byPortfolio.workspace_id === "string" && byPortfolio.workspace_id.trim().length > 0
-        ? byPortfolio.workspace_id.trim()
-        : portfolioWorkspaceId,
+    workspace_id: byWorkspace.workspace_id ?? null,
   };
 }
 
@@ -208,7 +152,7 @@ async function resolveWorkspaceIdForWorkspaceSupplement(
   projectScope: ProjectWorkspaceScope | null,
 ): Promise<string | null> {
   if (projectScope) {
-    const fromScope = await resolveWorkspaceIdForProject(supabase, projectScope);
+    const fromScope = resolveWorkspaceIdForProject(projectScope);
     if (fromScope) {
       return fromScope;
     }
@@ -254,16 +198,20 @@ async function resolveInheritedPermissionsWithWorkspaceSupplement(
   return permissions;
 }
 
-async function resolveCanArchiveProject(
+async function resolveWorkspaceScopedProjectAdminFlags(
   supabase: SupabaseClient,
   userId: string,
   projectScope: ProjectWorkspaceScope | null,
-): Promise<boolean> {
-  if (!projectScope) return false;
-  const workspaceId = await resolveWorkspaceIdForProject(supabase, projectScope);
-  if (!workspaceId) return false;
+): Promise<{ canArchiveProject: boolean; canManageProjectMembers: boolean }> {
+  const denied = { canArchiveProject: false, canManageProjectMembers: false };
+  if (!projectScope) return denied;
+  const workspaceId = resolveWorkspaceIdForProject(projectScope);
+  if (!workspaceId) return denied;
   const workspaceRole = await fetchWorkspaceMemberRole(supabase, workspaceId, userId);
-  return workspaceRoleCanArchiveProject(workspaceRole);
+  return {
+    canArchiveProject: workspaceRoleCanArchiveProject(workspaceRole),
+    canManageProjectMembers: workspaceRoleCanManageProjectMembers(workspaceRole),
+  };
 }
 
 export const getProjectAccessForUser = cache(async function getProjectAccessForUser(
@@ -306,13 +254,16 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
         userId,
         workspaceScope,
       );
-      const canArchiveProject = await resolveCanArchiveProject(supabase, userId, workspaceScope);
+      const workspaceAdminFlags = await resolveWorkspaceScopedProjectAdminFlags(
+        supabase,
+        userId,
+        workspaceScope,
+      );
       return {
         project: { id: projectId, name: "", created_at: null },
-        permissions: { ...permissions, canArchiveProject },
+        permissions: { ...permissions, ...workspaceAdminFlags },
         ownerUserId: "",
-        portfolioId: workspaceScope?.portfolio_id ?? null,
-        workspaceId: null,
+        workspaceId: resolveWorkspaceIdForProject(workspaceScope ?? { workspace_id: null }),
       };
     }
   }
@@ -339,7 +290,11 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     permissions = await resolveInheritedPermissionsWithWorkspaceSupplement(supabase, userId, data);
   }
 
-  const canArchiveProject = await resolveCanArchiveProject(supabase, userId, data);
+  const workspaceAdminFlags = await resolveWorkspaceScopedProjectAdminFlags(
+    supabase,
+    userId,
+    data,
+  );
 
   return {
     project: {
@@ -349,14 +304,10 @@ export const getProjectAccessForUser = cache(async function getProjectAccessForU
     },
     permissions: {
       ...permissions,
-      canArchiveProject,
+      ...workspaceAdminFlags,
     },
     ownerUserId: data.owner_user_id as string,
-    portfolioId: data.portfolio_id ?? null,
-    workspaceId:
-      typeof data.workspace_id === "string" && data.workspace_id.trim()
-        ? data.workspace_id.trim()
-        : null,
+    workspaceId: resolveWorkspaceIdForProject(data),
   };
 });
 

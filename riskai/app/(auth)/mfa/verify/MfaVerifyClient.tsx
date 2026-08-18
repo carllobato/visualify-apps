@@ -4,10 +4,10 @@ import { FormEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { normalizeAppPath, riskaiPath } from "@/lib/routes";
+import { POST_AUTH_ENTRY_PATH, normalizeAppPath } from "@/lib/routes";
 import { AppLoginFramedShell, AppLoginPage } from "@visualify/app-shell";
 
-const DEFAULT_NEXT = riskaiPath("/portfolios");
+const DEFAULT_NEXT = POST_AUTH_ENTRY_PATH;
 
 type FactorLike = { id: string; factor_type: string; status?: string };
 

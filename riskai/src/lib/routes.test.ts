@@ -6,6 +6,7 @@ import {
   pathAfterWorkspaceSelection,
   portfolioIdFromAppPathname,
   portfolioRouteTitleFromPathname,
+  projectIdFromAppPathname,
   shouldHideAppShellPrimaryNav,
   workspaceIdFromAppPathname,
   workspaceOverviewPath,
@@ -120,10 +121,21 @@ describe("workspaceRouteTitleFromPathname", () => {
     );
   });
 
-  it("does not steal titles from the existing portfolio route", () => {
+  it("does not steal titles from a leftover portfolio URL", () => {
     assert.equal(workspaceRouteTitleFromPathname("/portfolios/pf-1", "ws-1"), null);
     assert.equal(portfolioRouteTitleFromPathname("/portfolios/pf-1", "pf-1"), "Overview");
     assert.equal(portfolioIdFromAppPathname("/workspaces/ws-1"), null);
+  });
+
+  it("does not require a Portfolio id for Workspace or Project routes", () => {
+    assert.equal(workspaceIdFromAppPathname("/workspaces/ws-1"), "ws-1");
+    assert.equal(workspaceIdFromAppPathname("/workspaces/ws-1/projects"), "ws-1");
+    assert.equal(projectIdFromAppPathname("/projects/p-1"), "p-1");
+    assert.equal(projectIdFromAppPathname("/projects/p-1/settings"), "p-1");
+    assert.equal(portfolioIdFromAppPathname("/workspaces/ws-1"), null);
+    assert.equal(portfolioIdFromAppPathname("/projects/p-1"), null);
+    assert.equal(isAuthenticatedAppPath("/workspaces/ws-1"), true);
+    assert.equal(isAuthenticatedAppPath("/projects/p-1"), true);
   });
 
   it("treats only the workspace overview path as the Report Month page", () => {

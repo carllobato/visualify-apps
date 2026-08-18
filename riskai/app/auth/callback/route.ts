@@ -2,12 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getLoginPathForHost } from "@/lib/host";
-import { normalizeAppPath } from "@/lib/routes";
+import { POST_AUTH_ENTRY_PATH, normalizeAppPath } from "@/lib/routes";
 import { env } from "@/lib/env";
 import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
 
 function safeNextPath(raw: string | null): string {
-  return normalizeAppPath(raw, "/");
+  return normalizeAppPath(raw, POST_AUTH_ENTRY_PATH);
 }
 
 function authErrorRedirect(request: NextRequest, message: string): NextResponse {

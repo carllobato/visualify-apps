@@ -11,7 +11,6 @@ import {
   DASHBOARD_PATH,
   hasLegacyRiskAiPrefix,
   isAuthenticatedAppPath,
-  portfolioIdFromAppPathname,
   projectIdFromAppPathname,
   riskaiPath,
 } from "@/lib/routes";
@@ -70,35 +69,10 @@ const HomeIcon = () => (
   </svg>
 );
 
-const PortfolioIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-    <path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" />
-    <path d="m22 17.65-9.05 4.32a2 2 0 0 1-1.9 0L2 17.65" />
-    <path d="m2 12 9.05 4.32a2 2 0 0 0 1.9 0L22 12" />
-  </svg>
-);
-
-const FolderIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
-  </svg>
-);
-
 const FileIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
     <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-  </svg>
-);
-
-const ProjectsListIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-    <path d="M8 6h13" />
-    <path d="M8 12h13" />
-    <path d="M8 18h13" />
-    <path d="M3 6h.01" />
-    <path d="M3 12h.01" />
-    <path d="M3 18h.01" />
   </svg>
 );
 
@@ -127,12 +101,6 @@ const DashboardIcon = () => (
 
 const GLOBAL_NAV: { href: string; label: string; icon: "home" }[] = [
   { href: DASHBOARD_PATH, label: "Home", icon: "home" },
-];
-
-const PORTFOLIO_NAV = (portfolioId: string) => [
-  { href: riskaiPath(`/portfolios/${portfolioId}`), label: "Portfolio Overview", icon: "portfolio" as const },
-  { href: riskaiPath(`/portfolios/${portfolioId}/projects`), label: "Projects", icon: "projects" as const },
-  { href: riskaiPath(`/portfolios/${portfolioId}/portfolio-settings`), label: "Portfolio Settings", icon: "cog" as const },
 ];
 
 const PROJECT_NAV = (projectId: string) => [
@@ -180,38 +148,8 @@ export function AppSidebar() {
 
   const isLoggedIn = user !== null && user !== "loading";
   const useFullPageLinks = !isKnownAppRoute(pathname);
-  const portfolioIdFromUrl = portfolioIdFromAppPathname(pathname);
   const projectId = projectIdFromAppPathname(pathname);
-  const [portfolioIdForProject, setPortfolioIdForProject] = useState<string | null>(null);
   const homeHref = isLoggedIn ? DASHBOARD_PATH : LOGIN_URL;
-
-  // When viewing a project, fetch its portfolio_id so we can show portfolio nav (Projects, Settings) in the sidebar
-  useEffect(() => {
-    if (!projectId) {
-      setPortfolioIdForProject(null);
-      return;
-    }
-    let cancelled = false;
-    supabaseBrowserClient()
-      .from("visualify_projects")
-      .select("portfolio_id")
-      .eq("id", projectId)
-      .single()
-      .then(
-        ({ data }) => {
-          if (!cancelled && data?.portfolio_id) setPortfolioIdForProject(data.portfolio_id);
-          else if (!cancelled) setPortfolioIdForProject(null);
-        },
-        () => {
-          if (!cancelled) setPortfolioIdForProject(null);
-        }
-      );
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
-
-  const portfolioId = portfolioIdFromUrl ?? portfolioIdForProject;
 
   useEffect(() => setMounted(true), []);
 
@@ -250,7 +188,7 @@ export function AppSidebar() {
           {GLOBAL_NAV.map((item) => {
             const href = item.href === DASHBOARD_PATH ? homeHref : item.href;
             const isActive = pathname === item.href;
-            const icon = <PortfolioIcon />;
+            const icon = <HomeIcon />;
             return (
               <li key={item.href}>
                 <NavLink href={href} isActive={isActive} useFullPageLink={useFullPageLinks}>
@@ -261,27 +199,6 @@ export function AppSidebar() {
             );
           })}
         </ul>
-
-        {/* Portfolio contextual section */}
-        {portfolioId && (
-          <>
-            <div className={sectionLabelClassName}>Portfolio</div>
-            <ul className="space-y-0.5">
-              {PORTFOLIO_NAV(portfolioId).map((item) => {
-                const isActive = pathname === item.href;
-                const icon = item.icon === "portfolio" ? <PortfolioIcon /> : item.icon === "projects" ? <ProjectsListIcon /> : item.icon === "cog" ? <CogIcon /> : <FileIcon />;
-                return (
-                  <li key={item.href}>
-                    <NavLink href={item.href} isActive={isActive} useFullPageLink={useFullPageLinks}>
-                      {icon}
-                      {item.label}
-                    </NavLink>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        )}
 
         {/* Project contextual section */}
         {projectId && (

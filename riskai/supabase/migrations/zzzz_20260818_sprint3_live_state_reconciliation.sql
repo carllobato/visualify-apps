@@ -511,3 +511,99 @@ CREATE POLICY "simulation_snapshots_delete_own_project"
 ON public.riskai_simulation_snapshots
 FOR DELETE
 USING (public.visualify_can_write_project_content(project_id));
+
+-- =============================================================================
+-- 9) Project member RLS (live Sprint 3: workspace owner/admin mutation)
+-- =============================================================================
+
+DROP POLICY IF EXISTS "project_members_select_project_access" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "Users can view project members" ON public.visualify_project_members;
+
+CREATE POLICY "Users can view project members"
+ON public.visualify_project_members
+FOR SELECT
+USING (public.can_read_project(project_id, auth.uid()));
+
+DROP POLICY IF EXISTS "Project owners and editors can add members" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "project_members_insert_project_owner" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "Workspace owners and admins can add project members" ON public.visualify_project_members;
+
+CREATE POLICY "Workspace owners and admins can add project members"
+ON public.visualify_project_members
+FOR INSERT
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.visualify_projects p
+    WHERE p.id = visualify_project_members.project_id
+      AND EXISTS (
+        SELECT 1
+        FROM public.visualify_workspace_members wm
+        WHERE wm.workspace_id = p.workspace_id
+          AND wm.user_id = auth.uid()
+          AND wm.role IN ('owner', 'admin')
+          AND public.is_active_workspace_member_status(wm.status)
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "Project owners can update members" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "project_members_update_project_owner" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "Workspace owners and admins can update project members" ON public.visualify_project_members;
+
+CREATE POLICY "Workspace owners and admins can update project members"
+ON public.visualify_project_members
+FOR UPDATE
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.visualify_projects p
+    WHERE p.id = visualify_project_members.project_id
+      AND EXISTS (
+        SELECT 1
+        FROM public.visualify_workspace_members wm
+        WHERE wm.workspace_id = p.workspace_id
+          AND wm.user_id = auth.uid()
+          AND wm.role IN ('owner', 'admin')
+          AND public.is_active_workspace_member_status(wm.status)
+      )
+  )
+)
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.visualify_projects p
+    WHERE p.id = visualify_project_members.project_id
+      AND EXISTS (
+        SELECT 1
+        FROM public.visualify_workspace_members wm
+        WHERE wm.workspace_id = p.workspace_id
+          AND wm.user_id = auth.uid()
+          AND wm.role IN ('owner', 'admin')
+          AND public.is_active_workspace_member_status(wm.status)
+      )
+  )
+);
+
+DROP POLICY IF EXISTS "Project owners can remove members" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "project_members_delete_project_owner" ON public.visualify_project_members;
+DROP POLICY IF EXISTS "Workspace owners and admins can remove project members" ON public.visualify_project_members;
+
+CREATE POLICY "Workspace owners and admins can remove project members"
+ON public.visualify_project_members
+FOR DELETE
+USING (
+  EXISTS (
+    SELECT 1
+    FROM public.visualify_projects p
+    WHERE p.id = visualify_project_members.project_id
+      AND EXISTS (
+        SELECT 1
+        FROM public.visualify_workspace_members wm
+        WHERE wm.workspace_id = p.workspace_id
+          AND wm.user_id = auth.uid()
+          AND wm.role IN ('owner', 'admin')
+          AND public.is_active_workspace_member_status(wm.status)
+      )
+  )
+);

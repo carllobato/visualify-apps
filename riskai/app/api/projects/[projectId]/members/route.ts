@@ -6,11 +6,11 @@ import {
   memberAuthEmailLookup,
 } from "@/lib/db/memberAuthEmailsMap";
 import { getProjectIfAccessible } from "@/lib/db/projectAccess";
+import { isProjectMemberRole } from "@/lib/db/memberInviteRoles";
 import {
-  canAssignProjectInviteRole,
-  isProjectMemberRole,
-} from "@/lib/db/memberInviteRoles";
-import { getProjectMembersViewerContext } from "@/lib/db/projectMemberAccess";
+  getProjectMembersViewerContext,
+  requireProjectMemberMutationAuthority,
+} from "@/lib/db/projectMemberAccess";
 import type {
   ProfileDisplayRow,
   ProjectMemberWithProfileRow,
@@ -70,7 +70,7 @@ async function loadMergedProjectMemberRows(
 
   const { data: project, error: projectErr } = await supabase
     .from("visualify_projects")
-    .select("workspace_id, portfolio_id")
+    .select("workspace_id")
     .eq("id", projectId)
     .maybeSingle();
 
@@ -79,32 +79,10 @@ async function loadMergedProjectMemberRows(
     return directOnly();
   }
 
-  let workspaceId =
+  const workspaceId =
     typeof project?.workspace_id === "string" && project.workspace_id.trim().length > 0
       ? project.workspace_id.trim()
       : null;
-
-  if (!workspaceId) {
-    const portfolioId =
-      typeof project?.portfolio_id === "string" && project.portfolio_id.trim().length > 0
-        ? project.portfolio_id.trim()
-        : null;
-    if (portfolioId) {
-      const { data: portfolio, error: portfolioErr } = await supabase
-        .from("visualify_portfolios")
-        .select("workspace_id")
-        .eq("id", portfolioId)
-        .maybeSingle();
-      if (portfolioErr) {
-        console.error("[project-members] GET portfolio workspace_id:", portfolioErr.message);
-        return directOnly();
-      }
-      workspaceId =
-        typeof portfolio?.workspace_id === "string" && portfolio.workspace_id.trim().length > 0
-          ? portfolio.workspace_id.trim()
-          : null;
-    }
-  }
 
   if (!workspaceId) {
     return directOnly();
@@ -237,8 +215,8 @@ export async function GET(
     profiles,
     viewer,
     roleSemantics: {
-      owner: "Full access",
-      editor: "Can view settings, edit project details, invite members",
+      owner: "Can edit project content",
+      editor: "Can edit project content",
       viewer: "View only",
     },
   });
@@ -260,12 +238,15 @@ export async function POST(
   }
 
   const supabase = await supabaseServerClient();
-  const viewer = await getProjectMembersViewerContext(supabase, projectId, user.id);
-  if (!viewer) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
-  }
-  if (!viewer.canInviteMembers) {
-    return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+  const authority = await requireProjectMemberMutationAuthority(supabase, projectId, user.id);
+  if (!authority.ok) {
+    if (authority.status === 404) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    return NextResponse.json(
+      { error: "PERMISSION_DENIED", message: "Permission denied" },
+      { status: 403 },
+    );
   }
 
   const project = await getProjectIfAccessible(projectId);
@@ -298,12 +279,6 @@ export async function POST(
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   const role = body.role;
-  if (!canAssignProjectInviteRole(viewer.memberRole, role)) {
-    return NextResponse.json(
-      { error: "PERMISSION_DENIED", message: "You cannot assign that role." },
-      { status: 403 }
-    );
-  }
 
   const { data: found, error: rpcErr } = await supabase.rpc(
     "riskai_find_profile_by_email_for_project",

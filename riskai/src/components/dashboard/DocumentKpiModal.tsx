@@ -604,7 +604,6 @@ function PortfolioRagKpiModalBody({
 }
 
 function PortfolioProjectsKpiModalBody({
-  portfolioId,
   workspaceId,
   projectTilePayloads,
   canCreatePortfolioProject = true,
@@ -613,7 +612,6 @@ function PortfolioProjectsKpiModalBody({
   unreportedProjects = [],
   reportingMonthLabel = null,
 }: {
-  portfolioId?: string;
   workspaceId?: string;
   projectTilePayloads: ProjectTilePayload[];
   canCreatePortfolioProject?: boolean;
@@ -623,11 +621,7 @@ function PortfolioProjectsKpiModalBody({
   reportingMonthLabel?: string | null;
 }) {
   const trimmedWorkspaceId = workspaceId?.trim() || null;
-  const trimmedPortfolioId = portfolioId?.trim() || null;
-  const showCreate = Boolean(
-    canCreatePortfolioProject &&
-      (copyScope === "workspace" ? trimmedWorkspaceId : trimmedPortfolioId),
-  );
+  const showCreate = Boolean(canCreatePortfolioProject && trimmedWorkspaceId);
   const viewProjectsHref =
     copyScope === "workspace" ? workspaceProjectsHref : riskaiPath("/projects");
   const viewProjectsLabel = copyScope === "workspace" ? "View projects" : "View all your projects";
@@ -666,7 +660,6 @@ function PortfolioProjectsKpiModalBody({
             <OpenProjectOnboardingLink
               className="ds-dashboard-empty-primary"
               workspaceId={trimmedWorkspaceId}
-              portfolioId={trimmedPortfolioId}
             >
               Create project
             </OpenProjectOnboardingLink>
@@ -701,7 +694,6 @@ function PortfolioProjectsKpiModalBody({
         <OpenProjectOnboardingLink
           className="ds-dashboard-inline-create"
           workspaceId={trimmedWorkspaceId}
-          portfolioId={trimmedPortfolioId}
         >
           <span className="ds-dashboard-inline-create-label">Create project</span>
           <span className="ds-dashboard-inline-create-plus" aria-hidden>
@@ -1143,7 +1135,6 @@ export function DocumentKpiModal({
   index,
   onIndexChange,
   onClose,
-  portfolioId,
   workspaceId,
   copyScope = "portfolio",
   workspaceProjectsHref,
@@ -1296,7 +1287,6 @@ export function DocumentKpiModal({
             ) : showProjectsList && projectTilePayloads != null ? (
               <div className="w-full min-w-0">
                 <PortfolioProjectsKpiModalBody
-                  portfolioId={portfolioId}
                   workspaceId={workspaceId}
                   projectTilePayloads={projectTilePayloads}
                   canCreatePortfolioProject={canCreatePortfolioProject}

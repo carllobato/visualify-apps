@@ -9,7 +9,7 @@ import {
   isWebsiteHost,
   SITE_ORIGIN,
 } from "@/lib/host";
-import { DASHBOARD_PATH } from "@/lib/routes";
+import { POST_AUTH_ENTRY_PATH } from "@/lib/routes";
 import { env } from "@/lib/env";
 import { awaitSupabaseCookieSync } from "@/lib/supabase/await-supabase-cookie-sync";
 import { supabaseSsrCookieProps } from "@/lib/supabase/auth-cookie-options";
@@ -92,9 +92,9 @@ export async function updateSession(request: NextRequest) {
     if (isPublicPath(pathname, host)) {
       if (user && pathname === "/login") {
         if (isWebsiteHost(host)) {
-          return NextResponse.redirect(new URL(DASHBOARD_PATH, APP_ORIGIN));
+          return NextResponse.redirect(new URL(POST_AUTH_ENTRY_PATH, APP_ORIGIN));
         }
-        return NextResponse.redirect(new URL(DASHBOARD_PATH, request.url));
+        return NextResponse.redirect(new URL(POST_AUTH_ENTRY_PATH, request.url));
       }
       return response;
     }

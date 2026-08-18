@@ -16,13 +16,13 @@ describe("reportingUnitForPortfolioDashboard", () => {
     );
   });
 
-  it("falls back to the Portfolio reporting unit when the Workspace has none", () => {
+  it("uses the default reporting unit when the Workspace has none, ignoring Portfolio", () => {
     assert.equal(
       reportingUnitForPortfolioDashboard({
         workspaceReportingUnit: null,
         portfolioReportingUnit: "BILLIONS",
       }),
-      "BILLIONS",
+      DEFAULT_REPORTING_UNIT,
     );
   });
 

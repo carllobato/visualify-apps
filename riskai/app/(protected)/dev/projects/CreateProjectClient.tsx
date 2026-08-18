@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { Callout } from "@visualify/design-system";
 import { LoadingPlaceholder } from "@/components/ds/LoadingPlaceholder";
 
-type PortfolioRow = { id: string; name: string };
+type WorkspaceRow = { id: string; name: string; slug: string };
 
 export default function CreateProjectClient() {
   const [name, setName] = useState("");
-  const [portfolios, setPortfolios] = useState<PortfolioRow[] | null>(null);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState("");
+  const [workspaces, setWorkspaces] = useState<WorkspaceRow[] | null>(null);
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -20,22 +20,22 @@ export default function CreateProjectClient() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/portfolios");
-        const json = (await res.json()) as { portfolios?: PortfolioRow[]; error?: string };
+        const res = await fetch("/api/workspaces/creatable");
+        const json = (await res.json()) as { workspaces?: WorkspaceRow[]; error?: string };
         if (!res.ok) {
-          if (!cancelled) setLoadError(json.error ?? "Could not load portfolios.");
+          if (!cancelled) setLoadError(json.error ?? "Could not load workspaces.");
           return;
         }
-        const list = json.portfolios ?? [];
+        const list = json.workspaces ?? [];
         if (cancelled) return;
         if (list.length === 0) {
-          setLoadError("Create a portfolio first (from the dashboard or onboarding).");
+          setLoadError("You do not have permission to create a project in any RiskAI workspace.");
           return;
         }
-        setPortfolios(list);
-        setSelectedPortfolioId(list[0]!.id);
+        setWorkspaces(list);
+        setSelectedWorkspaceId(list[0]!.id);
       } catch {
-        if (!cancelled) setLoadError("Could not load portfolios.");
+        if (!cancelled) setLoadError("Could not load workspaces.");
       }
     })();
     return () => {
@@ -46,8 +46,8 @@ export default function CreateProjectClient() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    if (!selectedPortfolioId) {
-      setMessage({ type: "error", text: "Select a portfolio." });
+    if (!selectedWorkspaceId) {
+      setMessage({ type: "error", text: "Select a workspace." });
       return;
     }
     setLoading(true);
@@ -55,7 +55,7 @@ export default function CreateProjectClient() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({ name, portfolioId: selectedPortfolioId }),
+      body: JSON.stringify({ name, workspaceId: selectedWorkspaceId }),
     });
     const json = (await res.json().catch(() => ({}))) as {
       project?: { id: string };
@@ -86,35 +86,35 @@ export default function CreateProjectClient() {
     );
   }
 
-  if (portfolios === null) {
-    return <LoadingPlaceholder label="Loading portfolios" />;
+  if (workspaces === null) {
+    return <LoadingPlaceholder label="Loading workspaces" />;
   }
 
   return (
     <form onSubmit={handleCreate} className="space-y-2">
-      {portfolios.length > 1 ? (
+      {workspaces.length > 1 ? (
         <div>
-          <label htmlFor="dev-create-project-portfolio" className="mb-1 block text-xs font-medium text-[var(--ds-text-secondary)]">
-            Portfolio
+          <label htmlFor="dev-create-project-workspace" className="mb-1 block text-xs font-medium text-[var(--ds-text-secondary)]">
+            Workspace
           </label>
           <select
-            id="dev-create-project-portfolio"
-            value={selectedPortfolioId}
-            onChange={(e) => setSelectedPortfolioId(e.target.value)}
+            id="dev-create-project-workspace"
+            value={selectedWorkspaceId}
+            onChange={(e) => setSelectedWorkspaceId(e.target.value)}
             className={selectClass}
             disabled={loading}
             required
           >
-            {portfolios.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name || p.id}
+            {workspaces.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name || w.slug || w.id}
               </option>
             ))}
           </select>
         </div>
       ) : (
         <p className="max-w-xs text-xs text-[var(--ds-text-muted)]">
-          Portfolio: <span className="font-medium text-[var(--ds-text-primary)]">{portfolios[0]?.name}</span>
+          Workspace: <span className="font-medium text-[var(--ds-text-primary)]">{workspaces[0]?.name}</span>
         </p>
       )}
       <input
