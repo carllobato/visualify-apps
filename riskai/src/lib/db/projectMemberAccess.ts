@@ -1,10 +1,11 @@
-import { isWorkspaceRoleAtLeast, type WorkspaceRole } from "@visualify/workspace-product-access";
+import type { WorkspaceRole } from "@visualify/workspace-product-access";
 import type {
   ProjectMemberRole,
   ProjectMembersViewerContext,
 } from "@/types/projectMembers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
+import { workspaceRoleInheritsOntoEveryProject } from "@/lib/db/mergeProjectMemberRows";
 import { resolveAuthoritativeProjectWorkspaceId } from "@/lib/project/projectArchiveLifecycle";
 import { workspaceRoleCanManageProjectMembers } from "@/lib/workspace/workspaceRoleCapabilities";
 
@@ -55,6 +56,22 @@ export function authorizeProjectMemberMutation(args: AuthorizeProjectMemberMutat
   });
   if (!workspaceId) return false;
   return workspaceRoleCanManageProjectMembers(args.workspaceRole);
+}
+
+export type AuthorizeProjectMemberReadArgs = {
+  isTableOwner: boolean;
+  hasDirectProjectMemberRow: boolean;
+  workspaceRole: WorkspaceRole | null | undefined;
+};
+
+/**
+ * Project member list visibility follows Project read access:
+ * table owner, any direct project_members role, or inherited workspace owner/admin/viewer.
+ * Workspace member does not inherit. Mutation is not granted here.
+ */
+export function canViewProjectMembers(args: AuthorizeProjectMemberReadArgs): boolean {
+  if (args.isTableOwner || args.hasDirectProjectMemberRow) return true;
+  return Boolean(args.workspaceRole && workspaceRoleInheritsOntoEveryProject(args.workspaceRole));
 }
 
 function viewerContextFromMemberAdminFlags(
@@ -155,18 +172,25 @@ export async function getProjectMembersViewerContext(
     workspaceRole,
   });
 
+  if (
+    !canViewProjectMembers({
+      isTableOwner,
+      hasDirectProjectMemberRow: Boolean(memberRow),
+      workspaceRole,
+    })
+  ) {
+    return null;
+  }
+
   if (isTableOwner) {
     return viewerContextFromMemberAdminFlags(userId, "owner", canManageProjectMembers);
   }
 
-  if (!memberRow) {
-    if (workspaceRole && isWorkspaceRoleAtLeast(workspaceRole, "admin")) {
-      return viewerContextFromMemberAdminFlags(userId, null, canManageProjectMembers);
-    }
-    return null;
-  }
-
-  return viewerContextFromMemberAdminFlags(userId, rowRole ?? null, canManageProjectMembers);
+  return viewerContextFromMemberAdminFlags(
+    userId,
+    memberRow ? (rowRole ?? null) : null,
+    canManageProjectMembers,
+  );
 }
 
 export async function countProjectOwners(

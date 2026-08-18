@@ -58,6 +58,14 @@ describe("resolveActivePrimaryNav — Workspace (unchanged)", () => {
       resolveActivePrimaryNav(`/workspaces/${WORKSPACE_ID}/settings`, WORKSPACE_ID),
       "workspaceSettings"
     );
+    assert.equal(
+      resolveActivePrimaryNav(`/workspaces/${WORKSPACE_ID}/settings/members`, WORKSPACE_ID),
+      "workspaceSettings"
+    );
+    assert.equal(
+      resolveActivePrimaryNav(`/workspaces/${WORKSPACE_ID}/settings/billing`, WORKSPACE_ID),
+      "workspaceSettings"
+    );
   });
 
   it("hides primary nav resolution on /home", () => {

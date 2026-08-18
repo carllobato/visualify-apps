@@ -3,26 +3,22 @@ import { fetchWorkspaceMemberRole } from "@/lib/db/workspaceMemberAccess";
 import { riskaiPath } from "@/lib/routes";
 import { supabaseServerClient } from "@/lib/supabase/server";
 import { getRiskAiEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
+import { listActiveWorkspaceMembers } from "@/lib/workspace/listActiveWorkspaceMembers";
 import { resolveWorkspaceSettingsScope } from "@/lib/workspace/resolveWorkspaceSettingsScope";
-import { canEditWorkspaceSettings } from "@/lib/workspace/workspaceSettingsUpdate";
-import { WorkspaceSettingsContent } from "../WorkspaceSettingsContent";
+import { workspaceRoleCanViewWorkspaceMembers } from "@/lib/workspace/workspaceRoleCapabilities";
+import { WorkspaceSettingsMembersContent } from "../../WorkspaceSettingsMembersContent";
 
 /**
- * Workspace Settings: `/workspaces/[workspaceId]/settings`.
- * Access uses the existing Workspace entitlement gate, not Portfolio membership.
- * Identity is loaded from `visualify_workspaces`. Reporting unit uses that
- * Workspace value when set, otherwise the unique Portfolio fallback.
+ * Workspace Settings — Members: `/workspaces/[workspaceId]/settings/members`.
+ * Read-only list of active Workspace members. Access uses the Workspace
+ * entitlement gate plus an active membership check.
  */
-export default async function WorkspaceSettingsPage({
+export default async function WorkspaceMembersSettingsPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }) {
   const { workspaceId } = await params;
-  const { tab } = await searchParams;
-  const initialTab = tab === "details" ? "details" : "general";
   const supabase = await supabaseServerClient();
   const {
     data: { user },
@@ -42,15 +38,18 @@ export default async function WorkspaceSettingsPage({
   }
 
   const workspaceRole = await fetchWorkspaceMemberRole(supabase, settings.workspaceId, user.id);
+  if (!workspaceRoleCanViewWorkspaceMembers(workspaceRole)) {
+    redirect(riskaiPath("/not-found"));
+  }
+
+  const listed = await listActiveWorkspaceMembers(supabase, settings.workspaceId);
 
   return (
-    <WorkspaceSettingsContent
-      workspaceName={settings.workspaceName}
+    <WorkspaceSettingsMembersContent
       workspaceId={settings.workspaceId}
-      workspaceSlug={settings.workspaceSlug}
-      reportingUnit={settings.reportingUnit}
-      canEditWorkspaceDetails={canEditWorkspaceSettings(workspaceRole)}
-      initialTab={initialTab}
+      currentUserId={user.id}
+      members={listed.ok ? listed.members : []}
+      loadError={listed.ok ? null : listed.error}
     />
   );
 }

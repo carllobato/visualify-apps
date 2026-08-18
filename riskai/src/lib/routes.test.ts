@@ -9,8 +9,11 @@ import {
   projectIdFromAppPathname,
   shouldHideAppShellPrimaryNav,
   workspaceIdFromAppPathname,
+  workspaceBillingPath,
+  workspaceMembersPath,
   workspaceOverviewPath,
   workspaceRouteTitleFromPathname,
+  workspaceSettingsPath,
   isWorkspaceOverviewPathname,
 } from "./routes";
 
@@ -119,6 +122,31 @@ describe("workspaceRouteTitleFromPathname", () => {
       workspaceRouteTitleFromPathname("/riskai/workspaces/ws-1/settings", "ws-1"),
       "Workspace Settings"
     );
+  });
+
+  it("returns Members for the workspace members settings path", () => {
+    assert.equal(
+      workspaceRouteTitleFromPathname("/workspaces/ws-1/settings/members", "ws-1"),
+      "Members"
+    );
+    assert.equal(
+      workspaceRouteTitleFromPathname("/riskai/workspaces/ws-1/settings/members", "ws-1"),
+      "Members"
+    );
+    assert.equal(workspaceMembersPath("ws-1"), "/workspaces/ws-1/settings/members");
+  });
+
+  it("returns Billing for the workspace billing settings path", () => {
+    assert.equal(
+      workspaceRouteTitleFromPathname("/workspaces/ws-1/settings/billing", "ws-1"),
+      "Billing"
+    );
+    assert.equal(
+      workspaceRouteTitleFromPathname("/riskai/workspaces/ws-1/settings/billing", "ws-1"),
+      "Billing"
+    );
+    assert.equal(workspaceBillingPath("ws-1"), "/workspaces/ws-1/settings/billing");
+    assert.equal(workspaceSettingsPath("ws-1"), "/workspaces/ws-1/settings");
   });
 
   it("does not steal titles from a leftover portfolio URL", () => {

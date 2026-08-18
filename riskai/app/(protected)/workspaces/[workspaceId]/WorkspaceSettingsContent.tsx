@@ -21,6 +21,10 @@ import {
   workspaceSettingsPatchPath,
 } from "@/lib/workspace/workspaceSettingsUpdate";
 import {
+  WorkspaceSettingsTabsNav,
+  type WorkspaceSettingsTab,
+} from "@/components/workspace/WorkspaceSettingsTabsNav";
+import {
   Button,
   Callout,
   Card,
@@ -28,8 +32,6 @@ import {
   CardHeader,
   FieldError,
   Label,
-  Tab,
-  Tabs,
 } from "@visualify/design-system";
 
 const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
@@ -37,14 +39,13 @@ const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
 const workspaceDetailsValueClass =
   "font-mono text-xs text-[var(--ds-text-primary)] break-all";
 
-type WorkspaceSettingsTab = "general" | "details";
-
 export type WorkspaceSettingsContentProps = {
   workspaceName: string;
   workspaceId: string;
   workspaceSlug: string;
   reportingUnit: ReportingUnitOption;
   canEditWorkspaceDetails: boolean;
+  initialTab?: "general" | "details";
 };
 
 export function WorkspaceSettingsContent({
@@ -53,6 +54,7 @@ export function WorkspaceSettingsContent({
   workspaceSlug,
   reportingUnit: initialReportingUnit,
   canEditWorkspaceDetails,
+  initialTab = "general",
 }: WorkspaceSettingsContentProps) {
   const router = useRouter();
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
@@ -66,12 +68,16 @@ export function WorkspaceSettingsContent({
   const [saved, setSaved] = useState(false);
   const [validation, setValidation] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<WorkspaceSettingsTab>("general");
+  const [activeTab, setActiveTab] = useState<WorkspaceSettingsTab>(initialTab);
 
   useEffect(() => {
     setWorkspaceName(initialWorkspaceName);
     setReportingUnit(initialReportingUnit);
   }, [initialWorkspaceName, initialReportingUnit]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const isFormValid = workspaceName.trim().length > 0;
   const isDirty =
@@ -155,16 +161,11 @@ export function WorkspaceSettingsContent({
         <SettingsPermissionNotice>{permissionNotice}</SettingsPermissionNotice>
       )}
 
-      <div className="mb-4 border-b border-[var(--ds-border)]">
-        <Tabs>
-          <Tab active={activeTab === "general"} onClick={() => setActiveTab("general")}>
-            General
-          </Tab>
-          <Tab active={activeTab === "details"} onClick={() => setActiveTab("details")}>
-            Details
-          </Tab>
-        </Tabs>
-      </div>
+      <WorkspaceSettingsTabsNav
+        workspaceId={workspaceId}
+        activeTab={activeTab}
+        onSelectTab={setActiveTab}
+      />
 
       {activeTab === "general" && (
         <>

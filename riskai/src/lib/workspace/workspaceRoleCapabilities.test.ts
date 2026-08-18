@@ -6,6 +6,7 @@ import {
   workspaceRoleCanCreateProject,
   workspaceRoleCanArchiveProject,
   workspaceRoleCanManageProjectMembers,
+  workspaceRoleCanViewWorkspaceMembers,
 } from "./workspaceRoleCapabilities";
 
 describe("resolveWorkspacePortfolioCapabilities", () => {
@@ -76,6 +77,20 @@ describe("workspaceRoleCanManageProjectMembers", () => {
     assert.equal(workspaceRoleCanManageProjectMembers("member"), false);
     assert.equal(workspaceRoleCanManageProjectMembers("viewer"), false);
     assert.equal(workspaceRoleCanManageProjectMembers(null), false);
+  });
+});
+
+describe("workspaceRoleCanViewWorkspaceMembers", () => {
+  it("allows every active Workspace role", () => {
+    assert.equal(workspaceRoleCanViewWorkspaceMembers("owner"), true);
+    assert.equal(workspaceRoleCanViewWorkspaceMembers("admin"), true);
+    assert.equal(workspaceRoleCanViewWorkspaceMembers("member"), true);
+    assert.equal(workspaceRoleCanViewWorkspaceMembers("viewer"), true);
+  });
+
+  it("denies a missing role", () => {
+    assert.equal(workspaceRoleCanViewWorkspaceMembers(null), false);
+    assert.equal(workspaceRoleCanViewWorkspaceMembers(undefined), false);
   });
 });
 

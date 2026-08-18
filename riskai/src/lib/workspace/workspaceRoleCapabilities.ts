@@ -81,6 +81,16 @@ export function workspaceRoleCanManageProjectMembers(
 }
 
 /**
+ * Workspace member list (read). Every active Workspace role may view.
+ * Membership management (invite / role / remove) is not granted here.
+ */
+export function workspaceRoleCanViewWorkspaceMembers(
+  role: WorkspaceRole | null | undefined,
+): boolean {
+  return role != null;
+}
+
+/**
  * Maps a workspace role to project content/metadata/member capabilities.
  * Member may edit content when this mapping is applied; viewer is read-only.
  * Project member administration is Owner/Admin only.

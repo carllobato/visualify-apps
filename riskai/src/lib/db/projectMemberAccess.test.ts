@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   authorizeProjectMemberMutation,
+  canViewProjectMembers,
   resolveProjectMemberCapabilityFlags,
 } from "./projectMemberAccess";
 
@@ -138,5 +139,96 @@ describe("authorizeProjectMemberMutation", () => {
     );
     assert.equal(ownerInvite.canInviteMembers, false);
     assert.equal(editorInvite.canInviteMembers, false);
+  });
+});
+
+describe("canViewProjectMembers", () => {
+  const workspaceId = "ws-1";
+
+  it("allows Workspace Viewer inherited read without mutation", () => {
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: "viewer",
+      }),
+      true,
+    );
+    assert.equal(
+      authorizeProjectMemberMutation({
+        projectWorkspaceId: workspaceId,
+        workspaceRole: "viewer",
+      }),
+      false,
+    );
+  });
+
+  it("allows Workspace Owner and Admin inherited read", () => {
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: "owner",
+      }),
+      true,
+    );
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: "admin",
+      }),
+      true,
+    );
+  });
+
+  it("denies Workspace Member without a direct Project membership", () => {
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: "member",
+      }),
+      false,
+    );
+  });
+
+  it("allows direct Project Owner, Editor, and Viewer", () => {
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: true,
+        workspaceRole: "member",
+      }),
+      true,
+    );
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: true,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: null,
+      }),
+      true,
+    );
+  });
+
+  it("does not grant mutation flags to a viewing Workspace Viewer", () => {
+    const canManage = authorizeProjectMemberMutation({
+      projectWorkspaceId: workspaceId,
+      workspaceRole: "viewer",
+    });
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: "viewer",
+      }),
+      true,
+    );
+    assert.deepEqual(resolveProjectMemberCapabilityFlags(canManage), {
+      canInviteMembers: false,
+      canChangeMemberRoles: false,
+      canRemoveMembers: false,
+    });
   });
 });

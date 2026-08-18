@@ -53,6 +53,21 @@ export function workspaceOverviewPath(workspaceId: string): string {
   return riskaiPath(`/workspaces/${workspaceId}`);
 }
 
+/** Workspace Settings (`/workspaces/[id]/settings`). */
+export function workspaceSettingsPath(workspaceId: string): string {
+  return riskaiPath(`/workspaces/${workspaceId}/settings`);
+}
+
+/** Workspace Settings — Members (`/workspaces/[id]/settings/members`). */
+export function workspaceMembersPath(workspaceId: string): string {
+  return riskaiPath(`/workspaces/${workspaceId}/settings/members`);
+}
+
+/** Workspace Settings — Billing placeholder (`/workspaces/[id]/settings/billing`). */
+export function workspaceBillingPath(workspaceId: string): string {
+  return riskaiPath(`/workspaces/${workspaceId}/settings/billing`);
+}
+
 /** Safe post-auth / `?next=` target: flat canonical path, or dashboard when invalid. */
 export function normalizeAppPath(path: string | null | undefined, fallback = DASHBOARD_PATH): string {
   if (!path || !path.startsWith("/") || path.startsWith("//")) return fallback;
@@ -191,9 +206,13 @@ export function workspaceRouteTitleFromPathname(
   const normalized = stripLegacyRiskAiPrefix(pathname).replace(/\/+$/, "") || pathname;
   const overview = workspaceOverviewPath(wid).replace(/\/+$/, "");
   const projects = riskaiPath(`/workspaces/${wid}/projects`).replace(/\/+$/, "");
-  const settings = riskaiPath(`/workspaces/${wid}/settings`).replace(/\/+$/, "");
+  const settings = workspaceSettingsPath(wid).replace(/\/+$/, "");
+  const members = workspaceMembersPath(wid).replace(/\/+$/, "");
+  const billing = workspaceBillingPath(wid).replace(/\/+$/, "");
   if (normalized === overview) return "Workspace Overview";
   if (normalized === projects) return "Projects";
+  if (normalized === members) return "Members";
+  if (normalized === billing) return "Billing";
   if (normalized === settings) return "Workspace Settings";
   return null;
 }

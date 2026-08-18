@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { authorizeProjectMemberMutation } from "@/lib/db/projectMemberAccess";
+import { authorizeProjectMemberMutation, canViewProjectMembers } from "@/lib/db/projectMemberAccess";
 import {
   resolveInheritedProjectReadPermissions,
   resolveProjectPermissions,
@@ -51,6 +51,14 @@ describe("Project member administration authority matrix", () => {
     const inherited = overlayMemberAdmin(resolveInheritedProjectReadPermissions(), "viewer");
     assert.equal(inherited.canManageProjectMembers, false);
     assert.equal(inherited.canEditContent, false);
+    assert.equal(
+      canViewProjectMembers({
+        isTableOwner: false,
+        hasDirectProjectMemberRow: false,
+        workspaceRole: "viewer",
+      }),
+      true,
+    );
   });
 
   it("5. Direct Project Owner cannot manage members", () => {
