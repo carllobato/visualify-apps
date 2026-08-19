@@ -3,6 +3,14 @@ import type { PortfolioMemberCapabilityFlags } from "@/lib/db/portfolioMemberAcc
 /** Shown when project metadata fields are read-only (viewer / no edit permission). */
 export const PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE = "Read-only access";
 
+/** Incomplete Project, authorised metadata editor. */
+export const PROJECT_SETUP_INCOMPLETE_EDITOR_NOTICE =
+  "Complete the required Project Information before using this Project.";
+
+/** Incomplete Project, Viewer / Project Editor / other non-metadata roles. */
+export const PROJECT_SETUP_INCOMPLETE_READONLY_NOTICE =
+  "Project setup is incomplete and must be completed by a Project or Workspace administrator.";
+
 /**
  * Portfolio settings banner from server-resolved capabilities (matches portfolio role model).
  */

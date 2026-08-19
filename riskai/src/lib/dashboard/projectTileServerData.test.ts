@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   applyStaleReportingLockRag,
   computeRag,
+  getProjectTilePayloads,
   loadPortfolioProjectContingencyTable,
   loadPortfolioProjectRiskSeveritySummary,
   loadPortfolioProjectTilePayloads,
@@ -135,7 +136,6 @@ function makeRiskRow(overrides: Partial<RiskRow> = {}): RiskRow {
 function makeSupabase(risks: RiskRow[]): SupabaseClient {
   return new FakeSupabase({
     visualify_projects: [{ id: "project-1", name: "Project 1", portfolio_id: "portfolio-1" }],
-    visualify_project_settings: [{ project_id: "project-1", currency: "AUD" }],
     riskai_risks: risks,
     riskai_simulation_snapshots: [],
   }) as unknown as SupabaseClient;
@@ -149,7 +149,7 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
     );
 
     assert.strictEqual(result.scheduleRows.length, 1);
-    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "24 days");
+    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "24 working days");
     assert.strictEqual(result.scheduleRows[0]?.statusDisplay, "Open");
     assert.deepStrictEqual(result.scheduleOpportunityRows, []);
   });
@@ -170,7 +170,7 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
     );
 
     assert.strictEqual(result.scheduleRows.length, 1);
-    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "10 days");
+    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "4 working days");
     assert.strictEqual(result.scheduleRows[0]?.statusDisplay, "Mitigating");
     assert.deepStrictEqual(result.scheduleOpportunityRows, []);
   });
@@ -191,10 +191,10 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
     );
 
     assert.strictEqual(result.scheduleRows.length, 1);
-    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "24 days");
+    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "12 working days");
     assert.strictEqual(result.scheduleRows[0]?.statusDisplay, "Monitoring");
     assert.strictEqual(result.scheduleOpportunityRows.length, 1);
-    assert.strictEqual(result.scheduleOpportunityRows[0]?.exposureDisplay, "20 days");
+    assert.strictEqual(result.scheduleOpportunityRows[0]?.exposureDisplay, "20 working days");
     assert.strictEqual(result.scheduleOpportunityRows[0]?.statusDisplay, "Monitoring");
   });
 
@@ -294,10 +294,6 @@ describe("loadPortfolioProjectTilePayloads", () => {
           created_at: "2026-01-02T00:00:00.000Z",
         },
       ],
-      visualify_project_settings: [
-        { project_id: "project-with-lock", currency: "AUD" },
-        { project_id: "project-without-lock", currency: "AUD" },
-      ],
       riskai_risks: [],
       riskai_simulation_snapshots: [
         {
@@ -386,15 +382,11 @@ const ARCHIVED_PORTFOLIO_PROJECT = {
 
 function makeMixedScopeSupabase(extra?: {
   risks?: RiskRow[];
-  settings?: Record<string, unknown>[];
+  projects?: Record<string, unknown>[];
   snapshots?: Record<string, unknown>[];
 }): SupabaseClient {
   return new FakeSupabase({
-    visualify_projects: [PORTFOLIO_PROJECT, UNLINKED_PROJECT, ARCHIVED_PORTFOLIO_PROJECT],
-    visualify_project_settings: extra?.settings ?? [
-      { project_id: PORTFOLIO_PROJECT.id, currency: "AUD" },
-      { project_id: UNLINKED_PROJECT.id, currency: "USD" },
-    ],
+    visualify_projects: extra?.projects ?? [PORTFOLIO_PROJECT, UNLINKED_PROJECT, ARCHIVED_PORTFOLIO_PROJECT],
     riskai_risks: extra?.risks ?? [
       makeRiskRow({ id: "risk-portfolio", project_id: PORTFOLIO_PROJECT.id }),
       makeRiskRow({
@@ -441,21 +433,20 @@ describe("project-list overview loaders", () => {
 
   it("loadProjectContingencyTable includes explicit projects that the portfolio wrapper omits", async () => {
     const supabase = makeMixedScopeSupabase({
-      settings: [
+      projects: [
         {
-          project_id: PORTFOLIO_PROJECT.id,
-          contingency_value_input: 1_500_000,
-          financial_inputs_version: 2,
-          currency: "AUD",
-          schedule_contingency_working_days: 8,
+          ...PORTFOLIO_PROJECT,
+          project_contingency: 1_500_000,
+          project_currency: "AUD",
+          project_schedule_contingency_working_days: 8,
         },
         {
-          project_id: UNLINKED_PROJECT.id,
-          contingency_value_input: 2_000_000,
-          financial_inputs_version: 2,
-          currency: "USD",
-          schedule_contingency_working_days: 12,
+          ...UNLINKED_PROJECT,
+          project_contingency: 2_000_000,
+          project_currency: "USD",
+          project_schedule_contingency_working_days: 12,
         },
+        ARCHIVED_PORTFOLIO_PROJECT,
       ],
     });
 
@@ -482,14 +473,15 @@ describe("project-list overview loaders", () => {
 
   it("loadPortfolioProjectContingencyTable matches loadProjectContingencyTable for the same portfolio projects", async () => {
     const supabase = makeMixedScopeSupabase({
-      settings: [
+      projects: [
         {
-          project_id: PORTFOLIO_PROJECT.id,
-          contingency_value_input: 1_500_000,
-          financial_inputs_version: 2,
-          currency: "AUD",
-          schedule_contingency_working_days: 8,
+          ...PORTFOLIO_PROJECT,
+          project_contingency: 1_500_000,
+          project_currency: "AUD",
+          project_schedule_contingency_working_days: 8,
         },
+        UNLINKED_PROJECT,
+        ARCHIVED_PORTFOLIO_PROJECT,
       ],
     });
     const fromPortfolio = await loadPortfolioProjectContingencyTable(supabase, "portfolio-1");
@@ -564,7 +556,6 @@ describe("project-list overview loaders", () => {
   it("loadPortfolioProjectTilePayloads matches loadProjectTilePayloads for the same portfolio projects", async () => {
     const supabase = new FakeSupabase({
       visualify_projects: [PORTFOLIO_PROJECT],
-      visualify_project_settings: [{ project_id: PORTFOLIO_PROJECT.id, currency: "AUD" }],
       riskai_risks: [],
       riskai_simulation_snapshots: [
         {
@@ -596,5 +587,343 @@ describe("project-list overview loaders", () => {
       false,
     );
     assert.equal(result.totalProjectsInPortfolio, 1);
+  });
+});
+
+const CANONICAL_EQUIVALENT_TILE = {
+  id: "project-1",
+  name: "Project 1",
+  portfolio_id: "portfolio-1",
+  project_value: 300000000,
+  project_contingency: 80000000,
+  project_schedule_contingency_working_days: 80,
+  project_working_days_per_week: 5,
+  project_risk_appetite: "P80",
+  project_currency: "AUD",
+} as const;
+
+function lockedSnapshotWithLinearCdfs(projectId = "project-1"): Record<string, unknown> {
+  const costHistogram = Array.from({ length: 100 }, (_, i) => ({
+    cost: (i + 1) * 1_000_000,
+    frequency: 1,
+  }));
+  const timeHistogram = Array.from({ length: 100 }, (_, i) => ({
+    time: i + 1,
+    frequency: 1,
+  }));
+  return {
+    id: "locked-1",
+    project_id: projectId,
+    iterations: 100,
+    locked_for_reporting: true,
+    locked_at: "2026-08-01T00:00:00.000Z",
+    created_at: "2026-08-01T00:00:00.000Z",
+    cost_p20: 20_000_000,
+    cost_p50: 50_000_000,
+    cost_p80: 80_000_000,
+    cost_p90: 90_000_000,
+    cost_mean: 50_000_000,
+    cost_min: 1_000_000,
+    cost_max: 100_000_000,
+    time_p20: 20,
+    time_p50: 50,
+    time_p80: 80,
+    time_p90: 90,
+    time_mean: 50,
+    time_min: 1,
+    time_max: 100,
+    payload: {
+      summary: {
+        meanCost: 50_000_000,
+        p20Cost: 20_000_000,
+        p50Cost: 50_000_000,
+        p80Cost: 80_000_000,
+        p90Cost: 90_000_000,
+        minCost: 1_000_000,
+        maxCost: 100_000_000,
+        meanTime: 50,
+        p20Time: 20,
+        p50Time: 50,
+        p80Time: 80,
+        p90Time: 90,
+        minTime: 1,
+        maxTime: 100,
+      },
+      summaryReport: {
+        iterationCount: 100,
+        averageCost: 50_000_000,
+        averageTime: 50,
+        p50Cost: 50_000_000,
+        p80Cost: 80_000_000,
+        p90Cost: 90_000_000,
+        minCost: 1_000_000,
+        maxCost: 100_000_000,
+      },
+      risks: [],
+      distributions: { costHistogram, timeHistogram, binCount: 100 },
+      seed: 1,
+      inputs_used: [],
+    },
+  };
+}
+
+function makeTileSupabase(extra?: {
+  projects?: Record<string, unknown>[];
+  snapshots?: Record<string, unknown>[];
+}): SupabaseClient {
+  return new FakeSupabase({
+    visualify_projects: extra?.projects ?? [{ ...CANONICAL_EQUIVALENT_TILE }],
+    riskai_risks: [],
+    riskai_simulation_snapshots: extra?.snapshots ?? [lockedSnapshotWithLinearCdfs()],
+  }) as unknown as SupabaseClient;
+}
+
+const TILE_PROJECT = { id: "project-1", name: "Project 1", created_at: ISO };
+
+describe("Workspace Overview canonical-only Project parameters", () => {
+  it("works with canonical data and no settings row on tiles", async () => {
+    const result = await getProjectTilePayloads(makeTileSupabase(), [TILE_PROJECT]);
+
+    assert.equal(result.projectTilePayloads[0]?.reportingCostStatus, "On track");
+    assert.equal(result.projectTilePayloads[0]?.reportingOverallStatus, "On Track");
+  });
+
+  it("uses canonical contingency on tiles and ignores settings-only data", async () => {
+    const fromCanonical = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_contingency: 20_000_000 }],
+      }),
+      [TILE_PROJECT],
+    );
+    const fromBaseline = await getProjectTilePayloads(makeTileSupabase(), [TILE_PROJECT]);
+
+    assert.equal(fromBaseline.projectTilePayloads[0]?.reportingCostStatus, "On track");
+    assert.equal(fromCanonical.projectTilePayloads[0]?.reportingCostStatus, "Off track");
+  });
+
+  it("treats canonical numeric 0 as present contingency on tiles", async () => {
+    const fromCanonicalZero = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_contingency: 0 }],
+      }),
+      [TILE_PROJECT],
+    );
+    const fromBaseline = await getProjectTilePayloads(makeTileSupabase(), [TILE_PROJECT]);
+
+    assert.equal(fromBaseline.projectTilePayloads[0]?.reportingCostStatus, "On track");
+    assert.equal(fromCanonicalZero.projectTilePayloads[0]?.reportingCostStatus, "—");
+  });
+
+  it("stays incomplete when canonical values are null even if settings existed historically", async () => {
+    const fromNullCanonical = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [
+          {
+            id: "project-1",
+            name: "Project 1",
+            project_contingency: null,
+            project_value: null,
+            project_schedule_contingency_working_days: null,
+            project_risk_appetite: null,
+            project_currency: null,
+          },
+        ],
+      }),
+      [TILE_PROJECT],
+    );
+
+    assert.equal(fromNullCanonical.projectTilePayloads[0]?.reportingOverallStatus, undefined);
+    assert.equal(fromNullCanonical.portfolioReportingFooter, null);
+  });
+
+  it("does not scale canonical financial values on tiles", async () => {
+    const canonicalThirty = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_contingency: 30_000_000 }],
+      }),
+      [TILE_PROJECT],
+    );
+
+    assert.equal(canonicalThirty.projectTilePayloads[0]?.reportingCostStatus, "Off track");
+    assert.ok((canonicalThirty.projectTilePayloads[0]?.reportingCostShortfallAbs ?? 0) > 40_000_000);
+  });
+
+  it("treats canonical schedule contingency as working days on tiles", async () => {
+    const canonicalDays = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_schedule_contingency_working_days: 20 }],
+      }),
+      [TILE_PROJECT],
+    );
+    const baseline = await getProjectTilePayloads(makeTileSupabase(), [TILE_PROJECT]);
+
+    assert.equal(canonicalDays.projectTilePayloads[0]?.reportingTimeStatus, "Off track");
+    assert.equal(baseline.projectTilePayloads[0]?.reportingTimeStatus, "On track");
+  });
+
+  it("keeps canonical working days 6.5 and 7 with canonical schedule contingency on tiles", async () => {
+    const sixPointFive = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{
+          ...CANONICAL_EQUIVALENT_TILE,
+          project_working_days_per_week: 6.5,
+          project_schedule_contingency_working_days: 26,
+        }],
+      }),
+      [TILE_PROJECT],
+    );
+    const seven = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{
+          ...CANONICAL_EQUIVALENT_TILE,
+          project_working_days_per_week: 7,
+          project_schedule_contingency_working_days: 28,
+        }],
+      }),
+      [TILE_PROJECT],
+    );
+    const baseline = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_schedule_contingency_working_days: 20 }],
+      }),
+      [TILE_PROJECT],
+    );
+
+    assert.equal(sixPointFive.portfolioReportingFooter?.timeShortfallDays, 80 - 26);
+    assert.equal(seven.portfolioReportingFooter?.timeShortfallDays, 80 - 28);
+    assert.equal(baseline.portfolioReportingFooter?.timeShortfallDays, 80 - 20);
+  });
+
+  it("keeps canonical P100 as target 100 on tiles", async () => {
+    const p100 = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_risk_appetite: "P100" }],
+      }),
+      [TILE_PROJECT],
+    );
+    const p80 = await getProjectTilePayloads(makeTileSupabase(), [TILE_PROJECT]);
+
+    assert.equal(p100.projectTilePayloads[0]?.reportingDriverTargetP, 100);
+    assert.equal(p80.projectTilePayloads[0]?.reportingDriverTargetP, 80);
+  });
+
+  it("keeps canonical EUR and SGD on tiles without remapping to AUD", async () => {
+    const eur = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_currency: "EUR" }],
+      }),
+      [TILE_PROJECT],
+    );
+    const sgd = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE, project_currency: "SGD" }],
+      }),
+      [TILE_PROJECT],
+    );
+
+    assert.equal(eur.projectTilePayloads[0]?.reportingDriverCurrency, "EUR");
+    assert.equal(sgd.projectTilePayloads[0]?.reportingDriverCurrency, "SGD");
+  });
+
+  it("produces identical tile/RAG outputs for equivalent canonical inputs", async () => {
+    const first = await getProjectTilePayloads(
+      makeTileSupabase({ projects: [{ ...CANONICAL_EQUIVALENT_TILE }] }),
+      [TILE_PROJECT],
+    );
+    const second = await getProjectTilePayloads(
+      makeTileSupabase({ projects: [{ ...CANONICAL_EQUIVALENT_TILE }] }),
+      [TILE_PROJECT],
+    );
+
+    assert.deepEqual(first.projectTilePayloads, second.projectTilePayloads);
+    assert.deepEqual(first.portfolioReportingFooter, second.portfolioReportingFooter);
+  });
+
+  it("preserves unavailable reporting position when canonical values are missing", async () => {
+    const missing = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ id: "project-1", name: "MEL1", project_value: null, project_name: "" }],
+      }),
+      [TILE_PROJECT],
+    );
+
+    assert.equal(missing.projectTilePayloads[0]?.reportingOverallStatus, undefined);
+    assert.equal(missing.projectTilePayloads[0]?.reportingCostStatus, undefined);
+    assert.equal(missing.projectTilePayloads[0]?.ragStatus, "green");
+    assert.equal(missing.portfolioReportingFooter, null);
+  });
+
+  it("keeps stale locked-reporting RAG amber without rewriting the snapshot", async () => {
+    const staleIso = new Date(Date.now() - (REPORTING_LOCK_STALE_MS + 60_000)).toISOString();
+    const snapshot = { ...lockedSnapshotWithLinearCdfs(), locked_at: staleIso, created_at: staleIso };
+    const before = JSON.stringify(snapshot);
+    const nowMs = Date.now();
+
+    const result = await getProjectTilePayloads(
+      makeTileSupabase({
+        projects: [{ ...CANONICAL_EQUIVALENT_TILE }],
+        snapshots: [snapshot],
+      }),
+      [TILE_PROJECT],
+      { nowMs },
+    );
+
+    assert.equal(result.projectTilePayloads[0]?.ragStatus, "amber");
+    assert.equal(result.projectTilePayloads[0]?.reportingOverallStatus, "On Track");
+    assert.equal(JSON.stringify(snapshot), before);
+  });
+
+  it("loadProjectContingencyTable uses canonical unscaled contingency and working-day schedule", async () => {
+    const rows = await loadProjectContingencyTable(
+      makeTileSupabase({
+        projects: [
+          {
+            id: "project-1",
+            name: "Project 1",
+            project_contingency: 30_000_000,
+            project_currency: "EUR",
+            project_schedule_contingency_working_days: 20,
+          },
+        ],
+      }),
+      [{ id: "project-1", name: "Project 1" }],
+    );
+
+    assert.equal(rows[0]?.contingencyAmountAbs, 30_000_000);
+    assert.equal(rows[0]?.currency, "EUR");
+    assert.equal(rows[0]?.scheduleContingencyWorkingDays, 20);
+  });
+
+  it("loadProjectContingencyTable matches equivalent canonical rows", async () => {
+    const first = await loadProjectContingencyTable(
+      makeTileSupabase({ projects: [{ ...CANONICAL_EQUIVALENT_TILE }] }),
+      [{ id: "project-1", name: "Project 1" }],
+    );
+    const second = await loadProjectContingencyTable(
+      makeTileSupabase({ projects: [{ ...CANONICAL_EQUIVALENT_TILE }] }),
+      [{ id: "project-1", name: "Project 1" }],
+    );
+
+    assert.deepEqual(first, second);
+  });
+
+  it("loadTopRiskConcentrationRows keeps canonical EUR on cost exposure slices", async () => {
+    const risk = makeRiskRow({
+      applies_to: "cost",
+      pre_cost_ml: 1_000_000,
+      pre_time_ml: 0,
+    });
+    const result = await loadTopRiskConcentrationRows(
+      new FakeSupabase({
+        visualify_projects: [
+          { id: "project-1", name: "Project 1", portfolio_id: "portfolio-1", project_currency: "EUR" },
+        ],
+        riskai_risks: [risk],
+        riskai_simulation_snapshots: [],
+      }) as unknown as SupabaseClient,
+      [{ id: "project-1", name: "Project 1" }],
+    );
+
+    assert.equal(result.projectCostExposureSlices[0]?.currency, "EUR");
   });
 });

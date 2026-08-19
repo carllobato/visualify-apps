@@ -32,7 +32,11 @@ import {
 import { addReportingMonthYearKey } from "@/lib/reportingMonthSelection";
 import { formatReportMonthLabel } from "@/lib/db/snapshots";
 import type { ProjectCurrency } from "@/lib/projectContext";
-import { computeCoverageRatioByCurrency, sumContingencyByCurrency } from "@/lib/portfolioContingencyAggregate";
+import { computeCoverageRatioByCurrency } from "@/lib/portfolioContingencyAggregate";
+import {
+  sumWorkspaceOverviewContingencyByCurrency,
+  WORKSPACE_OVERVIEW_CANONICAL_PROJECT_SELECT,
+} from "@/lib/project/workspaceOverviewProjectContextRead";
 import type { ReportingUnitOption } from "@/lib/portfolio/reportingPreferences";
 import {
   contingencyHeldTileCopy,
@@ -123,15 +127,17 @@ export async function loadWorkspaceOverviewPresentation(
 
   const reportingMonthScopedIds =
     reportingMonthYear != null ? projectTilePayloads.map((t) => t.id) : null;
-  const settingsProjectIds = reportingMonthScopedIds != null ? reportingMonthScopedIds : projectIds;
+  const contingencyProjectIds = reportingMonthScopedIds != null ? reportingMonthScopedIds : projectIds;
 
   let contingencyByCurrency = new Map<ProjectCurrency, number>();
-  if (settingsProjectIds.length > 0) {
-    const { data: settingsRows } = await supabase
-      .from("visualify_project_settings")
-      .select("contingency_value_input, financial_unit, currency, financial_inputs_version")
-      .in("project_id", settingsProjectIds);
-    contingencyByCurrency = sumContingencyByCurrency(settingsRows ?? []);
+  if (contingencyProjectIds.length > 0) {
+    const { data: canonicalRows } = await supabase
+      .from("visualify_projects")
+      .select(WORKSPACE_OVERVIEW_CANONICAL_PROJECT_SELECT)
+      .in("id", contingencyProjectIds);
+    contingencyByCurrency = sumWorkspaceOverviewContingencyByCurrency(
+      (canonicalRows ?? []) as Record<string, unknown>[],
+    );
   }
 
   const contingencyTableRowsFull = await loadProjectContingencyTable(supabase, projects);
@@ -251,11 +257,13 @@ export async function loadWorkspaceOverviewPresentation(
         }
         let priorContingencyByCurrency = new Map<ProjectCurrency, number>();
         if (priorScopedIds.length > 0) {
-          const { data: priorSettingsRows } = await supabase
-            .from("visualify_project_settings")
-            .select("contingency_value_input, financial_unit, currency, financial_inputs_version")
-            .in("project_id", priorScopedIds);
-          priorContingencyByCurrency = sumContingencyByCurrency(priorSettingsRows ?? []);
+          const { data: priorCanonicalRows } = await supabase
+            .from("visualify_projects")
+            .select(WORKSPACE_OVERVIEW_CANONICAL_PROJECT_SELECT)
+            .in("id", priorScopedIds);
+          priorContingencyByCurrency = sumWorkspaceOverviewContingencyByCurrency(
+            (priorCanonicalRows ?? []) as Record<string, unknown>[],
+          );
         }
         const priorScheduleTotalDays = priorConcentration.projectScheduleExposureSlices.reduce(
           (sum, s) => sum + s.valueDays,

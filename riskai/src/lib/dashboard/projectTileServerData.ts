@@ -27,12 +27,13 @@ import {
   formatCurrencyInReportingUnit,
   type ReportingUnitOption,
 } from "@/lib/portfolio/reportingPreferences";
-import {
-  asProjectCurrency,
-  contingencyMillionsFromSettingsRow,
-  type ProjectSettingsContingencyRow,
-} from "@/lib/portfolioContingencyAggregate";
 import type { ProjectCurrency } from "@/lib/projectContext";
+import {
+  indexRowsByStringId,
+  resolveWorkspaceOverviewContingencyFields,
+  resolveWorkspaceOverviewProjectCurrency,
+  WORKSPACE_OVERVIEW_CANONICAL_PROJECT_SELECT,
+} from "@/lib/project/workspaceOverviewProjectContextRead";
 import type { SimulationSnapshotPayload, SimulationSnapshotRow } from "@/lib/db/snapshots";
 import {
   delayDerivedCommercialExposureUsdFromSnapshotSummary,
@@ -228,13 +229,13 @@ export async function getProjectTilePayloads(
     lockedSnapshotsQuery = lockedSnapshotsQuery.eq("report_month", `${reportingMonthYear}-01`);
   }
 
-  const [risksRes, lockedRes, settingsRes] = await Promise.all([
+  const [risksRes, lockedRes, projectsRes] = await Promise.all([
     supabase
       .from("riskai_risks")
       .select("project_id, status, post_probability, post_cost_ml, post_time_ml, mitigation_description")
       .in("project_id", ids),
     lockedSnapshotsQuery,
-    supabase.from("visualify_project_settings").select("*").in("project_id", ids),
+    supabase.from("visualify_projects").select(WORKSPACE_OVERVIEW_CANONICAL_PROJECT_SELECT).in("id", ids),
   ]);
 
   if (risksRes.error) {
@@ -281,13 +282,9 @@ export async function getProjectTilePayloads(
     }
   }
 
-  const settingsByProject = new Map<string, Record<string, unknown>>();
-  if (!settingsRes.error) {
-    for (const row of settingsRes.data ?? []) {
-      const pid = typeof (row as { project_id?: string }).project_id === "string" ? (row as { project_id: string }).project_id : "";
-      if (pid) settingsByProject.set(pid, row as Record<string, unknown>);
-    }
-  }
+  const canonicalByProject = !projectsRes.error
+    ? indexRowsByStringId(projectsRes.data ?? [], "id")
+    : new Map<string, Record<string, unknown>>();
 
   const projectTilePayloads = projects
     .map((p) => {
@@ -295,13 +292,17 @@ export async function getProjectTilePayloads(
       const lockedRow = latestLockedByProject.get(p.id);
       const lastLockedAt =
         lockedRow != null ? (lockedRow.locked_at ?? lockedRow.created_at ?? null) : null;
+      const canonicalProjectRow = canonicalByProject.get(p.id);
 
       /** Prefer simulation “overall position” bands from the latest reporting-locked snapshot; else legacy tile RAG. */
       const reporting = tryReportingBreakdownFromLockedRowAndSettings(
         lockedRow,
-        settingsByProject.get(p.id)
+        canonicalProjectRow,
       );
-      const reportingDrivers = tryReportingPositionDriverScalars(lockedRow, settingsByProject.get(p.id));
+      const reportingDrivers = tryReportingPositionDriverScalars(
+        lockedRow,
+        canonicalProjectRow,
+      );
       const baseRag: RagStatus =
         reporting?.rag ??
         computeRag({
@@ -361,7 +362,12 @@ export async function getProjectTilePayloads(
     );
 
   const fundingRows = ids
-    .map((id) => tryReportingFundingScalars(latestLockedByProject.get(id), settingsByProject.get(id)))
+    .map((id) =>
+      tryReportingFundingScalars(
+        latestLockedByProject.get(id),
+        canonicalByProject.get(id),
+      ),
+    )
     .filter((x): x is NonNullable<typeof x> => x != null);
   const portfolioReportingFooter = computePortfolioReportingFooter(fundingRows);
 
@@ -376,17 +382,26 @@ export function buildProjectTilePayloadForReportingModal(params: {
   project: { id: string; name: string; created_at?: string | null };
   lockedRow: SimulationSnapshotRow;
   settingsRow: Record<string, unknown> | null | undefined;
+  canonicalProjectRow?: Record<string, unknown> | null;
   riskCount: number;
   highSeverityCount: number;
   nowMs?: number;
 }): ProjectTilePayload {
-  const { project, lockedRow, settingsRow, riskCount, highSeverityCount } = params;
+  // `settingsRow` is accepted for backwards compatibility at the call boundary,
+  // but reporting position helpers are canonical-only now.
+  const { project, lockedRow, canonicalProjectRow, riskCount, highSeverityCount } = params;
   const nowMs = params.nowMs ?? Date.now();
 
   const lastLockedAt = lockedRow != null ? (lockedRow.locked_at ?? lockedRow.created_at ?? null) : null;
 
-  const reporting = tryReportingBreakdownFromLockedRowAndSettings(lockedRow, settingsRow);
-  const reportingDrivers = tryReportingPositionDriverScalars(lockedRow, settingsRow);
+  const reporting = tryReportingBreakdownFromLockedRowAndSettings(
+    lockedRow,
+    canonicalProjectRow,
+  );
+  const reportingDrivers = tryReportingPositionDriverScalars(
+    lockedRow,
+    canonicalProjectRow,
+  );
   const baseRag: RagStatus =
     reporting?.rag ??
     computeRag({
@@ -619,27 +634,7 @@ export async function loadPortfolioProjectRiskSeveritySummary(
   );
 }
 
-function nonNegativeNumberFromRow(raw: unknown): number | null {
-  if (raw == null) return null;
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n) || n < 0) return null;
-  return n;
-}
-
-function scheduleContingencyWorkingDaysFromRow(
-  rawWorkingDays: unknown,
-  rawLegacyWeeks: unknown,
-  rawWorkingDaysPerWeek: unknown
-): number | null {
-  const workingDays = nonNegativeNumberFromRow(rawWorkingDays);
-  if (workingDays != null) return workingDays;
-  const legacyWeeks = nonNegativeNumberFromRow(rawLegacyWeeks);
-  if (legacyWeeks == null) return null;
-  const workingDaysPerWeek = nonNegativeNumberFromRow(rawWorkingDaysPerWeek) ?? 5;
-  return legacyWeeks * workingDaysPerWeek;
-}
-
-/** Per-project financial + schedule contingency from `visualify_project_settings` (same semantics as portfolio KPI). */
+/** Per-project financial + schedule contingency from canonical Project fields only. */
 export type PortfolioProjectContingencyRow = {
   projectId: string;
   projectName: string;
@@ -657,55 +652,23 @@ export async function loadProjectContingencyTable(
 
   const ids = projects.map((p) => p.id);
 
-  const { data: settingsRows } = await supabase
-    .from("visualify_project_settings")
-    .select(
-      "project_id, contingency_value_input, financial_unit, currency, schedule_contingency_working_days, schedule_contingency_weeks, working_days_per_week, financial_inputs_version"
-    )
-    .in("project_id", ids);
+  const { data: canonicalRows } = await supabase
+    .from("visualify_projects")
+    .select(WORKSPACE_OVERVIEW_CANONICAL_PROJECT_SELECT)
+    .in("id", ids);
 
-  const byProject = new Map<
-    string,
-    ProjectSettingsContingencyRow & {
-      schedule_contingency_working_days?: unknown;
-      schedule_contingency_weeks?: unknown;
-      working_days_per_week?: unknown;
-    }
-  >();
-  for (const row of settingsRows ?? []) {
-    const pid = typeof row.project_id === "string" ? row.project_id : "";
-    if (pid) {
-      byProject.set(
-        pid,
-        row as ProjectSettingsContingencyRow & {
-          schedule_contingency_working_days?: unknown;
-          schedule_contingency_weeks?: unknown;
-          working_days_per_week?: unknown;
-        }
-      );
-    }
-  }
+  const canonicalByProject = indexRowsByStringId(canonicalRows ?? [], "id");
 
   return projects.map((p) => {
     const id = p.id;
-    const s = byProject.get(id);
-    const m = s ? contingencyMillionsFromSettingsRow(s) : 0;
-    const contingencyAmountAbs = m * 1_000_000;
-    const currency: ProjectCurrency = s ? asProjectCurrency(s.currency) : "AUD";
-    const scheduleContingencyWorkingDays = s
-      ? scheduleContingencyWorkingDaysFromRow(
-          s.schedule_contingency_working_days,
-          s.schedule_contingency_weeks,
-          s.working_days_per_week
-        )
-      : null;
+    const fields = resolveWorkspaceOverviewContingencyFields(canonicalByProject.get(id) ?? null);
     const name = typeof p.name === "string" ? p.name.trim() : "";
     return {
       projectId: id,
       projectName: name || id,
-      contingencyAmountAbs,
-      currency,
-      scheduleContingencyWorkingDays,
+      contingencyAmountAbs: fields.contingencyMillions * 1_000_000,
+      currency: fields.currency,
+      scheduleContingencyWorkingDays: fields.scheduleContingencyWorkingDays,
     };
   });
 }
@@ -835,7 +798,7 @@ export type PortfolioProjectScheduleCoverageRow = {
   projectName: string;
   /** Expected delay in working days from the schedule exposure engine. */
   expectedDelayWorkingDays: number;
-  /** Schedule contingency in working days from project settings; null when unset. */
+  /** Schedule contingency in working days from canonical Project fields; null when unset. */
   scheduleContingencyWorkingDays: number | null;
   /** `scheduleContingencyWorkingDays` ÷ `expectedDelayWorkingDays` when exposure is positive. */
   coverageRatio: number | null;
@@ -1015,16 +978,18 @@ export async function loadTopRiskConcentrationRows(
     effectiveProjectIds.includes(p.id)
   );
 
-  const { data: settingsRows } = await supabase
-    .from("visualify_project_settings")
-    .select("project_id, currency")
-    .in("project_id", effectiveProjectIds);
+  const { data: canonicalCurrencyRows } = await supabase
+    .from("visualify_projects")
+    .select("id, project_currency")
+    .in("id", effectiveProjectIds);
 
+  const canonicalByProject = indexRowsByStringId(canonicalCurrencyRows ?? [], "id");
   const currencyByProject = new Map<string, ProjectCurrency>();
-  for (const row of settingsRows ?? []) {
-    const pid = typeof row.project_id === "string" ? row.project_id : "";
-    if (!pid) continue;
-    currencyByProject.set(pid, asProjectCurrency(row.currency));
+  for (const projectId of effectiveProjectIds) {
+    currencyByProject.set(
+      projectId,
+      resolveWorkspaceOverviewProjectCurrency(canonicalByProject.get(projectId)),
+    );
   }
 
   const snapshotQuery = monthScopedConcentration

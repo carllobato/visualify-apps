@@ -19,12 +19,16 @@ import { buildSimulationFromDbRow, useRiskRegister } from "@/store/risk-register
 import { listRisks } from "@/lib/db/risks";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import {
-  loadProjectContext,
-  parseProjectContextFromVisualifyProjectSettingsRow,
   riskAppetiteToPercent,
   type ProjectContext,
   type RiskAppetite,
 } from "@/lib/projectContext";
+import {
+  PROJECT_OVERVIEW_CANONICAL_PROJECT_CONTEXT_SELECT,
+  buildProjectOverviewTilePayloadForReportingModal,
+  resolveProjectOverviewProjectContext,
+  resolveProjectOverviewReportingPositionContext,
+} from "@/lib/project/projectOverviewProjectContextRead";
 import { PortfolioReportingMonthSelect } from "@/components/PortfolioReportingMonthSelect";
 import { ProjectReportExtractButton } from "@/components/project/ProjectReportExtractButton";
 import type { SimulationSnapshotRow, SimulationSnapshotRowDb } from "@/lib/db/snapshots";
@@ -58,7 +62,6 @@ import {
 } from "@/domain/risk/riskFieldSemantics";
 import {
   applyStaleReportingLockRag,
-  buildProjectTilePayloadForReportingModal,
   computeRag,
   reportingLockStaleForPortfolio,
   type PortfolioNeedsAttentionHealthRun,
@@ -68,7 +71,7 @@ import { computeNeedsAttentionHealthRun } from "@/lib/dashboard/needsAttentionHe
 import { computeRiskControlScore } from "@/lib/dashboard/riskControlScore";
 import { monitoringCostOpportunityExpected, monitoringScheduleOpportunityExpected } from "@/lib/opportunityMetrics";
 import {
-  tryReportingBreakdownFromLockedRowAndSettings,
+  reportingPositionBreakdownFromLockedSnapshot,
   type ReportingLineSeverity,
 } from "@/lib/dashboard/reportingPositionRag";
 import {
@@ -833,11 +836,10 @@ export function ProjectOverviewContent({
   const [risks, setRisksLocal] = useState<Risk[]>([]);
   const [loadingRisks, setLoadingRisks] = useState(true);
   const [projectSettingsResolved, setProjectSettingsResolved] = useState<ProjectContext | null>(null);
-  /** Raw `visualify_project_settings` row — used with the locked snapshot for the same reporting table as portfolio RAG modal. */
-  const [visualifyProjectSettingsRow, setVisualifyProjectSettingsRow] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  /** Canonical `visualify_projects` row — RAG/reporting-position current Project parameters. */
+  const [canonicalProjectRow, setCanonicalProjectRow] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const [projectSettingsReady, setProjectSettingsReady] = useState(false);
   /** Linked “Show All” for Category + Owner (portfolio overview pattern). */
   const [categoryOwnerBreakdownOpen, setCategoryOwnerBreakdownOpen] = useState(false);
@@ -865,11 +867,12 @@ export function ProjectOverviewContent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
+  // Page Project Context and RAG/reporting-position: canonical visualify_projects only (S4.5D).
   useEffect(() => {
     const pid = projectId?.trim();
     if (!pid) {
       setProjectSettingsResolved(null);
-      setVisualifyProjectSettingsRow(null);
+      setCanonicalProjectRow(null);
       setProjectSettingsReady(false);
       return;
     }
@@ -877,24 +880,21 @@ export function ProjectOverviewContent({
     setProjectSettingsReady(false);
     void (async () => {
       const supabase = supabaseBrowserClient();
-      const { data: row, error } = await supabase
-        .from("visualify_project_settings")
-        .select("*")
-        .eq("project_id", pid)
+      const projectResult = await supabase
+        .from("visualify_projects")
+        .select(PROJECT_OVERVIEW_CANONICAL_PROJECT_CONTEXT_SELECT)
+        .eq("id", pid)
         .maybeSingle();
       if (cancelled) return;
-      let next: ProjectContext | null = null;
-      if (!error && row && typeof row === "object") {
-        setVisualifyProjectSettingsRow(row as Record<string, unknown>);
-        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
-        if (parsed) next = parsed;
-      } else {
-        setVisualifyProjectSettingsRow(null);
-      }
-      if (next == null) {
-        next = loadProjectContext(pid);
-      }
+      const nextCanonicalRow =
+        !projectResult.error && projectResult.data && typeof projectResult.data === "object"
+          ? (projectResult.data as Record<string, unknown>)
+          : null;
+      const next = resolveProjectOverviewProjectContext({
+        canonicalProjectRow: nextCanonicalRow,
+      });
       if (!cancelled) {
+        setCanonicalProjectRow(nextCanonicalRow);
         setProjectSettingsResolved(next);
         setProjectSettingsReady(true);
       }
@@ -912,7 +912,7 @@ export function ProjectOverviewContent({
   const projectContext = useMemo(() => {
     const pid = projectId?.trim();
     if (!pid) return null;
-    if (!projectSettingsReady) return loadProjectContext(pid);
+    if (!projectSettingsReady) return null;
     return projectSettingsResolved;
   }, [projectId, projectSettingsReady, projectSettingsResolved]);
 
@@ -926,10 +926,10 @@ export function ProjectOverviewContent({
       projectContext?.projectName?.trim() && projectContext.projectName.trim().length > 0
         ? projectContext.projectName.trim()
         : pid;
-    const payload = buildProjectTilePayloadForReportingModal({
+    const payload = buildProjectOverviewTilePayloadForReportingModal({
       project: { id: pid, name, created_at: null },
       lockedRow: staleAndPositionLockedRow,
-      settingsRow: visualifyProjectSettingsRow,
+      canonicalProjectRow,
       riskCount,
       highSeverityCount,
     });
@@ -938,19 +938,18 @@ export function ProjectOverviewContent({
     projectId,
     reportingRunRiskCountSnapshotRow,
     staleAndPositionLockedRow,
-    visualifyProjectSettingsRow,
+    canonicalProjectRow,
     risks,
     projectContext?.projectName,
   ]);
 
   /** Cost/time line severities — same as simulation reporting position (not mean−at‑P dollar gap). */
   const reportingPositionBreakdown = useMemo(() => {
-    if (!staleAndPositionLockedRow || visualifyProjectSettingsRow == null) return null;
-    return tryReportingBreakdownFromLockedRowAndSettings(
-      staleAndPositionLockedRow,
-      visualifyProjectSettingsRow
-    );
-  }, [staleAndPositionLockedRow, visualifyProjectSettingsRow]);
+    if (!staleAndPositionLockedRow) return null;
+    const ctx = resolveProjectOverviewReportingPositionContext({ canonicalProjectRow });
+    if (!ctx) return null;
+    return reportingPositionBreakdownFromLockedSnapshot(staleAndPositionLockedRow, ctx);
+  }, [staleAndPositionLockedRow, canonicalProjectRow]);
 
   const targetAppetite: RiskAppetite = projectContext?.riskAppetite ?? "P80";
   const targetPercent = riskAppetiteToPercent(targetAppetite);

@@ -8,9 +8,11 @@ import { selectDecisionByRiskId, selectDecisionScoreDelta } from "@/store/select
 import {
   loadProjectContext,
   isProjectContextComplete,
-  parseProjectContextFromVisualifyProjectSettingsRow,
-  type ProjectContext,
 } from "@/lib/projectContext";
+import {
+  RISK_REGISTER_CANONICAL_PROJECT_CONTEXT_SELECT,
+  resolveRiskRegisterProjectContext,
+} from "@/lib/project/riskRegisterProjectContextRead";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { listRisks, markRiskReviewed, replaceRisks, updateRiskRow } from "@/lib/db/risks";
 import type { Risk } from "@/domain/risk/risk.schema";
@@ -276,7 +278,7 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     }
   }, [showDetailModal]);
 
-  // Gate: load project context for gate/display. Project routes: Supabase first, then project-scoped localStorage; legacy: global localStorage only.
+  // Gate: load project context for gate/display. Project routes: canonical visualify_projects only (S4.5D). Legacy/non-project: global localStorage only.
   useEffect(() => {
     const trimmed = urlProjectId?.trim();
     if (!trimmed) {
@@ -290,20 +292,19 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
     setGateChecked(false);
     void (async () => {
       const supabase = supabaseBrowserClient();
-      const { data: row, error } = await supabase
-        .from("visualify_project_settings")
-        .select("*")
-        .eq("project_id", trimmed)
+      const projectResult = await supabase
+        .from("visualify_projects")
+        .select(RISK_REGISTER_CANONICAL_PROJECT_CONTEXT_SELECT)
+        .eq("id", trimmed)
         .maybeSingle();
       if (cancelled) return;
-      let next: ProjectContext | null = null;
-      if (!error && row && typeof row === "object") {
-        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
-        if (parsed) next = parsed;
-      }
-      if (next == null) {
-        next = loadProjectContext(trimmed);
-      }
+      const canonicalProjectRow =
+        !projectResult.error && projectResult.data && typeof projectResult.data === "object"
+          ? (projectResult.data as Record<string, unknown>)
+          : null;
+      const next = resolveRiskRegisterProjectContext({
+        canonicalProjectRow,
+      });
       if (!cancelled) {
         setProjectContext(next);
         setGateChecked(true);

@@ -11,6 +11,7 @@ import {
   projectLifecycleRevalidatePaths,
   resolveAuthoritativeProjectWorkspaceId,
 } from "@/lib/project/projectArchiveLifecycle";
+import { visualifyProjectsMetadataUpdatePayload } from "@/lib/project/visualifyProjectsCanonicalWrite";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -148,7 +149,12 @@ export async function PATCH(
   const supabase = await supabaseServerClient();
   const { error } = await supabase
     .from("visualify_projects")
-    .update({ name: parsed.name })
+    .update(
+      visualifyProjectsMetadataUpdatePayload({
+        name: parsed.name,
+        canonical: parsed.canonical,
+      }),
+    )
     .eq("id", projectId);
 
   if (error) {

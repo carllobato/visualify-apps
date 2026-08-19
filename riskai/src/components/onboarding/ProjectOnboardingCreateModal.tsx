@@ -2,15 +2,32 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { REPORTING_UNIT_LABELS, REPORTING_UNIT_OPTIONS } from "@/lib/portfolio/reportingPreferences";
-import type { FinancialUnit, ProjectCurrency, RiskAppetite } from "@/lib/projectContext";
-import type { WorkingDaysPerWeek } from "@/lib/workingDays";
+import {
+  PROJECT_CURRENCY_VALUES,
+  PROJECT_INDUSTRY_VALUES,
+  PROJECT_STAGE_VALUES,
+  RISK_APPETITE_VALUES,
+  WORKING_DAYS_PER_WEEK_VALUES,
+  type ProjectCurrency,
+  type RiskAppetite,
+  type WorkingDaysPerWeek,
+} from "@/lib/projectContext";
 import { Callout } from "@visualify/design-system";
 import {
   createProjectRequestFromForm,
   projectCreateSelectorVisibility,
   resolveProjectCreateFormParent,
 } from "@/lib/project/resolveWorkspaceProjectCreateParent";
+import {
+  firstOnboardingFormError,
+  firstOnboardingStepError,
+  onboardingCanonicalProjectPatchBody,
+  onboardingReportedComplete,
+  parseOnboardingProjectContext,
+  sanitizeOnboardingNumericInput,
+  validateOnboardingProjectForm,
+  type OnboardingProjectFormValues,
+} from "@/lib/project/onboardingCanonicalProjectWrite";
 import {
   OnboardingStepLabel,
   PROJECT_ONBOARDING_STEP_TOTAL,
@@ -72,19 +89,7 @@ export function ProjectOnboardingCreateModal({
   onDismiss,
 }: Props) {
   function sanitizeNumericInput(value: string): string {
-    let sanitized = "";
-    let seenDecimalPoint = false;
-    for (const char of value) {
-      if (char >= "0" && char <= "9") {
-        sanitized += char;
-        continue;
-      }
-      if (char === "." && !seenDecimalPoint) {
-        sanitized += char;
-        seenDecimalPoint = true;
-      }
-    }
-    return sanitized;
+    return sanitizeOnboardingNumericInput(value);
   }
 
   function formatNumericInput(value: string): string {
@@ -99,19 +104,16 @@ export function ProjectOnboardingCreateModal({
     return groupedWhole;
   }
 
-  function parseFormattedNumber(value: string): number {
-    const sanitized = sanitizeNumericInput(value);
-    if (!sanitized) return Number.NaN;
-    return Number(sanitized);
-  }
-
   const [step, setStep] = useState<CreateStep>(1);
   const [name, setName] = useState("");
+  const [projectCode, setProjectCode] = useState("");
   const [location, setLocation] = useState("");
+  const [projectIndustry, setProjectIndustry] = useState("");
+  const [projectStage, setProjectStage] = useState("");
   const [currency, setCurrency] = useState<ProjectCurrency>("AUD");
-  const [financialUnit, setFinancialUnit] = useState<FinancialUnit>("MILLIONS");
   const [projectValueInput, setProjectValueInput] = useState("");
   const [contingencyValueInput, setContingencyValueInput] = useState("");
+  const [delayCostPerWorkingDayInput, setDelayCostPerWorkingDayInput] = useState("");
   const [plannedDurationMonths, setPlannedDurationMonths] = useState("");
   const [targetCompletionDate, setTargetCompletionDate] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -135,11 +137,14 @@ export function ProjectOnboardingCreateModal({
     if (!open) return;
     setStep(initialStep);
     setName("");
+    setProjectCode("");
     setLocation("");
+    setProjectIndustry("");
+    setProjectStage("");
     setCurrency("AUD");
-    setFinancialUnit("MILLIONS");
     setProjectValueInput("");
     setContingencyValueInput("");
+    setDelayCostPerWorkingDayInput("");
     setPlannedDurationMonths("");
     setTargetCompletionDate("");
     setCalendarOpen(false);
@@ -205,11 +210,14 @@ export function ProjectOnboardingCreateModal({
     setShowErrorCallout(false);
   }, [
     name,
+    projectCode,
     location,
+    projectIndustry,
+    projectStage,
     currency,
-    financialUnit,
     projectValueInput,
     contingencyValueInput,
+    delayCostPerWorkingDayInput,
     plannedDurationMonths,
     targetCompletionDate,
     workingDaysPerWeek,
@@ -266,6 +274,25 @@ export function ProjectOnboardingCreateModal({
 
   if (!open) return null;
 
+  function collectFormValues(): OnboardingProjectFormValues {
+    return {
+      projectName: name,
+      projectCode,
+      location,
+      projectIndustry,
+      projectStage,
+      currency,
+      projectValueRaw: projectValueInput,
+      contingencyValueRaw: contingencyValueInput,
+      delayCostPerWorkingDayRaw: delayCostPerWorkingDayInput,
+      plannedDurationMonthsRaw: plannedDurationMonths,
+      targetCompletionDate,
+      workingDaysPerWeek,
+      scheduleContingencyWorkingDaysRaw: scheduleContingencyWorkingDays,
+      riskAppetite,
+    };
+  }
+
   function validateStep(current: CreateStep): boolean {
     const formParent = resolveProjectCreateFormParent({
       preferredWorkspaceId: workspaceId,
@@ -284,53 +311,10 @@ export function ProjectOnboardingCreateModal({
       setError("Select a workspace.");
       return false;
     }
-    const trimmed = name.trim();
-    if (current === 1 && !trimmed) {
-      setError("Project name is required.");
+    const stepError = firstOnboardingStepError(current, validateOnboardingProjectForm(collectFormValues()));
+    if (stepError) {
+      setError(stepError);
       return false;
-    }
-    if (current === 2) {
-      if (!currency) {
-        setError("Currency is required.");
-        return false;
-      }
-      if (!financialUnit) {
-        setError("Unit is required.");
-        return false;
-      }
-    }
-    if (current === 3 && !riskAppetite) {
-      setError("Risk appetite is required.");
-      return false;
-    }
-    if (current === 4) {
-      const projectValue = parseFormattedNumber(projectValueInput);
-      if (!Number.isFinite(projectValue) || projectValue <= 0) {
-        setError("Project value is required.");
-        return false;
-      }
-      const contingencyValue = parseFormattedNumber(contingencyValueInput);
-      if (!Number.isFinite(contingencyValue) || contingencyValue < 0) {
-        setError("Contingency value is required.");
-        return false;
-      }
-    }
-    if (current === 5) {
-      const plannedDuration = Number(plannedDurationMonths);
-      if (!Number.isInteger(plannedDuration) || plannedDuration <= 0) {
-        setError("Planned duration is required.");
-        return false;
-      }
-      if (!targetCompletionDate.trim()) {
-        setError("Target completion date is required.");
-        return false;
-      }
-      const scheduleContingencyRaw = scheduleContingencyWorkingDays.trim();
-      const scheduleContingency = scheduleContingencyRaw ? Number(scheduleContingencyRaw) : Number.NaN;
-      if (!Number.isInteger(scheduleContingency) || scheduleContingency < 0) {
-        setError("Schedule contingency is required.");
-        return false;
-      }
     }
     return true;
   }
@@ -356,13 +340,20 @@ export function ProjectOnboardingCreateModal({
       skipNextErrorAutoClearRef.current = false;
       return;
     }
-    const trimmed = name.trim();
-    const trimmedLocation = location.trim();
-    const projectValue = parseFormattedNumber(projectValueInput);
-    const contingencyValue = parseFormattedNumber(contingencyValueInput);
-    const plannedDuration = Number(plannedDurationMonths);
-    const scheduleContingency = Number(scheduleContingencyWorkingDays);
-    const scheduleContingencyWeeks = scheduleContingency / workingDaysPerWeek;
+    const formValues = collectFormValues();
+    const formError = firstOnboardingFormError(validateOnboardingProjectForm(formValues));
+    if (formError) {
+      skipNextErrorAutoClearRef.current = false;
+      setError(formError);
+      return;
+    }
+    const parsed = parseOnboardingProjectContext(formValues);
+    if (!parsed) {
+      skipNextErrorAutoClearRef.current = false;
+      setError("Check the project details and try again.");
+      return;
+    }
+    const trimmed = parsed.projectName;
 
     setCreating(true);
     try {
@@ -408,32 +399,18 @@ export function ProjectOnboardingCreateModal({
         );
         return;
       }
-      const settingsRes = await fetch(`/api/projects/${json.project.id}/settings`, {
+      const canonicalRes = await fetch(`/api/projects/${json.project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          project_name: trimmed,
-          location: trimmedLocation || null,
-          currency,
-          financial_unit: financialUnit,
-          project_value_input: projectValue,
-          contingency_value_input: contingencyValue,
-          planned_duration_months: plannedDuration,
-          target_completion_date: targetCompletionDate,
-          working_days_per_week: workingDaysPerWeek,
-          schedule_contingency_working_days: scheduleContingency,
-          schedule_inputs_version: 2,
-          schedule_contingency_weeks: scheduleContingencyWeeks,
-          risk_appetite: riskAppetite,
-        }),
+        body: JSON.stringify(onboardingCanonicalProjectPatchBody(parsed)),
       });
-      const settingsJson = (await settingsRes.json().catch(() => ({}))) as { error?: string };
-      if (!settingsRes.ok) {
-        if (settingsRes.status === 401) {
+      const canonicalJson = (await canonicalRes.json().catch(() => ({}))) as { error?: string };
+      if (!canonicalRes.ok) {
+        if (canonicalRes.status === 401) {
           skipNextErrorAutoClearRef.current = false;
           setError(
-            "Project was created, but your session expired before settings were saved. Please refresh and sign in again."
+            "Project was created, but your session expired before project details were saved. Please refresh and sign in again."
           );
           if (typeof window !== "undefined") {
             window.setTimeout(() => {
@@ -444,12 +421,17 @@ export function ProjectOnboardingCreateModal({
         }
         skipNextErrorAutoClearRef.current = false;
         setError(
-          settingsJson.error?.trim() ||
-            "Project was created but settings could not be saved."
+          canonicalJson.error?.trim() ||
+            "Project was created but project details could not be saved."
         );
         return;
       }
-      await onCreated({ id: json.project.id, name: json.project.name });
+      if (!onboardingReportedComplete({ canonicalOk: canonicalRes.ok })) {
+        skipNextErrorAutoClearRef.current = false;
+        setError("Project was created but project details could not be saved.");
+        return;
+      }
+      await onCreated({ id: json.project.id, name: trimmed });
     } catch {
       skipNextErrorAutoClearRef.current = false;
       setError("Something went wrong while creating the project. Please try again.");
@@ -629,7 +611,7 @@ export function ProjectOnboardingCreateModal({
             <OnboardingStepLabel step={step} of={PROJECT_ONBOARDING_STEP_TOTAL} />
             <h2 id="project-onboarding-create-title" className="ds-onboarding-modal-title">
               {step === 1 && "Name and location"}
-              {step === 2 && "Units"}
+              {step === 2 && "Currency"}
               {step === 3 && "Risk appetite"}
               {step === 4 && "Commercials"}
               {step === 5 && "Time"}
@@ -647,7 +629,7 @@ export function ProjectOnboardingCreateModal({
         </div>
         <p className="ds-onboarding-modal-lede">
           {step === 1 && "Set the project identity first."}
-          {step === 2 && "Select reporting and financial units."}
+          {step === 2 && "Select the project currency."}
           {step === 3 && "Set the project risk appetite."}
           {step === 4 && "Capture financial parameters."}
           {step === 5 && "Capture schedule parameters before inviting users."}
@@ -697,8 +679,23 @@ export function ProjectOnboardingCreateModal({
                 />
               </div>
               <div>
+                <label htmlFor="project-onboarding-code" className="ds-onboarding-modal-label">
+                  Project code
+                </label>
+                <input
+                  id="project-onboarding-code"
+                  type="text"
+                  value={projectCode}
+                  onChange={(e) => setProjectCode(e.target.value)}
+                  className="ds-onboarding-modal-input"
+                  placeholder="e.g. NGU-01"
+                  autoComplete="off"
+                  disabled={creating}
+                />
+              </div>
+              <div>
                 <label htmlFor="project-onboarding-location" className="ds-onboarding-modal-label">
-                  Location
+                  Project location <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <input
                   id="project-onboarding-location"
@@ -711,45 +708,69 @@ export function ProjectOnboardingCreateModal({
                   disabled={creating}
                 />
               </div>
-            </>
-          )}
-          {step === 2 && (
-            <>
               <div>
-                <label htmlFor="project-onboarding-currency" className="ds-onboarding-modal-label">
-                  Currency <span className="text-[var(--ds-status-danger)]">*</span>
+                <label htmlFor="project-onboarding-industry" className="ds-onboarding-modal-label">
+                  Project industry <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <select
-                  id="project-onboarding-currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value as ProjectCurrency)}
+                  id="project-onboarding-industry"
+                  value={projectIndustry}
+                  onChange={(e) => setProjectIndustry(e.target.value)}
                   disabled={creating}
                   className="ds-onboarding-modal-select"
                 >
-                  <option value="AUD">AUD</option>
-                  <option value="USD">USD</option>
-                  <option value="GBP">GBP</option>
+                  <option value="">
+                    Select industry
+                  </option>
+                  {PROJECT_INDUSTRY_VALUES.map((industry) => (
+                    <option key={industry} value={industry}>
+                      {industry}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label htmlFor="project-onboarding-unit" className="ds-onboarding-modal-label">
-                  Unit <span className="text-[var(--ds-status-danger)]">*</span>
+                <label htmlFor="project-onboarding-stage" className="ds-onboarding-modal-label">
+                  Project stage <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <select
-                  id="project-onboarding-unit"
-                  value={financialUnit}
-                  onChange={(e) => setFinancialUnit(e.target.value as FinancialUnit)}
+                  id="project-onboarding-stage"
+                  value={projectStage}
+                  onChange={(e) => setProjectStage(e.target.value)}
                   disabled={creating}
                   className="ds-onboarding-modal-select"
                 >
-                  {REPORTING_UNIT_OPTIONS.map((u) => (
-                    <option key={u} value={u}>
-                      {REPORTING_UNIT_LABELS[u]}
+                  <option value="">
+                    Select stage
+                  </option>
+                  {PROJECT_STAGE_VALUES.map((stage) => (
+                    <option key={stage} value={stage}>
+                      {stage}
                     </option>
                   ))}
                 </select>
               </div>
             </>
+          )}
+          {step === 2 && (
+            <div>
+              <label htmlFor="project-onboarding-currency" className="ds-onboarding-modal-label">
+                Project currency <span className="text-[var(--ds-status-danger)]">*</span>
+              </label>
+              <select
+                id="project-onboarding-currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value as ProjectCurrency)}
+                disabled={creating}
+                className="ds-onboarding-modal-select"
+              >
+                {PROJECT_CURRENCY_VALUES.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
           {step === 3 && (
             <div>
@@ -763,15 +784,11 @@ export function ProjectOnboardingCreateModal({
                 disabled={creating}
                 className="ds-onboarding-modal-select"
               >
-                <option value="P10">P10</option>
-                <option value="P20">P20</option>
-                <option value="P30">P30</option>
-                <option value="P40">P40</option>
-                <option value="P50">P50</option>
-                <option value="P60">P60</option>
-                <option value="P70">P70</option>
-                <option value="P80">P80</option>
-                <option value="P90">P90</option>
+                {RISK_APPETITE_VALUES.map((appetite) => (
+                  <option key={appetite} value={appetite}>
+                    {appetite}
+                  </option>
+                ))}
               </select>
             </div>
           )}
@@ -795,7 +812,7 @@ export function ProjectOnboardingCreateModal({
               </div>
               <div>
                 <label htmlFor="project-onboarding-contingency-value" className="ds-onboarding-modal-label">
-                  Contingency value <span className="text-[var(--ds-status-danger)]">*</span>
+                  Project contingency <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <input
                   id="project-onboarding-contingency-value"
@@ -804,7 +821,23 @@ export function ProjectOnboardingCreateModal({
                   value={contingencyValueInput}
                   onChange={(e) => setContingencyValueInput(formatNumericInput(e.target.value))}
                   className="ds-onboarding-modal-input"
-                  placeholder="e.g. $9,500,000"
+                  placeholder="e.g. $10,000,000"
+                  autoComplete="off"
+                  disabled={creating}
+                />
+              </div>
+              <div>
+                <label htmlFor="project-onboarding-delay-cost" className="ds-onboarding-modal-label">
+                  Cost of Delay Per Working Day <span className="text-[var(--ds-status-danger)]">*</span>
+                </label>
+                <input
+                  id="project-onboarding-delay-cost"
+                  type="text"
+                  inputMode="decimal"
+                  value={delayCostPerWorkingDayInput}
+                  onChange={(e) => setDelayCostPerWorkingDayInput(formatNumericInput(e.target.value))}
+                  className="ds-onboarding-modal-input"
+                  placeholder="e.g. $50,000"
                   autoComplete="off"
                   disabled={creating}
                 />
@@ -815,7 +848,7 @@ export function ProjectOnboardingCreateModal({
             <>
               <div>
                 <label htmlFor="project-onboarding-planned-duration" className="ds-onboarding-modal-label">
-                  End to End Duration (months) <span className="text-[var(--ds-status-danger)]">*</span>
+                  Planned duration (months) <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <div className="ds-onboarding-modal-input-with-unit">
                   <input
@@ -957,7 +990,7 @@ export function ProjectOnboardingCreateModal({
               </div>
               <div>
                 <label htmlFor="project-onboarding-working-calendar" className="ds-onboarding-modal-label">
-                  Working calendar <span className="text-[var(--ds-status-danger)]">*</span>
+                  Working Days Per Week <span className="text-[var(--ds-status-danger)]">*</span>
                 </label>
                 <select
                   id="project-onboarding-working-calendar"
@@ -966,9 +999,11 @@ export function ProjectOnboardingCreateModal({
                   disabled={creating}
                   className="ds-onboarding-modal-select"
                 >
-                  <option value={5}>5 days</option>
-                  <option value={5.5}>5.5 days</option>
-                  <option value={6}>6 days</option>
+                  {WORKING_DAYS_PER_WEEK_VALUES.map((days) => (
+                    <option key={days} value={days}>
+                      {days}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>

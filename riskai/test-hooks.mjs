@@ -36,11 +36,11 @@ export async function resolve(specifier, context, nextResolve) {
     return { url: pathToFileURL(resolved).href, shortCircuit: true };
   }
 
-  // 2. Extension-less relative imports inside .ts source files → append .ts (or /index.ts)
+  // 2. Extension-less relative imports inside .ts/.tsx source files → append .ts (or /index.ts)
   if (
     (specifier.startsWith("./") || specifier.startsWith("../")) &&
     !hasKnownExtension(specifier) &&
-    context.parentURL?.includes("/src/")
+    (context.parentURL?.includes("/src/") || context.parentURL?.includes("/app/"))
   ) {
     const parentPath = fileURLToPath(context.parentURL);
     const base = pathResolve(dirname(parentPath), specifier);

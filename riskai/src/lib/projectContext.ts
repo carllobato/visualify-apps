@@ -4,16 +4,20 @@
  * Optional server sync via POST /api/project-context (see getProjectContext.ts).
  */
 
-export type RiskAppetite =
-  | "P10"
-  | "P20"
-  | "P30"
-  | "P40"
-  | "P50"
-  | "P60"
-  | "P70"
-  | "P80"
-  | "P90";
+export const RISK_APPETITE_VALUES = [
+  "P10",
+  "P20",
+  "P30",
+  "P40",
+  "P50",
+  "P60",
+  "P70",
+  "P80",
+  "P90",
+  "P100",
+] as const;
+
+export type RiskAppetite = (typeof RISK_APPETITE_VALUES)[number];
 
 /** Map settings Risk Appetite (e.g. P80) to cumulative percentile 0–100 for distribution targets. */
 export function riskAppetiteToPercent(
@@ -24,11 +28,51 @@ export function riskAppetiteToPercent(
   return Number.isFinite(n) ? n : 80;
 }
 
-export type ProjectCurrency = "AUD" | "USD" | "GBP";
+export const PROJECT_CURRENCY_VALUES = [
+  "AUD",
+  "USD",
+  "GBP",
+  "EUR",
+  "NZD",
+  "CAD",
+  "SGD",
+  "AED",
+] as const;
+
+export type ProjectCurrency = (typeof PROJECT_CURRENCY_VALUES)[number];
 
 export type FinancialUnit = "THOUSANDS" | "MILLIONS" | "BILLIONS";
 
-export type WorkingDaysPerWeek = 5 | 5.5 | 6;
+export const WORKING_DAYS_PER_WEEK_VALUES = [5, 5.5, 6, 6.5, 7] as const;
+
+export type WorkingDaysPerWeek = (typeof WORKING_DAYS_PER_WEEK_VALUES)[number];
+
+export const PROJECT_INDUSTRY_VALUES = [
+  "Data Centres",
+  "Commercial",
+  "Residential",
+  "Industrial & Logistics",
+  "Infrastructure",
+  "Energy & Utilities",
+  "Healthcare",
+  "Education",
+  "Government & Public Sector",
+  "Other",
+] as const;
+
+export type ProjectIndustry = (typeof PROJECT_INDUSTRY_VALUES)[number];
+
+export const PROJECT_STAGE_VALUES = [
+  "Due Diligence",
+  "Feasibility",
+  "Design & Planning",
+  "Procurement",
+  "Construction",
+  "Commissioning",
+  "Operations",
+] as const;
+
+export type ProjectStage = (typeof PROJECT_STAGE_VALUES)[number];
 
 export type ScheduleInputsVersion = 1 | 2;
 
@@ -43,7 +87,13 @@ export function approxWorkingDaysFromMonths(
 
 export type ProjectContext = {
   projectName: string;
+  /** Optional free-text code. Empty is valid. */
+  projectCode?: string;
   location?: string;
+  /** Controlled industry; may hold a legacy/missing value until the user selects a valid option. */
+  projectIndustry?: string;
+  /** Controlled stage; may hold a legacy value such as Development / Delivery until the user selects a valid option. */
+  projectStage?: string;
   plannedDuration_months: number;
   targetCompletionDate: string; // ISO date
   /** Legacy compatibility alias. New settings capture schedule contingency in working days. */
@@ -80,20 +130,7 @@ export type ProjectContext = {
 
 const PROJECT_CONTEXT_STORAGE_KEY = "riskai_project_context_v1";
 
-const RISK_APPETITE_VALUES: RiskAppetite[] = [
-  "P10",
-  "P20",
-  "P30",
-  "P40",
-  "P50",
-  "P60",
-  "P70",
-  "P80",
-  "P90",
-];
-const CURRENCY_VALUES: ProjectCurrency[] = ["AUD", "USD", "GBP"];
 const FINANCIAL_UNIT_VALUES: FinancialUnit[] = ["THOUSANDS", "MILLIONS", "BILLIONS"];
-const WORKING_DAYS_PER_WEEK_VALUES: WorkingDaysPerWeek[] = [5, 5.5, 6];
 
 function isNonNegativeNumber(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0;
@@ -122,7 +159,7 @@ function workingDaysPerWeekFromUnknown(value: unknown): WorkingDaysPerWeek {
       : typeof value === "string" && value.trim() !== ""
         ? Number(value)
         : NaN;
-  return WORKING_DAYS_PER_WEEK_VALUES.includes(n as WorkingDaysPerWeek)
+  return (WORKING_DAYS_PER_WEEK_VALUES as readonly number[]).includes(n)
     ? (n as WorkingDaysPerWeek)
     : 5;
 }
@@ -179,34 +216,142 @@ function financialInputsVersionFromSettingsRow(row: Record<string, unknown>): 1 
   return row.financial_inputs_version === 2 ? 2 : 1;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value != null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function presentNonEmptyString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function allowedCanonicalCurrency(value: unknown): ProjectCurrency | null {
+  return typeof value === "string" && (PROJECT_CURRENCY_VALUES as readonly string[]).includes(value)
+    ? (value as ProjectCurrency)
+    : null;
+}
+
+function allowedCanonicalRiskAppetite(value: unknown): RiskAppetite | null {
+  return typeof value === "string" && (RISK_APPETITE_VALUES as readonly string[]).includes(value)
+    ? (value as RiskAppetite)
+    : null;
+}
+
+function allowedCanonicalWorkingDaysPerWeek(value: unknown): WorkingDaysPerWeek | null {
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : NaN;
+  return (WORKING_DAYS_PER_WEEK_VALUES as readonly number[]).includes(n)
+    ? (n as WorkingDaysPerWeek)
+    : null;
+}
+
+const CANONICAL_PROJECT_CONTEXT_FIELD_KEYS = [
+  "project_name",
+  "project_location",
+  "project_currency",
+  "project_value",
+  "project_contingency",
+  "project_delay_cost_per_working_day",
+  "project_planned_duration_months",
+  "project_target_completion_date",
+  "project_working_days_per_week",
+  "project_schedule_contingency_working_days",
+  "project_risk_appetite",
+] as const;
+
 /**
- * Hydrate project context from a `visualify_project_settings` row.
- * Legacy rows (`financial_inputs_version` ≠ 2): value columns are scaled by `financial_unit`.
- * v2 rows: `project_value_input`, `contingency_value_input`, and delay cost fields are major currency.
+ * True when a `visualify_projects` row has at least one genuinely present canonical
+ * Project Context field (numeric 0 counts; empty strings and nulls do not).
+ */
+export function visualifyProjectsRowHasCanonicalContextFields(
+  row: Record<string, unknown> | null | undefined,
+): boolean {
+  if (row == null || typeof row !== "object") return false;
+  return CANONICAL_PROJECT_CONTEXT_FIELD_KEYS.some((key) => {
+    const value = row[key];
+    if (typeof value === "number") return Number.isFinite(value);
+    if (typeof value === "string") return value.trim().length > 0;
+    return false;
+  });
+}
+
+/**
+ * Hydrate project context from canonical `visualify_projects.project_*` only.
+ * Does not read `visualify_project_settings` or localStorage.
+ *
+ * Canonical financial columns are raw major-currency amounts (never scaled).
+ * Canonical schedule contingency is already working days (never derived from weeks).
+ * Canonical numeric 0 is present data.
+ */
+export function parseProjectContextFromCanonicalVisualifyProjectsRow(
+  canonicalProject: Record<string, unknown> | null | undefined,
+): ProjectContext | null {
+  if (!visualifyProjectsRowHasCanonicalContextFields(canonicalProject)) return null;
+  return parseProjectContextFromVisualifyProjectSettingsRow(null, canonicalProject);
+}
+
+/**
+ * Hydrate project context from canonical `visualify_projects` fields first, then
+ * `visualify_project_settings` where a canonical value is missing/null.
+ *
+ * Canonical financial columns are raw major-currency amounts (never scaled).
+ * Canonical schedule contingency is already working days (never derived from weeks).
+ * Settings-only callers keep the previous legacy interpretation, including v1 scaling.
+ *
+ * Gated Project application readers use
+ * {@link parseProjectContextFromCanonicalVisualifyProjectsRow} instead.
  */
 export function parseProjectContextFromVisualifyProjectSettingsRow(
-  row: Record<string, unknown>
+  row: Record<string, unknown> | null | undefined,
+  canonicalProject?: Record<string, unknown> | null,
 ): ProjectContext | null {
+  const settings = asRecord(row);
+  const canonical = asRecord(canonicalProject);
+
   const financialUnit =
-    typeof row.financial_unit === "string" && FINANCIAL_UNIT_VALUES.includes(row.financial_unit as FinancialUnit)
-      ? (row.financial_unit as FinancialUnit)
+    typeof settings.financial_unit === "string" &&
+    FINANCIAL_UNIT_VALUES.includes(settings.financial_unit as FinancialUnit)
+      ? (settings.financial_unit as FinancialUnit)
       : "MILLIONS";
 
-  const inputsVersion = financialInputsVersionFromSettingsRow(row);
+  const inputsVersion = financialInputsVersionFromSettingsRow(settings);
 
   const pvScaled =
-    typeof row.project_value_input === "number" && Number.isFinite(row.project_value_input)
-      ? row.project_value_input
+    typeof settings.project_value_input === "number" && Number.isFinite(settings.project_value_input)
+      ? settings.project_value_input
       : 0;
   const cvScaled =
-    typeof row.contingency_value_input === "number" && Number.isFinite(row.contingency_value_input)
-      ? row.contingency_value_input
+    typeof settings.contingency_value_input === "number" && Number.isFinite(settings.contingency_value_input)
+      ? settings.contingency_value_input
       : 0;
 
-  const scheduleInputsVersion: ScheduleInputsVersion = row.schedule_inputs_version === 2 ? 2 : 1;
-  const workingDaysPerWeek = workingDaysPerWeekFromUnknown(row.working_days_per_week);
-  const rawScheduleContingencyWorkingDays = nonNegativeNumberFromUnknown(row.schedule_contingency_working_days);
-  const rawScheduleContingencyWeeks = nonNegativeNumberFromUnknown(row.schedule_contingency_weeks);
+  const canonicalWorkingDaysPerWeek = allowedCanonicalWorkingDaysPerWeek(
+    canonical.project_working_days_per_week,
+  );
+  const workingDaysPerWeek =
+    canonicalWorkingDaysPerWeek ?? workingDaysPerWeekFromUnknown(settings.working_days_per_week);
+
+  const canonicalScheduleContingencyWorkingDays = nonNegativeNumberFromUnknown(
+    canonical.project_schedule_contingency_working_days,
+  );
+  const rawScheduleContingencyWorkingDays =
+    canonicalScheduleContingencyWorkingDays ??
+    nonNegativeNumberFromUnknown(settings.schedule_contingency_working_days);
+  const rawScheduleContingencyWeeks =
+    canonicalScheduleContingencyWorkingDays != null
+      ? null
+      : nonNegativeNumberFromUnknown(settings.schedule_contingency_weeks);
+  const scheduleInputsVersion: ScheduleInputsVersion =
+    canonicalScheduleContingencyWorkingDays != null
+      ? 2
+      : settings.schedule_inputs_version === 2
+        ? 2
+        : 1;
   const scheduleContingencyWorkingDays =
     rawScheduleContingencyWorkingDays ??
     ((rawScheduleContingencyWeeks ?? 0) * workingDaysPerWeek);
@@ -215,39 +360,62 @@ export function parseProjectContextFromVisualifyProjectSettingsRow(
       ? (workingDaysPerWeek > 0 ? rawScheduleContingencyWorkingDays / workingDaysPerWeek : 0)
       : (rawScheduleContingencyWeeks ??
         (workingDaysPerWeek > 0 ? scheduleContingencyWorkingDays / workingDaysPerWeek : 0));
+
+  const canonicalDelay = nonNegativeNumberFromUnknown(canonical.project_delay_cost_per_working_day);
   const delayWorkingScaled =
-    nonNegativeNumberFromUnknown(row.delay_cost_per_working_day) ??
-    nonNegativeNumberFromUnknown(row.delay_cost_per_day);
+    nonNegativeNumberFromUnknown(settings.delay_cost_per_working_day) ??
+    nonNegativeNumberFromUnknown(settings.delay_cost_per_day);
+
+  const canonicalProjectValue = nonNegativeNumberFromUnknown(canonical.project_value);
+  const canonicalContingency = nonNegativeNumberFromUnknown(canonical.project_contingency);
 
   const projectValueMajor =
-    inputsVersion === 2
-      ? pvScaled
-      : majorCurrencyFromLegacyScaledInput(pvScaled, financialUnit);
-  const contingencyValueMajor =
-    inputsVersion === 2
-      ? cvScaled
-      : majorCurrencyFromLegacyScaledInput(cvScaled, financialUnit);
-  const delayWorkingMajor =
-    delayWorkingScaled == null
-      ? null
+    canonicalProjectValue != null
+      ? canonicalProjectValue
       : inputsVersion === 2
-        ? delayWorkingScaled
-        : majorCurrencyFromLegacyScaledInput(delayWorkingScaled, financialUnit);
+        ? pvScaled
+        : majorCurrencyFromLegacyScaledInput(pvScaled, financialUnit);
+  const contingencyValueMajor =
+    canonicalContingency != null
+      ? canonicalContingency
+      : inputsVersion === 2
+        ? cvScaled
+        : majorCurrencyFromLegacyScaledInput(cvScaled, financialUnit);
+  const delayWorkingMajor =
+    canonicalDelay != null
+      ? canonicalDelay
+      : delayWorkingScaled == null
+        ? null
+        : inputsVersion === 2
+          ? delayWorkingScaled
+          : majorCurrencyFromLegacyScaledInput(delayWorkingScaled, financialUnit);
+
+  const canonicalName = presentNonEmptyString(canonical.project_name);
+  const canonicalLocation = presentNonEmptyString(canonical.project_location);
+  const canonicalDuration = nonNegativeNumberFromUnknown(canonical.project_planned_duration_months);
+  const canonicalTargetDate = targetCompletionDateFromDb(canonical.project_target_completion_date);
 
   const raw = {
-    projectName: typeof row.project_name === "string" ? row.project_name : "",
+    projectName:
+      canonicalName ?? (typeof settings.project_name === "string" ? settings.project_name : ""),
     location:
-      row.location !== undefined && row.location !== null && typeof row.location === "string"
-        ? row.location.trim()
-        : undefined,
-    plannedDuration_months: row.planned_duration_months,
-    targetCompletionDate: targetCompletionDateFromDb(row.target_completion_date),
+      canonicalLocation ??
+      (settings.location !== undefined &&
+      settings.location !== null &&
+      typeof settings.location === "string"
+        ? settings.location.trim()
+        : undefined),
+    plannedDuration_months: canonicalDuration ?? settings.planned_duration_months,
+    targetCompletionDate:
+      canonicalTargetDate !== ""
+        ? canonicalTargetDate
+        : targetCompletionDateFromDb(settings.target_completion_date),
     scheduleContingency_weeks: scheduleContingencyWeeks,
     workingDaysPerWeek,
     scheduleContingency_workingDays: scheduleContingencyWorkingDays,
     scheduleInputsVersion,
-    riskAppetite: row.risk_appetite,
-    currency: row.currency,
+    riskAppetite: allowedCanonicalRiskAppetite(canonical.project_risk_appetite) ?? settings.risk_appetite,
+    currency: allowedCanonicalCurrency(canonical.project_currency) ?? settings.currency,
     financialUnit: "MILLIONS" as FinancialUnit,
     financialInputsVersion: 2 as const,
     projectValue_input: projectValueMajor,
@@ -264,9 +432,21 @@ export function parseProjectContext(raw: unknown): ProjectContext | null {
   const o = raw as Record<string, unknown>;
 
   const projectName = typeof o.projectName === "string" ? o.projectName.trim() : "";
+  const projectCode =
+    o.projectCode !== undefined && o.projectCode !== null && typeof o.projectCode === "string"
+      ? o.projectCode.trim()
+      : undefined;
   const location =
     o.location !== undefined && o.location !== null && typeof o.location === "string"
       ? o.location.trim()
+      : undefined;
+  const projectIndustry =
+    o.projectIndustry !== undefined && o.projectIndustry !== null && typeof o.projectIndustry === "string"
+      ? o.projectIndustry.trim()
+      : undefined;
+  const projectStage =
+    o.projectStage !== undefined && o.projectStage !== null && typeof o.projectStage === "string"
+      ? o.projectStage.trim()
       : undefined;
   const plannedDuration_months = isNonNegativeInteger(o.plannedDuration_months) ? o.plannedDuration_months : 0;
   const targetCompletionDate =
@@ -286,11 +466,13 @@ export function parseProjectContext(raw: unknown): ProjectContext | null {
       : (rawScheduleContingencyWeeks ??
         (workingDaysPerWeek > 0 ? scheduleContingency_workingDays / workingDaysPerWeek : 0));
   const riskAppetite =
-    typeof o.riskAppetite === "string" && RISK_APPETITE_VALUES.includes(o.riskAppetite as RiskAppetite)
+    typeof o.riskAppetite === "string" &&
+    (RISK_APPETITE_VALUES as readonly string[]).includes(o.riskAppetite)
       ? (o.riskAppetite as RiskAppetite)
       : "P80";
   const currency =
-    typeof o.currency === "string" && CURRENCY_VALUES.includes(o.currency as ProjectCurrency)
+    typeof o.currency === "string" &&
+    (PROJECT_CURRENCY_VALUES as readonly string[]).includes(o.currency)
       ? (o.currency as ProjectCurrency)
       : "AUD";
 
@@ -351,7 +533,10 @@ export function parseProjectContext(raw: unknown): ProjectContext | null {
 
   return {
     projectName,
+    projectCode,
     location,
+    projectIndustry,
+    projectStage,
     plannedDuration_months,
     targetCompletionDate,
     scheduleContingency_weeks,

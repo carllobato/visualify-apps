@@ -11,6 +11,7 @@ import type { ProjectContext, ProjectCurrency } from "@/lib/projectContext";
 import {
   parseProjectContextFromVisualifyProjectSettingsRow,
   riskAppetiteToPercent,
+  visualifyProjectsRowHasCanonicalContextFields,
 } from "@/lib/projectContext";
 import { neutralSnapshotFromDbRow } from "@/lib/simulationNeutralFromDbRow";
 import {
@@ -64,6 +65,22 @@ export type PortfolioReportingFooterRow = {
 };
 
 type LineSeverity = ReportingLineSeverity;
+
+/**
+ * Project parameters for RAG / reporting-position.
+ *
+ * Current live callers provide canonical-only `visualify_projects` rows; do not
+ * invent values from legacy settings rows.
+ *
+ * Locked/historical snapshot rows are interpreted separately and unchanged.
+ */
+function projectContextFromReportingSources(
+  canonicalProjectRow?: Record<string, unknown> | null,
+): ProjectContext | null {
+  const hasCanonical = visualifyProjectsRowHasCanonicalContextFields(canonicalProjectRow);
+  if (!hasCanonical) return null;
+  return parseProjectContextFromVisualifyProjectSettingsRow(null, canonicalProjectRow);
+}
 
 function cdfsFromNeutralForReporting(neutral: MonteCarloNeutralSnapshot): {
   costCdf: ReturnType<typeof distributionToCostCdf>;
@@ -166,10 +183,10 @@ export type ReportingPositionDriverScalars = {
  */
 export function tryReportingPositionDriverScalars(
   lockedRow: SimulationSnapshotRow | null | undefined,
-  settingsRow: Record<string, unknown> | null | undefined
+  canonicalProjectRow?: Record<string, unknown> | null,
 ): ReportingPositionDriverScalars | null {
-  if (!lockedRow || !settingsRow) return null;
-  const ctx = parseProjectContextFromVisualifyProjectSettingsRow(settingsRow);
+  if (!lockedRow) return null;
+  const ctx = projectContextFromReportingSources(canonicalProjectRow);
   if (!ctx) return null;
   const scalar = reportingFundingScalars(lockedRow, ctx);
   if (!scalar) return null;
@@ -445,27 +462,30 @@ export function reportingPositionRagFromLockedSnapshot(
 
 export function tryReportingBreakdownFromLockedRowAndSettings(
   lockedRow: SimulationSnapshotRow | null | undefined,
-  settingsRow: Record<string, unknown> | null | undefined
+  canonicalProjectRow?: Record<string, unknown> | null,
 ): ReportingPositionBreakdown | null {
-  if (!lockedRow || !settingsRow) return null;
-  const ctx = parseProjectContextFromVisualifyProjectSettingsRow(settingsRow);
+  if (!lockedRow) return null;
+  const ctx = projectContextFromReportingSources(canonicalProjectRow);
   if (!ctx) return null;
   return reportingPositionBreakdownFromLockedSnapshot(lockedRow, ctx);
 }
 
 export function tryReportingRagFromLockedRowAndSettings(
   lockedRow: SimulationSnapshotRow | null | undefined,
-  settingsRow: Record<string, unknown> | null | undefined
+  canonicalProjectRow?: Record<string, unknown> | null,
 ): PortfolioRag | null {
-  return tryReportingBreakdownFromLockedRowAndSettings(lockedRow, settingsRow)?.rag ?? null;
+  return tryReportingBreakdownFromLockedRowAndSettings(
+    lockedRow,
+    canonicalProjectRow,
+  )?.rag ?? null;
 }
 
 export function tryReportingFundingScalars(
   lockedRow: SimulationSnapshotRow | null | undefined,
-  settingsRow: Record<string, unknown> | null | undefined
+  canonicalProjectRow?: Record<string, unknown> | null,
 ): ReportingFundingScalars | null {
-  if (!lockedRow || !settingsRow) return null;
-  const ctx = parseProjectContextFromVisualifyProjectSettingsRow(settingsRow);
+  if (!lockedRow) return null;
+  const ctx = projectContextFromReportingSources(canonicalProjectRow);
   if (!ctx) return null;
   return reportingFundingScalars(lockedRow, ctx);
 }

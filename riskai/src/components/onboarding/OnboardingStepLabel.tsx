@@ -19,5 +19,5 @@ export function OnboardingStepLabel({ step, of }: Props) {
 
 /** Portfolio creation flow: name → reporting → invite or skip. */
 export const PORTFOLIO_ONBOARDING_STEP_TOTAL = 3;
-/** Project onboarding flow: 1 name/location, 2 units, 3 appetite, 4 money, 5 time, 6 users. */
+/** Project onboarding flow: 1 identity, 2 currency, 3 appetite, 4 money, 5 time, 6 users. */
 export const PROJECT_ONBOARDING_STEP_TOTAL = 6;

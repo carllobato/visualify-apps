@@ -44,9 +44,12 @@ import {
   loadProjectContext,
   formatMoneyMillions,
   isProjectContextComplete,
-  parseProjectContextFromVisualifyProjectSettingsRow,
   type ProjectContext,
 } from "@/lib/projectContext";
+import {
+  SIMULATION_PAGE_CANONICAL_PROJECT_CONTEXT_SELECT,
+  resolveSimulationPageProjectContext,
+} from "@/lib/project/simulationPageProjectContextRead";
 import {
   formatDurationDays,
   formatDurationDaysBarLabel,
@@ -1629,7 +1632,7 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
   const [runBlockedInvalidCount, setRunBlockedInvalidCount] = useState<number | null>(null);
   const [snapshotPersistWarning, setSnapshotPersistWarning] = useState<string | null>(null);
   const [projectContext, setProjectContext] = useState<ReturnType<typeof loadProjectContext>>(null);
-  /** Resolved display context for project-scoped routes (Supabase first, then localStorage). */
+  /** Resolved display context for project-scoped routes (canonical visualify_projects only). */
   const [scopedDisplayContext, setScopedDisplayContext] = useState<ProjectContext | null>(null);
   const [scopedDisplayContextReady, setScopedDisplayContextReady] = useState(false);
   const [gateChecked, setGateChecked] = useState(false);
@@ -1714,7 +1717,8 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     }
   }, []);
 
-  // Project-scoped: load settings from Supabase first, then localStorage fallback (legacy flows unchanged).
+  // Project-scoped PAGE context: canonical visualify_projects only (S4.5D).
+  // Monte Carlo Project parameters resolve separately via resolveScheduleSettingsForSimulation (canonical only).
   useEffect(() => {
     if (!effectiveProjectId) {
       setScopedDisplayContext(null);
@@ -1725,20 +1729,19 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     setScopedDisplayContextReady(false);
     void (async () => {
       const supabase = supabaseBrowserClient();
-      const { data: row, error } = await supabase
-        .from("visualify_project_settings")
-        .select("*")
-        .eq("project_id", effectiveProjectId)
+      const projectResult = await supabase
+        .from("visualify_projects")
+        .select(SIMULATION_PAGE_CANONICAL_PROJECT_CONTEXT_SELECT)
+        .eq("id", effectiveProjectId)
         .maybeSingle();
       if (cancelled) return;
-      let next: ProjectContext | null = null;
-      if (!error && row && typeof row === "object") {
-        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
-        if (parsed) next = parsed;
-      }
-      if (next == null) {
-        next = loadProjectContext(effectiveProjectId);
-      }
+      const canonicalProjectRow =
+        !projectResult.error && projectResult.data && typeof projectResult.data === "object"
+          ? (projectResult.data as Record<string, unknown>)
+          : null;
+      const next = resolveSimulationPageProjectContext({
+        canonicalProjectRow,
+      });
       if (!cancelled) {
         setScopedDisplayContext(next);
         setScopedDisplayContextReady(true);
@@ -1874,12 +1877,12 @@ export default function SimulationPage({ projectId: urlProjectId }: SimulationPa
     lockedSnapshotRow != null &&
     currentSimulationId === lockedSnapshotRow.id;
 
-  // In project routes, use project-scoped context only (no legacy fallback),
+  // In project routes, use project-scoped canonical context only (no settings/localStorage fallback),
   // otherwise cards like Overall Position can mix a loaded run with another project's context.
   // In legacy mode (no effective project id), keep using the gate/global context.
   const displayContext = useMemo(() => {
     if (!effectiveProjectId) return projectContext;
-    if (!scopedDisplayContextReady) return loadProjectContext(effectiveProjectId);
+    if (!scopedDisplayContextReady) return null;
     return scopedDisplayContext;
   }, [effectiveProjectId, projectContext, scopedDisplayContextReady, scopedDisplayContext]);
 

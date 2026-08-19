@@ -11,6 +11,12 @@ import { buildLoginRedirectUrl } from "@/lib/auth/loginRedirect";
 import { headers } from "next/headers";
 import { resolveProjectHeaderWorkspace } from "@/lib/project/resolveProjectHeaderWorkspace";
 import { getRiskAiEntitledWorkspaces } from "@/lib/workspace/entitledWorkspaces";
+import {
+  CANONICAL_PROJECT_COMPLETENESS_SELECT,
+  isCanonicalProjectComplete,
+} from "@/lib/project/canonicalProjectCompleteness";
+import { resolveIncompleteProjectRouteGate } from "@/lib/project/incompleteProjectRouteGate";
+import { ProjectCanonicalCompletenessProvider } from "@/contexts/ProjectCanonicalCompletenessContext";
 
 export const dynamic = "force-dynamic";
 
@@ -24,12 +30,12 @@ export default async function ProjectLayout({
   params: Promise<{ projectId: string }>;
 }) {
   const { projectId } = await params;
+  const pathname = (await headers()).get("x-pathname") ?? "/";
   const access = await assertProjectAccess(projectId);
   if ("error" in access && access.error === "unauthorized") {
     if (isDevAuthBypassEnabled()) {
       redirect(DASHBOARD_PATH);
     }
-    const pathname = (await headers()).get("x-pathname") ?? "/";
     redirect(await buildLoginRedirectUrl(pathname));
   }
   if ("error" in access && access.error === "forbidden") {
@@ -50,18 +56,37 @@ export default async function ProjectLayout({
     entitledWorkspaces,
   });
 
+  const { data: canonicalRow } = await supabase
+    .from("visualify_projects")
+    .select(CANONICAL_PROJECT_COMPLETENESS_SELECT)
+    .eq("id", projectId)
+    .maybeSingle();
+  const canonicalComplete = isCanonicalProjectComplete(
+    canonicalRow && typeof canonicalRow === "object" ? (canonicalRow as Record<string, unknown>) : null,
+  );
+  const setupGate = resolveIncompleteProjectRouteGate({
+    pathname,
+    projectId,
+    complete: canonicalComplete,
+  });
+  if (setupGate.action === "redirect") {
+    redirect(setupGate.url);
+  }
+
   return (
     <ProjectPermissionsProvider permissions={permissions}>
-      <PageHeaderExtrasProvider>
-        <SetActiveProjectClient projectId={projectId} storageKey={ACTIVE_PROJECT_KEY} />
-        <PageHeader
-          projectId={projectId}
-          projectName={project.name}
-          workspaceId={headerWorkspace?.id ?? null}
-          workspaceName={headerWorkspace?.name ?? null}
-        />
-        {children}
-      </PageHeaderExtrasProvider>
+      <ProjectCanonicalCompletenessProvider complete={canonicalComplete}>
+        <PageHeaderExtrasProvider>
+          <SetActiveProjectClient projectId={projectId} storageKey={ACTIVE_PROJECT_KEY} />
+          <PageHeader
+            projectId={projectId}
+            projectName={project.name}
+            workspaceId={headerWorkspace?.id ?? null}
+            workspaceName={headerWorkspace?.name ?? null}
+          />
+          {children}
+        </PageHeaderExtrasProvider>
+      </ProjectCanonicalCompletenessProvider>
     </ProjectPermissionsProvider>
   );
 }

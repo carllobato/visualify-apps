@@ -3,12 +3,13 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
+import { DASHBOARD_PATH } from "@/lib/routes";
 import {
   createProjectRequestFromForm,
   projectCreateSelectorVisibility,
   resolveProjectCreateFormParent,
 } from "@/lib/project/resolveWorkspaceProjectCreateParent";
+import { createProjectShellRedirectPath } from "@/lib/project/incompleteProjectRouteGate";
 import { Button, Callout, Input, Label } from "@visualify/design-system";
 import { LoadingPlaceholder, LoadingPlaceholderCompact } from "@/components/ds/LoadingPlaceholder";
 
@@ -132,7 +133,7 @@ function CreateProjectForm() {
         // ignore
       }
       setLoading(false);
-      router.replace(riskaiPath(`/projects/${projectId}`));
+      router.replace(createProjectShellRedirectPath(projectId));
       router.refresh();
       return;
     }

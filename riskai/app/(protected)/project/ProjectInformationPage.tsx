@@ -2,8 +2,10 @@
 
 /**
  * Project Settings page: define baseline project context used to interpret risk outputs.
- * With a project selected: load `visualify_project_settings` first, then localStorage fallback;
- * save upserts to Supabase (RLS) and mirrors to localStorage (`riskai_project_context_v1`).
+ * With a project selected: hydrate Project Context from canonical `visualify_projects`
+ * only. Save PATCHes canonical `visualify_projects` via `/api/projects/[projectId]`.
+ * After a successful canonical save, mirrors to localStorage (`riskai_project_context_v1`).
+ * Does not read or write `visualify_project_settings`.
  * Legacy (no project): localStorage only. Optional: POST /api/project-context.
  */
 
@@ -19,7 +21,11 @@ import {
   saveProjectContext,
   clearProjectContext,
   parseProjectContext,
-  parseProjectContextFromVisualifyProjectSettingsRow,
+  PROJECT_CURRENCY_VALUES,
+  PROJECT_INDUSTRY_VALUES,
+  PROJECT_STAGE_VALUES,
+  RISK_APPETITE_VALUES,
+  WORKING_DAYS_PER_WEEK_VALUES,
 } from "@/lib/projectContext";
 import { ProjectExcelUploadSection } from "@/components/project/ProjectExcelUploadSection";
 import { ProjectMembersSection } from "@/components/project/ProjectMembersSection";
@@ -31,8 +37,24 @@ import { distinctOwnerNamesFromRisks } from "@/components/risk-register/RiskProj
 import { isRiskStatusArchived } from "@/domain/risk/riskFieldSemantics";
 import { useOptionalPageHeaderExtras } from "@/contexts/PageHeaderExtrasContext";
 import { useProjectPermissions } from "@/contexts/ProjectPermissionsContext";
+import { useProjectCanonicalCompleteness } from "@/contexts/ProjectCanonicalCompletenessContext";
 import { DASHBOARD_PATH, riskaiPath } from "@/lib/routes";
 import { postArchiveNavigatePath } from "@/lib/project/projectArchiveLifecycle";
+import { canonicalPatchFromProjectContext } from "@/lib/project/visualifyProjectsCanonicalWrite";
+import {
+  dropdownOptionsWithLegacyValue,
+  getProjectInformationValidationErrors,
+  PROJECT_INFORMATION_FIRST_INVALID_FIELD_ORDER,
+  PROJECT_INFORMATION_MAX_MONTHS,
+  PROJECT_INFORMATION_MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS,
+  rawNumericFieldsFromSavedContext,
+  REQUIRED_NUMERIC_KEYS,
+  type RawNumericFields,
+} from "@/lib/project/projectInformationFormValidation";
+import {
+  CANONICAL_PROJECT_COMPLETENESS_SELECT,
+  hydrateProjectInformationFromCanonicalRow,
+} from "@/lib/project/canonicalProjectCompleteness";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import {
   Button,
@@ -59,49 +81,29 @@ import {
   projectSettingsReadOnlyFieldClass,
   projectSettingsSelectClass,
 } from "@/components/project/projectSettingsDsFormClasses";
-import { PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE } from "@/lib/settings/settingsPermissionMessages";
+import {
+  PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE,
+  PROJECT_SETUP_INCOMPLETE_EDITOR_NOTICE,
+  PROJECT_SETUP_INCOMPLETE_READONLY_NOTICE,
+} from "@/lib/settings/settingsPermissionMessages";
 
-const RISK_APPETITE_OPTIONS: { value: RiskAppetite; label: string }[] = [
-  { value: "P10", label: "P10" },
-  { value: "P20", label: "P20" },
-  { value: "P30", label: "P30" },
-  { value: "P40", label: "P40" },
-  { value: "P50", label: "P50" },
-  { value: "P60", label: "P60" },
-  { value: "P70", label: "P70" },
-  { value: "P80", label: "P80" },
-  { value: "P90", label: "P90" },
-];
+const MAX_MONTHS = PROJECT_INFORMATION_MAX_MONTHS;
+const MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS = PROJECT_INFORMATION_MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS;
 
-const CURRENCY_OPTIONS: { value: ProjectCurrency; label: string }[] = [
-  { value: "AUD", label: "AUD" },
-  { value: "USD", label: "USD" },
-  { value: "GBP", label: "GBP" },
-];
-
-const MAX_MONTHS = 600;
-const MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS = 3120;
-
-const WORKING_CALENDAR_OPTIONS: { value: WorkingDaysPerWeek; label: string }[] = [
-  { value: 5, label: "5 days" },
-  { value: 5.5, label: "5.5 days" },
-  { value: 6, label: "6 days" },
-];
-
-const REQUIRED_NUMERIC_KEYS = [
-  "contingencyValue_input",
-  "plannedDuration_months",
-  "scheduleContingency_workingDays",
-] as const;
-
-type RawNumericFields = Partial<
-  Record<(typeof REQUIRED_NUMERIC_KEYS)[number] | "delay_cost_per_working_day", string>
->;
+const CURRENCY_OPTIONS = PROJECT_CURRENCY_VALUES.map((value) => ({ value, label: value }));
+const RISK_APPETITE_OPTIONS = RISK_APPETITE_VALUES.map((value) => ({ value, label: value }));
+const WORKING_CALENDAR_OPTIONS = WORKING_DAYS_PER_WEEK_VALUES.map((value) => ({
+  value,
+  label: String(value),
+}));
 
 function defaultContext(): ProjectContext {
   return {
     projectName: "",
+    projectCode: "",
     location: "",
+    projectIndustry: "",
+    projectStage: "",
     plannedDuration_months: 0,
     targetCompletionDate: "",
     scheduleContingency_weeks: 0,
@@ -122,66 +124,23 @@ function defaultContext(): ProjectContext {
   };
 }
 
-function getValidationErrors(
-  form: ProjectContext,
-  rawNumeric: RawNumericFields
-): Record<string, string> {
-  const err: Record<string, string> = {};
-  if (!form.projectName.trim()) err.projectName = "This field is required";
-  if (form.projectValue_input <= 0)
-    err.projectValue_input = form.projectValue_input < 0 ? "Enter a valid number" : "This field is required";
-  const rawCv = rawNumeric.contingencyValue_input ?? (form.contingencyValue_input === 0 ? "" : String(form.contingencyValue_input));
-  if (rawCv === "") err.contingencyValue_input = "This field is required";
-  else {
-    const n = Number(rawCv);
-    if (Number.isNaN(n) || n < 0) err.contingencyValue_input = "Enter a valid number";
-  }
-  const rawDelay =
-    rawNumeric.delay_cost_per_working_day ??
-    (form.delay_cost_per_working_day == null ? "" : String(form.delay_cost_per_working_day));
-  if (rawDelay !== "") {
-    const n = Number(rawDelay);
-    if (Number.isNaN(n) || n < 0) err.delay_cost_per_working_day = "Enter a valid number";
-  }
-  const rawDur = rawNumeric.plannedDuration_months ?? (form.plannedDuration_months === 0 ? "" : String(form.plannedDuration_months));
-  if (rawDur === "") err.plannedDuration_months = "This field is required";
-  else {
-    const n = Number(rawDur);
-    if (Number.isNaN(n) || n < 0) err.plannedDuration_months = "Enter a valid number";
-    else if (n > MAX_MONTHS) err.plannedDuration_months = `Duration must be between 0 and ${MAX_MONTHS} months.`;
-  }
-  if (!form.targetCompletionDate.trim()) err.targetCompletionDate = "This field is required";
-  const rawSc =
-    rawNumeric.scheduleContingency_workingDays ??
-    (form.scheduleContingency_workingDays === 0 ? "" : String(form.scheduleContingency_workingDays));
-  if (rawSc === "") err.scheduleContingency_workingDays = "This field is required";
-  else {
-    const n = Number(rawSc);
-    if (Number.isNaN(n) || n < 0) err.scheduleContingency_workingDays = "Enter a valid number";
-    else if (n > MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS) {
-      err.scheduleContingency_workingDays =
-        `Schedule contingency must be between 0 and ${MAX_SCHEDULE_CONTINGENCY_WORKING_DAYS} working days.`;
-    }
-  }
-  return err;
-}
+export type ProjectInformationPageProps = { projectId?: string | null };
+type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive" | "danger";
 
-const FIRST_INVALID_FIELD_ORDER = [
-  "projectName",
-  "projectValue_input",
-  "contingencyValue_input",
-  "plannedDuration_months",
-  "targetCompletionDate",
-  "scheduleContingency_workingDays",
-] as const;
-
-const FIELD_TAB_MAP: Partial<Record<(typeof FIRST_INVALID_FIELD_ORDER)[number], ProjectSettingsTab>> = {
+const FIELD_TAB_MAP: Partial<Record<(typeof PROJECT_INFORMATION_FIRST_INVALID_FIELD_ORDER)[number], ProjectSettingsTab>> = {
   projectName: "overview",
+  location: "overview",
+  projectIndustry: "overview",
+  projectStage: "overview",
+  currency: "parameters",
   projectValue_input: "parameters",
   contingencyValue_input: "parameters",
+  delay_cost_per_working_day: "parameters",
   plannedDuration_months: "parameters",
   targetCompletionDate: "parameters",
+  workingDaysPerWeek: "parameters",
   scheduleContingency_workingDays: "parameters",
+  riskAppetite: "parameters",
 };
 
 const SAVED_CONFIRM_AUTO_HIDE_MS = 3000;
@@ -190,14 +149,21 @@ function formatGroupedNumber(value: number): string {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 20 }).format(value);
 }
 
+function currencySymbol(currency: ProjectCurrency): string {
+  if (currency === "GBP") return "£";
+  if (currency === "EUR") return "€";
+  if (currency === "AED") return "AED";
+  return "$";
+}
+
 /** Whole-currency display for project value, contingency, and delay (major units; no k/m/b scaling). */
 function formatMajorCurrencyDisplay(amount: number, currency: ProjectCurrency): string {
-  const sym = currency === "GBP" ? "£" : "$";
-  return `${sym} ${formatGroupedNumber(amount)}`;
+  return `${currencySymbol(currency)} ${formatGroupedNumber(amount)}`;
 }
 
 function rawNumericFieldsFromContext(stored: ProjectContext): RawNumericFields {
   return {
+    projectValue_input: stored.projectValue_input === 0 ? "" : String(stored.projectValue_input),
     contingencyValue_input: stored.contingencyValue_input === 0 ? "" : String(stored.contingencyValue_input),
     plannedDuration_months: stored.plannedDuration_months === 0 ? "" : String(stored.plannedDuration_months),
     scheduleContingency_workingDays:
@@ -211,7 +177,10 @@ function rawNumericFieldsFromContext(stored: ProjectContext): RawNumericFields {
 function projectSettingsPersistFingerprint(form: ProjectContext, raw: RawNumericFields): string {
   return JSON.stringify({
     projectName: form.projectName,
+    projectCode: form.projectCode ?? "",
     location: form.location ?? "",
+    projectIndustry: form.projectIndustry ?? "",
+    projectStage: form.projectStage ?? "",
     plannedDuration_months: form.plannedDuration_months,
     targetCompletionDate: form.targetCompletionDate,
     workingDaysPerWeek: form.workingDaysPerWeek,
@@ -223,6 +192,7 @@ function projectSettingsPersistFingerprint(form: ProjectContext, raw: RawNumeric
     contingencyValue_input: form.contingencyValue_input,
     delay_cost_per_working_day: form.delay_cost_per_working_day,
     raw: {
+      projectValue_input: raw.projectValue_input ?? "",
       contingencyValue_input: raw.contingencyValue_input ?? "",
       plannedDuration_months: raw.plannedDuration_months ?? "",
       scheduleContingency_workingDays: raw.scheduleContingency_workingDays ?? "",
@@ -231,15 +201,14 @@ function projectSettingsPersistFingerprint(form: ProjectContext, raw: RawNumeric
   });
 }
 
-export type ProjectInformationPageProps = { projectId?: string | null };
-type ProjectSettingsTab = "overview" | "parameters" | "team" | "files" | "archive" | "danger";
-
 export default function ProjectInformationPage({ projectId }: ProjectInformationPageProps = {}) {
   const projectPermissions = useProjectPermissions();
+  const canonicalComplete = useProjectCanonicalCompleteness();
   const setPageHeaderExtras = useOptionalPageHeaderExtras()?.setExtras;
   const settingsReadOnly =
     Boolean(projectId) &&
     (projectPermissions == null || !projectPermissions.canEditProjectMetadata);
+  const setupIncomplete = projectId != null && canonicalComplete === false;
   const riskUiReadOnly =
     Boolean(projectId) &&
     (projectPermissions == null || !projectPermissions.canEditContent);
@@ -274,6 +243,11 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   );
   const savedHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectNameRef = useRef<HTMLInputElement>(null);
+  const projectCodeRef = useRef<HTMLInputElement>(null);
+  const locationRef = useRef<HTMLInputElement>(null);
+  const projectIndustryRef = useRef<HTMLSelectElement>(null);
+  const projectStageRef = useRef<HTMLSelectElement>(null);
+  const currencyRef = useRef<HTMLSelectElement>(null);
   const projectValueRef = useRef<HTMLInputElement>(null);
   const contingencyValueRef = useRef<HTMLInputElement>(null);
   const plannedDurationRef = useRef<HTMLInputElement>(null);
@@ -281,8 +255,14 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const workingCalendarRef = useRef<HTMLSelectElement>(null);
   const scheduleContingencyRef = useRef<HTMLInputElement>(null);
   const delayCostPerWorkingDayRef = useRef<HTMLInputElement>(null);
+  const riskAppetiteRef = useRef<HTMLSelectElement>(null);
   const fieldRefsRef = useRef<Record<string, RefObject<HTMLElement | null>>>({
     projectName: projectNameRef,
+    projectCode: projectCodeRef,
+    location: locationRef,
+    projectIndustry: projectIndustryRef,
+    projectStage: projectStageRef,
+    currency: currencyRef,
     projectValue_input: projectValueRef,
     contingencyValue_input: contingencyValueRef,
     delay_cost_per_working_day: delayCostPerWorkingDayRef,
@@ -290,6 +270,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     targetCompletionDate: targetCompletionDateRef,
     workingDaysPerWeek: workingCalendarRef,
     scheduleContingency_workingDays: scheduleContingencyRef,
+    riskAppetite: riskAppetiteRef,
   });
 
   const riskRegisterHref = projectId ? riskaiPath(`/projects/${projectId}/risks`) : DASHBOARD_PATH;
@@ -317,55 +298,20 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
 
     void (async () => {
       const supabase = supabaseBrowserClient();
-      const { data: row, error } = await supabase
-        .from("visualify_project_settings")
-        .select("*")
-        .eq("project_id", trimmedProjectId)
+      const projectResult = await supabase
+        .from("visualify_projects")
+        .select(`project_code, ${CANONICAL_PROJECT_COMPLETENESS_SELECT}`)
+        .eq("id", trimmedProjectId)
         .maybeSingle();
 
       if (cancelled) return;
 
-      let skipApiProjectName = false;
-      let nextForm: ProjectContext = defaultContext();
-      let nextRaw: RawNumericFields = rawNumericFieldsFromContext(nextForm);
-      let hydrated = false;
+      const canonicalRow =
+        !projectResult.error && projectResult.data && typeof projectResult.data === "object"
+          ? (projectResult.data as Record<string, unknown>)
+          : null;
+      const { form: nextForm, raw: nextRaw } = hydrateProjectInformationFromCanonicalRow(canonicalRow);
 
-      if (!error && row && typeof row === "object") {
-        const parsed = parseProjectContextFromVisualifyProjectSettingsRow(row as Record<string, unknown>);
-        if (parsed) {
-          nextForm = parsed;
-          nextRaw = rawNumericFieldsFromContext(parsed);
-          hydrated = true;
-          if (parsed.projectName.trim().length > 0) {
-            skipApiProjectName = true;
-          }
-        }
-      }
-
-      if (!hydrated) {
-        const stored = loadProjectContext(trimmedProjectId);
-        if (stored) {
-          nextForm = stored;
-          nextRaw = rawNumericFieldsFromContext(stored);
-        }
-      }
-
-      if (cancelled) return;
-
-      if (!skipApiProjectName) {
-        try {
-          const res = await fetch(`/api/projects/${trimmedProjectId}`, { credentials: "include" });
-          const data: { name?: string } | null = res.ok ? await res.json() : null;
-          if (cancelled) return;
-          if (data && typeof data.name === "string") {
-            nextForm = { ...nextForm, projectName: data.name };
-          }
-        } catch {
-          // ignore
-        }
-      }
-
-      if (cancelled) return;
       setForm(nextForm);
       setRawNumericFields(nextRaw);
       setSavedBaselineFingerprint(projectSettingsPersistFingerprint(nextForm, nextRaw));
@@ -412,8 +358,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       });
       if (
         raw !== undefined &&
-        (REQUIRED_NUMERIC_KEYS.includes(key as (typeof REQUIRED_NUMERIC_KEYS)[number]) ||
-          key === "delay_cost_per_working_day")
+        REQUIRED_NUMERIC_KEYS.includes(key as (typeof REQUIRED_NUMERIC_KEYS)[number])
       ) {
         setRawNumericFields((prev) => ({ ...prev, [key]: raw }));
       }
@@ -427,10 +372,10 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
   const onSave = useCallback(async () => {
     if (settingsReadOnly) return;
     setSaveError(null);
-    const err = getValidationErrors(form, rawNumericFields);
+    const err = getProjectInformationValidationErrors(form, rawNumericFields);
     setValidation(err);
     if (Object.keys(err).length > 0) {
-      const firstKey = FIRST_INVALID_FIELD_ORDER.find((k) => err[k]);
+      const firstKey = PROJECT_INFORMATION_FIRST_INVALID_FIELD_ORDER.find((k) => err[k]);
       if (firstKey) {
         const targetTab = FIELD_TAB_MAP[firstKey];
         if (targetTab && targetTab !== activeTab) setActiveTab(targetTab);
@@ -447,31 +392,24 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     const toSave: ProjectContext = parsed;
 
     if (projectId) {
-      const supabase = supabaseBrowserClient();
-      const { error: settingsErr } = await supabase.from("visualify_project_settings").upsert(
-        {
-          project_id: projectId,
-          project_name: toSave.projectName,
-          location: toSave.location?.trim() ? toSave.location.trim() : null,
-          currency: toSave.currency,
-          financial_unit: "MILLIONS",
-          financial_inputs_version: 2,
-          project_value_input: toSave.projectValue_input,
-          contingency_value_input: toSave.contingencyValue_input,
-          planned_duration_months: toSave.plannedDuration_months,
-          target_completion_date: toSave.targetCompletionDate,
-          schedule_contingency_weeks: toSave.scheduleContingency_weeks,
-          working_days_per_week: toSave.workingDaysPerWeek,
-          schedule_contingency_working_days: toSave.scheduleContingency_workingDays,
-          schedule_inputs_version: 2,
-          risk_appetite: toSave.riskAppetite,
-          delay_cost_per_day: toSave.delay_cost_per_day,
-          delay_cost_per_working_day: toSave.delay_cost_per_working_day,
-        },
-        { onConflict: "project_id" }
-      );
-      if (settingsErr) {
-        setSaveError(settingsErr.message);
+      try {
+        const res = await fetch(`/api/projects/${projectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: toSave.projectName,
+            ...canonicalPatchFromProjectContext(toSave),
+          }),
+        });
+        if (!res.ok) {
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          setSaveError(data.error ?? "Could not save project details.");
+          return;
+        }
+        router.refresh();
+      } catch {
+        setSaveError("Could not save project details.");
         return;
       }
     }
@@ -482,14 +420,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
     }
 
     setForm(toSave);
-    const nextRaw: RawNumericFields = {
-      contingencyValue_input: toSave.contingencyValue_input === 0 ? "" : String(toSave.contingencyValue_input),
-      plannedDuration_months: toSave.plannedDuration_months === 0 ? "" : String(toSave.plannedDuration_months),
-      scheduleContingency_workingDays:
-        toSave.scheduleContingency_workingDays === 0 ? "" : String(toSave.scheduleContingency_workingDays),
-      delay_cost_per_working_day:
-        toSave.delay_cost_per_working_day == null ? "" : String(toSave.delay_cost_per_working_day),
-    };
+    const nextRaw = rawNumericFieldsFromSavedContext(toSave);
     setRawNumericFields(nextRaw);
     setSavedBaselineFingerprint(projectSettingsPersistFingerprint(toSave, nextRaw));
     setSaved(true);
@@ -506,16 +437,6 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
         ...(projectId ? { projectId } : {}),
       }),
     }).catch(() => {});
-    if (projectId) {
-      fetch(`/api/projects/${projectId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: toSave.projectName }),
-        credentials: "include",
-      })
-        .then((res) => { if (res.ok) router.refresh(); })
-        .catch(() => {});
-    }
   }, [activeTab, form, rawNumericFields, projectId, router, settingsReadOnly]);
 
   const onClear = useCallback(() => {
@@ -613,11 +534,21 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
 
   return (
     <main className="ds-document-page">
-      {settingsReadOnly && (
+      {setupIncomplete ? (
+        <Callout
+          status="warning"
+          role="status"
+          className="mb-4 text-[length:var(--ds-text-sm)]"
+        >
+          {settingsReadOnly
+            ? PROJECT_SETUP_INCOMPLETE_READONLY_NOTICE
+            : PROJECT_SETUP_INCOMPLETE_EDITOR_NOTICE}
+        </Callout>
+      ) : settingsReadOnly ? (
         <p className="mb-4 text-[length:var(--ds-text-sm)] text-[var(--ds-text-muted)]" role="status">
           {PROJECT_SETTINGS_METADATA_VIEW_ONLY_NOTICE}
         </p>
-      )}
+      ) : null}
 
       <div className="ds-project-settings-tabs">
         <Tabs>
@@ -653,7 +584,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             <div className="max-w-2xl space-y-3">
             <div className={projectSettingsFieldWidthClass("sm")}>
               <Label htmlFor="projectName" className="!mb-1">
-                Name <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                Project Name <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
               </Label>
               <input
                 ref={projectNameRef}
@@ -669,37 +600,86 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               {validation.projectName ? <FieldError className="!mt-1">{validation.projectName}</FieldError> : null}
             </div>
             <div className={projectSettingsFieldWidthClass("sm")}>
-              <Label htmlFor="location" className="!mb-1">
-                Location (optional)
+              <Label htmlFor="projectCode" className="!mb-1">
+                Project Code
               </Label>
               <input
+                ref={projectCodeRef}
+                id="projectCode"
+                type="text"
+                value={form.projectCode ?? ""}
+                readOnly={settingsReadOnly}
+                onChange={(e) => update("projectCode", e.target.value)}
+                className={projectSettingsInputClass(false) + readOnlyChrome}
+                placeholder="e.g. NGU-01"
+              />
+            </div>
+            <div className={projectSettingsFieldWidthClass("sm")}>
+              <Label htmlFor="location" className="!mb-1">
+                Project Location <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+              </Label>
+              <input
+                ref={locationRef}
                 id="location"
                 type="text"
                 value={form.location ?? ""}
                 readOnly={settingsReadOnly}
                 onChange={(e) => update("location", e.target.value)}
-                className={projectSettingsInputClass(false) + readOnlyChrome}
+                aria-invalid={!!validation.location}
+                className={projectSettingsInputClass(!!validation.location) + readOnlyChrome}
                 placeholder="e.g. Sydney, NSW"
               />
+              {validation.location ? <FieldError className="!mt-1">{validation.location}</FieldError> : null}
             </div>
-            <div className={projectSettingsFieldWidthClass("xsm")}>
-              <Label htmlFor="currency" className="!mb-1">
-                Currency
+            <div className={projectSettingsFieldWidthClass("sm")}>
+              <Label htmlFor="projectIndustry" className="!mb-1">
+                Project Industry <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
               </Label>
               <select
-                id="currency"
-                value={form.currency}
+                ref={projectIndustryRef}
+                id="projectIndustry"
+                value={form.projectIndustry ?? ""}
                 disabled={settingsReadOnly}
-                onChange={(e) => update("currency", e.target.value as ProjectCurrency)}
-                className={projectSettingsSelectClass(false, "sm") + readOnlyChrome}
-                aria-label="Currency"
+                onChange={(e) => update("projectIndustry", e.target.value)}
+                aria-invalid={!!validation.projectIndustry}
+                className={projectSettingsSelectClass(!!validation.projectIndustry, "sm") + readOnlyChrome}
               >
-                {CURRENCY_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
+                <option value="">Select industry</option>
+                {dropdownOptionsWithLegacyValue(PROJECT_INDUSTRY_VALUES, form.projectIndustry).map(
+                  ({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
               </select>
+              {validation.projectIndustry ? (
+                <FieldError className="!mt-1">{validation.projectIndustry}</FieldError>
+              ) : null}
+            </div>
+            <div className={projectSettingsFieldWidthClass("sm")}>
+              <Label htmlFor="projectStage" className="!mb-1">
+                Project Stage <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+              </Label>
+              <select
+                ref={projectStageRef}
+                id="projectStage"
+                value={form.projectStage ?? ""}
+                disabled={settingsReadOnly}
+                onChange={(e) => update("projectStage", e.target.value)}
+                aria-invalid={!!validation.projectStage}
+                className={projectSettingsSelectClass(!!validation.projectStage, "sm") + readOnlyChrome}
+              >
+                <option value="">Select stage</option>
+                {dropdownOptionsWithLegacyValue(PROJECT_STAGE_VALUES, form.projectStage).map(
+                  ({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </select>
+              {validation.projectStage ? <FieldError className="!mt-1">{validation.projectStage}</FieldError> : null}
             </div>
             </div>
           </CardBody>
@@ -713,6 +693,27 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               <h2 className="ds-project-settings-card-title">Financial Context</h2>
             </CardHeader>
             <CardBody className="ds-project-settings-card-body space-y-2.5">
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="currency" className="!mb-1">
+                  Project Currency <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <select
+                  ref={currencyRef}
+                  id="currency"
+                  value={form.currency}
+                  disabled={settingsReadOnly}
+                  onChange={(e) => update("currency", e.target.value as ProjectCurrency)}
+                  aria-invalid={!!validation.currency}
+                  className={projectSettingsSelectClass(!!validation.currency, "sm") + readOnlyChrome}
+                >
+                  {CURRENCY_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {validation.currency ? <FieldError className="!mt-1">{validation.currency}</FieldError> : null}
+              </div>
               <div className={projectSettingsFieldWidthClass("sm")}>
                 <Label htmlFor="projectValue_input" className="!mb-1">
                   Project Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
@@ -724,14 +725,16 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                   inputMode="decimal"
                   readOnly={settingsReadOnly}
                   value={
-                    form.projectValue_input === 0
+                    (rawNumericFields.projectValue_input ??
+                      (form.projectValue_input === 0 ? "" : String(form.projectValue_input))) === ""
                       ? ""
                       : formatMajorCurrencyDisplay(form.projectValue_input, form.currency)
                   }
                   onChange={(e) => {
                     const raw = e.target.value.replace(/[^0-9.]/g, "");
                     const num = Number(raw);
-                    update("projectValue_input", raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, num) : 0));
+                    const safe = raw === "" ? 0 : (Number.isFinite(num) ? Math.max(0, num) : 0);
+                    update("projectValue_input", safe, raw);
                   }}
                   aria-invalid={!!validation.projectValue_input}
                   className={projectSettingsInputClass(!!validation.projectValue_input) + readOnlyChrome}
@@ -741,7 +744,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               </div>
               <div className={projectSettingsFieldWidthClass("sm")}>
                 <Label htmlFor="contingencyValue_input" className="!mb-1">
-                  Contingency Value <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                  Project Contingency <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <input
                   ref={contingencyValueRef}
@@ -769,7 +772,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               </div>
               <div className={projectSettingsFieldWidthClass("sm")}>
                 <Label htmlFor="delay_cost_per_working_day" className="!mb-1">
-                  Delay Cost Per Working Day
+                  Cost of Delay Per Working Day <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <input
                   ref={delayCostPerWorkingDayRef}
@@ -812,7 +815,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
             <CardBody className="ds-project-settings-card-body space-y-2.5">
               <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="plannedDuration_months" className="!mb-1">
-                  Planned duration <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                  Planned Duration <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <input
                   ref={plannedDurationRef}
@@ -840,7 +843,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               </div>
               <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="workingDaysPerWeek" className="!mb-1">
-                  Working Calendar
+                  Working Days Per Week <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <select
                   ref={workingCalendarRef}
@@ -848,8 +851,8 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                   value={String(form.workingDaysPerWeek)}
                   disabled={settingsReadOnly}
                   onChange={(e) => update("workingDaysPerWeek", Number(e.target.value) as WorkingDaysPerWeek)}
-                  className={projectSettingsSelectClass(false, "sm") + readOnlyChrome}
-                  aria-label="Working Calendar"
+                  aria-invalid={!!validation.workingDaysPerWeek}
+                  className={projectSettingsSelectClass(!!validation.workingDaysPerWeek, "sm") + readOnlyChrome}
                 >
                   {WORKING_CALENDAR_OPTIONS.map(({ value, label }) => (
                     <option key={value} value={value}>
@@ -857,10 +860,13 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
                     </option>
                   ))}
                 </select>
+                {validation.workingDaysPerWeek ? (
+                  <FieldError className="!mt-1">{validation.workingDaysPerWeek}</FieldError>
+                ) : null}
               </div>
               <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="targetCompletionDate" className="!mb-1">
-                  Target completion date <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                  Target Completion Date <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <input
                   ref={targetCompletionDateRef}
@@ -876,7 +882,7 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               </div>
               <div className={projectSettingsFieldWidthClass("xsm")}>
                 <Label htmlFor="scheduleContingency_workingDays" className="!mb-1">
-                  Schedule Contingency Working Days <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                  Schedule Contingency <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
                 </Label>
                 <input
                   ref={scheduleContingencyRef}
@@ -917,27 +923,26 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
               <h2 className="ds-project-settings-card-title">Risk Appetite</h2>
             </CardHeader>
             <CardBody className="ds-project-settings-card-body">
-              <div className={projectSettingsFieldWidthClass("md")}>
-                <div className="ds-segmented-control" role="radiogroup" aria-label="Risk appetite">
-                  {RISK_APPETITE_OPTIONS.map(({ value, label }) => {
-                    const active = form.riskAppetite === value;
-                    return (
-                      <Button
-                        key={value}
-                        type="button"
-                        variant={active ? "primary" : "ghost"}
-                        size="sm"
-                        disabled={settingsReadOnly}
-                        onClick={() => update("riskAppetite", value)}
-                        role="radio"
-                        aria-checked={active}
-                        className="ds-segmented-control__segment"
-                      >
-                        {label}
-                      </Button>
-                    );
-                  })}
-                </div>
+              <div className={projectSettingsFieldWidthClass("xsm")}>
+                <Label htmlFor="riskAppetite" className="!mb-1">
+                  Risk Appetite <span className="text-[var(--ds-status-danger-fg)]" aria-hidden>*</span>
+                </Label>
+                <select
+                  ref={riskAppetiteRef}
+                  id="riskAppetite"
+                  value={form.riskAppetite}
+                  disabled={settingsReadOnly}
+                  onChange={(e) => update("riskAppetite", e.target.value as RiskAppetite)}
+                  aria-invalid={!!validation.riskAppetite}
+                  className={projectSettingsSelectClass(!!validation.riskAppetite, "sm") + readOnlyChrome}
+                >
+                  {RISK_APPETITE_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                {validation.riskAppetite ? <FieldError className="!mt-1">{validation.riskAppetite}</FieldError> : null}
               </div>
             </CardBody>
           </Card>

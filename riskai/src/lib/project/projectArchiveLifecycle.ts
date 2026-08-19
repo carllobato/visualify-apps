@@ -1,5 +1,9 @@
 import type { WorkspaceRole } from "@visualify/workspace-product-access";
 import { workspaceRoleCanArchiveProject } from "@/lib/workspace/workspaceRoleCapabilities";
+import {
+  parseCanonicalProjectFieldsFromPatchBody,
+  type VisualifyProjectsCanonicalPatch,
+} from "@/lib/project/visualifyProjectsCanonicalWrite";
 
 export const PROJECT_HARD_DELETE_DISABLED = {
   status: 405 as const,
@@ -11,7 +15,12 @@ export const PROJECT_HARD_DELETE_DISABLED = {
 
 export type ProjectPatchParseResult =
   | { ok: true; kind: "lifecycle"; archived: boolean }
-  | { ok: true; kind: "name"; name: string }
+  | {
+      ok: true;
+      kind: "name";
+      name: string;
+      canonical: Partial<VisualifyProjectsCanonicalPatch>;
+    }
   | { ok: false; error: string };
 
 /**
@@ -34,7 +43,13 @@ export function parseProjectPatchBody(body: unknown): ProjectPatchParseResult {
   if (!name) {
     return { ok: false, error: "Name is required" };
   }
-  return { ok: true, kind: "name", name };
+
+  const canonical = parseCanonicalProjectFieldsFromPatchBody(record);
+  if (!canonical.ok) {
+    return { ok: false, error: canonical.error };
+  }
+
+  return { ok: true, kind: "name", name, canonical: canonical.patch };
 }
 
 /** Only `archived_at` is written for archive/restore. */

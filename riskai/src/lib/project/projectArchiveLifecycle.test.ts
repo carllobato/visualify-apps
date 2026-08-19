@@ -30,7 +30,36 @@ describe("parseProjectPatchBody", () => {
 
   it("still parses a name-only metadata patch", () => {
     const result = parseProjectPatchBody({ name: "  Bridge  " });
-    assert.deepEqual(result, { ok: true, kind: "name", name: "Bridge" });
+    assert.deepEqual(result, { ok: true, kind: "name", name: "Bridge", canonical: {} });
+  });
+
+  it("parses canonical identity fields on a name patch without treating them as lifecycle", () => {
+    const result = parseProjectPatchBody({
+      name: "Northgate",
+      project_name: "Northgate",
+      project_code: "NGU-01",
+      project_industry: "Infrastructure",
+      project_stage: "Construction",
+      project_value: 350000000,
+      project_schedule_contingency_working_days: 20,
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok || result.kind !== "name") return;
+    assert.equal(result.name, "Northgate");
+    assert.equal(result.canonical.project_name, "Northgate");
+    assert.equal(result.canonical.project_code, "NGU-01");
+    assert.equal(result.canonical.project_industry, "Infrastructure");
+    assert.equal(result.canonical.project_stage, "Construction");
+    assert.equal(result.canonical.project_value, 350000000);
+    assert.equal(result.canonical.project_schedule_contingency_working_days, 20);
+  });
+
+  it("rejects invalid canonical fields on a name patch", () => {
+    const result = parseProjectPatchBody({
+      name: "Bridge",
+      project_working_days_per_week: 4,
+    });
+    assert.deepEqual(result, { ok: false, error: "Invalid project_working_days_per_week" });
   });
 });
 
