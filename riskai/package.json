@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -39,7 +39,10 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
+  "engines": {
+    "node": "24.x"
+  },
   "volta": {
-    "node": "20.20.0"
+    "node": "24.19.0"
   }
 }

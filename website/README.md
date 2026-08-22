@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-Requires **Node.js 20.9+** (Next.js 16). From this directory:
+Requires **Node.js 24.x LTS** (Next.js 16). From this directory:
 
 ```bash
 npm ci
