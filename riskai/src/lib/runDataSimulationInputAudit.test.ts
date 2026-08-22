@@ -107,7 +107,8 @@ describe("runDataSimulationInputAudit", () => {
         postMitigationTimeML: 5,
       })
     );
-    assert.strictEqual(row.flags.postDataIncomplete, true);
+    // Monitoring: opportunity fields may be null, but postDataIncomplete is Mitigating-only
+    assert.strictEqual(row.flags.postDataIncomplete, false);
     assert.strictEqual(row.potentialReductionCost, null);
     assert.strictEqual(row.potentialReductionTime, 18);
   });
@@ -120,9 +121,97 @@ describe("runDataSimulationInputAudit", () => {
         postMitigationTimeML: undefined,
       })
     );
-    assert.strictEqual(row.flags.postDataIncomplete, true);
+    assert.strictEqual(row.flags.postDataIncomplete, false);
     assert.strictEqual(row.potentialReductionCost, 84);
     assert.strictEqual(row.potentialReductionTime, null);
+  });
+
+  it("Open + active legacy mitigation profile does not trigger postDataIncomplete", () => {
+    const row = rowFor(
+      makeRisk({
+        id: "open-active-profile",
+        status: "Open",
+        mitigationProfile: {
+          status: "active",
+          effectiveness: 0.5,
+          confidence: 0.5,
+          reduces: 0.5,
+          lagMonths: 0,
+        },
+        postMitigationCostML: undefined,
+        postMitigationTimeML: undefined,
+      })
+    );
+    assert.strictEqual(row.lifecycleLabel, "Open");
+    assert.strictEqual(row.flags.postDataIncomplete, false);
+  });
+
+  it("Mitigating with missing applicable post fields triggers postDataIncomplete", () => {
+    const missingBoth = rowFor(
+      makeRisk({
+        id: "mit-missing-both",
+        status: "Mitigating",
+        appliesTo: "both",
+        postMitigationCostML: undefined,
+        postMitigationTimeML: undefined,
+      })
+    );
+    assert.strictEqual(missingBoth.flags.postDataIncomplete, true);
+
+    const missingCost = rowFor(
+      makeRisk({
+        id: "mit-missing-cost",
+        status: "Mitigating",
+        appliesTo: "both",
+        postMitigationCostML: undefined,
+        postMitigationTimeML: 5,
+      })
+    );
+    assert.strictEqual(missingCost.flags.postDataIncomplete, true);
+
+    const costOnlyComplete = rowFor(
+      makeRisk({
+        id: "mit-cost-only-ok",
+        status: "Mitigating",
+        appliesTo: "cost",
+        postMitigationCostML: 20,
+        postMitigationTimeML: undefined,
+      })
+    );
+    assert.strictEqual(costOnlyComplete.flags.postDataIncomplete, false);
+
+    const scheduleOnlyComplete = rowFor(
+      makeRisk({
+        id: "mit-time-only-ok",
+        status: "Mitigating",
+        appliesTo: "time",
+        postMitigationCostML: undefined,
+        postMitigationTimeML: 2,
+      })
+    );
+    assert.strictEqual(scheduleOnlyComplete.flags.postDataIncomplete, false);
+  });
+
+  it("Draft, Closed and Archived are not assessed for postDataIncomplete", () => {
+    for (const status of ["Draft", "Closed", "Archived"] as const) {
+      const row = rowFor(
+        makeRisk({
+          id: `excl-${status}`,
+          status,
+          postMitigationCostML: undefined,
+          postMitigationTimeML: undefined,
+          mitigationProfile: {
+            status: "active",
+            effectiveness: 0.5,
+            confidence: 0.5,
+            reduces: 0.5,
+            lagMonths: 0,
+          },
+        })
+      );
+      assert.strictEqual(row.flags.postDataIncomplete, false, status);
+      assert.strictEqual(row.included, false, status);
+    }
   });
 
   it("supports view-aware eligibility inputs (qualify cost-only vs schedule-only)", () => {

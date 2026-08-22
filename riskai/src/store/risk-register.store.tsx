@@ -57,7 +57,7 @@ import {
   isRiskStatusDraft,
   RISK_STATUS_ARCHIVED_LOOKUP,
   RISK_STATUS_CLOSED_LOOKUP,
-  RISK_STATUS_OPEN_LOOKUP,
+  RISK_STATUS_RESTORE_LOOKUP,
 } from "@/domain/risk/riskFieldSemantics";
 
 /** Return type for runSimulation: ran true when simulation executed and snapshot was persisted; blockReason when blocked or persist failed. */
@@ -566,9 +566,9 @@ type Ctx = {
   updateRatingPc: (id: string, target: "inherent" | "residual", payload: { probability?: number; consequence?: number }) => void;
   /** Soft-delete: sets status to Archived (persists on save). */
   archiveRisk: (id: string) => void;
-  /** Set lifecycle status to Closed (persists on save). */
-  closeRisk: (id: string) => void;
-  /** Restore archived risk to Open (persists on save). */
+  /** Set lifecycle status to Closed with a required closure note (persists on save). */
+  closeRisk: (id: string, closureNote: string) => void;
+  /** Restore archived risk to Draft (persists on save). Prior closure details are kept. */
   restoreArchivedRisk: (id: string) => void;
   clearRisks: () => void;
   simulation: State["simulation"];
@@ -800,11 +800,17 @@ export function RiskRegisterProvider({ children }: { children: React.ReactNode }
       archiveRisk: (id) => {
         dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_ARCHIVED_LOOKUP } });
       },
-      closeRisk: (id) => {
-        dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_CLOSED_LOOKUP } });
+      closeRisk: (id, closureNote) => {
+        const note = closureNote.trim();
+        if (!note) return;
+        dispatch({
+          type: "risk/update",
+          id,
+          patch: { status: RISK_STATUS_CLOSED_LOOKUP, closureNote: note },
+        });
       },
       restoreArchivedRisk: (id) => {
-        dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_OPEN_LOOKUP } });
+        dispatch({ type: "risk/update", id, patch: { status: RISK_STATUS_RESTORE_LOOKUP } });
       },
       clearRisks: () => dispatch({ type: "risks/clear" }),
       simulation: state.simulation,

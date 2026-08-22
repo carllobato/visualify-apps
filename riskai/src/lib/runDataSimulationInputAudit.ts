@@ -9,6 +9,7 @@ import { probability01FromScale } from "@/domain/risk/risk.logic";
 import {
   appliesToExcludesCost,
   appliesToExcludesTime,
+  isRiskActiveForPortfolioAnalytics,
   riskLifecycleBucketForRegisterSnapshot,
   isRiskStatusExcludedFromSimulation,
 } from "@/domain/risk/riskFieldSemantics";
@@ -157,14 +158,15 @@ function buildRowForRisk(
   const mp = risk.mitigationProfile?.status;
   const mitigationProfileStatusRaw = mp ?? "—";
 
-  const monitoringNeedsPostCost = bucket === "monitoring" && !appliesToExcludesCost(risk.appliesTo);
-  const monitoringNeedsPostTime = bucket === "monitoring" && !appliesToExcludesTime(risk.appliesTo);
-  const activeNeedsBothPost = risk.mitigationProfile?.status === "active";
+  // Only canonical Mitigating risks are assessed for missing applicable post ML (Cost / Schedule / Both).
+  // Open / Monitoring with legacy mitigationProfile.status === "active" must not be treated as Mitigating.
+  // Draft / Closed / Archived are not active simulation risks and are not assessed.
+  const needsPostCost = !appliesToExcludesCost(risk.appliesTo);
+  const needsPostTime = !appliesToExcludesTime(risk.appliesTo);
   const postDataIncomplete =
-    (activeNeedsBothPost &&
-      !(isPresentNum(risk.postMitigationCostML) && isPresentNum(risk.postMitigationTimeML))) ||
-    (monitoringNeedsPostCost && !isPresentNum(risk.postMitigationCostML)) ||
-    (monitoringNeedsPostTime && !isPresentNum(risk.postMitigationTimeML));
+    bucket === "mitigating" &&
+    ((needsPostCost && !isPresentNum(risk.postMitigationCostML)) ||
+      (needsPostTime && !isPresentNum(risk.postMitigationTimeML)));
 
   const mismatchStatusVsSource = computeMismatchStatusVsSource(bucket, sourceUsed);
 
@@ -251,7 +253,15 @@ export function buildSimulationInputAuditRows(
   const rows: SimulationInputAuditRow[] = [];
   for (const risk of risks) {
     const inp = getEffectiveRiskInputs(risk);
-    if (inp == null && !isRiskStatusExcludedFromSimulation(risk.status)) continue;
+    // Include Draft/Closed/Archived (excluded) and active risks even when Mitigating post ML is incomplete
+    // (getEffectiveRiskInputs → null) so postDataIncomplete can surface before a run.
+    if (
+      inp == null &&
+      !isRiskStatusExcludedFromSimulation(risk.status) &&
+      !isRiskActiveForPortfolioAnalytics(risk)
+    ) {
+      continue;
+    }
     const row = buildRowForRisk(risk, undefined);
     if (row) rows.push(row);
   }

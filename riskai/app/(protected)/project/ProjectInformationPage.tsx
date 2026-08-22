@@ -959,8 +959,15 @@ export default function ProjectInformationPage({ projectId }: ProjectInformation
       {activeTab === "files" &&
         (riskUiReadOnly ? (
           <EmptyState className="mb-4" message="You have view-only access. File uploads are available to editors." />
+        ) : projectId ? (
+          <RiskRegisterLookupProviders
+            projectId={projectId}
+            extraOwnerNamesFromRisks={extraOwnerNamesFromRisks}
+          >
+            <ProjectExcelUploadSection />
+          </RiskRegisterLookupProviders>
         ) : (
-          <ProjectExcelUploadSection />
+          <EmptyState className="mb-4" message="File uploads are available once a project is selected." />
         ))}
 
       {activeTab === "archive" && (

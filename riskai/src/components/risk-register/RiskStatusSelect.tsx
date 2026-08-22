@@ -16,6 +16,11 @@ type RiskStatusSelectProps = {
   allowEmptyPlaceholder?: boolean;
   /** Native tooltip on the control */
   title?: string;
+  /**
+   * Status keys (lowercase) to omit from the dropdown.
+   * Use to block inline Closed when a closure note cannot be collected.
+   */
+  excludeStatusKeys?: string[];
 };
 
 function mergeSelectFieldClass(className?: string) {
@@ -31,10 +36,23 @@ export function RiskStatusSelect({
   disabled,
   allowEmptyPlaceholder,
   title,
+  excludeStatusKeys,
 }: RiskStatusSelectProps) {
   const { statuses, loading, error } = useRiskStatusOptions();
 
-  const nameSet = useMemo(() => new Set(statuses.map((s) => s.name)), [statuses]);
+  const excluded = useMemo(
+    () => new Set((excludeStatusKeys ?? []).map((k) => k.trim().toLowerCase()).filter(Boolean)),
+    [excludeStatusKeys]
+  );
+  const visibleStatuses = useMemo(
+    () =>
+      excluded.size === 0
+        ? statuses
+        : statuses.filter((s) => !excluded.has(s.name.trim().toLowerCase())),
+    [statuses, excluded]
+  );
+
+  const nameSet = useMemo(() => new Set(visibleStatuses.map((s) => s.name)), [visibleStatuses]);
   const hasCurrentInList = value !== "" && nameSet.has(value);
   const showLegacyOption = value !== "" && !hasCurrentInList;
 
@@ -102,10 +120,10 @@ export function RiskStatusSelect({
             {value}
           </option>
         )}
-        {statuses.length === 0 ? (
+        {visibleStatuses.length === 0 ? (
           <option value="">No statuses configured</option>
         ) : (
-          statuses.map((s) => (
+          visibleStatuses.map((s) => (
             <option key={s.id} value={s.name}>
               {s.name}
             </option>

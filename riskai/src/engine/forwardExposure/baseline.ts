@@ -1,7 +1,7 @@
 /** Apply neutral baseline parameters to risk inputs (pure, deterministic). */
 
 import type { Risk } from "@/domain/risk/risk.schema";
-import { effectiveForwardCostImpact, probability01FromScale } from "@/domain/risk/risk.logic";
+import { effectiveForwardCostImpact, riskTriggerProbability01 } from "@/domain/risk/risk.logic";
 import type { BaselineMode } from "./types";
 import type { AdjustedBaselineParams } from "./types";
 import { safeNum, clamp01, clampNonNegative } from "./validate";
@@ -42,10 +42,7 @@ export function applyBaseline(risk: Risk, _baselineMode: BaselineMode): Adjusted
   const persistenceMultiplierEffective = effectiveMultiplier(m.persistence, riskSensitivity);
   const sensitivityMultiplierEffective = effectiveMultiplier(m.sensitivity, riskSensitivity);
 
-  const defaultProb = probability01FromScale(risk.residualRating?.probability ?? risk.inherentRating?.probability ?? 3);
-  const prob = clamp01(
-    typeof risk.probability === "number" && Number.isFinite(risk.probability) ? risk.probability : defaultProb
-  );
+  const prob = clamp01(riskTriggerProbability01(risk));
   const impact = clampNonNegative(effectiveForwardCostImpact(risk, DEFAULT_BASE_COST_IMPACT), DEFAULT_BASE_COST_IMPACT);
   const persistence = clamp01(safeNum(risk.escalationPersistence, DEFAULT_ESCALATION_PERSISTENCE));
   const sensitivity = clamp01(safeNum(risk.sensitivity, DEFAULT_SENSITIVITY));

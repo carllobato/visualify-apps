@@ -11,6 +11,11 @@ import {
 } from "react";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
 import { dlog } from "@/lib/debug";
+import {
+  shouldIgnoreLookupUniqueViolation,
+  workspaceScopedOwnerInsert,
+  workspaceScopedOwnerListEq,
+} from "@/lib/risk-register/workspaceScopedLookups";
 
 export type RiskaiProjectOwnerRow = { id: string; name: string };
 
@@ -38,26 +43,27 @@ export function distinctOwnerNamesFromRisks(
 }
 
 type RiskProjectOwnersContextValue = {
-  projectId: string;
+  workspaceId: string | null;
   owners: RiskaiProjectOwnerRow[];
   ownerNames: string[];
   loading: boolean;
   error: string | null;
   ownersReadOnly: boolean;
   refetch: () => Promise<void>;
-  /** Inserts if trimmed name is non-empty and not already present for this project. */
+  /** Inserts if trimmed name is non-empty; scoped to the project workspace (shared across its projects). */
   createProjectOwner: (name: string) => Promise<void>;
 };
 
 const RiskProjectOwnersContext = createContext<RiskProjectOwnersContextValue | null>(null);
 
 export function RiskProjectOwnersProvider({
-  projectId,
+  workspaceId,
   extraOwnerNamesFromRisks,
   ownersReadOnly = false,
   children,
 }: {
-  projectId: string;
+  /** `visualify_projects.workspace_id` for the current project. */
+  workspaceId: string | null;
   /** Names present on `riskai_risks.owner` that may be missing from `riskai_project_owners` (e.g. seeded/demo rows). */
   extraOwnerNamesFromRisks?: string[];
   ownersReadOnly?: boolean;
@@ -68,15 +74,23 @@ export function RiskProjectOwnersProvider({
   const [error, setError] = useState<string | null>(null);
 
   const loadOwners = useCallback(async () => {
+    const scopedWorkspaceId = workspaceId?.trim() || null;
+    if (!scopedWorkspaceId) {
+      setOwners([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const supabase = supabaseBrowserClient();
+      const listEq = workspaceScopedOwnerListEq(scopedWorkspaceId);
       const { data, error: qError } = await supabase
         .from("riskai_project_owners")
         .select("id, name")
-        .eq("project_id", projectId)
-        .eq("is_active", true)
+        .eq("workspace_id", listEq.workspace_id)
+        .eq("is_active", listEq.is_active)
         .order("name", { ascending: true });
       if (qError) {
         setError(qError.message);
@@ -92,7 +106,7 @@ export function RiskProjectOwnersProvider({
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [workspaceId]);
 
   useEffect(() => {
     void loadOwners();
@@ -101,20 +115,21 @@ export function RiskProjectOwnersProvider({
   const createProjectOwner = useCallback(
     async (rawName: string) => {
       if (ownersReadOnly) return;
+      const scopedWorkspaceId = workspaceId?.trim() || null;
+      if (!scopedWorkspaceId) return;
       const name = rawName.trim();
       if (!name) return;
       const supabase = supabaseBrowserClient();
-      const { error: insError } = await supabase.from("riskai_project_owners").insert({
-        project_id: projectId,
-        name,
-      });
-      if (insError && !/duplicate key|unique constraint/i.test(insError.message)) {
+      const { error: insError } = await supabase
+        .from("riskai_project_owners")
+        .insert(workspaceScopedOwnerInsert(scopedWorkspaceId, name));
+      if (insError && !shouldIgnoreLookupUniqueViolation(insError)) {
         throw new Error(insError.message);
       }
       dlog("[risk owner] created new owner", name);
       await loadOwners();
     },
-    [ownersReadOnly, projectId, loadOwners]
+    [ownersReadOnly, workspaceId, loadOwners]
   );
 
   const ownersForPicker = useMemo(() => {
@@ -135,7 +150,7 @@ export function RiskProjectOwnersProvider({
 
   const value = useMemo<RiskProjectOwnersContextValue>(
     () => ({
-      projectId,
+      workspaceId: workspaceId?.trim() || null,
       owners: ownersForPicker,
       ownerNames: ownersForPicker.map((o) => o.name),
       loading,
@@ -144,7 +159,7 @@ export function RiskProjectOwnersProvider({
       refetch: loadOwners,
       createProjectOwner,
     }),
-    [projectId, ownersForPicker, loading, error, ownersReadOnly, loadOwners, createProjectOwner]
+    [workspaceId, ownersForPicker, loading, error, ownersReadOnly, loadOwners, createProjectOwner]
   );
 
   return (

@@ -141,6 +141,17 @@ export const RiskSchema = z.object({
   createdAt: z.string().min(1), // ISO datetime
   updatedAt: z.string().min(1), // ISO datetime
 
+  /** Required (non-empty) when entering Closed; preserved after reopen; may be absent on legacy Closed. */
+  closureNote: z.string().optional(),
+  closedAt: z.string().optional(), // ISO datetime
+  /** Authenticated user id who closed; server-stamped only. */
+  closedBy: z.string().optional(),
+  /** Authenticated user id who created; server-stamped on first insert. */
+  createdBy: z.string().optional(),
+  lastReviewedAt: z.string().optional(), // ISO datetime
+  /** Authenticated user id of last saved edit; server-stamped only. */
+  lastReviewedBy: z.string().optional(),
+
   /** Snapshot history for composite score over time (optional for backward compatibility). */
   scoreHistory: z
     .array(z.object({ timestamp: z.number(), compositeScore: z.number() }))

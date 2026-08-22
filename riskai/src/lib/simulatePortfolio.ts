@@ -1,9 +1,6 @@
 import type { Risk } from "@/domain/risk/risk.schema";
-import {
-  SCHEDULE_IMPACT_DAYS_CAP,
-  scheduleImpactDaysMLCappedForMonteCarlo,
-} from "@/domain/risk/riskFieldSemantics";
-import { riskTriggerProbability01 } from "@/domain/risk/risk.logic";
+import { SCHEDULE_IMPACT_DAYS_CAP } from "@/domain/risk/riskFieldSemantics";
+import { getEffectiveRiskInputs } from "@/domain/simulation/monteCarlo";
 import type { SimulationRiskSnapshot, SimulationSnapshot } from "@/domain/simulation/simulation.types";
 import { makeId } from "@/lib/id";
 
@@ -17,36 +14,6 @@ function triangular(min: number, mode: number, max: number): number {
   const c = (mode - min) / (max - min);
   if (u <= c) return min + Math.sqrt(u * (max - min) * (mode - min));
   return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
-}
-
-/** Cost for simulation: post ML if mitigated and set, else pre ML, else consequence mapping. */
-function getSimCostML(risk: Risk): number {
-  const hasMitigation = Boolean(risk.mitigation?.trim());
-  const post = risk.postMitigationCostML;
-  const pre = risk.preMitigationCostML;
-  if (hasMitigation && typeof post === "number" && Number.isFinite(post) && post > 0) return post;
-  if (typeof pre === "number" && Number.isFinite(pre) && pre > 0) return pre;
-  return costFromConsequence(
-    risk.residualRating?.consequence ?? risk.inherentRating?.consequence
-  );
-}
-
-function scheduleDaysMLFromRisk(risk: Risk): number {
-  return scheduleImpactDaysMLCappedForMonteCarlo(risk);
-}
-
-function costFromConsequence(consequence: unknown): number {
-  const c = typeof consequence === "number" ? consequence : Number(consequence);
-  if (!Number.isFinite(c)) return 0;
-  const cc = Math.max(1, Math.min(5, Math.round(c)));
-  const map: Record<number, number> = {
-    1: 25_000,
-    2: 100_000,
-    3: 300_000,
-    4: 750_000,
-    5: 1_500_000,
-  };
-  return map[cc] ?? 0;
 }
 
 const mean = (arr: number[]) =>
@@ -66,6 +33,10 @@ export type SimulatePortfolioOptions = {
 
 /**
  * Monte Carlo-style portfolio simulation. No UI; returns a SimulationSnapshot.
+ *
+ * Each risk uses {@link getEffectiveRiskInputs} as the sole authority for eligibility,
+ * pre/post selection, trigger probability, cost ML, and schedule ML.
+ * Incomplete Mitigating risks (null inputs) are excluded — not zero-impact placeholders.
  */
 export function simulatePortfolio(
   risks: Risk[],
@@ -74,6 +45,11 @@ export function simulatePortfolio(
 ): SimulationSnapshot {
   const baseSpread = options.costSpreadPct ?? DEFAULT_COST_SPREAD_PCT;
   const spread = baseSpread;
+
+  const included = risks.flatMap((risk) => {
+    const inp = getEffectiveRiskInputs(risk);
+    return inp == null ? [] : [{ risk, inp }];
+  });
 
   const costSamples: number[] = [];
   const daysSamples: number[] = [];
@@ -87,7 +63,7 @@ export function simulatePortfolio(
     welfordM2: number;
   };
   const perRiskSums = new Map<string, PerRiskAccum>();
-  for (const risk of risks) {
+  for (const { risk } of included) {
     perRiskSums.set(risk.id, {
       costSum: 0,
       daysSum: 0,
@@ -101,10 +77,10 @@ export function simulatePortfolio(
   for (let i = 0; i < iterations; i++) {
     let totalCost = 0;
     let totalDays = 0;
-    for (const risk of risks) {
-      const probability = riskTriggerProbability01(risk);
-      const costML = getSimCostML(risk);
-      const scheduleDaysML = scheduleDaysMLFromRisk(risk);
+    for (const { risk, inp } of included) {
+      const probability = inp.probability;
+      const costML = inp.costML;
+      const scheduleDaysML = inp.timeML;
 
       const costMin = costML * (1 - spread);
       const costMax = costML * (1 + spread);
@@ -147,10 +123,10 @@ export function simulatePortfolio(
   const p80 = costSamples[Math.floor(iterations * 0.8)] ?? 0;
   const p90 = costSamples[Math.floor(iterations * 0.9)] ?? 0;
 
-  const riskSnapshots: SimulationRiskSnapshot[] = risks.map((risk) => {
-    const probability = riskTriggerProbability01(risk);
-    const costML = getSimCostML(risk);
-    const scheduleDaysML = scheduleDaysMLFromRisk(risk);
+  const riskSnapshots: SimulationRiskSnapshot[] = included.map(({ risk, inp }) => {
+    const probability = inp.probability;
+    const costML = inp.costML;
+    const scheduleDaysML = inp.timeML;
     const expectedCost = probability * costML;
     const expectedDays = probability * scheduleDaysML;
     const acc = perRiskSums.get(risk.id)!;

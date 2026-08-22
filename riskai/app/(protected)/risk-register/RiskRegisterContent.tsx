@@ -14,7 +14,7 @@ import {
   resolveRiskRegisterProjectContext,
 } from "@/lib/project/riskRegisterProjectContextRead";
 import { supabaseBrowserClient } from "@/lib/supabase/browser";
-import { listRisks, markRiskReviewed, replaceRisks, updateRiskRow } from "@/lib/db/risks";
+import { listRisks, replaceRisks, updateRiskRow } from "@/lib/db/risks";
 import type { Risk } from "@/domain/risk/risk.schema";
 import { formatRiskRegisterNumberDisplay } from "@/domain/risk/riskRegisterDisplay";
 import { RiskRegisterHeader } from "@/components/risk-register/RiskRegisterHeader";
@@ -256,7 +256,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   const processedOpenAddRiskFromUrlRef = useRef(false);
   const hasHydratedFromDbRef = useRef(false);
   const projectIdForHydrateRef = useRef<string | null>(null);
-  const reviewedRiskIdsThisDetailOpenRef = useRef<Set<string>>(new Set());
 
   const setupRedirectPath = urlProjectId ? riskaiPath(`/projects/${urlProjectId}`) : DASHBOARD_PATH;
   /** Trimmed project UUID from the URL; empty when missing — do not load or save risks without it. */
@@ -271,12 +270,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
   useEffect(() => {
     setLastPersistedRisksSnapshot(null);
   }, [projectIdTrimmed]);
-
-  useEffect(() => {
-    if (!showDetailModal) {
-      reviewedRiskIdsThisDetailOpenRef.current.clear();
-    }
-  }, [showDetailModal]);
 
   // Gate: load project context for gate/display. Project routes: canonical visualify_projects only (S4.5D). Legacy/non-project: global localStorage only.
   useEffect(() => {
@@ -466,18 +459,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
       setSaveToServerLoading(false);
     }
   }, [risks, setRisks, urlProjectId, mergeServerRisksWithLocal, lastPersistedRisksSnapshot]);
-
-  const handleRiskReviewOpen = useCallback((riskId: string): void => {
-    const pid = urlProjectId?.trim();
-    if (!pid || contentReadOnly) return;
-    if (reviewedRiskIdsThisDetailOpenRef.current.has(riskId)) return;
-    reviewedRiskIdsThisDetailOpenRef.current.add(riskId);
-    markRiskReviewed(riskId, pid).catch((err) => {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[risks] markRiskReviewed", err);
-      }
-    });
-  }, [urlProjectId, contentReadOnly]);
 
   const currentRisksPersistSnapshot = useMemo(() => risksToPersistSnapshot(risks), [risks]);
   const extraOwnerNamesFromRisks = useMemo(() => distinctOwnerNamesFromRisks(risks), [risks]);
@@ -964,7 +945,6 @@ export function RiskRegisterContent({ projectId: urlProjectId }: RiskRegisterCon
                 setDetailInitialRiskId(null);
               }}
               onSave={handleDetailModalSave}
-              onReviewOpen={!contentReadOnly ? handleRiskReviewOpen : undefined}
               onRestoreRisk={!contentReadOnly ? (id) => restoreArchivedRisk(id) : undefined}
               onAddNew={
                 contentReadOnly

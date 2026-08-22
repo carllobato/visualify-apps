@@ -90,10 +90,12 @@ import type { SimulationRiskSnapshot } from "@/domain/simulation/simulation.type
 import type { Risk } from "@/domain/risk/risk.schema";
 import { probability01FromScale } from "@/domain/risk/risk.logic";
 import {
+  hasApplicablePostMitigationInputs,
   isRiskStatusArchived,
   isRiskStatusClosed,
   isRiskStatusDraft,
   isRiskStatusExcludedFromSimulation,
+  simulationUsesPostMitigationInputs,
 } from "@/domain/risk/riskFieldSemantics";
 
 const DISTRIBUTION_BIN_COUNT = 100;
@@ -117,20 +119,13 @@ function formatDash<T>(value: T | undefined | null, formatter: (v: T) => string)
   return formatter(value as T);
 }
 
-/** Aligns with `getEffectiveRiskInputs` / Monte Carlo: full post-mitigation = mitigation text + post cost + post time ML. */
+/**
+ * Post-data completeness for mitigation-impact display: applicable post ML fields only.
+ * Mitigation text / legacy profile status must not decide completeness.
+ * Current/effective simulation inputs use post only when {@link simulationUsesPostMitigationInputs}.
+ */
 function hasFullPostMitigation(risk: Risk): boolean {
-  const hasMitigation = Boolean(risk.mitigation?.trim());
-  const postCost = risk.postMitigationCostML;
-  const postTime = risk.postMitigationTimeML;
-  return (
-    hasMitigation &&
-    typeof postCost === "number" &&
-    Number.isFinite(postCost) &&
-    postCost >= 0 &&
-    typeof postTime === "number" &&
-    Number.isFinite(postTime) &&
-    postTime >= 0
-  );
+  return hasApplicablePostMitigationInputs(risk);
 }
 
 function isPresentNum(n: unknown): n is number {
@@ -171,7 +166,9 @@ function costMLPre(risk: Risk): number {
   return map[cc] ?? 0;
 }
 
+/** Planned post cost ML when post data is complete; otherwise pre (display only). */
 function costMLPost(risk: Risk): number {
+  if (!hasApplicablePostMitigationInputs(risk)) return costMLPre(risk);
   const postCost = risk.postMitigationCostML;
   if (isPresentNum(postCost)) return postCost;
   return costMLPre(risk);
@@ -183,7 +180,9 @@ function timeMLPre(risk: Risk): number {
   return 0;
 }
 
+/** Planned post time ML when post data is complete; otherwise pre (display only). */
 function timeMLPost(risk: Risk, timePre: number): number {
+  if (!hasApplicablePostMitigationInputs(risk)) return timePre;
   const postTime = risk.postMitigationTimeML;
   if (isPresentNum(postTime)) return Math.min(postTime, MITIGATION_SCHEDULE_CAP_DAYS);
   return timePre;
@@ -201,13 +200,18 @@ function probPre(risk: Risk): number {
   return probability01FromScale(risk.inherentRating.probability);
 }
 
+/**
+ * Planned post probability when applicable post data exists (Monitoring may show planned values).
+ * Current/effective engine inputs remain pre unless status is Mitigating.
+ */
 function probPost(risk: Risk): number {
-  if (!hasFullPostMitigation(risk)) return probPre(risk);
+  if (!hasApplicablePostMitigationInputs(risk)) return probPre(risk);
   if (
     typeof risk.probability === "number" &&
     Number.isFinite(risk.probability) &&
     risk.probability >= 0 &&
-    risk.probability <= 1
+    risk.probability <= 1 &&
+    simulationUsesPostMitigationInputs(risk)
   ) {
     return risk.probability;
   }

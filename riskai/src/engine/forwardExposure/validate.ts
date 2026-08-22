@@ -5,7 +5,7 @@
 
 import type { Risk } from "@/domain/risk/risk.schema";
 import type { MitigationStatus } from "@/domain/risk/risk.schema";
-import { probability01FromScale } from "@/domain/risk/risk.logic";
+import { riskTriggerProbability01 } from "@/domain/risk/risk.logic";
 
 const MITIGATION_STATUSES: MitigationStatus[] = ["none", "planned", "active", "completed"];
 
@@ -42,10 +42,7 @@ export function sanitizeRiskForExposure(risk: Risk): { sanitized: Risk; warnings
   const warnings: string[] = [];
   const id = risk.id ?? "unknown";
 
-  const defaultProb01 = probability01FromScale(risk.residualRating?.probability ?? risk.inherentRating?.probability ?? 3);
-  const probability = clamp01(
-    typeof risk.probability === "number" && Number.isFinite(risk.probability) ? risk.probability : defaultProb01
-  );
+  const probability = clamp01(riskTriggerProbability01(risk));
   if (risk.probability !== undefined && (risk.probability !== probability || !Number.isFinite(risk.probability)))
     warnings.push(`[${id}] probability clamped to 0..1`);
 

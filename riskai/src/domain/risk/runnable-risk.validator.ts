@@ -1,13 +1,18 @@
 /**
  * Validator for "RunnableRisk": a risk that has all required fields to be included in simulation.
- * Pre-mitigation fields are always required; post-mitigation required only when mitigation is enabled/present.
+ * Pre-mitigation fields are required for Open / Monitoring / Mitigating.
+ * Post-mitigation fields are required only when canonical status is Mitigating.
  * Does not change simulation math or outputs; used only for UI validation and disabling Run Simulation.
  * Draft risks are not runnable; we skip validation for them so they don't show runnable errors until saved.
  */
 
 import type { Risk } from "./risk.schema";
-import { mitigationModeFromRisk } from "./mitigationMode";
-import { appliesToAffectsCost, appliesToAffectsTime, isRiskStatusDraft } from "./riskFieldSemantics";
+import {
+  appliesToAffectsCost,
+  appliesToAffectsTime,
+  isRiskStatusDraft,
+  riskLifecycleBucketForRegisterSnapshot,
+} from "./riskFieldSemantics";
 
 /** Coerce to number for validation (handles string numbers from JSON/form). */
 function toNum(v: unknown): number {
@@ -42,18 +47,18 @@ function isValidProbScale(n: unknown): boolean {
  * Pre-mitigation: title, probability 0–100% (from `preMitigationProbabilityPct`; falls back to
  * legacy 1–5 inherent rating for rows that pre-date the percentage migration), cost min/ml/max,
  * time min/ml/max.
- * Post-mitigation: required only when risk.mitigation is present (non-empty string); same rules.
+ * Monitoring: requires a mitigation description and mitigation cost; post values remain optional.
+ * Mitigating: requires mitigation description, mitigation cost, and applicable post probability/cost/time.
+ * Open with mitigation text or an active legacy profile does not require post values.
  * Cost fields are only validated when `appliesTo` affects cost ("Cost" or "Cost & Time").
  * Time fields are only validated when `appliesTo` affects time ("Time" or "Cost & Time").
- * Post-mitigation fields are validated using the same `mitigationModeFromRisk` signal as the modal,
- * so that an explicit "none" profile (written on save when mode is none) suppresses post-mit
- * validation even if stale post-mit values remain in the database.
  * Draft risks are not validated (return no errors).
  */
 export function getRiskValidationErrors(risk: Risk): string[] {
   if (isRiskStatusDraft(risk.status)) return [];
 
   const errors: string[] = [];
+  const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
 
   if (!risk.title?.trim()) {
     errors.push("Title is required");
@@ -107,14 +112,28 @@ export function getRiskValidationErrors(risk: Risk): string[] {
     }
   }
 
-  const hasMitigation = mitigationModeFromRisk(risk) !== "none";
-  if (hasMitigation) {
+  if (bucket === "monitoring" || bucket === "mitigating") {
+    if (!risk.mitigation?.trim()) {
+      errors.push(
+        bucket === "monitoring"
+          ? "Mitigation description is required for Monitoring"
+          : "Mitigation description is required for Mitigating"
+      );
+    } else {
+      const cost = toNum(risk.mitigationCost);
+      if (!Number.isFinite(cost) || cost < 0) {
+        errors.push("Mitigation cost is required when a mitigation description exists");
+      }
+    }
+  }
+
+  if (bucket === "mitigating") {
     const postValid =
       risk.postMitigationProbabilityPct !== undefined
         ? isValidProbabilityPct(risk.postMitigationProbabilityPct)
         : isValidProbScale(risk.residualRating?.probability);
     if (!postValid) {
-      errors.push("Post-mitigation probability is required (0–100%) when mitigation is set");
+      errors.push("Post-mitigation probability is required (0–100%) when status is Mitigating");
     }
 
     if (appliesToAffectsCost(risk.appliesTo)) {

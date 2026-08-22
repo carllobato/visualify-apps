@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
 import {
+  RISK_CLOSURE_REVIEW_EXISTING_COLUMNS,
   RISK_DB_SELECT_COLUMNS,
   normalizeRiskRow,
+  stampRiskInsertRowForPersistence,
+  toClosureReviewExisting,
   withCanonicalRiskStatus,
 } from "@/lib/db/risks";
 import type { RiskRow } from "@/types/risk";
@@ -58,7 +61,7 @@ export async function PUT(
   const supabase = await supabaseServerClient();
   const { data: existingRisk, error: existingRiskError } = await supabase
     .from("riskai_risks")
-    .select("id")
+    .select(RISK_CLOSURE_REVIEW_EXISTING_COLUMNS)
     .eq("project_id", projectId)
     .eq("id", riskId)
     .maybeSingle();
@@ -79,10 +82,21 @@ export async function PUT(
   }
 
   const statusNames = await fetchActiveRiskStatusNames(supabase);
-  const row = withCanonicalRiskStatus(normalized, statusNames);
+  const canonical = withCanonicalRiskStatus(normalized, statusNames);
+  const nowIso = new Date().toISOString();
+  const stamped = stampRiskInsertRowForPersistence({
+    row: canonical,
+    existing: toClosureReviewExisting(existingRisk),
+    authenticatedUserId: user.id,
+    nowIso,
+  });
+  if (!stamped.ok) {
+    return NextResponse.json({ error: stamped.error }, { status: 400 });
+  }
+
   const { data: savedRow, error: upsertError } = await supabase
     .from("riskai_risks")
-    .upsert(row, { onConflict: "id" })
+    .upsert(stamped.row, { onConflict: "id" })
     .select(RISK_DB_SELECT_COLUMNS)
     .eq("project_id", projectId)
     .eq("id", riskId)

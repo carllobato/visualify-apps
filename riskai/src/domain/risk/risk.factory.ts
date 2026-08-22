@@ -12,6 +12,16 @@ const DEFAULT_MITIGATION_PROFILE = {
   lagMonths: 3,
 };
 
+/** Sample defaults for dev fixtures only — explicit partial keys (even undefined) win. */
+function partialField<K extends keyof Risk>(
+  partial: Partial<Risk> | undefined,
+  key: K,
+  sampleDefault: Risk[K]
+): Risk[K] {
+  if (partial != null && key in partial) return partial[key] as Risk[K];
+  return sampleDefault;
+}
+
 export function createRisk(partial?: Partial<Risk>): Risk {
   const createdAt = nowIso();
 
@@ -38,7 +48,11 @@ export function createRisk(partial?: Partial<Risk>): Risk {
     status,
 
     owner: partial?.owner,
-    mitigation: partial?.mitigation ?? "Confirm lead times, place early order, consider alternates",
+    mitigation: partialField(
+      partial,
+      "mitigation",
+      "Confirm lead times, place early order, consider alternates"
+    ),
     contingency: partial?.contingency,
 
     inherentRating,
@@ -48,10 +62,10 @@ export function createRisk(partial?: Partial<Risk>): Risk {
 
     appliesTo: partial?.appliesTo ?? "both",
     preMitigationCostMin: partial?.preMitigationCostMin,
-    preMitigationCostML: partial?.preMitigationCostML ?? 50_000,
+    preMitigationCostML: partialField(partial, "preMitigationCostML", 50_000),
     preMitigationCostMax: partial?.preMitigationCostMax,
     preMitigationTimeMin: partial?.preMitigationTimeMin,
-    preMitigationTimeML: partial?.preMitigationTimeML ?? 30,
+    preMitigationTimeML: partialField(partial, "preMitigationTimeML", 30),
     preMitigationTimeMax: partial?.preMitigationTimeMax,
     mitigationCost: partial?.mitigationCost,
     postMitigationCostMin: partial?.postMitigationCostMin,
@@ -60,8 +74,10 @@ export function createRisk(partial?: Partial<Risk>): Risk {
     postMitigationTimeMin: partial?.postMitigationTimeMin,
     postMitigationTimeML: partial?.postMitigationTimeML,
     postMitigationTimeMax: partial?.postMitigationTimeMax,
+    preMitigationProbabilityPct: partial?.preMitigationProbabilityPct,
+    postMitigationProbabilityPct: partial?.postMitigationProbabilityPct,
 
-    probability: partial?.probability ?? 0.4,
+    probability: partialField(partial, "probability", 0.4),
     escalationPersistence: partial?.escalationPersistence ?? 0.5,
     sensitivity: partial?.sensitivity ?? 0.5,
     timeProfile: partial?.timeProfile ?? "mid",
@@ -69,5 +85,12 @@ export function createRisk(partial?: Partial<Risk>): Risk {
 
     createdAt: partial?.createdAt ?? createdAt,
     updatedAt: partial?.updatedAt ?? createdAt,
+
+    closureNote: partial?.closureNote,
+    closedAt: partial?.closedAt,
+    closedBy: partial?.closedBy,
+    createdBy: partial?.createdBy,
+    lastReviewedAt: partial?.lastReviewedAt,
+    lastReviewedBy: partial?.lastReviewedBy,
   };
 }

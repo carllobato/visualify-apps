@@ -4,8 +4,10 @@
  * Uses seeded RNG when seed is provided for deterministic runs.
  *
  * Data lineage (Analysis):
- * - Risks with status "closed" or "archived" are excluded from all calculations.
- * - Post-mitigation impacts apply only when `mitigationProfile.status === "active"` (Mitigating) and post ML cost/time are valid; otherwise pre-mitigation (Open / Monitoring / incomplete active).
+ * - Only Open, Monitoring, and Mitigating risks are included (Draft / Closed / Archived excluded).
+ * - Open / Monitoring → pre-mitigation probability, cost, and schedule.
+ * - Mitigating → post-mitigation probability, cost, and schedule; missing applicable post ML values
+ *   yield null (no silent pre fallback). Run gating uses runnable-risk validation.
  * - Cost vs time contributions respect `appliesTo` (cost-only / time-only / both).
  */
 
@@ -13,7 +15,8 @@ import type { Risk } from "@/domain/risk/risk.schema";
 import {
   appliesToExcludesCost,
   appliesToExcludesTime,
-  isRiskStatusExcludedFromSimulation,
+  isRiskActiveForPortfolioAnalytics,
+  riskLifecycleBucketForRegisterSnapshot,
 } from "@/domain/risk/riskFieldSemantics";
 import { probability01FromScale } from "@/domain/risk/risk.logic";
 import type {
@@ -21,7 +24,7 @@ import type {
   SimulationSnapshot,
 } from "./simulation.types";
 
-/** Effective inputs for one risk (post if present else pre). null => exclude from analysis (e.g. closed). */
+/** Effective inputs for one risk (pre or post by lifecycle). null => exclude from analysis. */
 export type EffectiveRiskInputs = {
   sourceUsed: "post" | "pre";
   probability: number;
@@ -69,21 +72,34 @@ function simulationProbability01(
 }
 
 /**
+ * Applicable post ML values for Mitigating risks (respects `appliesTo`).
+ * Cost-only needs post cost ML; time-only needs post time ML; both needs both.
+ */
+function hasApplicablePostMlValues(risk: Risk): boolean {
+  const needsCost = !appliesToExcludesCost(risk.appliesTo);
+  const needsTime = !appliesToExcludesTime(risk.appliesTo);
+  if (needsCost && !isPresentNum(risk.postMitigationCostML)) return false;
+  if (needsTime && !isPresentNum(risk.postMitigationTimeML)) return false;
+  return true;
+}
+
+/**
  * Single source of truth for Analysis/simulation inputs.
- * - Excludes closed and archived risks (returns null).
- * - Post-mitigation values only when `mitigationProfile.status === "active"` and post ML cost & time are valid; else pre (including active with incomplete post).
+ * - Includes only Open / Monitoring / Mitigating (returns null for Draft / Closed / Archived / unknown).
+ * - Open / Monitoring → pre; Mitigating → post (`sourceUsed` matches).
+ * - Mitigating with missing applicable post ML → null (no silent pre fallback).
  * - Probability: scale-based pre/post per `usePost`, with `risk.probability` used only when it aligns with that side vs the other scale.
  * - Cost in dollars and time in working days; zeroed per `appliesTo` for cost-only / time-only risks.
  */
 export function getEffectiveRiskInputs(risk: Risk): EffectiveRiskInputs | null {
-  if (isRiskStatusExcludedFromSimulation(risk.status)) return null;
+  if (!isRiskActiveForPortfolioAnalytics(risk)) return null;
 
-  const mitigationMode = risk.mitigationProfile?.status;
-  const hasValidPostValues =
-    isPresentNum(risk.postMitigationCostML) && isPresentNum(risk.postMitigationTimeML);
-  // Active mitigation (Mitigating) uses post ML when present; otherwise fall back to pre so partially modelled rows stay safe.
-  // Replaces prior rule: Boolean(risk.mitigation?.trim()) && post cost ML && post time ML (field presence only).
-  const usePost = mitigationMode === "active" && hasValidPostValues;
+  const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+  const usePost = bucket === "mitigating";
+
+  if (usePost && !hasApplicablePostMlValues(risk)) {
+    return null;
+  }
 
   // Prefer explicit pct columns (direct percentage / 100) over the lossy 1–5 scale conversion.
   const fromPre =
@@ -138,10 +154,12 @@ function consequenceToCostFallback(risk: Risk, usePost: boolean): number {
 function getCostMLForSimulation(risk: Risk, usePost: boolean): number {
   const postCost = risk.postMitigationCostML;
   const preCost = risk.preMitigationCostML;
-  if (usePost && isPresentNum(postCost)) return postCost;
-  if (!usePost && isPresentNum(preCost)) return preCost;
-  if (usePost && isPresentNum(preCost)) return preCost;
-  return consequenceToCostFallback(risk, usePost);
+  if (usePost) {
+    if (isPresentNum(postCost)) return postCost;
+    return consequenceToCostFallback(risk, true);
+  }
+  if (isPresentNum(preCost)) return preCost;
+  return consequenceToCostFallback(risk, false);
 }
 
 /** Maximum schedule impact (working days) used in simulation; range is 0–30 working days. */
@@ -150,9 +168,11 @@ const SCHEDULE_IMPACT_DAYS_CAP = 30;
 function getTimeMLForSimulation(risk: Risk, usePost: boolean): number {
   const postTime = risk.postMitigationTimeML;
   const preTime = risk.preMitigationTimeML;
-  if (usePost && isPresentNum(postTime)) return Math.min(postTime, SCHEDULE_IMPACT_DAYS_CAP);
-  if (!usePost && isPresentNum(preTime)) return Math.min(preTime, SCHEDULE_IMPACT_DAYS_CAP);
-  if (usePost && isPresentNum(preTime)) return Math.min(preTime, SCHEDULE_IMPACT_DAYS_CAP);
+  if (usePost) {
+    if (isPresentNum(postTime)) return Math.min(postTime, SCHEDULE_IMPACT_DAYS_CAP);
+    return 0;
+  }
+  if (isPresentNum(preTime)) return Math.min(preTime, SCHEDULE_IMPACT_DAYS_CAP);
   return 0;
 }
 
@@ -405,7 +425,7 @@ export type RunMonteCarloOptions = {
 /**
  * Runs Monte Carlo simulation: for each iteration, for each risk,
  * decide if risk triggers (random < probability); if so add most likely cost and time.
- * Closed risks are excluded. Effective inputs encode pre vs post, probability alignment, and appliesTo (cost-only / time-only zero the irrelevant leg).
+ * Draft / Closed / Archived are excluded. Effective inputs encode pre vs post, probability alignment, and appliesTo (cost-only / time-only zero the irrelevant leg).
  * Returns costSamples, timeSamples, and computed summary (mean, p50, p80, p90, min, max).
  */
 export function runMonteCarloSimulation(
@@ -538,7 +558,7 @@ export function buildSimulationReport(
 
 /**
  * Builds snapshot fields from Monte Carlo result + risks for backward compatibility.
- * Closed risks are excluded. Uses same effective inputs as runMonteCarloSimulation.
+ * Draft / Closed / Archived are excluded. Uses same effective inputs as runMonteCarloSimulation.
  * Caller supplies id and timestampIso to form a full SimulationSnapshot.
  */
 export function buildSimulationSnapshotFromResult(

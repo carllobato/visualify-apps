@@ -763,11 +763,11 @@ const PORTFOLIO_COST_EXPOSURE_HORIZON_MONTHS = 12;
 
 /**
  * Expected schedule impact (working days): probability × lifecycle-appropriate capped impact working days
- * (Open/Monitoring → pre; Mitigating → post or pre fallback), aligned with {@link simulatePortfolio}.
+ * (Open/Monitoring → pre; Mitigating → post; null schedule input contributes 0), aligned with {@link simulatePortfolio}.
  */
 function expectedScheduleExposureDays(risk: Risk): number {
   const prob01 = riskTriggerProbability01(risk);
-  const impactDays = scheduleImpactDaysMLCappedForMonteCarlo(risk);
+  const impactDays = scheduleImpactDaysMLCappedForMonteCarlo(risk) ?? 0;
   const v = impactDays * prob01;
   if (!Number.isFinite(v) || v < 0) return 0;
   return v;
@@ -1230,12 +1230,12 @@ export async function loadTopRiskConcentrationRows(
     });
   }
 
-  const scheduleCandidates = allMapped.filter(
-    (risk) =>
-      isRiskActiveForPortfolioAnalytics(risk) &&
-      !appliesToExcludesTime(risk.appliesTo) &&
-      scheduleImpactDaysMLCappedForMonteCarlo(risk) > 0
-  );
+  const scheduleCandidates = allMapped.filter((risk) => {
+    if (!isRiskActiveForPortfolioAnalytics(risk)) return false;
+    if (appliesToExcludesTime(risk.appliesTo)) return false;
+    const days = scheduleImpactDaysMLCappedForMonteCarlo(risk);
+    return days != null && days > 0;
+  });
 
   const scheduleRows: PortfolioTopRiskRow[] = [];
   const scheduleOpportunityRows: PortfolioTopRiskRow[] = [];
@@ -1567,7 +1567,7 @@ export async function loadPortfolioControlScore({
   const [risksRes, lockedRes] = await Promise.all([
     supabase
       .from("riskai_risks")
-      .select(`${RISK_DB_SELECT_COLUMNS},last_reviewed_at,last_review_month`)
+      .select(RISK_DB_SELECT_COLUMNS)
       .in("project_id", scopedProjectIds),
     lockedSnapshotsQuery,
   ]);

@@ -8,11 +8,20 @@ import type { MitigationMode, Risk, RiskLevel } from "./risk.schema";
 /** Canonical `riskai_risk_statuses.name` for soft-deleted risks (`risks.status`). */
 export const RISK_STATUS_ARCHIVED_LOOKUP = "Archived";
 
-/** Default status when restoring an archived risk (first version; prior status not preserved). */
+/** Canonical `riskai_risk_statuses.name` for draft risks (`risks.status`). */
+export const RISK_STATUS_DRAFT_LOOKUP = "Draft";
+
+/**
+ * @deprecated Prefer {@link RISK_STATUS_DRAFT_LOOKUP} for archive restore / closed reopen.
+ * Kept for callers that still default new risks to Open.
+ */
 export const RISK_STATUS_OPEN_LOOKUP = "Open";
 
 /** Canonical `riskai_risk_statuses.name` for closed risks (`risks.status`). */
 export const RISK_STATUS_CLOSED_LOOKUP = "Closed";
+
+/** Default status when restoring an archived risk (prior status not preserved). */
+export const RISK_STATUS_RESTORE_LOOKUP = RISK_STATUS_DRAFT_LOOKUP;
 
 export function normalizeRiskStatusKey(status: string | undefined | null): string {
   return (status ?? "").toString().trim().toLowerCase();
@@ -27,13 +36,13 @@ function inherentLetter(risk: Risk): string {
 /**
  * Register table "Rating" column: which letter (or N/A) to show from lifecycle status.
  * — draft / closed / archived → N/A
- * — open / monitoring → pre-mitigation (inherent)
- * — mitigating / mitigated → post-mitigation (residual), or N/A if no mitigation text
+ * — open / monitoring → pre-mitigation (inherent), even with mitigation text / legacy active mode
+ * — mitigating / mitigated → post-mitigation (residual), or N/A when applicable post data unavailable
  */
 export function isCurrentRiskRatingNA(risk: Risk): boolean {
   const s = normalizeRiskStatusKey(risk.status);
   if (s === "draft" || s === "closed" || s === "archived") return true;
-  if (s === "mitigating" || s === "mitigated") return !risk.mitigation?.trim();
+  if (s === "mitigating" || s === "mitigated") return !hasApplicablePostMitigationInputs(risk);
   return false;
 }
 
@@ -66,7 +75,9 @@ export function getCurrentRiskRatingTitle(risk: Risk): string {
     return `Pre-mitigation: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`;
   }
   if (s === "mitigating" || s === "mitigated") {
-    if (!risk.mitigation?.trim()) return "Post-mitigation: N/A (no mitigation)";
+    if (!hasApplicablePostMitigationInputs(risk)) {
+      return "Post-mitigation: N/A (applicable post data unavailable)";
+    }
     return `Post-mitigation: ${risk.residualRating.level} (score ${risk.residualRating.score})`;
   }
   return `Pre-mitigation: ${risk.inherentRating.level} (score ${risk.inherentRating.score})`;
@@ -194,13 +205,17 @@ export function getDefaultUserCreatedRiskStatusName(rows: { name: string }[]): s
 }
 
 /**
- * Lifecycle status implied by modelling mitigation mode (register lookup names).
- * Does not handle "none" — callers map that to Open except when status should stay Draft.
+ * One-way display default when canonical status changes.
+ * Mitigating → Post (`active`). Open / Monitoring / Draft preserve the current selection.
+ * Does not clear mitigation/post data and must never be inverted into a status mutation.
  */
-export function statusAutoFromMitigationMode(mode: MitigationMode, rows: { name: string }[]): string | undefined {
-  if (mode === "forecast") return findRiskStatusNameByKeys(rows, ["monitoring"]);
-  if (mode === "active") return findRiskStatusNameByKeys(rows, ["mitigating", "mitigated"]);
-  return undefined;
+export function displayedMitigationModeAfterStatusChange(
+  nextStatus: string,
+  currentMode: MitigationMode
+): MitigationMode {
+  const k = normalizeRiskStatusKey(nextStatus);
+  if (k === "mitigating" || k === "mitigated") return "active";
+  return currentMode;
 }
 
 export function isRiskStatusDraft(status: string | undefined | null): boolean {
@@ -222,9 +237,9 @@ export type RiskLifecycleBucketKey =
 
 /**
  * Single lifecycle bucket per risk for register snapshots. Maps synonym `mitigated` → `mitigating`
- * (some tenants use that lookup name; see `statusAutoFromMitigationMode`). Counts risks whose
- * modelling has `mitigationProfile.status === 'active'` as mitigating even when `risks.status`
- * was not yet updated (e.g. legacy rows).
+ * (some tenants use that lookup name).
+ * Canonical `risks.status` is the source of truth — do not infer Mitigating from
+ * `mitigationProfile.status` when the stored status is Open / Monitoring / etc.
  */
 export function riskLifecycleBucketForRegisterSnapshot(risk: Risk): RiskLifecycleBucketKey | null {
   const s = normalizeRiskStatusKey(risk.status);
@@ -233,7 +248,6 @@ export function riskLifecycleBucketForRegisterSnapshot(risk: Risk): RiskLifecycl
   if (s === "closed") return "closed";
   if (s === "draft") return "draft";
   if (s === "mitigating" || s === "mitigated") return "mitigating";
-  if (risk.mitigationProfile?.status === "active") return "mitigating";
   if (s === "monitoring") return "monitoring";
   if (s === "open") return "open";
   return null;
@@ -249,57 +263,101 @@ export function isRiskActiveForPortfolioAnalytics(risk: Risk): boolean {
 }
 
 /**
- * Schedule impact (working days) for Monte Carlo and portfolio schedule exposure, by lifecycle bucket:
- * Open / Monitoring → pre-mitigation working days only
- * Mitigating → post-mitigation working days when modelled; otherwise pre-mitigation fallback
+ * Schedule impact (working days) for Monte Carlo and portfolio schedule exposure, by lifecycle status:
+ * - Open / Monitoring → pre-mitigation working days
+ * - Mitigating → post-mitigation working days only (null when schedule-applicable and post ML missing;
+ *   never falls back to pre)
+ * - Cost-only (`appliesTo`) → null (schedule-inapplicable)
+ * - Draft / Closed / Archived / unknown → null
  *
- * Uses {@link riskLifecycleBucketForRegisterSnapshot} (same as register / portfolio analytics).
+ * Uses {@link riskLifecycleBucketForRegisterSnapshot} (canonical status authority).
  */
-export function scheduleImpactDaysMLForSimulation(risk: Risk): number {
+export function scheduleImpactDaysMLForSimulation(risk: Risk): number | null {
   const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+  if (bucket !== "open" && bucket !== "monitoring" && bucket !== "mitigating") {
+    return null;
+  }
+  if (appliesToExcludesTime(risk.appliesTo)) {
+    return null;
+  }
   if (bucket === "open" || bucket === "monitoring") {
     const pre = risk.preMitigationTimeML;
     return typeof pre === "number" && Number.isFinite(pre) ? Math.max(0, pre) : 0;
   }
-  if (bucket === "mitigating") {
-    const post = risk.postMitigationTimeML;
-    if (typeof post === "number" && Number.isFinite(post)) {
-      return Math.max(0, post);
-    }
-    const pre = risk.preMitigationTimeML;
-    return typeof pre === "number" && Number.isFinite(pre) ? Math.max(0, pre) : 0;
+  const post = risk.postMitigationTimeML;
+  if (typeof post === "number" && Number.isFinite(post) && post >= 0) {
+    return Math.max(0, post);
   }
-  return 0;
+  return null;
 }
 
 /** Upper bound on schedule impact working days before MC triangular spread (`simulatePortfolio`). */
 export const SCHEDULE_IMPACT_DAYS_CAP = 30;
 
-export function scheduleImpactDaysMLCappedForMonteCarlo(risk: Risk): number {
-  return Math.min(SCHEDULE_IMPACT_DAYS_CAP, scheduleImpactDaysMLForSimulation(risk));
+export function scheduleImpactDaysMLCappedForMonteCarlo(risk: Risk): number | null {
+  const days = scheduleImpactDaysMLForSimulation(risk);
+  if (days == null) return null;
+  return Math.min(SCHEDULE_IMPACT_DAYS_CAP, days);
 }
 
 export function isRiskStatusClosed(status: string | undefined | null): boolean {
   return normalizeRiskStatusKey(status) === "closed";
 }
 
-/** Closed or archived risks are excluded from Monte Carlo inputs. */
+/** Draft, closed, or archived risks are excluded from Monte Carlo inputs. */
 export function isRiskStatusExcludedFromSimulation(status: string | undefined | null): boolean {
-  return isRiskStatusClosed(status) || isRiskStatusArchived(status);
+  return isRiskStatusDraft(status) || isRiskStatusClosed(status) || isRiskStatusArchived(status);
 }
+
+/** Canonical `riskai_risks.applies_to` values enforced by DB check constraint. */
+export const APPLIES_TO_DB_COST = "Cost";
+export const APPLIES_TO_DB_SCHEDULE = "Schedule";
+export const APPLIES_TO_DB_BOTH = "Both";
+
+export type AppliesToDbValue =
+  | typeof APPLIES_TO_DB_COST
+  | typeof APPLIES_TO_DB_SCHEDULE
+  | typeof APPLIES_TO_DB_BOTH;
+
+export const APPLIES_TO_REQUIRED_FOR_NON_DRAFT_ERROR =
+  "Applies to is required when status is not Draft.";
 
 /**
  * Semantic kind for cost/time/both. Returns null when the stored text does not match those words (case-insensitive).
+ * Accepts legacy lowercase UI values and DB-canonical Title Case (`Cost`, `Schedule`, `Both`).
  * Callers typically treat null like "both" for consequence math and validation.
  */
 export function normalizeAppliesToKey(appliesTo: string | undefined | null): "time" | "cost" | "both" | null {
   const raw = (appliesTo ?? "").toString().trim();
   if (!raw) return null;
   const lower = raw.toLowerCase();
-  if (lower === "time") return "time";
+  if (lower === "time" || lower === "schedule") return "time";
   if (lower === "cost") return "cost";
-  if (lower === "both") return "both";
+  if (lower === "both" || lower === "cost & time" || lower === "cost and time") return "both";
   return null;
+}
+
+/** Map UI / legacy text to DB-canonical applies_to (null when unset or unrecognized). */
+export function canonicalAppliesToForDb(
+  appliesTo: string | undefined | null
+): AppliesToDbValue | null {
+  const key = normalizeAppliesToKey(appliesTo);
+  if (key === "cost") return APPLIES_TO_DB_COST;
+  if (key === "time") return APPLIES_TO_DB_SCHEDULE;
+  if (key === "both") return APPLIES_TO_DB_BOTH;
+  return null;
+}
+
+/** Whether a row satisfies `riskai_risks_impact_type_allowed_check` for the given status. */
+export function appliesToAllowedForRiskStatus(
+  status: string | undefined | null,
+  appliesTo: string | undefined | null
+): boolean {
+  if (isRiskStatusDraft(status)) {
+    if (appliesTo == null || String(appliesTo).trim() === "") return true;
+    return canonicalAppliesToForDb(appliesTo) != null;
+  }
+  return canonicalAppliesToForDb(appliesTo) != null;
 }
 
 export function appliesToAffectsCost(appliesTo: string | undefined | null): boolean {
@@ -318,4 +376,28 @@ export function appliesToExcludesCost(appliesTo: string | undefined | null): boo
 
 export function appliesToExcludesTime(appliesTo: string | undefined | null): boolean {
   return normalizeAppliesToKey(appliesTo) === "cost";
+}
+
+function isPresentNonNegNum(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n) && n >= 0;
+}
+
+/**
+ * Whether applicable post-mitigation ML inputs are present (Cost / Time / Both).
+ * Does not consult mitigation description text or legacy mitigation-profile status.
+ */
+export function hasApplicablePostMitigationInputs(risk: Risk): boolean {
+  const needsCost = !appliesToExcludesCost(risk.appliesTo);
+  const needsTime = !appliesToExcludesTime(risk.appliesTo);
+  if (needsCost && !isPresentNonNegNum(risk.postMitigationCostML)) return false;
+  if (needsTime && !isPresentNonNegNum(risk.postMitigationTimeML)) return false;
+  return true;
+}
+
+/**
+ * Current/effective Monte Carlo scenario uses post inputs only for Mitigating.
+ * Monitoring may still show planned post values elsewhere; Open remains pre.
+ */
+export function simulationUsesPostMitigationInputs(risk: Risk): boolean {
+  return riskLifecycleBucketForRegisterSnapshot(risk) === "mitigating";
 }

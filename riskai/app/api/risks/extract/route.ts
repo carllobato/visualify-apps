@@ -18,13 +18,13 @@ Return ONLY a single JSON object, no markdown, no commentary. Shape:
       "probability": integer 1-5,
       "consequence": integer 1-5,
       "owner": "optional string",
-      "mitigation": "optional string",
-      "status": "optional one of: open, monitoring, closed"
+      "mitigation": "optional string"
     }
   ]
 }
 
-Do NOT include: id, inherentRating, residualRating, score, level, timestamps, or any other fields.`;
+Do NOT include: id, status, inherentRating, residualRating, score, level, timestamps, or any other fields.
+Imported risks always enter the register as Draft regardless of source spreadsheet content.`;
 
 export async function POST(req: Request) {
   const auth = await requireUser();

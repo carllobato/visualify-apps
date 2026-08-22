@@ -6,9 +6,13 @@ import {
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
 import { RISK_STATUS_ARCHIVED_LOOKUP } from "@/domain/risk/riskFieldSemantics";
+import { archiveOrphanReviewStamp } from "@/lib/db/riskClosureReview";
 import {
+  RISK_CLOSURE_REVIEW_EXISTING_COLUMNS,
   RISK_DB_SELECT_COLUMNS,
   normalizeRiskRow,
+  stampRiskInsertRowForPersistence,
+  toClosureReviewExisting,
   withCanonicalRiskStatus,
   type RiskInsertRow,
 } from "@/lib/db/risks";
@@ -102,6 +106,28 @@ export async function PUT(
 
   const supabase = await supabaseServerClient();
   const statusNames = await fetchActiveRiskStatusNames(supabase);
+  const nowIso = new Date().toISOString();
+
+  const { data: existingRows, error: listErr } = await supabase
+    .from("riskai_risks")
+    .select(RISK_CLOSURE_REVIEW_EXISTING_COLUMNS)
+    .eq("project_id", projectId);
+
+  if (listErr) {
+    return NextResponse.json({ error: listErr.message }, { status: 500 });
+  }
+
+  type ExistingLite = {
+    id: string;
+    status: string;
+    closure_note: string | null;
+    closed_at: string | null;
+    closed_by: string | null;
+    created_by: string | null;
+  };
+  const existingById = new Map(
+    ((existingRows ?? []) as ExistingLite[]).map((r) => [r.id, r])
+  );
 
   const rows: RiskInsertRow[] = [];
   for (const item of body.risks) {
@@ -109,19 +135,22 @@ export async function PUT(
     if (!normalized) {
       return NextResponse.json({ error: "Invalid payload: malformed risk row" }, { status: 400 });
     }
-    rows.push(withCanonicalRiskStatus(normalized, statusNames));
-  }
-  const { data: existingRows, error: listErr } = await supabase
-    .from("riskai_risks")
-    .select("id")
-    .eq("project_id", projectId);
-
-  if (listErr) {
-    return NextResponse.json({ error: listErr.message }, { status: 500 });
+    const canonical = withCanonicalRiskStatus(normalized, statusNames);
+    const existing = toClosureReviewExisting(existingById.get(canonical.id) ?? null);
+    const stamped = stampRiskInsertRowForPersistence({
+      row: canonical,
+      existing,
+      authenticatedUserId: user.id,
+      nowIso,
+    });
+    if (!stamped.ok) {
+      return NextResponse.json({ error: stamped.error }, { status: 400 });
+    }
+    rows.push(stamped.row);
   }
 
   const clientIds = new Set(rows.map((r) => r.id));
-  const existingIds = ((existingRows ?? []) as { id: string }[]).map((r) => r.id);
+  const existingIds = [...existingById.keys()];
   const orphanIds = existingIds.filter((id) => !clientIds.has(id));
 
   if (rows.length > 0) {
@@ -158,10 +187,17 @@ export async function PUT(
     }
 
     if (orphanIds.length > 0) {
-      const now = new Date().toISOString();
+      const review = archiveOrphanReviewStamp({
+        authenticatedUserId: user.id,
+        nowIso,
+      });
       const { error: archErr } = await supabase
         .from("riskai_risks")
-        .update({ status: RISK_STATUS_ARCHIVED_LOOKUP, updated_at: now })
+        .update({
+          status: RISK_STATUS_ARCHIVED_LOOKUP,
+          updated_at: nowIso,
+          ...review,
+        })
         .in("id", orphanIds)
         .eq("project_id", projectId);
       if (archErr) {
@@ -173,10 +209,17 @@ export async function PUT(
   }
 
   if (orphanIds.length > 0) {
-    const now = new Date().toISOString();
+    const review = archiveOrphanReviewStamp({
+      authenticatedUserId: user.id,
+      nowIso,
+    });
     const { error: archErr } = await supabase
       .from("riskai_risks")
-      .update({ status: RISK_STATUS_ARCHIVED_LOOKUP, updated_at: now })
+      .update({
+        status: RISK_STATUS_ARCHIVED_LOOKUP,
+        updated_at: nowIso,
+        ...review,
+      })
       .in("id", orphanIds)
       .eq("project_id", projectId);
     if (archErr) {

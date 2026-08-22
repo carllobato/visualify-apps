@@ -11,6 +11,7 @@ import type {
 type RiskInput = {
   id: string;
   title: string;
+  status?: string;
   appliesTo?: string;
   probability?: number;
   mitigation?: string;
@@ -27,11 +28,15 @@ type RiskInput = {
 const DEFAULT_MAX_REDUCTION = 0.25;
 const BASE_K = 1 / 100_000;
 
-/** Probability 0–1: prefer risk.probability, else normalise 1–5 from rating. */
+/** Probability 0–1: prefer risk.probability, else lifecycle-selected 1–5 rating.
+ * Mitigating → residual/post; otherwise (incl. missing status) → inherent/pre.
+ * Mitigation text never switches to residual.
+ */
 function getProbability(r: RiskInput): number {
   if (typeof r.probability === "number" && Number.isFinite(r.probability) && r.probability >= 0 && r.probability <= 1)
     return r.probability;
-  const p = r.residualRating?.probability ?? r.inherentRating?.probability;
+  const usePost = selectsPostMitigationValues(r);
+  const p = usePost ? r.residualRating?.probability : r.inherentRating?.probability;
   const n = typeof p === "number" ? p : Number(p);
   if (!Number.isFinite(n)) return 0.2;
   if (n >= 0 && n <= 1) return n;
@@ -49,15 +54,28 @@ function affectsTime(r: RiskInput): boolean {
   return k !== "cost";
 }
 
-/** Cost ($): post ML if mitigated and set, else pre ML, else consequence 1–5 map. */
+/** Canonical lifecycle: Mitigating / mitigated → post; otherwise pre. Mitigation text does not switch. */
+function selectsPostMitigationValues(r: RiskInput): boolean {
+  const s = (r.status ?? "").toString().trim().toLowerCase();
+  return s === "mitigating" || s === "mitigated";
+}
+
+/**
+ * Cost ($) for materiality fallback: lifecycle selects pre vs post.
+ * Optimisation still compares spend→benefit scenarios against neutral snapshot targets;
+ * this only weights risks by current effective impact.
+ */
 function getCost(r: RiskInput): number {
   if (!affectsCost(r)) return 0;
-  const hasMitigation = Boolean(r.mitigation?.trim());
-  if (hasMitigation && typeof r.postMitigationCostML === "number" && Number.isFinite(r.postMitigationCostML) && r.postMitigationCostML > 0)
+  const usePost = selectsPostMitigationValues(r);
+  if (usePost && typeof r.postMitigationCostML === "number" && Number.isFinite(r.postMitigationCostML) && r.postMitigationCostML > 0)
     return r.postMitigationCostML;
-  if (typeof r.preMitigationCostML === "number" && Number.isFinite(r.preMitigationCostML) && r.preMitigationCostML > 0)
+  if (!usePost && typeof r.preMitigationCostML === "number" && Number.isFinite(r.preMitigationCostML) && r.preMitigationCostML > 0)
     return r.preMitigationCostML;
-  const c = r.residualRating?.consequence ?? r.inherentRating?.consequence;
+  // Mitigating with missing post: do not fall back to pre; use consequence map
+  const c = usePost
+    ? (r.residualRating?.consequence ?? r.inherentRating?.consequence)
+    : r.inherentRating?.consequence;
   const n = typeof c === "number" ? c : Number(c);
   if (!Number.isFinite(n)) return 0;
   const cc = Math.max(1, Math.min(5, Math.round(n)));
@@ -71,15 +89,17 @@ function getCost(r: RiskInput): number {
   return map[cc] ?? 0;
 }
 
-/** Time (working days): post ML if mitigated and set, else pre ML, else consequence 1–5 map. */
+/** Time (working days) for materiality fallback: lifecycle selects pre vs post. */
 function getTime(r: RiskInput): number {
   if (!affectsTime(r)) return 0;
-  const hasMitigation = Boolean(r.mitigation?.trim());
-  if (hasMitigation && typeof r.postMitigationTimeML === "number" && Number.isFinite(r.postMitigationTimeML) && r.postMitigationTimeML > 0)
+  const usePost = selectsPostMitigationValues(r);
+  if (usePost && typeof r.postMitigationTimeML === "number" && Number.isFinite(r.postMitigationTimeML) && r.postMitigationTimeML > 0)
     return r.postMitigationTimeML;
-  if (typeof r.preMitigationTimeML === "number" && Number.isFinite(r.preMitigationTimeML) && r.preMitigationTimeML > 0)
+  if (!usePost && typeof r.preMitigationTimeML === "number" && Number.isFinite(r.preMitigationTimeML) && r.preMitigationTimeML > 0)
     return r.preMitigationTimeML;
-  const c = r.residualRating?.consequence ?? r.inherentRating?.consequence;
+  const c = usePost
+    ? (r.residualRating?.consequence ?? r.inherentRating?.consequence)
+    : r.inherentRating?.consequence;
   const n = typeof c === "number" ? c : Number(c);
   if (!Number.isFinite(n)) return 0;
   const cc = Math.max(1, Math.min(5, Math.round(n)));

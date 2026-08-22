@@ -8,13 +8,15 @@ import type { DecisionMetrics } from "@/domain/decision/decision.types";
 import {
   getCurrentRiskRatingLetter,
   getCurrentRiskRatingTitle,
+  isRiskStatusClosed,
   isRiskStatusDraft,
+  RISK_STATUS_DRAFT_LOOKUP,
 } from "@/domain/risk/riskFieldSemantics";
 import { dlog } from "@/lib/debug";
 import { useRiskRegister } from "@/store/risk-register.store";
 import { RiskEditCell } from "@/components/risk-register/RiskEditCell";
 import { RiskOwnerRowSelect } from "@/components/risk-register/RiskOwnerRowSelect";
-import { RiskCategorySelect } from "@/components/risk-register/RiskCategorySelect";
+import { RiskCategoryRowSelect } from "@/components/risk-register/RiskCategoryRowSelect";
 import { RiskStatusSelect } from "@/components/risk-register/RiskStatusSelect";
 import { Badge, Callout, Card, TableCell, TableRow } from "@visualify/design-system";
 
@@ -309,12 +311,11 @@ export function RiskRegisterRow({
           </TableCell>
         ) : (
           <TableCell className={EQUAL_QUARTET_TD}>
-            <RiskCategorySelect
-              id={`risk-row-category-${risk.id}`}
-              value={risk.category ?? ""}
-              onChange={(name) => updateRisk(risk.id, { category: name })}
+            <RiskCategoryRowSelect
+              riskId={risk.id}
+              category={risk.category}
+              onCommit={(name) => updateRisk(risk.id, { category: name })}
               className="truncate"
-              allowEmptyPlaceholder={isDraft || !risk.category?.trim()}
             />
           </TableCell>
         )}
@@ -354,9 +355,24 @@ export function RiskRegisterRow({
                 value={risk.status}
                 onChange={(name) => {
                   dlog("[risk register row] status change", name);
+                  // Closing requires a closure note — collect it in Risk Details.
+                  if (isRiskStatusClosed(name) && !isRiskStatusClosed(risk.status)) {
+                    return;
+                  }
+                  // Reopening Closed always returns to Draft.
+                  if (isRiskStatusClosed(risk.status) && !isRiskStatusClosed(name)) {
+                    updateRisk(risk.id, { status: RISK_STATUS_DRAFT_LOOKUP });
+                    return;
+                  }
                   updateRisk(risk.id, { status: name });
                 }}
+                excludeStatusKeys={isRiskStatusClosed(risk.status) ? undefined : ["closed"]}
                 className="truncate"
+                title={
+                  isRiskStatusClosed(risk.status)
+                    ? "Lifecycle status"
+                    : "To close a risk, open Risk Details and add a closure note"
+                }
               />
             )}
           </div>

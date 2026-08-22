@@ -11,10 +11,17 @@ function requireSnapshotProjectId(projectId?: string): string {
   return trimmed;
 }
 
+export type ScheduleDelayBasis = "working_days" | "calendar_days_legacy";
+
+export type SimulationSnapshotScheduleMetadata = {
+  schedule_delay_basis: ScheduleDelayBasis;
+  working_days_per_week: number | null;
+};
+
 /** Full JSON persisted with each snapshot (reporting / audit). */
 export type SimulationSnapshotPayload = {
   payload_schema_version?: 1 | 2;
-  schedule_delay_basis?: "working_days";
+  schedule_delay_basis?: ScheduleDelayBasis;
   time_basis?: "working_days";
   working_days_per_week?: number;
   summary: MonteCarloNeutralSnapshot["summary"];
@@ -88,6 +95,56 @@ function sanitizeRiskCount(value: unknown): number | null {
   const n = asFiniteNumber(value);
   if (n === null) return null;
   return Math.max(0, Math.floor(n));
+}
+
+function workingDaysPerWeekFromPayloadRecord(record: Record<string, unknown>): number | null {
+  const summary =
+    record.summary != null && typeof record.summary === "object"
+      ? (record.summary as Record<string, unknown>)
+      : null;
+
+  for (const candidate of [record.working_days_per_week, summary?.working_days_per_week]) {
+    const n = asFiniteNumber(candidate);
+    if (n !== null && n > 0) return n;
+  }
+  return null;
+}
+
+/**
+ * Derive top-level `riskai_simulation_snapshots` schedule metadata from payload jsonb so
+ * persisted columns match the run described in `payload` (not DB legacy defaults).
+ */
+export function resolveSnapshotScheduleMetadataFromPayload(
+  payload: unknown
+): SimulationSnapshotScheduleMetadata {
+  if (payload == null || typeof payload !== "object") {
+    return { schedule_delay_basis: "calendar_days_legacy", working_days_per_week: null };
+  }
+
+  const record = payload as Record<string, unknown>;
+  const explicitBasis = record.schedule_delay_basis;
+  const isWorkingDaysRun =
+    explicitBasis === "working_days" ||
+    (explicitBasis == null && record.time_basis === "working_days");
+
+  if (isWorkingDaysRun) {
+    return {
+      schedule_delay_basis: "working_days",
+      working_days_per_week: workingDaysPerWeekFromPayloadRecord(record),
+    };
+  }
+
+  return { schedule_delay_basis: "calendar_days_legacy", working_days_per_week: null };
+}
+
+/** Merge schedule metadata derived from payload into a snapshot insert row. */
+export function withSnapshotScheduleMetadata<T extends { payload: unknown }>(
+  insertRow: T
+): T & SimulationSnapshotScheduleMetadata {
+  return {
+    ...insertRow,
+    ...resolveSnapshotScheduleMetadataFromPayload(insertRow.payload),
+  };
 }
 
 /**
@@ -255,6 +312,8 @@ export type SimulationSnapshotRow = {
   time_max?: number | null;
   engine_version?: string | null;
   run_duration_ms?: number | null;
+  schedule_delay_basis?: ScheduleDelayBasis | null;
+  working_days_per_week?: number | null;
   payload?: SimulationSnapshotPayload | null;
   created_at?: string;
   locked_for_reporting?: boolean;

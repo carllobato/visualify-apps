@@ -129,6 +129,13 @@ function makeRiskRow(overrides: Partial<RiskRow> = {}): RiskRow {
     post_time_max: 0,
     created_at: ISO,
     updated_at: ISO,
+    closure_note: null,
+    closed_at: null,
+    closed_by: null,
+    created_by: null,
+    last_reviewed_at: null,
+    last_reviewed_by: null,
+    last_review_month: null,
     ...overrides,
   };
 }
@@ -191,11 +198,33 @@ describe("loadPortfolioTopRiskConcentrationRows", () => {
     );
 
     assert.strictEqual(result.scheduleRows.length, 1);
-    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "12 working days");
+    // Monitoring uses pre probability (4 → 0.8) × capped pre time (30) = 24 days — not residual.
+    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "24 working days");
     assert.strictEqual(result.scheduleRows[0]?.statusDisplay, "Monitoring");
     assert.strictEqual(result.scheduleOpportunityRows.length, 1);
     assert.strictEqual(result.scheduleOpportunityRows[0]?.exposureDisplay, "20 working days");
     assert.strictEqual(result.scheduleOpportunityRows[0]?.statusDisplay, "Monitoring");
+  });
+
+  it("Open with mitigation text still uses pre probability for schedule exposure", async () => {
+    const openWithMitigation = makeRiskRow({
+      status: "Open",
+      mitigation_description: "Would have forced residual under legacy text rule",
+      pre_probability: 5,
+      pre_time_ml: 90,
+      post_probability: 1,
+      post_time_ml: 5,
+    });
+
+    const result = await loadPortfolioTopRiskConcentrationRows(
+      makeSupabase([openWithMitigation]),
+      "portfolio-1"
+    );
+
+    // pre 5 → 1.0 × capped 30 days = 30; residual 1 × 5 would be 1.
+    assert.strictEqual(result.scheduleRows.length, 1);
+    assert.strictEqual(result.scheduleRows[0]?.exposureDisplay, "30 working days");
+    assert.strictEqual(result.scheduleRows[0]?.statusDisplay, "Open");
   });
 
   it("groups severity rows by the same current rating shown in the register", async () => {

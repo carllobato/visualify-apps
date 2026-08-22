@@ -127,4 +127,160 @@ describe("computeMitigationOptimisation", () => {
     const run2 = computeMitigationOptimisation({ risks, neutralSnapshot: snapshot });
     assert.deepStrictEqual(run2.ranked.map((r) => r.riskId), ids, "ranking order should be stable");
   });
+
+  it("materiality fallback uses lifecycle status, not mitigation text", () => {
+    // Empty snapshot.risks forces p×impact materiality fallback.
+    const snapshot = makeNeutralSnapshot(100_000);
+    const profile = { effectiveness: 0.5, confidence: 0.5 };
+
+    const openWithText = computeMitigationOptimisation({
+      risks: [
+        {
+          id: "big-pre",
+          title: "BigPre",
+          status: "Open",
+          mitigation: "Would have forced post under legacy text rule",
+          probability: 1,
+          preMitigationCostML: 200_000,
+          postMitigationCostML: 1_000,
+          mitigationProfile: profile,
+        },
+        {
+          id: "small-pre",
+          title: "SmallPre",
+          status: "Open",
+          probability: 1,
+          preMitigationCostML: 50_000,
+          postMitigationCostML: 50_000,
+          mitigationProfile: profile,
+        },
+      ],
+      neutralSnapshot: snapshot,
+      spendSteps: [0, 50_000],
+    });
+    assert.strictEqual(openWithText.ranked[0].riskId, "big-pre");
+    assert.ok(openWithText.meta.usedFallbackMaterialityCount > 0);
+
+    const mitigating = computeMitigationOptimisation({
+      risks: [
+        {
+          id: "post-small",
+          title: "PostSmall",
+          status: "Mitigating",
+          mitigation: "text present",
+          probability: 1,
+          preMitigationCostML: 200_000,
+          postMitigationCostML: 10_000,
+          mitigationProfile: profile,
+        },
+        {
+          id: "post-large",
+          title: "PostLarge",
+          status: "Mitigating",
+          probability: 1,
+          preMitigationCostML: 5_000,
+          postMitigationCostML: 80_000,
+          mitigationProfile: profile,
+        },
+      ],
+      neutralSnapshot: snapshot,
+      spendSteps: [0, 50_000],
+    });
+    assert.strictEqual(mitigating.ranked[0].riskId, "post-large");
+  });
+
+  it("explicit Mitigating status uses post/residual probability for materiality", () => {
+    const snapshot = makeNeutralSnapshot(100_000);
+    const profile = { effectiveness: 0.5, confidence: 0.5 };
+    const result = computeMitigationOptimisation({
+      risks: [
+        {
+          id: "high-post-prob",
+          title: "HighPostProb",
+          status: "Mitigating",
+          preMitigationCostML: 100_000,
+          postMitigationCostML: 100_000,
+          inherentRating: { probability: 1 },
+          residualRating: { probability: 5 },
+          mitigationProfile: profile,
+        },
+        {
+          id: "low-post-prob",
+          title: "LowPostProb",
+          status: "Mitigating",
+          preMitigationCostML: 100_000,
+          postMitigationCostML: 100_000,
+          inherentRating: { probability: 5 },
+          residualRating: { probability: 1 },
+          mitigationProfile: profile,
+        },
+      ],
+      neutralSnapshot: snapshot,
+      spendSteps: [0, 50_000],
+    });
+    assert.strictEqual(result.ranked[0].riskId, "high-post-prob");
+  });
+
+  it("legacy optimisation input without status defaults to pre/inherent, not residual", () => {
+    const snapshot = makeNeutralSnapshot(100_000);
+    const profile = { effectiveness: 0.5, confidence: 0.5 };
+    const result = computeMitigationOptimisation({
+      risks: [
+        {
+          id: "high-inherent",
+          title: "HighInherent",
+          // no status — compatibility default
+          mitigation: "text must not force residual",
+          preMitigationCostML: 100_000,
+          postMitigationCostML: 100_000,
+          inherentRating: { probability: 5 },
+          residualRating: { probability: 1 },
+          mitigationProfile: profile,
+        },
+        {
+          id: "low-inherent",
+          title: "LowInherent",
+          preMitigationCostML: 100_000,
+          postMitigationCostML: 100_000,
+          inherentRating: { probability: 1 },
+          residualRating: { probability: 5 },
+          mitigationProfile: profile,
+        },
+      ],
+      neutralSnapshot: snapshot,
+      spendSteps: [0, 50_000],
+    });
+    assert.strictEqual(result.ranked[0].riskId, "high-inherent");
+  });
+
+  it("still ranks from neutral snapshot scenario targets when per-risk expectedCost is present", () => {
+    const snapshot = makeNeutralSnapshot(300_000);
+    snapshot.risks = [
+      { id: "r1", title: "FromSnapshotLow", expectedCost: 10_000, expectedDays: 0, simMeanCost: 10_000, simMeanDays: 0 },
+      { id: "r2", title: "FromSnapshotHigh", expectedCost: 200_000, expectedDays: 0, simMeanCost: 200_000, simMeanDays: 0 },
+    ];
+    const result = computeMitigationOptimisation({
+      risks: [
+        {
+          id: "r1",
+          title: "FromSnapshotLow",
+          status: "Open",
+          preMitigationCostML: 999_000,
+          postMitigationCostML: 999_000,
+          mitigationProfile: { effectiveness: 0.5, confidence: 0.5 },
+        },
+        {
+          id: "r2",
+          title: "FromSnapshotHigh",
+          status: "Open",
+          preMitigationCostML: 1,
+          postMitigationCostML: 1,
+          mitigationProfile: { effectiveness: 0.5, confidence: 0.5 },
+        },
+      ],
+      neutralSnapshot: snapshot,
+    });
+    assert.strictEqual(result.ranked[0].riskId, "r2");
+    assert.strictEqual(result.baseline.neutralTargetCost, 300_000);
+  });
 });

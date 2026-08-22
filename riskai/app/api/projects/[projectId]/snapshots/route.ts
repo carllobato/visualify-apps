@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth/requireUser";
 import { getProjectAccessForUser } from "@/lib/db/projectAccess";
+import { withSnapshotScheduleMetadata } from "@/lib/db/snapshots";
 import { supabaseAdminClient } from "@/lib/supabase/admin";
 import { supabaseServerClient } from "@/lib/supabase/server";
 
@@ -111,7 +112,7 @@ export async function POST(
 
   const snapshot = body as SnapshotPayload;
   const iterationsInt = Math.max(0, Math.floor(Number(snapshot.iterations)));
-  const insertRow = {
+  const insertRow = withSnapshotScheduleMetadata({
     project_id: projectId,
     created_by: user.id,
     iterations: iterationsInt,
@@ -133,7 +134,7 @@ export async function POST(
     engine_version: snapshot.engine_version.trim(),
     run_duration_ms: sanitizeRunDurationMs(snapshot.run_duration_ms),
     payload: snapshot.payload as Record<string, unknown>,
-  };
+  });
 
   try {
     const supabase = await supabaseServerClient();

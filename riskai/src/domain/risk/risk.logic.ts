@@ -1,5 +1,5 @@
 import type { Risk, RiskLevel, RiskRating } from "./risk.schema";
-import { normalizeAppliesToKey } from "./riskFieldSemantics";
+import { normalizeAppliesToKey, riskLifecycleBucketForRegisterSnapshot } from "./riskFieldSemantics";
 import { clamp } from "@/domain/decision/decision.score";
 
 export function computeRiskLevel(score: number): RiskLevel {
@@ -46,8 +46,11 @@ export function probability01FromScale(scale: number): number {
 }
 
 /**
- * Trigger probability for Monte Carlo and portfolio expected schedule/cost exposure.
- * Prefer explicit `risk.probability` (0–1); else 1–5 scale from residual, then inherent (same as `simulatePortfolio`).
+ * Trigger probability for dashboard / forward-exposure paths that are not yet on
+ * {@link getEffectiveRiskInputs}. Prefer explicit `risk.probability` (0–1); else 1–5
+ * scale by canonical lifecycle (Open/Monitoring → inherent/pre; Mitigating → residual/post).
+ * Mitigation text / legacy profile status must not switch to residual. Legacy
+ * `simulatePortfolio` uses {@link getEffectiveRiskInputs} instead.
  */
 export function riskTriggerProbability01(risk: Risk): number {
   if (
@@ -58,16 +61,27 @@ export function riskTriggerProbability01(risk: Risk): number {
   ) {
     return risk.probability;
   }
-  const scale = risk.residualRating?.probability ?? risk.inherentRating?.probability ?? 3;
+  const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
+  const scale =
+    bucket === "mitigating"
+      ? (risk.residualRating?.probability ?? 3)
+      : (risk.inherentRating?.probability ?? 3);
   return probability01FromScale(scale);
 }
 
-/** Cost basis for forward exposure when no explicit scenario field: post ML if mitigated, else pre ML, else default. */
+/**
+ * Cost basis for forward exposure (current/effective impact).
+ * Canonical lifecycle selects the side: Open / Monitoring → pre; Mitigating → post.
+ * Mitigation description text must not switch pre/post. Missing selected ML → fallback.
+ */
 export function effectiveForwardCostImpact(risk: Risk, fallback = 100_000): number {
-  const hasMitigation = Boolean(risk.mitigation?.trim());
+  const bucket = riskLifecycleBucketForRegisterSnapshot(risk);
   const post = risk.postMitigationCostML;
   const pre = risk.preMitigationCostML;
-  if (hasMitigation && typeof post === "number" && Number.isFinite(post) && post > 0) return post;
+  if (bucket === "mitigating") {
+    if (typeof post === "number" && Number.isFinite(post) && post > 0) return post;
+    return fallback;
+  }
   if (typeof pre === "number" && Number.isFinite(pre) && pre > 0) return pre;
   return fallback;
 }

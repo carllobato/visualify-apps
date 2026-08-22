@@ -39,8 +39,103 @@ describe("getEffectiveRiskInputs", () => {
     assert.strictEqual(getEffectiveRiskInputs(risk), null);
   });
 
-  it("uses post-mitigation when mitigationProfile is active and post ML cost/time present", () => {
+  it("returns null for draft risks", () => {
     const risk = makeRisk({
+      status: "draft",
+      probability: 1,
+      preMitigationCostML: 100_000,
+      preMitigationTimeML: 10,
+    });
+    assert.strictEqual(getEffectiveRiskInputs(risk), null);
+  });
+
+  it("returns null for archived risks", () => {
+    const risk = makeRisk({
+      status: "archived",
+      probability: 1,
+      preMitigationCostML: 100_000,
+      preMitigationTimeML: 10,
+    });
+    assert.strictEqual(getEffectiveRiskInputs(risk), null);
+  });
+
+  it("Open with active legacy mitigation profile remains Open and uses pre values", () => {
+    const risk = makeRisk({
+      status: "Open",
+      mitigationProfile: {
+        status: "active",
+        effectiveness: 0.5,
+        confidence: 0.5,
+        reduces: 0.5,
+        lagMonths: 0,
+      },
+      inherentRating: buildRating(probabilityPctToScale(60), 3),
+      residualRating: buildRating(probabilityPctToScale(20), 3),
+      preMitigationProbabilityPct: 60,
+      postMitigationProbabilityPct: 20,
+      preMitigationCostML: 100_000,
+      preMitigationTimeML: 20,
+      postMitigationCostML: 40_000,
+      postMitigationTimeML: 8,
+    });
+    const out = getEffectiveRiskInputs(risk);
+    assert.ok(out);
+    assert.strictEqual(out.sourceUsed, "pre");
+    assert.strictEqual(out.probability, 0.6);
+    assert.strictEqual(out.costML, 100_000);
+    assert.strictEqual(out.timeML, 20);
+  });
+
+  it("Open uses pre-mitigation probability, cost, and schedule (source_used pre)", () => {
+    const risk = makeRisk({
+      status: "Open",
+      inherentRating: buildRating(probabilityPctToScale(60), 3),
+      residualRating: buildRating(probabilityPctToScale(20), 3),
+      preMitigationProbabilityPct: 60,
+      postMitigationProbabilityPct: 20,
+      preMitigationCostML: 100_000,
+      preMitigationTimeML: 20,
+      postMitigationCostML: 40_000,
+      postMitigationTimeML: 8,
+    });
+    const out = getEffectiveRiskInputs(risk);
+    assert.ok(out);
+    assert.strictEqual(out.sourceUsed, "pre");
+    assert.strictEqual(out.probability, 0.6);
+    assert.strictEqual(out.costML, 100_000);
+    assert.strictEqual(out.timeML, 20);
+  });
+
+  it("Monitoring uses pre-mitigation probability, cost, and schedule (source_used pre)", () => {
+    const risk = makeRisk({
+      status: "Monitoring",
+      mitigationProfile: {
+        status: "planned",
+        effectiveness: 0.5,
+        confidence: 0.5,
+        reduces: 0.5,
+        lagMonths: 0,
+      },
+      inherentRating: buildRating(probabilityPctToScale(50), 3),
+      residualRating: buildRating(probabilityPctToScale(25), 3),
+      preMitigationProbabilityPct: 50,
+      postMitigationProbabilityPct: 25,
+      preMitigationCostML: 80_000,
+      preMitigationTimeML: 15,
+      postMitigationCostML: 30_000,
+      postMitigationTimeML: 5,
+    });
+    const out = getEffectiveRiskInputs(risk);
+    assert.ok(out);
+    assert.strictEqual(out.sourceUsed, "pre");
+    assert.strictEqual(out.probability, 0.5);
+    assert.strictEqual(out.costML, 80_000);
+    assert.strictEqual(out.timeML, 15);
+  });
+
+  it("Mitigating uses post-mitigation probability, cost, and schedule (source_used post)", () => {
+    const risk = makeRisk({
+      status: "Mitigating",
       mitigationProfile: {
         status: "active",
         effectiveness: 0.5,
@@ -50,6 +145,8 @@ describe("getEffectiveRiskInputs", () => {
       },
       inherentRating: buildRating(probabilityPctToScale(60), 3),
       residualRating: buildRating(probabilityPctToScale(40), 3),
+      preMitigationProbabilityPct: 60,
+      postMitigationProbabilityPct: 40,
       preMitigationCostML: 100_000,
       preMitigationTimeML: 20,
       postMitigationCostML: 50_000,
@@ -63,20 +160,95 @@ describe("getEffectiveRiskInputs", () => {
     assert.strictEqual(out.timeML, 10);
   });
 
-  it("falls back to pre-mitigation when post missing", () => {
+  it("does not fall back to pre when Mitigating and applicable post ML values are missing", () => {
     const risk = makeRisk({
+      status: "Mitigating",
+      mitigationProfile: {
+        status: "active",
+        effectiveness: 0.5,
+        confidence: 0.5,
+        reduces: 0.5,
+        lagMonths: 0,
+      },
       inherentRating: buildRating(2, 3),
       residualRating: buildRating(4, 3),
       preMitigationCostML: 80_000,
       preMitigationTimeML: 15,
       probability: 0.5,
     });
-    const out = getEffectiveRiskInputs(risk);
+    assert.strictEqual(getEffectiveRiskInputs(risk), null);
+  });
+
+  it("Mitigating cost-only requires post cost ML only", () => {
+    const ok = makeRisk({
+      status: "Mitigating",
+      appliesTo: "cost",
+      postMitigationCostML: 45_000,
+      preMitigationCostML: 90_000,
+      preMitigationTimeML: 12,
+      postMitigationProbabilityPct: 30,
+    });
+    const out = getEffectiveRiskInputs(ok);
     assert.ok(out);
-    assert.strictEqual(out.sourceUsed, "pre");
-    assert.strictEqual(out.probability, 0.5);
-    assert.strictEqual(out.costML, 80_000);
-    assert.strictEqual(out.timeML, 15);
+    assert.strictEqual(out.sourceUsed, "post");
+    assert.strictEqual(out.costML, 45_000);
+    assert.strictEqual(out.timeML, 0);
+
+    const missing = makeRisk({
+      status: "Mitigating",
+      appliesTo: "cost",
+      preMitigationCostML: 90_000,
+      postMitigationTimeML: 4,
+    });
+    assert.strictEqual(getEffectiveRiskInputs(missing), null);
+  });
+
+  it("Mitigating time-only requires post time ML only", () => {
+    const ok = makeRisk({
+      status: "Mitigating",
+      appliesTo: "time",
+      postMitigationTimeML: 7,
+      preMitigationCostML: 90_000,
+      preMitigationTimeML: 12,
+      postMitigationProbabilityPct: 30,
+    });
+    const out = getEffectiveRiskInputs(ok);
+    assert.ok(out);
+    assert.strictEqual(out.sourceUsed, "post");
+    assert.strictEqual(out.costML, 0);
+    assert.strictEqual(out.timeML, 7);
+
+    const missing = makeRisk({
+      status: "Mitigating",
+      appliesTo: "time",
+      preMitigationTimeML: 12,
+      postMitigationCostML: 40_000,
+    });
+    assert.strictEqual(getEffectiveRiskInputs(missing), null);
+  });
+
+  it("Mitigating both impact type requires post cost and time ML", () => {
+    const ok = makeRisk({
+      status: "Mitigating",
+      appliesTo: "both",
+      postMitigationCostML: 40_000,
+      postMitigationTimeML: 6,
+      preMitigationCostML: 80_000,
+      preMitigationTimeML: 12,
+    });
+    const out = getEffectiveRiskInputs(ok);
+    assert.ok(out);
+    assert.strictEqual(out.sourceUsed, "post");
+    assert.strictEqual(out.costML, 40_000);
+    assert.strictEqual(out.timeML, 6);
+
+    const missingTime = makeRisk({
+      status: "Mitigating",
+      appliesTo: "both",
+      postMitigationCostML: 40_000,
+      preMitigationTimeML: 12,
+    });
+    assert.strictEqual(getEffectiveRiskInputs(missingTime), null);
   });
 
   it("uses explicit probability with pre ML cost/time when it aligns with pre scale", () => {
@@ -274,7 +446,7 @@ describe("runMonteCarloSimulation", () => {
     const riskWithPost: Risk[] = [
       makeRisk({
         id: "r1",
-        status: "open",
+        status: "Mitigating",
         mitigationProfile: {
           status: "active",
           effectiveness: 0.5,
